@@ -11,6 +11,7 @@ import {
 } from './academic_clarification_loop';
 import type { AcademicDecisionRequest } from './academic_decision_agent';
 import { earlyYearHoursById } from '../../shared/planner/early_year_courses';
+import { GATEWAY_ASSESSMENT_TYPES } from './gateway_assessment';
 
 /**
  * Credit hours of the completed courses: the program's Years 1–2 table first
@@ -94,6 +95,7 @@ export interface ConversationClarificationContextResult {
 
 const ANSWERABLE_QUESTION_IDS = new Set([
   'wanted_courses',
+  'gateway_assessment',
   'completed_category_counts',
   'completed_courses',
   'current_courses',
@@ -121,8 +123,17 @@ export function applyConversationClarificationAnswers(
     .filter((answer) => !isCounts(answer.value))
     .map((answer) => ({ questionId: answer.questionId, reason: "'completed_category_counts' expects category id → count" }));
   const validCounts = counts.filter((answer) => isCounts(answer.value));
-  const answers = allAnswers.filter((answer) => answer.questionId !== 'wanted_courses' && answer.questionId !== 'completed_category_counts');
-  if (answers.length === 0 && wanted.length === 0 && counts.length === 0) {
+  // שער רוח assessment types come from the profile panel only; a known type list.
+  const isTypes = (value: unknown) => Array.isArray(value)
+    && value.every((t) => (GATEWAY_ASSESSMENT_TYPES as readonly unknown[]).includes(t))
+  const assessment = allAnswers.filter((answer) => answer.questionId === 'gateway_assessment');
+  const assessmentInvalid = assessment
+    .filter((answer) => !isTypes(answer.value))
+    .map((answer) => ({ questionId: answer.questionId, reason: "'gateway_assessment' expects a list of assessment types" }));
+  const validAssessment = assessment.filter((answer) => isTypes(answer.value));
+  const panelOnly = new Set(['wanted_courses', 'completed_category_counts', 'gateway_assessment']);
+  const answers = allAnswers.filter((answer) => !panelOnly.has(answer.questionId));
+  if (answers.length === 0 && wanted.length === 0 && counts.length === 0 && assessment.length === 0) {
     return {
       planContext: input.planContext,
       personalStatus: input.personalStatus,
@@ -145,6 +156,7 @@ export function applyConversationClarificationAnswers(
   const nextPreferences: Record<string, unknown> = { ...input.preferences };
   const validWanted = wanted.filter((answer) => Array.isArray(answer.value) && answer.value.every((id) => typeof id === 'string'));
   if (validWanted.length) nextPreferences.wanted_course_ids = validWanted[validWanted.length - 1].value;
+  if (validAssessment.length) nextPreferences.gateway_assessment_types = validAssessment[validAssessment.length - 1].value;
   const nextPlanContext: Record<string, unknown> = { ...input.planContext };
   const nextOptions = merged.request.buildModelOptions;
 
@@ -171,8 +183,8 @@ export function applyConversationClarificationAnswers(
     preferences: nextPreferences,
     academicStatusDigest: academicStatusDigest(nextPersonalStatus),
     preferenceDigest: preferenceDigest(nextPreferences),
-    invalidAnswers: [...merged.invalidAnswers, ...wantedInvalid, ...countsInvalid],
-    changed: validWanted.length > 0 || validCounts.length > 0
+    invalidAnswers: [...merged.invalidAnswers, ...wantedInvalid, ...countsInvalid, ...assessmentInvalid],
+    changed: validWanted.length > 0 || validCounts.length > 0 || validAssessment.length > 0
       || (answers.length > 0 && merged.invalidAnswers.length < answers.length),
   };
 }

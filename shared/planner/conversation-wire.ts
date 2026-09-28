@@ -44,6 +44,7 @@ export const conversationRequestSchema = z.object({
   clarification_answers: z.array(z.object({
     question_id: z.enum([
       'wanted_courses',
+      'gateway_assessment',
       'completed_category_counts',
       'completed_courses',
       'current_courses',

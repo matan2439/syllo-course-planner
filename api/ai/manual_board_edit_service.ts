@@ -58,6 +58,15 @@ const boardState = (
   : planContextToState(context.planContext as any, model);
 
 /**
+ * The שער רוח assessment-type choice limits what the planner and co-pilot add; it never
+ * blocks the student's own manual add/move/remove.
+ */
+function manualEditPreferences(preferences: unknown): any {
+  const { gateway_assessment_types: _planningOnly, ...rest } = (preferences ?? {}) as Record<string, unknown>;
+  return rest;
+}
+
+/**
  * Build and validate the exact board the repository may commit. This function
  * is pure: ownership, CAS and idempotency belong to the handler/repository;
  * academic and catalog legality belong here.
@@ -68,7 +77,7 @@ export function prepareManualCourseAdd(input: PrepareManualCourseAddInput): Manu
     return { ok: false, code: 'ACADEMIC_STATUS_MISMATCH' };
   }
 
-  const model = buildModel(boardJson, context.planContext, context.preferences as any, request.program_id);
+  const model = buildModel(boardJson, context.planContext, manualEditPreferences(context.preferences), request.program_id);
   if (!model.knownSemesterIds.includes(request.semester_id)) {
     return { ok: false, code: 'UNKNOWN_SEMESTER' };
   }
@@ -122,7 +131,7 @@ export function prepareManualCourseRemove(input: PrepareManualCourseRemoveInput)
   if (context.digest !== request.academic_status_digest) {
     return { ok: false, code: 'ACADEMIC_STATUS_MISMATCH' };
   }
-  const model = buildModel(boardJson, context.planContext, context.preferences as any, request.program_id);
+  const model = buildModel(boardJson, context.planContext, manualEditPreferences(context.preferences), request.program_id);
   const profile = model.profiles.get(request.course_id);
   if (!profile) return { ok: false, code: 'UNKNOWN_COURSE' };
   if (profile.is_mandatory) return { ok: false, code: 'COURSE_REQUIRED' };
@@ -152,7 +161,7 @@ export function prepareManualCourseMove(input: PrepareManualCourseMoveInput):
   if (context.digest !== request.academic_status_digest) {
     return { ok: false, code: 'ACADEMIC_STATUS_MISMATCH' };
   }
-  const model = buildModel(boardJson, context.planContext, context.preferences as any, request.program_id);
+  const model = buildModel(boardJson, context.planContext, manualEditPreferences(context.preferences), request.program_id);
   if (!model.knownSemesterIds.includes(request.semester_id)) {
     return { ok: false, code: 'UNKNOWN_SEMESTER' };
   }

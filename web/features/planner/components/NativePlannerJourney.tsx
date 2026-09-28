@@ -125,6 +125,7 @@ export default function NativePlannerJourney({
     messages, setMessages, maxHours, setMaxHours, priorHours, setPriorHours,
     completedCategoryCounts, setCompletedCategoryCounts,
     wantIds, setWantIds, excludeIds, setExcludeIds, exclusionsNoneConfirmed, setExclusionsNoneConfirmed,
+    gatewayAssessments, setGatewayAssessments,
     preferenceVersion, updatePreferenceVersion,
   } = usePlannerInputs()
   const { pickerCourses, catalogHoursById } = useCatalogLookups(current)
@@ -153,6 +154,9 @@ export default function NativePlannerJourney({
         answers.set('excluded_courses', { question_id: 'excluded_courses', value: excludeIds })
       }
       if (!answers.has('wanted_courses')) answers.set('wanted_courses', { question_id: 'wanted_courses', value: wantIds })
+      if (!answers.has('gateway_assessment')) {
+        answers.set('gateway_assessment', { question_id: 'gateway_assessment', value: gatewayAssessments })
+      }
       if (!answers.has('completed_category_counts')) {
         answers.set('completed_category_counts', { question_id: 'completed_category_counts', value: completedCategoryCounts })
       }
@@ -171,6 +175,7 @@ export default function NativePlannerJourney({
     const ids = (value: unknown) => Array.isArray(value) ? value.filter((id): id is string => typeof id === 'string') : []
     if (typeof storedPreferences.max_weekly_hours === 'number') setMaxHours(String(storedPreferences.max_weekly_hours))
     if (Array.isArray(storedPreferences.wanted_course_ids)) setWantIds(ids(storedPreferences.wanted_course_ids))
+    if (Array.isArray(storedPreferences.gateway_assessment_types)) setGatewayAssessments(ids(storedPreferences.gateway_assessment_types))
     if (Array.isArray(storedPreferences.disallowed_course_ids)) {
       const excluded = ids(storedPreferences.disallowed_course_ids)
       setExcludeIds(excluded)
@@ -181,9 +186,9 @@ export default function NativePlannerJourney({
   const buildRequest = useCallback((base: BoardModel, profile?: PreferenceProfile): GeneratePlanRequest =>
     buildGeneratePlanRequest(base, profile, {
       maxHours, priorHours, wantIds, excludeIds, exclusionsNoneConfirmed, programId,
-      academicStatus, catalogHoursById, applyAcademicStatus, completedCategoryCounts,
+      academicStatus, catalogHoursById, applyAcademicStatus, completedCategoryCounts, gatewayAssessments,
     }),
-  [maxHours, priorHours, wantIds, excludeIds, programId, academicStatus, catalogHoursById,
+  [maxHours, priorHours, wantIds, excludeIds, gatewayAssessments, programId, academicStatus, catalogHoursById,
     applyAcademicStatus, exclusionsNoneConfirmed, completedCategoryCounts])
 
   // The course panel's co-pilot sees the same student context the planning co-pilot does.
@@ -276,6 +281,7 @@ export default function NativePlannerJourney({
       completedCategoryCounts={completedCategoryCounts} setCompletedCategoryCounts={setCompletedCategoryCounts}
       wantIds={wantIds} setWantIds={setWantIds}
       excludeIds={excludeIds} setExcludeIds={setExcludeIds}
+      gatewayAssessments={gatewayAssessments} setGatewayAssessments={setGatewayAssessments}
       exclusionsNoneConfirmed={exclusionsNoneConfirmed} setExclusionsNoneConfirmed={setExclusionsNoneConfirmed}
       updatePreferenceVersion={updatePreferenceVersion}
       onProfileChange={onProfileChange}

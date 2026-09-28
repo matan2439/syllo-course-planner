@@ -13,6 +13,8 @@ export interface BuildRequestInputs {
   completedCategoryCounts?: Record<string, number>
   wantIds: string[]
   excludeIds: string[]
+  /** Preferred שער רוח final-assessment types; empty = no preference. */
+  gatewayAssessments?: string[]
   exclusionsNoneConfirmed: boolean
   programId: string
   academicStatus: AcademicStatusDraft
@@ -27,13 +29,14 @@ export function buildGeneratePlanRequest(
   profile: PreferenceProfile | undefined,
   {
     maxHours, priorHours, wantIds, excludeIds, exclusionsNoneConfirmed, programId,
-    academicStatus, catalogHoursById, applyAcademicStatus, completedCategoryCounts = {},
+    academicStatus, catalogHoursById, applyAcademicStatus, completedCategoryCounts = {}, gatewayAssessments = [],
   }: BuildRequestInputs,
 ): GeneratePlanRequest {
   const preferences: Record<string, unknown> = {}
   const hrs = Number(maxHours)
   if (maxHours.trim() && Number.isFinite(hrs)) preferences.max_weekly_hours = hrs
   if (wantIds.length) preferences.wanted_course_ids = wantIds
+  if (gatewayAssessments.length) preferences.gateway_assessment_types = gatewayAssessments
   if (excludeIds.length) preferences.disallowed_course_ids = excludeIds
   // An explicit "no courses to avoid" is a real answer, so send the key as [] to distinguish it from
   // "never asked" (absent).

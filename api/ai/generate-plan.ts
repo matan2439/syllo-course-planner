@@ -124,6 +124,7 @@ import { getExternalContextEvidence } from './external_context_evidence';
 import { buildSyllabusSnapshot } from './syllabus_snapshot';
 import { loadEnrichedProfileCache, lookupProfile } from './course_profile_cache';
 import { preferencesWithPlannerPolicy } from './planner_policy_context';
+import { GATEWAY_ASSESSMENT_TYPES, gatewayAssessmentMismatchIds } from './gateway_assessment';
 
 export const preferencesSchema = z.object({
   max_weekly_hours:        z.number().nullish(),
@@ -133,6 +134,8 @@ export const preferencesSchema = z.object({
   preferred_categories:    z.array(z.string()).optional(),
   wanted_course_ids:       z.array(z.string()).optional(),
   unwanted_course_ids:     z.array(z.string()).optional(),
+  // שער רוח final-assessment types the student prefers (soft: others become unwanted).
+  gateway_assessment_types: z.array(z.enum(GATEWAY_ASSESSMENT_TYPES)).optional(),
   // Hard exclusions (additive, optional — older clients omit these).
   disallowed_course_ids:        z.array(z.string()).optional(),
   strongly_avoided_course_ids:  z.array(z.string()).optional(),
@@ -274,8 +277,22 @@ export function buildCourseFitById(board: any, focusAreas: PlanningIntent['focus
   return fitById.size ? { fitById, evidenceById } : undefined;
 }
 
+/**
+ * The student's hard exclusions plus שער רוח courses of an unticked final-assessment type.
+ * Courses already on the board are exempt: the planner never adds the others, but a
+ * course the student placed themselves never makes a plan blocked. Unset stays unset.
+ */
+function withGatewayAssessmentExclusions(board: any, ctx: any, prefs: Preferences, onBoardCourseIds?: Iterable<string>): string[] | undefined {
+  const hard = resolveHardExcludedCourseIds(prefs);
+  if (!prefs.gateway_assessment_types?.length) return hard;
+  const placed = new Set<string>(onBoardCourseIds ?? ((ctx?.semesters ?? []) as any[])
+    .flatMap((s) => (s?.courses ?? []).map((c: any) => c?.course_id)));
+  const blocked = gatewayAssessmentMismatchIds(board, prefs.gateway_assessment_types).filter((id) => !placed.has(id));
+  return blocked.length ? [...new Set([...(hard ?? []), ...blocked])] : hard;
+}
+
 /** Build the model from board_json (full universe). board is always non-null here. */
-export function buildModel(board: any, ctx: any, prefs: Preferences, program_id?: string, currentlyPlannedCourseIds?: string[], courseFitById?: Map<string, number>, distributionPolicy?: DistributionPolicy): ConstraintModel {
+export function buildModel(board: any, ctx: any, prefs: Preferences, program_id?: string, currentlyPlannedCourseIds?: string[], courseFitById?: Map<string, number>, distributionPolicy?: DistributionPolicy, onBoardCourseIds?: Iterable<string>): ConstraintModel {
   // Phase 0 — identity metadata only; parseProgramVersionId is the same parser
   // already used above to route the board_json lookup, reused here for the
   // model's programId/catalogYear. No institutionId source exists yet.
@@ -300,7 +317,7 @@ export function buildModel(board: any, ctx: any, prefs: Preferences, program_id?
       : { wantedCourseIds: prefs.wanted_course_ids }),
     unwantedCourseIds: prefs.unwanted_course_ids,
     courseFitById,
-    disallowedCourseIds: resolveHardExcludedCourseIds(prefs),
+    disallowedCourseIds: withGatewayAssessmentExclusions(board, ctx, prefs, onBoardCourseIds),
     pinnedCourseIds: ctx?.pinned_course_ids,
     maxHoursPerSemester: prefs.max_weekly_hours ?? undefined,
     priorHours: priorHoursFromContext(ctx),
