@@ -5,6 +5,9 @@ import PreferenceConversation from '../../agent/components/PreferenceConversatio
 import CompletedCoursesPanel, { type AcademicStatusDraft } from '../../courses/components/CompletedCoursesPanel'
 import CourseNamePicker, { type PickerCourse } from '../../courses/components/CourseNamePicker'
 import type { RequirementCategoryVM } from '../../../lib/requirements'
+import { DEGREE_YEARS, type DegreeYear } from '../../../lib/planner/semester-window'
+
+const DEGREE_YEAR_LABELS: Record<DegreeYear, string> = { 1: 'שנה א׳', 2: 'שנה ב׳', 3: 'שנה ג׳', 4: 'שנה ד׳' }
 
 /** Values match api/ai/gateway_assessment.ts GATEWAY_ASSESSMENT_TYPES. */
 const GATEWAY_ASSESSMENT_OPTIONS = [
@@ -22,6 +25,7 @@ export default function AgentPreferencePanel({
   maxHours, setMaxHours, priorHours, setPriorHours, gatewayCategory = null, completedCategoryCounts = {},
   setCompletedCategoryCounts = () => undefined, wantIds, setWantIds, excludeIds, setExcludeIds, gatewayAssessments = [], setGatewayAssessments = () => undefined,
   exclusionsNoneConfirmed, setExclusionsNoneConfirmed, updatePreferenceVersion, onProfileChange, proposal, stale, alwaysOpen = false,
+  currentDegreeYear = null, onCurrentDegreeYearChange,
 }: {
   programId: string
   pickerCourses: PickerCourse[]
@@ -51,6 +55,9 @@ export default function AgentPreferencePanel({
   proposal: GeneratedPlanModel | null
   stale: boolean
   alwaysOpen?: boolean
+  /** The student's current year in the degree; it decides which years the weekly schedule shows. */
+  currentDegreeYear?: DegreeYear | null
+  onCurrentDegreeYearChange?: (year: DegreeYear) => void
 }) {
   const input = 'w-24 rounded-lg border border-[var(--border)] bg-transparent px-2.5 py-1.5 text-sm text-[var(--text)]'
   const row = 'flex items-center justify-between gap-3 text-xs'
@@ -66,6 +73,17 @@ export default function AgentPreferencePanel({
         <div className="mt-3 flex flex-col gap-5">
           <section aria-label="הלימודים שלי" className="flex flex-col gap-2.5">
             <h3 className={heading}>הלימודים שלי</h3>
+            {onCurrentDegreeYearChange && (
+              <label className={row}>
+                השנה שלי בתואר
+                <select name="current-degree-year" aria-label="השנה שלי בתואר" value={currentDegreeYear ?? ''}
+                  onChange={(e) => onCurrentDegreeYearChange(Number(e.target.value) as DegreeYear)}
+                  className={input}>
+                  {currentDegreeYear === null && <option value="" disabled>—</option>}
+                  {DEGREE_YEARS.map((year) => <option key={year} value={year}>{DEGREE_YEAR_LABELS[year]}</option>)}
+                </select>
+              </label>
+            )}
             <CompletedCoursesPanel
               programId={programId}
               catalogCourses={pickerCourses}

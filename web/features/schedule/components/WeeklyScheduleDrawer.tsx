@@ -9,6 +9,7 @@ import {
   saveWeeklyScheduleState,
   selectionKey,
 } from '../../../lib/planner/schedule-storage'
+import { resolveSelectedSemester, type DegreeYear } from '../../../lib/planner/semester-window'
 import { defaultTermMapping, groupsOverlap } from '../../../../shared/planner/schedule'
 import type {
   ScheduleGroupsResponse,
@@ -56,12 +57,15 @@ export default function WeeklyScheduleDrawer({
   programId,
   semesterDestinations,
   semesterCourses,
+  currentDegreeYear = null,
   fetchScheduleGroupsFn = fetchScheduleGroups,
   fetchCourseSearchFn = fetchCourseSearch,
 }: {
   programId: string
   semesterDestinations: readonly SemesterDestination[]
   semesterCourses: readonly SemesterCourses[]
+  /** Where the student is in the degree — picks a sensible tab when the selection leaves the window. */
+  currentDegreeYear?: DegreeYear | null
   fetchScheduleGroupsFn?: typeof fetchScheduleGroups
   fetchCourseSearchFn?: typeof fetchCourseSearch
 }) {
@@ -70,7 +74,11 @@ export default function WeeklyScheduleDrawer({
     [semesterDestinations],
   )
   const [state, setState] = useState(() => loadWeeklyScheduleState(programId, defaultMapping))
-  const [activeSemesterId, setActiveSemesterId] = useState(semesterDestinations[0]?.id ?? '')
+  // The student's pick; the shown semester is always resolved into the current window.
+  const [pickedSemesterId, setActiveSemesterId] = useState('')
+  const activeSemesterId = resolveSelectedSemester(
+    semesterDestinations.map((d) => d.id), pickedSemesterId, currentDegreeYear,
+  )
   const [scheduleData, setScheduleData] = useState<ScheduleGroupsResponse | null>(null)
   const [extraCourseIds, setExtraCourseIds] = useState<string[]>([])
   const [searchText, setSearchText] = useState('')

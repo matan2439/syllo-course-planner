@@ -6,7 +6,7 @@ import UnifiedPlannerWorkspace from './UnifiedPlannerWorkspace'
 
 jest.mock('./NativePlannerJourney', () => ({
   __esModule: true,
-  default: ({ programId, manualAddIntent, onManualAddCancelled, onSemestersChange, agentPortalTarget }: any) => {
+  default: ({ programId, manualAddIntent, onManualAddCancelled, onSemestersChange, agentPortalTarget, currentDegreeYear, onCurrentDegreeYearChange }: any) => {
     useEffect(() => {
       onSemestersChange?.([{ semesterId: 'year_3_semester_a', courseIds: ['0542-2400'] }])
     }, [onSemestersChange])
@@ -15,6 +15,10 @@ jest.mock('./NativePlannerJourney', () => ({
       <div data-testid="agent-journey" data-program={programId}
         data-manual-course={manualAddIntent?.courseId ?? ''} data-manual-semesters={(manualAddIntent?.semesterIds ?? []).join(',')}>
         <div className="planner-board-region">לוח פעיל</div>
+        <select aria-label="השנה שלי בתואר" value={currentDegreeYear ?? ''} onChange={(e) => onCurrentDegreeYearChange(Number(e.target.value))}>
+          <option value="" disabled>—</option>
+          {[1, 2, 3, 4].map((y) => <option key={y} value={y}>{y}</option>)}
+        </select>
         {manualAddIntent && (
           <button type="button" aria-label="ביטול הוספת קורס" onClick={onManualAddCancelled}>ביטול</button>
         )}
@@ -227,14 +231,34 @@ describe('UnifiedPlannerWorkspace — semester window', () => {
     ])
   })
 
-  test('the early-degree window shows the four Year 1/2 tabs', () => {
-    renderWorkspace({ semesterWindow: 'early' })
-    expect(scheduleTabs()).toEqual([
-      ['year_1_semester_a', 'שנה א׳ — סמסטר א׳'],
-      ['year_1_semester_b', 'שנה א׳ — סמסטר ב׳'],
-      ['year_2_semester_a', 'שנה ב׳ — סמסטר א׳'],
-      ['year_2_semester_b', 'שנה ב׳ — סמסטר ב׳'],
-    ])
+  const EARLY = ['year_1_semester_a', 'year_1_semester_b', 'year_2_semester_a', 'year_2_semester_b']
+  const LATE = ['year_3_semester_a', 'year_3_semester_b', 'year_4_semester_a', 'year_4_semester_b']
+  const tabIds = () => scheduleTabs().map(([id]) => id)
+
+  test.each([[1, EARLY], [2, EARLY], [3, LATE], [4, LATE]])(
+    'a student in Year %i sees the matching two-year window', (year, expected) => {
+      localStorage.setItem('syllo_current_degree_year', String(year))
+      renderWorkspace()
+      expect(tabIds()).toEqual(expected)
+    })
+
+  test('an unreadable stored year falls back to the default window', () => {
+    localStorage.setItem('syllo_current_degree_year', '7')
+    renderWorkspace()
+    expect(tabIds()).toEqual(LATE)
+  })
+
+  test('changing the year in the profile switches early ↔ late and is remembered', () => {
+    renderWorkspace()
+    const year = screen.getByRole('combobox', { name: 'השנה שלי בתואר' })
+    fireEvent.change(year, { target: { value: '1' } })
+    expect(tabIds()).toEqual(EARLY)
+    expect(localStorage.getItem('syllo_current_degree_year')).toBe('1')
+    fireEvent.change(year, { target: { value: '2' } })
+    expect(tabIds()).toEqual(EARLY)
+    fireEvent.change(year, { target: { value: '4' } })
+    expect(tabIds()).toEqual(LATE)
+    expect(localStorage.getItem('syllo_current_degree_year')).toBe('4')
   })
 })
 

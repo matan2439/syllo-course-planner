@@ -7,7 +7,8 @@ import UnifiedCourseRepository, { type SemesterDestination } from '../../courses
 import WeeklyScheduleDrawer from '../../schedule/components/WeeklyScheduleDrawer'
 import type { PlannerDragPayload } from '../../../lib/planner/drag-payload'
 import { LAST_PROGRAM_KEY } from '../../shell/last-program'
-import { DEFAULT_SEMESTER_WINDOW, semesterWindowSlots, type SemesterWindow } from '../../../lib/planner/semester-window'
+import { semesterWindowForDegreeYear, semesterWindowSlots } from '../../../lib/planner/semester-window'
+import { useCurrentDegreeYear } from '../hooks/use-current-degree-year'
 
 type RailTab = 'courses' | 'agent' | 'profile'
 type MainTab = 'board' | 'schedule'
@@ -31,7 +32,6 @@ export default function UnifiedPlannerWorkspace({
   selectedCourseIds = [],
   onRequestAdd = () => undefined,
   semesterDestinations = DEFAULT_SEMESTER_DESTINATIONS,
-  semesterWindow = DEFAULT_SEMESTER_WINDOW,
 }: {
   programId: string
   repo: RepositoryVM
@@ -39,10 +39,13 @@ export default function UnifiedPlannerWorkspace({
   onRequestAdd?: (courseId: string) => void
   /** The board's real columns — where a course can be placed. */
   semesterDestinations?: readonly SemesterDestination[]
-  /** Which two-year window the weekly schedule's four semester tabs show. */
-  semesterWindow?: SemesterWindow
 }) {
-  const scheduleSemesters = useMemo(() => semesterWindowSlots(semesterWindow), [semesterWindow])
+  // Profile fact → derived window → the weekly schedule's four semester tabs.
+  const [currentDegreeYear, setCurrentDegreeYear] = useCurrentDegreeYear()
+  const scheduleSemesters = useMemo(
+    () => semesterWindowSlots(semesterWindowForDegreeYear(currentDegreeYear)),
+    [currentDegreeYear],
+  )
   // One rail, one open tab. `null` = closed, board only.
   const [railTab, setRailTab] = useState<RailTab | null>(null)
   const [mainTab, setMainTab] = useState<MainTab>('board')
@@ -199,6 +202,8 @@ export default function UnifiedPlannerWorkspace({
             agentOpen={railTab === 'agent'}
             agentPortalTarget={agentSlot}
             profilePortalTarget={profileSlot}
+            currentDegreeYear={currentDegreeYear}
+            onCurrentDegreeYearChange={setCurrentDegreeYear}
             activeDrag={activeDrag}
             onDragStateChange={setActiveDrag}
           />
@@ -212,8 +217,8 @@ export default function UnifiedPlannerWorkspace({
           className="planner-weekly-panel w-full"
         >
           <WeeklyScheduleDrawer
-            key={semesterWindow}
             programId={programId}
+            currentDegreeYear={currentDegreeYear}
             semesterDestinations={scheduleSemesters}
             semesterCourses={semesterCourses}
           />

@@ -32,3 +32,24 @@ test('picking a שער רוח assessment type reaches the plan request preferenc
   })
   expect(request.preferences).toEqual({ gateway_assessment_types: ['paper'] })
 })
+
+test('the profile asks for the current year in the degree (שנה א׳–ד׳) and reports it as a number', () => {
+  const onCurrentDegreeYearChange = jest.fn()
+  render(
+    <AgentPreferencePanel
+      programId="mechanical_engineering_2027" pickerCourses={[]} catalogHoursById={{}}
+      academicStatus={EMPTY_ACADEMIC_STATUS} updateAcademicStatus={() => undefined}
+      maxHours="" setMaxHours={() => undefined} priorHours="" setPriorHours={() => undefined}
+      wantIds={[]} setWantIds={() => undefined} excludeIds={[]} setExcludeIds={() => undefined}
+      exclusionsNoneConfirmed={false} setExclusionsNoneConfirmed={() => undefined}
+      updatePreferenceVersion={() => undefined} onProfileChange={() => undefined}
+      proposal={null} stale={false} alwaysOpen
+      currentDegreeYear={null} onCurrentDegreeYearChange={onCurrentDegreeYearChange}
+    />,
+  )
+  const select = screen.getByRole('combobox', { name: 'השנה שלי בתואר' })
+  expect(Array.from((select as HTMLSelectElement).options).filter((o) => !o.disabled).map((o) => o.textContent))
+    .toEqual(['שנה א׳', 'שנה ב׳', 'שנה ג׳', 'שנה ד׳'])
+  fireEvent.change(select, { target: { value: '3' } })
+  expect(onCurrentDegreeYearChange).toHaveBeenCalledWith(3)
+})

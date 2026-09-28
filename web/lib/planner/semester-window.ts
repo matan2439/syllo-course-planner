@@ -22,3 +22,28 @@ export function semesterWindowSlots(window: SemesterWindow = DEFAULT_SEMESTER_WI
     }),
   )
 }
+
+/** The student's current year in the degree — a profile fact, not UI state. */
+export type DegreeYear = 1 | 2 | 3 | 4
+export const DEGREE_YEARS: readonly DegreeYear[] = [1, 2, 3, 4]
+
+/** The one place that maps the student's year to the visible window. Unknown year → the default. */
+export function semesterWindowForDegreeYear(year: DegreeYear | null | undefined): SemesterWindow {
+  if (!year) return DEFAULT_SEMESTER_WINDOW
+  return year <= 2 ? 'early' : 'late'
+}
+
+/**
+ * The selected semester, guaranteed to be one of `slotIds`. A still-valid selection is kept;
+ * otherwise the student's current year in the same half (א/ב), else the first slot of that half.
+ * `''` (nothing picked yet) resolves to the current year's semester א.
+ */
+export function resolveSelectedSemester(
+  slotIds: readonly string[], selectedId: string, currentYear?: DegreeYear | null,
+): string {
+  if (slotIds.includes(selectedId)) return selectedId
+  const half = selectedId.endsWith('_b') ? 'b' : 'a'
+  const preferred = `year_${currentYear}_semester_${half}`
+  if (currentYear && slotIds.includes(preferred)) return preferred
+  return slotIds.find((id) => id.endsWith(`_${half}`)) ?? slotIds[0] ?? ''
+}
