@@ -210,3 +210,22 @@ test('a stale alternative choice that newly conflicts after refetch is removed, 
     await screen.findByText(/הבחירה ב'אבטחה ובטיחות' הוסרה כי היא חופפת ל'תכן מכני/),
   ).toBeInTheDocument()
 })
+
+test('covers the current academic year only, with no year/semester picker', async () => {
+  jest.useFakeTimers({ advanceTimers: true, now: new Date('2026-09-28') })
+  try {
+    renderDrawer({
+      semesterDestinations: [
+        ...DESTINATIONS,
+        { id: 'year_4_semester_a', label: 'שנה ד׳ — סמסטר א׳' },
+        { id: 'year_4_semester_b', label: 'שנה ד׳ — סמסטר ב׳' },
+      ],
+    })
+    expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(DESTINATIONS.map((d) => d.label))
+    expect(screen.queryByLabelText('שנת לימודים')).toBeNull()
+    expect(screen.queryByRole('combobox', { name: 'סמסטר' })).toBeNull()
+    expect(await screen.findByText(/מקור: bid-it/)).toBeInTheDocument()
+  } finally {
+    jest.useRealTimers()
+  }
+})

@@ -39,3 +39,17 @@ test('renders a fully bordered 6-day x 14-hour cell grid, not just floating labe
   const cells = container.querySelectorAll('.weekly-grid-cell');
   expect(cells.length).toBe(6 * 14);
 });
+
+test('each course gets its own accent, shared by all of its blocks', () => {
+  const blocks: GridBlock[] = [
+    BLOCKS[0],
+    { ...BLOCKS[0], key: 'same-course', slot: { day: 'ג', start: '10:00', end: '12:00' } },
+    { ...BLOCKS[0], key: 'other', courseId: '0512-4266', courseName: 'תורת המכונות', slot: { day: 'ב', start: '08:00', end: '10:00' } },
+  ];
+  render(<WeeklyScheduleGrid blocks={blocks} />);
+  const accent = (el: HTMLElement) => el.style.getPropertyValue('--block-accent');
+  const [a, b, c] = screen.getAllByRole('gridcell');
+  expect(accent(a)).not.toBe('');
+  expect(accent(a)).toBe(accent(b));
+  expect(accent(c)).not.toBe(accent(a));
+});

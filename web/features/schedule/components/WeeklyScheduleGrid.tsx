@@ -1,5 +1,6 @@
 'use client'
 
+import type { CSSProperties } from 'react'
 import type { TimeSlot } from '../../../../shared/planner/schedule'
 
 const DAYS = ['א', 'ב', 'ג', 'ד', 'ה', 'ו'] as const
@@ -23,8 +24,15 @@ function toMinutes(hhmm: string): number {
   return h * 60 + m
 }
 
+/** One distinct accent per course, evenly spaced around the hue wheel from the brand purple. */
+function courseAccents(blocks: readonly GridBlock[]): Map<string, string> {
+  const ids = [...new Set(blocks.map((block) => block.courseId))]
+  return new Map(ids.map((id, i) => [id, `oklch(0.7 0.15 ${265 + (i * 360) / ids.length})`]))
+}
+
 export default function WeeklyScheduleGrid({ blocks }: { blocks: GridBlock[] }) {
   const gridStartMinutes = HOURS[0] * 60
+  const accents = courseAccents(blocks)
 
   return (
     <div className="weekly-grid-wrapper overflow-x-auto">
@@ -104,13 +112,14 @@ export default function WeeklyScheduleGrid({ blocks }: { blocks: GridBlock[] }) 
                 key={block.key}
                 role="gridcell"
                 aria-label={`${block.courseName}, ${block.kind}, יום ${block.slot.day}, ${block.slot.start}-${block.slot.end}`}
-                className="weekly-grid-block absolute rounded px-1 text-xs overflow-hidden border border-[var(--purple-strong)] bg-[var(--purple)]/15"
+                className="weekly-grid-block absolute rounded px-1 text-xs overflow-hidden"
                 style={{
+                  '--block-accent': accents.get(block.courseId),
                   top: `${top}px`,
                   height: `${height}px`,
                   right: `calc(${GUTTER_WIDTH} + ${dayIndex} * (100% - ${GUTTER_WIDTH}) / 6)`,
                   width: `calc((100% - ${GUTTER_WIDTH}) / 6)`,
-                }}
+                } as CSSProperties}
               >
                 <div className="font-semibold truncate">{block.courseName}</div>
                 <div className="truncate">{block.kind} · {block.slot.start}–{block.slot.end}</div>
