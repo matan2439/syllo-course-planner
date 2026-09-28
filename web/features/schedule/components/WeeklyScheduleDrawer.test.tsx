@@ -253,3 +253,20 @@ test('the early-degree window shows Year 1/2 tabs and a Year 2 tab renders its c
   await waitFor(() => expect(fetchScheduleGroupsFn).toHaveBeenLastCalledWith(['0542-2400'], expect.any(Number)))
   expect(await screen.findByRole('gridcell', { name: /תכן מכני \(1\)/ })).toBeInTheDocument()
 })
+
+test('when the year changes the window, an out-of-window selection moves to a valid tab; a valid one stays', () => {
+  const { rerender, fetchScheduleGroupsFn, fetchCourseSearchFn } = renderDrawer({ semesterDestinations: semesterWindowSlots('late') })
+  fireEvent.click(screen.getByRole('tab', { name: 'שנה ג׳ — סמסטר ב׳' }))
+  const props = { programId: 'mechanical_engineering_2027', semesterCourses: [], fetchScheduleGroupsFn, fetchCourseSearchFn }
+  // Year 3 → Year 1: the Year 3 selection is no longer offered.
+  rerender(<WeeklyScheduleDrawer {...props} semesterDestinations={semesterWindowSlots('early')} currentDegreeYear={1} />)
+  expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual([
+    'שנה א׳ — סמסטר א׳', 'שנה א׳ — סמסטר ב׳', 'שנה ב׳ — סמסטר א׳', 'שנה ב׳ — סמסטר ב׳',
+  ])
+  expect(screen.getByRole('tab', { name: 'שנה א׳ — סמסטר ב׳' })).toHaveAttribute('aria-selected', 'true')
+  fireEvent.click(screen.getByRole('tab', { name: 'שנה ב׳ — סמסטר א׳' }))
+  // Year 1 → Year 2: same window, the selection is kept.
+  rerender(<WeeklyScheduleDrawer {...props} semesterDestinations={semesterWindowSlots('early')} currentDegreeYear={2} />)
+  expect(screen.getByRole('tab', { name: 'שנה ב׳ — סמסטר א׳' })).toHaveAttribute('aria-selected', 'true')
+  expect(screen.getAllByRole('tab', { selected: true })).toHaveLength(1)
+})

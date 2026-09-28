@@ -56,6 +56,7 @@ import {
 } from '../lib/api-defaults'
 import type { ManualAddIntent } from '../types'
 import type { PlannerDragPayload } from '../../../lib/planner/drag-payload'
+import type { DegreeYear } from '../../../lib/planner/semester-window'
 import { getAiSessionToken } from '../../../lib/ai-session-token'
 
 export type { ManualAddIntent } from '../types'
@@ -80,6 +81,8 @@ export default function NativePlannerJourney({
   agentOpen,
   agentPortalTarget,
   profilePortalTarget,
+  currentDegreeYear = null,
+  onCurrentDegreeYearChange,
   activeDrag,
   onDragStateChange,
 }: {
@@ -107,6 +110,9 @@ export default function NativePlannerJourney({
   agentPortalTarget?: HTMLElement | null
   /** When set, the profile/preferences panel renders into this element (the workspace profile tab), always open. */
   profilePortalTarget?: HTMLElement | null
+  /** The student's year in the degree (profile data owned by the workspace). */
+  currentDegreeYear?: DegreeYear | null
+  onCurrentDegreeYearChange?: (year: DegreeYear) => void
   activeDrag?: PlannerDragPayload | null
   onDragStateChange?: (drag: PlannerDragPayload | null) => void
 }) {
@@ -288,6 +294,8 @@ export default function NativePlannerJourney({
       proposal={proposal}
       stale={stale}
       alwaysOpen={profilePortalTarget !== undefined}
+      currentDegreeYear={currentDegreeYear}
+      onCurrentDegreeYearChange={onCurrentDegreeYearChange}
     />
   )
 

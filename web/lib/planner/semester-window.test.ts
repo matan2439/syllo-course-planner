@@ -1,4 +1,6 @@
-import { DEFAULT_SEMESTER_WINDOW, semesterWindowSlots } from './semester-window'
+import {
+  DEFAULT_SEMESTER_WINDOW, resolveSelectedSemester, semesterWindowForDegreeYear, semesterWindowSlots,
+} from './semester-window'
 import { semesterTitleHe } from './board-vm'
 
 test('the default window is the late-degree one: Years 3–4, unchanged', () => {
@@ -25,4 +27,39 @@ test('button text is derived from the stable id, never stored separately', () =>
   for (const slot of [...semesterWindowSlots('early'), ...semesterWindowSlots('late')]) {
     expect(slot.label).toBe(semesterTitleHe(slot.id))
   }
+})
+
+test.each([[1, 'early'], [2, 'early'], [3, 'late'], [4, 'late']] as const)(
+  'Year %i → the %s window', (year, window) => {
+    expect(semesterWindowForDegreeYear(year)).toBe(window)
+  })
+
+test('an unknown year keeps the default window', () => {
+  expect(semesterWindowForDegreeYear(null)).toBe(DEFAULT_SEMESTER_WINDOW)
+})
+
+describe('resolveSelectedSemester', () => {
+  const early = semesterWindowSlots('early').map((s) => s.id)
+  const late = semesterWindowSlots('late').map((s) => s.id)
+
+  test('a selection still in the window is kept, whatever the year', () => {
+    expect(resolveSelectedSemester(early, 'year_1_semester_b', 2)).toBe('year_1_semester_b')
+  })
+
+  test('a selection that left the window moves to the current year, same half', () => {
+    expect(resolveSelectedSemester(early, 'year_3_semester_b', 1)).toBe('year_1_semester_b')
+    expect(resolveSelectedSemester(early, 'year_4_semester_a', 2)).toBe('year_2_semester_a')
+    expect(resolveSelectedSemester(late, 'year_1_semester_b', 4)).toBe('year_4_semester_b')
+  })
+
+  test('without a usable year it falls back to the first slot of the same half', () => {
+    expect(resolveSelectedSemester(late, 'year_2_semester_b', null)).toBe('year_3_semester_b')
+    expect(resolveSelectedSemester(late, 'year_2_semester_a', 1)).toBe('year_3_semester_a')
+  })
+
+  test('nothing picked yet → the current year’s first semester, or the first tab', () => {
+    expect(resolveSelectedSemester(late, '', 4)).toBe('year_4_semester_a')
+    expect(resolveSelectedSemester(late, '', null)).toBe('year_3_semester_a')
+    expect(resolveSelectedSemester([], '', 3)).toBe('')
+  })
 })
