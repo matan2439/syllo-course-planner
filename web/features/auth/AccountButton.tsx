@@ -60,7 +60,7 @@ export default function AccountButton() {
           aria-expanded={open}
           aria-label="החשבון שלי"
           title={user.email ?? 'החשבון שלי'}
-          onClick={() => setOpen((v) => !v)}
+          onClick={() => { if (!open) auth.refreshCreditBalance(); setOpen((v) => !v) }}
         >
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
             <circle cx="12" cy="8" r="4" />
