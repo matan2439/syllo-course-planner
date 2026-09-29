@@ -35,7 +35,9 @@ function Stat({ label, value }: { label: string; value: unknown }) {
   )
 }
 
-function PaymentDetail({ id, onClose }: { id: string; onClose(): void }) {
+const askReason = (question: string) => window.prompt(question)?.trim() || null
+
+function PaymentDetail({ id, onClose, onChanged }: { id: string; onClose(): void; onChanged(): void }) {
   const [detail, setDetail] = useState<Json | null>(null)
   const [tab, setTab] = useState<'timeline' | 'evidence'>('timeline')
   useEffect(() => { api(`payment?id=${encodeURIComponent(id)}`).then(setDetail, () => setDetail({ error: true })) }, [id])
@@ -86,26 +88,124 @@ function PaymentDetail({ id, onClose }: { id: string; onClose(): void }) {
         </div>
       )}
       {detail.alerts.length > 0 && <p className="text-xs">התראות: {detail.alerts.map((a: Json) => `${a.code} (${a.status})`).join(', ')}</p>}
+      {e.purchase.syllo_user_id && (
+        <label className="flex items-center gap-2 text-xs">
+          מצב סיכון לחשבון (משפיע רק על רכישות חדשות):
+          <select
+            aria-label="מצב סיכון"
+            className="rounded border border-[var(--border)] bg-[var(--surface)] px-1"
+            value={detail.risk?.payment_risk_state ?? 'normal'}
+            onChange={async (ev) => {
+              const reason = askReason('סיבה לשינוי מצב הסיכון:')
+              if (!reason) return
+              await post('risk-state', { user_id: e.purchase.syllo_user_id, state: ev.target.value, reason }).catch(() => undefined)
+              onChanged()
+              setDetail(await api(`payment?id=${encodeURIComponent(id)}`))
+            }}
+          >
+            <option value="normal">normal</option><option value="review_required">review_required</option><option value="payment_risk_restricted">payment_risk_restricted</option>
+          </select>
+        </label>
+      )}
     </section>
   )
 }
+
+const CASE_STATUSES = ['open', 'in_progress', 'awaiting_customer', 'resolved'] as const
+
+/** One case (a billing_alerts row): facts, suggested reply, notes, status, history. Nothing is sent from here. */
+function CaseDetail({ id, onClose, onChanged, onOpenPayment }: { id: string; onClose(): void; onChanged(): void; onOpenPayment(id: string): void }) {
+  const [detail, setDetail] = useState<Json | null>(null)
+  const [draft, setDraft] = useState('')
+  const [copied, setCopied] = useState(false)
+  const reload = useCallback(async () => {
+    try { const d = await api(`case?id=${encodeURIComponent(id)}`); setDetail(d); setDraft(d.draft) } catch { setDetail({ error: true }) }
+  }, [id])
+  useEffect(() => { void reload() }, [reload])
+  if (!detail) return <p className="text-sm">טוען…</p>
+  if (detail.error) return <p className="text-sm">לא ניתן לטעון את התיק.</p>
+  const c = detail.case
+  const change = async (fn: () => Promise<unknown>) => { await fn().catch(() => undefined); await reload(); onChanged() }
+  return (
+    <section className={CARD + ' space-y-3'} data-testid="case-detail">
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="text-base font-bold">תיק #{c.id} · {c.code}</h2>
+        <button type="button" className={BTN} onClick={onClose}>סגירה</button>
+      </div>
+      <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs md:grid-cols-4" dir="ltr">
+        {[['Status', c.case_status], ['Severity', c.severity], ['Customer email', c.customer_email], ['Reason', c.reason],
+          ['Opened', c.created_at], ['User', c.user_id], ['Details', JSON.stringify(c.details)]].map(([k, v]) => (
+          <div key={String(k)}><dt className="text-[var(--text-muted)]">{k}</dt><dd className="break-all font-mono">{String(v ?? '—')}</dd></div>
+        ))}
+      </dl>
+      <div className="flex flex-wrap items-center gap-2 text-xs">
+        {c.payment_id && <button type="button" className={BTN} onClick={() => onOpenPayment(String(c.payment_id))}>רכישה #{c.payment_id}</button>}
+        {c.payment_id && <a className={BTN} href={`/api/billing/admin/evidence?id=${encodeURIComponent(c.payment_id)}`}>ראיות JSON ↓</a>}
+        {detail.evidence?.purchase.paddle_transaction_id && <span className="font-mono" dir="ltr">Paddle {detail.evidence.purchase.paddle_transaction_id}</span>}
+        <label className="flex items-center gap-1">
+          מצב:
+          <select aria-label="מצב התיק" className="rounded border border-[var(--border)] bg-[var(--surface)] px-1" value={c.case_status}
+            onChange={(ev) => { const reason = askReason('סיבה לשינוי מצב התיק:'); if (reason) void change(() => post('cases/status', { id, case_status: ev.target.value, reason })) }}>
+            {CASE_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+          </select>
+        </label>
+      </div>
+      {detail.timeline.length > 0 && (
+        <ol className="space-y-1 text-xs" dir="ltr">
+          {detail.timeline.map((t: Json, i: number) => (
+            <li key={i} className="flex gap-3"><span className="w-44 shrink-0 font-mono text-[var(--text-muted)]">{t.at}</span><span className="w-20 shrink-0 font-semibold">{t.kind}</span><span>{t.label}</span></li>
+          ))}
+        </ol>
+      )}
+      <div className="space-y-1">
+        <p className="text-xs font-semibold">טיוטת תשובה {detail.draft_saved ? '(נשמרה)' : '(נוצרה אוטומטית)'} — לבדיקה ושליחה ידנית</p>
+        <textarea aria-label="טיוטת תשובה" className="h-56 w-full rounded border border-[var(--border)] bg-[var(--surface)] p-2 font-mono text-xs" value={draft} onChange={(ev) => setDraft(ev.target.value)} />
+        <div className="flex gap-2">
+          <button type="button" className={BTN} onClick={async () => { await navigator.clipboard?.writeText(draft).catch(() => undefined); setCopied(true) }}>{copied ? 'הועתק' : 'העתקה'}</button>
+          <button type="button" className={BTN} onClick={() => void change(() => post('cases/draft', { id, draft, reason: 'draft edited by admin' }))}>שמירת הטיוטה</button>
+          <button type="button" className={BTN} onClick={() => void change(() => post('cases/draft', { id, reason: 'regenerate draft from record' }))}>יצירה מחדש</button>
+        </div>
+      </div>
+      <div className="space-y-1 text-xs">
+        <p className="font-semibold">הערות פנימיות</p>
+        <ul className="space-y-0.5" dir="ltr">{c.notes.map((n: Json, i: number) => <li key={i}><span className="font-mono text-[var(--text-muted)]">{n.at}</span> {n.text}</li>)}</ul>
+        <button type="button" className={BTN} onClick={() => { const note = askReason('הערה פנימית:'); if (note) void change(() => post('cases/note', { id, reason: note })) }}>הוספת הערה</button>
+      </div>
+      {detail.actions.length > 0 && (
+        <ul className="space-y-0.5 text-xs" dir="ltr">
+          {detail.actions.map((a: Json) => <li key={a.id}><span className="font-mono text-[var(--text-muted)]">{a.created_at}</span> {a.action} — {a.reason}</li>)}
+        </ul>
+      )}
+    </section>
+  )
+}
+
+const PAYMENT_FILTERS = [['', 'הכל'], ['refunded', 'הוחזרו'], ['partially_refunded', 'הוחזרו חלקית'], ['disputed', 'במחלוקת'], ['chargeback', 'chargeback'], ['failed', 'נכשלו']] as const
 
 export default function BillingAdminPage() {
   const [overview, setOverview] = useState<Json | null>(null)
   const [alerts, setAlerts] = useState<Json[]>([])
   const [payments, setPayments] = useState<Json[]>([])
   const [selected, setSelected] = useState<string | null>(null)
+  const [selectedCase, setSelectedCase] = useState<string | null>(null)
+  const [paymentFilter, setPaymentFilter] = useState('')
+  const [caseView, setCaseView] = useState<'open' | 'resolved'>('open')
+  const [runs, setRuns] = useState<Json[]>([])
+  const [actions, setActions] = useState<Json[]>([])
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
   const load = useCallback(async () => {
     try {
-      const [o, a, p] = await Promise.all([api('overview'), api('alerts'), api('payments')])
-      setOverview(o); setAlerts(a.alerts); setPayments(p.payments); setError(null)
+      const [o, a, p, r, h] = await Promise.all([
+        api('overview'), api(`alerts?status=${caseView}`), api(`payments${paymentFilter ? `?status=${paymentFilter}` : ''}`),
+        api('reconcile-runs'), api('actions'),
+      ])
+      setOverview(o); setAlerts(a.alerts); setPayments(p.payments); setRuns(r.runs); setActions(h.actions); setError(null)
     } catch (e) {
       setError((e as { status?: number }).status === 403 || (e as { status?: number }).status === 401 ? 'אין הרשאה.' : 'טעינה נכשלה.')
     }
-  }, [])
+  }, [caseView, paymentFilter])
   useEffect(() => { void load() }, [load])
 
   const act = async (fn: () => Promise<unknown>) => { setBusy(true); try { await fn(); await load() } catch { setError('הפעולה נכשלה.') } finally { setBusy(false) } }
@@ -146,22 +246,28 @@ export default function BillingAdminPage() {
         {overview.money_by_currency.map((m: Json) => `${m.currency}: ${m.gross} / ${m.refunded}`).join(' · ') || '—'}
       </div>
 
-      {selected && <PaymentDetail id={selected} onClose={() => setSelected(null)} />}
+      {selectedCase && <CaseDetail id={selectedCase} onClose={() => setSelectedCase(null)} onChanged={() => void load()} onOpenPayment={setSelected} />}
+      {selected && <PaymentDetail id={selected} onClose={() => setSelected(null)} onChanged={() => void load()} />}
 
       <section className={CARD + ' space-y-2'}>
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-bold">תור בדיקה והתראות ({alerts.length})</h2>
-          <button type="button" className={BTN} disabled={busy} onClick={runReconcile}>הרצת התאמה עכשיו</button>
+          <h2 className="text-base font-bold">תיקים, תור בדיקה והתראות ({alerts.length})</h2>
+          <div className="flex gap-2">
+            <button type="button" className={BTN} disabled={caseView === 'open'} onClick={() => setCaseView('open')}>פתוחים</button>
+            <button type="button" className={BTN} disabled={caseView === 'resolved'} onClick={() => setCaseView('resolved')}>סגורים</button>
+            <button type="button" className={BTN} disabled={busy} onClick={runReconcile}>הרצת התאמה עכשיו</button>
+          </div>
         </div>
-        {alerts.length === 0 ? <p className="text-xs text-[var(--text-muted)]">אין התראות פתוחות.</p> : (
+        {alerts.length === 0 ? <p className="text-xs text-[var(--text-muted)]">{caseView === 'open' ? 'אין התראות פתוחות.' : 'אין תיקים סגורים.'}</p> : (
           <ul className="space-y-1 text-xs" dir="ltr">
             {alerts.map((a) => (
               <li key={a.id} className="flex flex-wrap items-center gap-2">
                 <span className={`rounded px-1.5 py-0.5 font-bold text-white ${a.severity === 'critical' ? 'bg-red-600' : 'bg-amber-600'}`}>{a.severity}</span>
-                <span className="font-mono">{a.code}</span>
+                <button type="button" className="font-mono underline" onClick={() => setSelectedCase(String(a.id))}>#{a.id} {a.code}</button>
+                <span className="rounded border border-[var(--border)] px-1">{a.case_status}</span>
                 {a.payment_id && <button type="button" className="underline" onClick={() => setSelected(String(a.payment_id))}>payment #{a.payment_id}</button>}
                 <span className="text-[var(--text-muted)]">{JSON.stringify(a.details)}</span>
-                <button type="button" className={BTN} disabled={busy} onClick={() => resolve(String(a.id))}>סגירה</button>
+                {a.status === 'open' && <button type="button" className={BTN} disabled={busy} onClick={() => resolve(String(a.id))}>סגירה</button>}
               </li>
             ))}
           </ul>
@@ -169,7 +275,15 @@ export default function BillingAdminPage() {
       </section>
 
       <section className={CARD + ' space-y-2 overflow-x-auto'}>
-        <h2 className="text-base font-bold">רכישות</h2>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-base font-bold">רכישות, החזרים ומחלוקות</h2>
+          <label className="flex items-center gap-1 text-xs">
+            סינון:
+            <select aria-label="סינון רכישות" className="rounded border border-[var(--border)] bg-[var(--surface)] px-1" value={paymentFilter} onChange={(ev) => setPaymentFilter(ev.target.value)}>
+              {PAYMENT_FILTERS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+            </select>
+          </label>
+        </div>
         <table className="w-full text-xs" dir="ltr">
           <thead><tr className="text-start text-[var(--text-muted)]"><th>#</th><th>Status</th><th>Package</th><th>Amount</th><th>Refunded</th><th>Credits (bought/used/revoked)</th><th>Paddle txn</th><th>Review</th></tr></thead>
           <tbody>
@@ -182,6 +296,25 @@ export default function BillingAdminPage() {
           </tbody>
         </table>
       </section>
+
+      <details className={CARD + ' text-xs'}>
+        <summary className="cursor-pointer text-base font-bold">היסטוריית התאמות ({runs.length})</summary>
+        <ul className="mt-2 space-y-1" dir="ltr">
+          {runs.map((r) => (
+            <li key={r.id}>
+              <span className="font-mono">#{r.id} {r.started_at} · {r.trigger} · {r.status} · checked {r.checked} · repaired {r.repaired} · escalated {r.escalated}</span>
+              {Array.isArray(r.findings) && r.findings.length > 0 && <span className="text-[var(--text-muted)]"> — {r.findings.map((f: Json) => `${f.code}:${f.outcome}`).join(', ')}</span>}
+            </li>
+          ))}
+        </ul>
+      </details>
+
+      <details className={CARD + ' text-xs'}>
+        <summary className="cursor-pointer text-base font-bold">היסטוריית פעולות מנהל ({actions.length})</summary>
+        <ul className="mt-2 space-y-1" dir="ltr">
+          {actions.map((a) => <li key={a.id} className="font-mono">{a.created_at} · {a.action} · {a.target} · {a.reason}</li>)}
+        </ul>
+      </details>
     </main>
   )
 }

@@ -48,6 +48,8 @@ export type PlannerAgentResult =
       nextAction?: 'ask';
       messageHe: string;
       events: ConversationEvent[];
+      /** Set only for a real reply (billable); absent when the run stopped early or said nothing. */
+      usage?: OperationUsage;
     }
   | {
       outcome: 'assistant_unavailable';
@@ -175,7 +177,7 @@ export async function runPlannerAgent(input: PlannerAgentInput, deps: PlannerAge
         } : {}),
         ...(session.question.optionsHe.length >= 2 ? { options_he: session.question.optionsHe } : {}),
       });
-      return { outcome: 'conversation', nextAction: 'ask', messageHe, events };
+      return { outcome: 'conversation', nextAction: 'ask', messageHe, events, usage: usageFromAgentRun(result.state.usage) };
     }
 
     if (session.submission) {
@@ -198,10 +200,10 @@ export async function runPlannerAgent(input: PlannerAgentInput, deps: PlannerAge
       console.warn('[ai/planner-agent] deadline reached');
       return stoppedEarly();
     }
-    const messageHe = (typeof result.finalOutput === 'string' && result.finalOutput.trim()) || spoken
-      || 'לא הצלחתי לנסח תשובה. אפשר לנסות לנסח את הבקשה אחרת?';
+    const answer = (typeof result.finalOutput === 'string' && result.finalOutput.trim()) || spoken;
+    const messageHe = answer || 'לא הצלחתי לנסח תשובה. אפשר לנסות לנסח את הבקשה אחרת?';
     events.push({ type: 'assistant_message', text_he: messageHe.slice(0, 4_000) });
-    return { outcome: 'conversation', messageHe, events };
+    return { outcome: 'conversation', messageHe, events, ...(answer ? { usage: usageFromAgentRun(result.state.usage) } : {}) };
   } catch (error) {
     if (error instanceof MaxTurnsExceededError || deadline.aborted) {
       console.warn(`[ai/planner-agent] ${deadline.aborted ? 'deadline' : 'max turns'} reached`);

@@ -4,6 +4,7 @@
 1. `scripts/migrations/billing/002_credit_lots.sql`
 2. `scripts/migrations/billing/003_payments.sql`
 3. `scripts/migrations/billing/004_billing_ops.sql`
+4. `scripts/migrations/billing/005_billing_closeout.sql` (customer credit policy, cost evidence, case fields)
 
 ## 1. Paddle Sandbox (sandbox-vendors.paddle.com)
 1. **Catalog:** create one product "Syllo Credits" and one one-time price per package: `credits_small`, `credits_medium`, `credits_large`. The credit amounts are in `api/billing/catalog.ts` and are placeholders marked *REQUIRES PRODUCT DECISION*. Set the price in Paddle; Syllo never stores prices.

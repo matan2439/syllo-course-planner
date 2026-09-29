@@ -31,8 +31,8 @@ import type { LanguageModel } from 'ai';
 import { z } from 'zod';
 import { streamCourseAdvisor } from './agent/course_advisor';
 import { agentModelName } from './agent/planner_agent';
-import { checkAndEnsureSession, incrementCreditsUsed, logUsageEvent, FREE_LIMIT } from './_quota';
-import { openMeteredOperation, type MeteredOperation } from './metering';
+import { openMeteredOperation, sendMeterRefusal, type MeteredOperation } from './metering';
+import type { OperationUsage } from './credits';
 
 // ── Input schema ──────────────────────────────────────────────────────────────
 
@@ -220,11 +220,9 @@ export function isBypassQuota(): boolean {
 }
 
 /**
- * Temporary production-safe quota override for manual testing.
- * AI_TEST_MODE=true allows requests through even when the free quota is
- * exhausted — usage is still tracked (incrementCreditsUsed/logUsageEvent
- * still run as normal). Defaults to false. MUST be unset before public
- * release — see docs/vercel-ai-integration.md.
+ * Legacy anonymous-quota override, read ONLY by the dev-only endpoints
+ * generate-plan / planner-run (no production route, see vercel.json).
+ * It never bypasses Syllo Credits metering (metering.ts).
  */
 export function isTestModeBypass(): boolean {
   return process.env.AI_TEST_MODE === 'true';
@@ -347,67 +345,16 @@ async function pipeTextStream(
   return true;
 }
 
-// ── Quota helper ──────────────────────────────────────────────────────────────
+// ── Metering ──────────────────────────────────────────────────────────────────
 
-/**
- * Check quota in Supabase; once the free quota is exhausted, a signed-in user
- * spends Syllo Credits (see metering.ts).
- * Returns the admitted operation, or null after writing an error response if
- * quota and credits are exhausted or the DB is unreachable.
- */
-async function runQuotaCheck(
-  session_token: string,
-  dbUrl: string,
-  req: VercelRequest,
-  res: VercelResponse,
-  model: string,
-): Promise<MeteredOperation | null> {
-  const open = (freeQuotaAllowed: boolean) =>
-    openMeteredOperation(req, res, { endpoint: 'course-planner', model, freeQuotaAllowed });
-  let quota;
-  try {
-    quota = await checkAndEnsureSession(session_token, dbUrl);
-  } catch (err) {
-    // Include the error CLASS name so future log searches can narrow the cause:
-    //   search "PostgresError" → DB query failed
-    //   search "TypeError"     → rows[0] was undefined (UPSERT_NO_ROWS)
-    //   search "Error"         → generic / connection error
-    const errClass  = (err as any)?.constructor?.name ?? 'UnknownError';
-    const errMsg    = err instanceof Error ? err.message : String(err);
-    const sqlState  = (err as any)?.code; // postgres.js sets `code` to the Postgres SQLSTATE
-    console.error(`[ai] quota DB error [${errClass}] sqlState=${sqlState ?? 'n/a'}:`, errMsg);
-    sendError(res, 503, 'לא ניתן לבדוק מכסת AI — בעיה זמנית במסד הנתונים.',
-      'DB_ERROR', {
-        phase: 'quota_check',
-        errorClass: errClass,
-        safeMessage: errMsg,
-        ...(sqlState ? { sqlState } : {}),
-      });
+/** Admit one metered answer, or write the refusal (401/402/503) and return null. */
+async function openMeter(req: VercelRequest, res: VercelResponse, model: string): Promise<MeteredOperation | null> {
+  const meter = await openMeteredOperation(req, res, { endpoint: 'course-planner', model });
+  if ('refused' in meter) {
+    sendMeterRefusal(res, meter.refused);
     return null;
   }
-
-  console.log('[ai] quota check — credits_used:', quota.credits_used, 'remaining:', quota.remaining,
-    'free_limit:', quota.free_limit, '(AI_FREE_QUOTA raw:', JSON.stringify(process.env.AI_FREE_QUOTA),
-    ', parsed FREE_LIMIT:', FREE_LIMIT, ') allowed:', quota.allowed);
-
-  if (!quota.allowed) {
-    if (isTestModeBypass()) {
-      console.warn('[ai] AI_TEST_MODE=true — bypassing QUOTA_EXCEEDED for testing',
-        '(credits_used:', quota.credits_used, 'free_limit:', quota.free_limit, ')');
-      res.setHeader('X-AI-Quota-Bypass', 'true');
-      return open(true);
-    }
-    const paid = await open(false);
-    if (paid) return paid;
-    sendError(res, 429, 'מכסת שאלות ה-AI החינמית נוצלה.', 'QUOTA_EXCEEDED', {
-      credits_used: quota.credits_used,
-      free_limit:   quota.free_limit,
-      credits_paid:  quota.credits_paid,
-      remaining:     0,
-    });
-    return null;
-  }
-  return open(true);
+  return meter;
 }
 
 // ── Handler ───────────────────────────────────────────────────────────────────
@@ -451,22 +398,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       return;
     }
 
-    const dbUrl = (process.env.DATABASE_URL ?? '').trim();
-    if (!dbUrl) {
-      sendError(res, 503,
-        'Database not configured. Set DATABASE_URL or AI_DEV_BYPASS_QUOTA=true for local dev.',
-        'NO_DATABASE_URL');
-      return;
-    }
-
-    const meter = await runQuotaCheck(session_token, dbUrl, req, res, 'dev-mock');
+    const meter = await openMeter(req, res, 'dev-mock');
     if (!meter) return;
-
-    await Promise.allSettled([
-      incrementCreditsUsed(session_token, dbUrl),
-      logUsageEvent(session_token, 'dev-mock', dbUrl),
-    ]);
-    await meter.deliver();
+    await meter.deliver({ model: 'dev-mock' });
 
     await sendMockStream(res);
     return;
@@ -485,20 +419,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   const modelName = agentModelName();
   console.log('[ai] course advisor model:', modelName);
 
-  const dbUrl = (process.env.DATABASE_URL ?? '').trim();
-  if (!dbUrl) {
-    sendError(res, 503,
-      'Database not configured. Set DATABASE_URL to enable AI quota tracking.',
-      'NO_DATABASE_URL');
-    return;
-  }
-
-  const meter = await runQuotaCheck(session_token, dbUrl, req, res, modelName);
+  const meter = await openMeter(req, res, modelName);
   if (!meter) return;
 
-  let advisor;
+  let delivered = false;
+  let usage: (() => OperationUsage | undefined) | undefined;
   try {
-    advisor = await streamCourseAdvisor({
+    const advisor = await streamCourseAdvisor({
       message,
       programId: program_id,
       planContext: plan_context as Record<string, unknown>,
@@ -506,31 +433,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       courseId: course_id,
       history,
       preferences,
+    }).catch((err) => {
+      classifyAndSendProviderError(res, err, 'openai');
+      return null;
     });
-  } catch (err) {
-    await meter.release();
-    classifyAndSendProviderError(res, err, 'openai');
-    return;
-  }
-  const completed = advisor.completed.then(
-    () => true,
-    (err) => {
+    if (!advisor) return;
+    usage = advisor.usage;
+    // Settle the run's promise so a late failure is logged, never unhandled.
+    const completed = advisor.completed.catch((err) => {
       console.error('[ai] course advisor run failed:', err instanceof Error ? err.message : String(err));
-      return false;
-    },
-  );
-
-  console.log('[ai] stream started');
-  const delivered = await pipeTextStream(res, advisor.textStream, 'openai');
-  // One credit per delivered, completed answer; an empty or failed run is not charged.
-  // Streaming finalization: delivered = the whole answer was written AND the run completed.
-  if (delivered && await completed) {
-    await Promise.allSettled([
-      incrementCreditsUsed(session_token, dbUrl),
-      logUsageEvent(session_token, modelName, dbUrl),
-    ]);
-    await meter.deliver(advisor.usage?.());
-  } else {
-    await meter.release();
+    });
+    console.log('[ai] stream started');
+    delivered = await pipeTextStream(res, advisor.textStream, 'openai');
+    await completed;
+  } finally {
+    // One credit per answer that reached the student (they keep what they saw);
+    // an empty or failed run returns the reserved credit.
+    if (delivered) await meter.deliver(usage?.());
+    else await meter.release('no_reply');
   }
 }

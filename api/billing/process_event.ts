@@ -77,6 +77,9 @@ export async function processPaddleEvent(ctx: ProcessContext, event: PaddleEvent
 }
 
 async function dispatch(tx: CreditsSql, ctx: ProcessContext, event: PaddleEvent): Promise<ProcessStatus> {
+  // Webhook-simulator events (signed, but demo data) are stored as evidence of
+  // delivery and never touch money or credits.
+  if (event.event_id.startsWith('ntfsimevt_')) return 'ignored';
   if (event.event_type.startsWith('transaction.')) return handleTransaction(tx, ctx, event);
   if (event.event_type === 'adjustment.created' || event.event_type === 'adjustment.updated') return handleAdjustment(tx, ctx, event);
   return 'ignored';

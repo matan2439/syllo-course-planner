@@ -8,7 +8,7 @@ import { finalizeCredits, getCreditBalance, lotSummary, releaseCredits, reserveC
 import { signPaddleBody, type PaddleConfig } from '../../api/billing/paddle';
 import { processPaddleEvent } from '../../api/billing/process_event';
 import { LEGAL_VERSIONS } from '../../shared/billing/legal_versions';
-import { createBillingDb, type BillingDb } from './helpers/billing_db';
+import { ALL_BILLING, createBillingDb, type BillingDb } from './helpers/billing_db';
 
 const SECRET = 'pdl_ntfset_test_secret';
 const PRICE_SMALL = 'pri_sandboxsmall0001';
@@ -109,7 +109,7 @@ const lotOf = async (paymentId: string) => {
 const openAlerts = (code: string) => db.rows<any>("SELECT * FROM billing_alerts WHERE code = $1 AND status = 'open'", [code]);
 
 beforeAll(async () => {
-  db = await createBillingDb(['billing/001_credits.sql', 'billing/002_credit_lots.sql', 'billing/003_payments.sql']);
+  db = await createBillingDb(ALL_BILLING);
 }, 60_000);
 afterAll(async () => { await db?.pg.close(); });
 beforeEach(() => { jest.spyOn(console, 'error').mockImplementation(() => {}); jest.spyOn(console, 'warn').mockImplementation(() => {}); });

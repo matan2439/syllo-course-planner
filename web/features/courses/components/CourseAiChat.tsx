@@ -63,7 +63,7 @@ export async function streamAskCourse(request: CourseAskRequest, onChunk: (chunk
     let messageHe = `שגיאה ${response.status}`
     try {
       const body = await response.json()
-      if (body.code === 'QUOTA_EXCEEDED') messageHe = 'ניצלת את מכסת שאלות ה-AI החינמית.'
+      if (typeof body.message_he === 'string' && body.message_he.trim()) messageHe = body.message_he
       else if (typeof body.error === 'string') messageHe = body.error
     } catch {
       // keep the generic status message

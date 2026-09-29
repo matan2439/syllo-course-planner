@@ -29,19 +29,20 @@ function mockAdvisorOnce(start: (controller: ReadableStreamDefaultController<str
   }));
 }
 
-// ── Quota module mock ─────────────────────────────────────────────────────────
+// ── Metering mock (the real refusal mapping, a fake meter) ────────────────────
 
-const mockCheckAndEnsureSession = jest.fn().mockResolvedValue({
-  allowed: true, credits_used: 0, credits_paid: 0, free_limit: 5, remaining: 5,
-});
-const mockIncrementCreditsUsed = jest.fn().mockResolvedValue(undefined);
-const mockLogUsageEvent        = jest.fn().mockResolvedValue(undefined);
-
-jest.mock('../../api/ai/_quota', () => ({
-  FREE_LIMIT:               5,
-  checkAndEnsureSession:    mockCheckAndEnsureSession,
-  incrementCreditsUsed:     mockIncrementCreditsUsed,
-  logUsageEvent:            mockLogUsageEvent,
+const mockMeterCalls: string[] = [];
+function mockMeterOp() {
+  return {
+    funding: 'credits' as const,
+    deliver: jest.fn(async (usage?: unknown) => { mockMeterCalls.push(`deliver:${JSON.stringify(usage ?? null)}`); }),
+    release: jest.fn(async (reason?: string) => { mockMeterCalls.push(`release:${reason}`); }),
+  };
+}
+const mockOpenMeter = jest.fn(async (..._args: unknown[]): Promise<any> => mockMeterOp());
+jest.mock('../../api/ai/metering', () => ({
+  ...jest.requireActual('../../api/ai/metering'),
+  openMeteredOperation: (...args: unknown[]) => mockOpenMeter(...args),
 }));
 
 // ── imports ───────────────────────────────────────────────────────────────────
@@ -103,9 +104,6 @@ describe('POST /api/ai/course-planner — input validation', () => {
     jest.clearAllMocks();
     process.env.OPENAI_API_KEY = 'sk-openai-test-key';
     process.env.DATABASE_URL      = 'postgresql://test@localhost/test';
-    mockCheckAndEnsureSession.mockResolvedValue({
-      allowed: true, credits_used: 0, credits_paid: 0, free_limit: 5, remaining: 5,
-    });
   });
   afterEach(() => {
     delete process.env.OPENAI_API_KEY;
@@ -345,7 +343,6 @@ describe('POST /api/ai/course-planner — API key handling', () => {
   it('runs the course advisor when OPENAI_API_KEY is set', async () => {
     process.env.OPENAI_API_KEY = 'sk-openai-test';
     process.env.DATABASE_URL   = 'postgresql://test@localhost/test';
-    mockCheckAndEnsureSession.mockResolvedValueOnce({ allowed: true, credits_used: 0, credits_paid: 0, free_limit: 5, remaining: 5 });
     const res = makeRes();
     await handler(makeReq(VALID_BODY), res as any);
     const { streamCourseAdvisor } = jest.requireMock('../../api/ai/agent/course_advisor');
@@ -358,7 +355,7 @@ describe('POST /api/ai/course-planner — API key handling', () => {
 
 // ── Quota enforcement ─────────────────────────────────────────────────────────
 
-describe('POST /api/ai/course-planner — quota enforcement', () => {
+describe('POST /api/ai/course-planner — metering', () => {
   beforeEach(() => {
     process.env.OPENAI_API_KEY = 'sk-openai-test-key';
     process.env.DATABASE_URL      = 'postgresql://test@localhost/test';
@@ -370,118 +367,66 @@ describe('POST /api/ai/course-planner — quota enforcement', () => {
     jest.clearAllMocks();
   });
 
-  it('returns 503 NO_DATABASE_URL JSON when DATABASE_URL is missing', async () => {
-    delete process.env.DATABASE_URL;
-    const res = makeRes();
-    await handler(makeReq(VALID_BODY), res as any);
-    expect(res.status).toHaveBeenCalledWith(503);
-    const body = res.json.mock.calls[0][0];
-    expect(body.code).toBe('NO_DATABASE_URL');
-  });
+  const json = (res: any) => res.json.mock.calls[0][0];
 
-  it('streams response when quota is available', async () => {
-    mockCheckAndEnsureSession.mockResolvedValueOnce({
-      allowed: true, credits_used: 2, credits_paid: 0, free_limit: 5, remaining: 3,
-    });
+  it('a delivered answer consumes exactly one metered operation', async () => {
+    mockMeterCalls.length = 0;
     const res = makeRes();
     await handler(makeReq(VALID_BODY), res as any);
     expect(res.write).toHaveBeenCalled();
-    expect(res.end).toHaveBeenCalled();
-    expect(mockCheckAndEnsureSession).toHaveBeenCalledWith(VALID_SESSION_TOKEN, expect.any(String));
+    expect(mockOpenMeter).toHaveBeenCalledWith(expect.anything(), expect.anything(), { endpoint: 'course-planner', model: expect.any(String) });
+    expect(mockMeterCalls).toEqual([expect.stringMatching(/^deliver:/)]);
   });
 
-  it('returns 429 QUOTA_EXCEEDED JSON when quota is exhausted', async () => {
-    mockCheckAndEnsureSession.mockResolvedValueOnce({
-      allowed: false, credits_used: 5, credits_paid: 0, free_limit: 5, remaining: 0,
-    });
+  it.each([
+    ['auth_required', 401, 'AUTH_REQUIRED'],
+    ['insufficient', 402, 'INSUFFICIENT_CREDITS'],
+    ['unavailable', 503, 'BILLING_UNAVAILABLE'],
+  ])('a refused meter (%s) answers %i and never runs the model', async (refused, status, code) => {
+    mockOpenMeter.mockResolvedValueOnce({ refused });
     const res = makeRes();
     await handler(makeReq(VALID_BODY), res as any);
-    expect(res.status).toHaveBeenCalledWith(429);
-    const body = res.json.mock.calls[0][0];
-    expect(body.code).toBe('QUOTA_EXCEEDED');
-    expect(body.details.remaining).toBe(0);
-    expect(body.details.free_limit).toBe(5);
+    expect(res.status).toHaveBeenCalledWith(status);
+    expect(json(res)).toMatchObject({ ok: false, code });
+    expect(jest.requireMock('../../api/ai/agent/course_advisor').streamCourseAdvisor).not.toHaveBeenCalled();
   });
 
-  it('does not increment credits when quota is exceeded', async () => {
-    mockCheckAndEnsureSession.mockResolvedValueOnce({
-      allowed: false, credits_used: 5, credits_paid: 0, free_limit: 5, remaining: 0,
-    });
-    await handler(makeReq(VALID_BODY), makeRes() as any);
-    expect(mockIncrementCreditsUsed).not.toHaveBeenCalled();
-  });
-
-  it('allows requests beyond 5 credits when AI_FREE_QUOTA raises the limit', async () => {
-    process.env.AI_FREE_QUOTA = '1000';
-    mockCheckAndEnsureSession.mockResolvedValueOnce({
-      allowed: true, credits_used: 50, credits_paid: 0, free_limit: 1000, remaining: 950,
-    });
-    const res = makeRes();
-    await handler(makeReq(VALID_BODY), res as any);
-    expect(res.write).toHaveBeenCalled();
-    expect(res.json).not.toHaveBeenCalledWith(expect.objectContaining({ code: 'QUOTA_EXCEEDED' }));
-    delete process.env.AI_FREE_QUOTA;
-  });
-
-  it('AI_TEST_MODE=true bypasses QUOTA_EXCEEDED and still streams', async () => {
+  it('AI_TEST_MODE never bypasses credits', async () => {
     process.env.AI_TEST_MODE = 'true';
-    mockCheckAndEnsureSession.mockResolvedValueOnce({
-      allowed: false, credits_used: 5, credits_paid: 0, free_limit: 5, remaining: 0,
-    });
+    mockOpenMeter.mockResolvedValueOnce({ refused: 'insufficient' });
     const res = makeRes();
     await handler(makeReq(VALID_BODY), res as any);
-    expect(res.write).toHaveBeenCalled();
-    expect(res.end).toHaveBeenCalled();
-    expect(res.json).not.toHaveBeenCalledWith(expect.objectContaining({ code: 'QUOTA_EXCEEDED' }));
-    expect(res.setHeader).toHaveBeenCalledWith('X-AI-Quota-Bypass', 'true');
+    expect(res.status).toHaveBeenCalledWith(402);
+    expect(res.write).not.toHaveBeenCalled();
     delete process.env.AI_TEST_MODE;
   });
 
-  it('AI_TEST_MODE=false still enforces QUOTA_EXCEEDED', async () => {
-    process.env.AI_TEST_MODE = 'false';
-    mockCheckAndEnsureSession.mockResolvedValueOnce({
-      allowed: false, credits_used: 5, credits_paid: 0, free_limit: 5, remaining: 0,
-    });
-    const res = makeRes();
-    await handler(makeReq(VALID_BODY), res as any);
-    expect(res.status).toHaveBeenCalledWith(429);
-    const body = res.json.mock.calls[0][0];
-    expect(body.code).toBe('QUOTA_EXCEEDED');
-    delete process.env.AI_TEST_MODE;
-  });
-
-  it('calls incrementCreditsUsed after a completed answer', async () => {
-    mockCheckAndEnsureSession.mockResolvedValueOnce({
-      allowed: true, credits_used: 0, credits_paid: 0, free_limit: 5, remaining: 5,
-    });
-    await handler(makeReq(VALID_BODY), makeRes() as any);
-    await Promise.resolve(); // let onFinish microtask settle
-    expect(mockIncrementCreditsUsed).toHaveBeenCalledWith(VALID_SESSION_TOKEN, expect.any(String));
-  });
-
-  it('calls logUsageEvent after a completed answer', async () => {
-    mockCheckAndEnsureSession.mockResolvedValueOnce({
-      allowed: true, credits_used: 0, credits_paid: 0, free_limit: 5, remaining: 5,
-    });
-    await handler(makeReq(VALID_BODY), makeRes() as any);
-    await Promise.resolve();
-    expect(mockLogUsageEvent).toHaveBeenCalled();
-  });
-
-  it('does not charge a credit when the advisor run fails', async () => {
-    mockCheckAndEnsureSession.mockResolvedValueOnce({
-      allowed: true, credits_used: 0, credits_paid: 0, free_limit: 5, remaining: 5,
-    });
+  it('an empty run releases the reservation (nothing charged)', async () => {
+    mockMeterCalls.length = 0;
     mockAdvisorOnce((c) => c.close(), Promise.reject(new Error('run failed')));
+    jest.spyOn(console, 'error').mockImplementation(() => {});
     await handler(makeReq(VALID_BODY), makeRes() as any);
-    await new Promise(resolve => setTimeout(resolve, 30));
-    expect(mockIncrementCreditsUsed).not.toHaveBeenCalled();
+    expect(mockMeterCalls).toEqual(['release:no_reply']);
+  });
+
+  it('text that reached the student is charged even if the run fails afterwards', async () => {
+    mockMeterCalls.length = 0;
+    mockAdvisorOnce((c) => { c.enqueue('חלק מהתשובה'); c.close(); }, Promise.reject(new Error('late failure')));
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+    await handler(makeReq(VALID_BODY), makeRes() as any);
+    expect(mockMeterCalls).toEqual([expect.stringMatching(/^deliver:/)]);
+  });
+
+  it('an advisor that cannot start releases the reservation', async () => {
+    mockMeterCalls.length = 0;
+    jest.requireMock('../../api/ai/agent/course_advisor').streamCourseAdvisor
+      .mockImplementationOnce(async () => { throw Object.assign(new Error('boom'), { status: 500 }); });
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+    await handler(makeReq(VALID_BODY), makeRes() as any);
+    expect(mockMeterCalls).toEqual(['release:no_reply']);
   });
 
   it('returns 503 AI_PROVIDER_ERROR JSON when the advisor cannot start', async () => {
-    mockCheckAndEnsureSession.mockResolvedValueOnce({
-      allowed: true, credits_used: 0, credits_paid: 0, free_limit: 5, remaining: 5,
-    });
     jest.requireMock('../../api/ai/agent/course_advisor').streamCourseAdvisor.mockImplementationOnce(async () => {
       throw new Error('connection reset');
     });
@@ -495,10 +440,8 @@ describe('POST /api/ai/course-planner — quota enforcement', () => {
   it('returns 503 AI_EMPTY_RESPONSE when stream closes immediately with no chunks', async () => {
     // A provider can end the stream with no text and no exception; that must be a
     // JSON error, not a 200 with an empty body.
-    mockCheckAndEnsureSession.mockResolvedValueOnce({
-      allowed: true, credits_used: 0, credits_paid: 0, free_limit: 5, remaining: 5,
-    });
     mockAdvisorOnce((controller) => controller.close()); // immediately done, no chunks
+    mockMeterCalls.length = 0;
     const res = makeRes();
     await handler(makeReq(VALID_BODY), res as any);
     expect(res.status).toHaveBeenCalledWith(503);
@@ -507,13 +450,10 @@ describe('POST /api/ai/course-planner — quota enforcement', () => {
     // Should NOT call res.write (no content committed before error)
     expect(res.write).not.toHaveBeenCalled();
     // A run that completed but delivered nothing is not charged.
-    expect(mockIncrementCreditsUsed).not.toHaveBeenCalled();
+    expect(mockMeterCalls).toEqual(['release:no_reply']);
   });
 
   it('returns 503 AI_BILLING_ERROR when stream throws with billing message', async () => {
-    mockCheckAndEnsureSession.mockResolvedValueOnce({
-      allowed: true, credits_used: 0, credits_paid: 0, free_limit: 5, remaining: 5,
-    });
     const billingErr = Object.assign(new Error('Your credit balance is too low'), { status: 403 });
     mockAdvisorOnce((controller) => controller.error(billingErr), Promise.reject(billingErr));
     const res = makeRes();
@@ -525,9 +465,6 @@ describe('POST /api/ai/course-planner — quota enforcement', () => {
   });
 
   it('returns 503 AI_AUTH_ERROR when stream throws with 401', async () => {
-    mockCheckAndEnsureSession.mockResolvedValueOnce({
-      allowed: true, credits_used: 0, credits_paid: 0, free_limit: 5, remaining: 5,
-    });
     const authErr = Object.assign(new Error('Invalid authentication credentials'), { status: 401 });
     mockAdvisorOnce((controller) => controller.error(authErr), Promise.reject(authErr));
     const res = makeRes();
@@ -553,9 +490,6 @@ describe('POST /api/ai/course-planner — AI dev mode', () => {
   it('writes mock text to res in AI_DEV_MODE (no API key needed)', async () => {
     process.env.AI_DEV_MODE  = 'true';
     process.env.DATABASE_URL = 'postgresql://test@localhost/test';
-    mockCheckAndEnsureSession.mockResolvedValueOnce({
-      allowed: true, credits_used: 0, credits_paid: 0, free_limit: 5, remaining: 5,
-    });
     const res = makeRes();
     await handler(makeReq(VALID_BODY), res as any);
     expect(res.write).toHaveBeenCalled();
@@ -569,7 +503,6 @@ describe('POST /api/ai/course-planner — AI dev mode', () => {
   it('does not call the model in AI_DEV_MODE', async () => {
     process.env.AI_DEV_MODE  = 'true';
     process.env.DATABASE_URL = 'postgresql://test@localhost/test';
-    mockCheckAndEnsureSession.mockResolvedValueOnce({ allowed: true, credits_used: 0, credits_paid: 0, free_limit: 5, remaining: 5 });
     await handler(makeReq(VALID_BODY), makeRes() as any);
     expect(jest.requireMock('../../api/ai/agent/course_advisor').streamCourseAdvisor).not.toHaveBeenCalled();
   });
@@ -591,20 +524,16 @@ describe('POST /api/ai/course-planner — AI dev mode', () => {
     await handler(makeReq(VALID_BODY), res as any);
     expect(res.write).toHaveBeenCalled();
     expect(res.end).toHaveBeenCalled();
-    expect(mockCheckAndEnsureSession).not.toHaveBeenCalled();
+    expect(mockOpenMeter).not.toHaveBeenCalled();
   });
 
-  it('still enforces quota in AI_DEV_MODE when bypass is not set', async () => {
+  it('still meters in AI_DEV_MODE when bypass is not set', async () => {
     process.env.AI_DEV_MODE  = 'true';
-    process.env.DATABASE_URL = 'postgresql://test@localhost/test';
-    mockCheckAndEnsureSession.mockResolvedValueOnce({
-      allowed: false, credits_used: 5, credits_paid: 0, free_limit: 5, remaining: 0,
-    });
+    mockOpenMeter.mockResolvedValueOnce({ refused: 'insufficient' });
     const res = makeRes();
     await handler(makeReq(VALID_BODY), res as any);
-    expect(res.status).toHaveBeenCalledWith(429);
-    const body = res.json.mock.calls[0][0];
-    expect(body.code).toBe('QUOTA_EXCEEDED');
+    expect(res.status).toHaveBeenCalledWith(402);
+    expect(res.json.mock.calls[0][0].code).toBe('INSUFFICIENT_CREDITS');
   });
 
   it('ignores AI_DEV_MODE in production — requires real API key', async () => {
@@ -634,15 +563,11 @@ describe('POST /api/ai/course-planner — AI dev mode', () => {
     expect(body.code).toBe('NO_API_KEY');
   });
 
-  it('increments credits in AI_DEV_MODE when bypass is off', async () => {
+  it('records the dev-mock answer as a delivered operation', async () => {
     process.env.AI_DEV_MODE  = 'true';
-    process.env.DATABASE_URL = 'postgresql://test@localhost/test';
-    mockCheckAndEnsureSession.mockResolvedValueOnce({
-      allowed: true, credits_used: 1, credits_paid: 0, free_limit: 5, remaining: 4,
-    });
+    mockMeterCalls.length = 0;
     await handler(makeReq(VALID_BODY), makeRes() as any);
-    expect(mockIncrementCreditsUsed).toHaveBeenCalledWith(VALID_SESSION_TOKEN, expect.any(String));
-    expect(mockLogUsageEvent).toHaveBeenCalledWith(VALID_SESSION_TOKEN, 'dev-mock', expect.any(String));
+    expect(mockMeterCalls).toEqual(['deliver:{"model":"dev-mock"}']);
   });
 });
 
@@ -652,7 +577,6 @@ describe('POST /api/ai/course-planner — context forwarding', () => {
   beforeEach(() => {
     process.env.OPENAI_API_KEY = 'sk-openai-test-key';
     process.env.DATABASE_URL      = 'postgresql://test@localhost/test';
-    mockCheckAndEnsureSession.mockResolvedValue({ allowed: true, credits_used: 0, credits_paid: 0, free_limit: 5, remaining: 5 });
   });
   afterEach(() => {
     delete process.env.OPENAI_API_KEY;

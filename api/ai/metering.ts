@@ -1,19 +1,20 @@
 /**
  * metering.ts — one AI operation, from admission to "service delivered".
  *
- * The free quota (`_quota.ts`) is unchanged and is spent first. Only when it is
- * exhausted does a signed-in user spend Syllo Credits: CREDITS_PER_OPERATION per
- * delivered result — the same unit the free quota counts.
+ * Every paid-AI call is metered. There is no free quota for customers:
  *
- *   open    → free quota left: record the op (evidence only, nothing held)
- *             quota exhausted: RESERVE credits (held, not yet spent) or refuse
- *   deliver → the result was persisted/streamed to the user = SERVICE DELIVERED:
- *             reserved credits become consumed (finalize_ai_credits)
- *   release → anything else (error, empty run, timeout): credits returned
+ *   open    → anonymous: refused (401 AUTH_REQUIRED)
+ *             signed in: RESERVE CREDITS_PER_OPERATION purchased credits, or
+ *             refuse (402 INSUFFICIENT_CREDITS); billing_exempt developers pass
+ *             as 'exempt' (recorded, nothing charged)
+ *   deliver → a reply reached the user = SERVICE DELIVERED: the reservation
+ *             becomes consumption (finalize_ai_credits)
+ *   release → anything else (error, empty run, conflict): credits returned
  *
- * Delivery is decided server-side only. Screenshots, copies and downloads are
- * never signals: whatever reached the user may be kept, which is why the credit is
- * consumed at delivery, not later. Anonymous visitors keep the old quota-only flow.
+ * Delivery is decided server-side only. Billing failures fail CLOSED (503), except
+ * in local development with no DATABASE_URL, where there is nothing to meter.
+ * Which lots may be spent (never a customer's internal/dev lots) is enforced in SQL:
+ * scripts/migrations/billing/005_billing_closeout.sql.
  */
 import { randomUUID } from 'crypto';
 import postgres from 'postgres';
@@ -23,17 +24,21 @@ import { PG_OPTS } from './_quota';
 import type { OwnerRequestLike, OwnerResponseLike } from './session_owner';
 
 export const CREDITS_PER_OPERATION = 1;
+/** The metering unit in force; stored per operation (ai_operations.pricing_version default, billing/005). */
+export const METERING_VERSION = 'v1-1credit-per-reply';
 
 export interface MeteredOperation {
-  /** How this operation is paid for. */
-  funding: 'anonymous' | 'free_quota' | 'credits' | 'exempt';
+  /** How this operation is paid for. 'unmetered_dev' = local dev without a database. */
+  funding: 'credits' | 'exempt' | 'unmetered_dev';
   /** The result reached the user. Idempotent; never throws. */
   deliver(usage?: OperationUsage): Promise<void>;
   /** Not delivered. A no-op after deliver(). Never throws. */
-  release(): Promise<void>;
+  release(reason?: string): Promise<void>;
 }
 
-const ANONYMOUS: MeteredOperation = { funding: 'anonymous', deliver: async () => {}, release: async () => {} };
+export type MeterRefusal = 'auth_required' | 'insufficient' | 'unavailable';
+
+const UNMETERED_DEV: MeteredOperation = { funding: 'unmetered_dev', deliver: async () => {}, release: async () => {} };
 
 let shared: BillingSql | null | undefined;
 /** A small shared pool for billing calls; null when no DATABASE_URL (local dev). */
@@ -45,40 +50,38 @@ export function billingSql(): BillingSql | null {
   return shared;
 }
 
+/** Deployed on Vercel (preview or production): metering is mandatory. */
+const deployed = () => Boolean(process.env.VERCEL || process.env.VERCEL_ENV);
+
 export interface MeteringDeps {
   verifyUser?: (req: OwnerRequestLike, res: OwnerResponseLike) => Promise<string | null>;
   sql?: () => CreditsSql | null;
+  deployed?: () => boolean;
 }
 
-/**
- * Admit one AI operation. Returns null when it must be refused (free quota
- * exhausted and no credits, or not signed in) — callers answer with today's 429.
- */
+/** Admit one AI operation, or say why it must be refused. */
 export async function openMeteredOperation(
   req: OwnerRequestLike,
   res: OwnerResponseLike,
-  opts: { endpoint: string; model: string; freeQuotaAllowed: boolean },
+  opts: { endpoint: string; model: string },
   deps: MeteringDeps = {},
-): Promise<MeteredOperation | null> {
-  const fallback = opts.freeQuotaAllowed ? ANONYMOUS : null;
-  const userId = await (deps.verifyUser ?? verifiedUserId)(req, res);
-  if (!userId) return fallback;
+): Promise<MeteredOperation | { refused: MeterRefusal }> {
   const sql = (deps.sql ?? billingSql)();
-  if (!sql) return fallback;
+  if (!sql) return (deps.deployed ?? deployed)() ? { refused: 'unavailable' } : UNMETERED_DEV;
+  const userId = await (deps.verifyUser ?? verifiedUserId)(req, res);
+  if (!userId) return { refused: 'auth_required' };
 
   const operationId = randomUUID();
-  const credits = opts.freeQuotaAllowed ? 0 : CREDITS_PER_OPERATION;
   let status: string;
   try {
     ({ status } = await reserveCredits(sql, {
-      userId, operationId, credits, endpoint: opts.endpoint, provider: 'openai', model: opts.model,
+      userId, operationId, credits: CREDITS_PER_OPERATION, endpoint: opts.endpoint, provider: 'openai', model: opts.model,
     }));
   } catch (error) {
-    // Billing tables unavailable: behave exactly like before credits existed.
     console.error('[metering] reserve failed:', (error as Error)?.constructor?.name, (error as Error)?.message);
-    return fallback;
+    return { refused: 'unavailable' };
   }
-  if (status === 'insufficient') return null;
+  if (status === 'insufficient') return { refused: 'insufficient' };
 
   let settled = false;
   const settle = async (label: string, fn: () => Promise<unknown>) => {
@@ -92,8 +95,29 @@ export async function openMeteredOperation(
     }
   };
   return {
-    funding: credits === 0 ? 'free_quota' : status === 'exempt' ? 'exempt' : 'credits',
+    funding: status === 'exempt' ? 'exempt' : 'credits',
     deliver: (usage = {}) => settle('finalize', () => finalizeCredits(sql, operationId, { model: opts.model, ...usage })),
-    release: () => settle('release', () => releaseCredits(sql, operationId)),
+    release: (reason = 'not_delivered') => settle('release', async () => {
+      await releaseCredits(sql, operationId);
+      await sql.unsafe(
+        "UPDATE public.ai_operations SET release_reason = $2 WHERE operation_id = $1 AND state = 'released'",
+        [operationId, reason.slice(0, 200)],
+      );
+    }),
   };
+}
+
+const REFUSALS: Record<MeterRefusal, { status: number; code: string; message_he: string }> = {
+  auth_required: { status: 401, code: 'AUTH_REQUIRED', message_he: 'יש להתחבר (תפריט החשבון) כדי להשתמש בעוזר ה-AI.' },
+  insufficient: { status: 402, code: 'INSUFFICIENT_CREDITS', message_he: 'אין מספיק קרדיטים. אפשר לרכוש קרדיטים מתפריט החשבון.' },
+  unavailable: { status: 503, code: 'BILLING_UNAVAILABLE', message_he: 'לא ניתן לאמת קרדיטים כרגע. נא לנסות שוב.' },
+};
+
+/** The one wire shape every AI endpoint answers a refusal with. */
+export function sendMeterRefusal(
+  res: { status(code: number): { json(body: unknown): unknown } },
+  refusal: MeterRefusal,
+): void {
+  const { status, ...body } = REFUSALS[refusal];
+  res.status(status).json({ ok: false, ...body });
 }

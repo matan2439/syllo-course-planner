@@ -6,7 +6,7 @@ import { createBillingHandler } from '../../api/billing';
 import { finalizeCredits, getCreditBalance, reserveCredits } from '../../api/ai/credits';
 import { signPaddleBody, type PaddleApi, type PaddleConfig } from '../../api/billing/paddle';
 import { LEGAL_VERSIONS } from '../../shared/billing/legal_versions';
-import { createBillingDb, type BillingDb } from './helpers/billing_db';
+import { ALL_BILLING, createBillingDb, type BillingDb } from './helpers/billing_db';
 
 const SECRET = 'pdl_ntfset_ops_secret';
 const PRICE = 'pri_sandboxsmall0001';
@@ -74,7 +74,7 @@ const openAlerts = (code: string) => db.rows<any>("SELECT * FROM billing_alerts 
 
 let admin: string;
 beforeAll(async () => {
-  db = await createBillingDb(['billing/001_credits.sql', 'billing/002_credit_lots.sql', 'billing/003_payments.sql', 'billing/004_billing_ops.sql']);
+  db = await createBillingDb(ALL_BILLING);
   admin = await db.newUser();
   await db.pg.query("UPDATE profiles SET role = 'developer' WHERE id = $1", [admin]);
 }, 60_000);
@@ -193,6 +193,10 @@ describe('admin console', () => {
   test('mutations need a reason, go through the ledger, and are audited', async () => {
     const user = await db.newUser();
     expect((await as(admin, () => call('admin/adjust', { method: 'POST', body: { user_id: user, delta: 25 } }))).body.code).toBe('REASON_REQUIRED');
+    // Positive adjustments create internal (dev/testing) lots: never for a customer.
+    const customer = await as(admin, () => call('admin/adjust', { method: 'POST', body: { user_id: user, delta: 25, reason: 'support goodwill' } }));
+    expect(customer.body.code).toBe('INTERNAL_CREDITS_STAFF_ONLY');
+    await db.pg.query("UPDATE profiles SET role = 'developer' WHERE id = $1", [user]);
     const ok = await as(admin, () => call('admin/adjust', { method: 'POST', body: { user_id: user, delta: 25, reason: 'support goodwill' } }));
     expect(ok.body).toEqual({ ok: true, balance: 25 });
     expect(await db.one<any>("SELECT kind, delta, metadata FROM credit_transactions WHERE user_id = $1", [user]))
@@ -209,6 +213,37 @@ describe('admin console', () => {
     const actions = await db.rows<any>('SELECT action, actor_id, reason FROM billing_admin_actions WHERE actor_id = $1 ORDER BY id', [admin]);
     expect(actions.map((a) => a.action)).toEqual(expect.arrayContaining(['credit_adjustment', 'set_risk_state', 'set_risk_state', 'resolve_alert']));
     await expect(db.pg.query("UPDATE billing_admin_actions SET reason = 'x'")).rejects.toThrow(/append-only/);
+  });
+
+  test('a case: auto-drafted reply, notes, status, history — nothing is sent', async () => {
+    const [alert] = await db.rows<any>(
+      "INSERT INTO billing_alerts (severity, code, dedupe_key) VALUES ('review', 'refund_after_consumption', 'test:case') RETURNING id");
+    const id = String(alert.id);
+    const detail = (await as(admin, () => call('admin/case', { query: { id } }))).body;
+    expect(detail.case).toMatchObject({ id: alert.id, case_status: 'open', notes: [] });
+    expect(detail.draft).toMatch(/REQUIRES LEGAL REVIEW/);
+    expect(detail.draft).toMatch(/Syllo case #/);
+    expect(detail.draft_saved).toBe(false);
+
+    await as(admin, () => call('admin/cases/note', { method: 'POST', body: { id, reason: 'customer emailed support' } }));
+    await as(admin, () => call('admin/cases/status', { method: 'POST', body: { id, case_status: 'awaiting_customer', reason: 'asked for details' } }));
+    const saved = await as(admin, () => call('admin/cases/draft', { method: 'POST', body: { id, reason: 'regenerate' } }));
+    expect(saved.body.draft).toMatch(/REQUIRES LEGAL REVIEW/);
+    expect((await as(admin, () => call('admin/cases/status', { method: 'POST', body: { id, case_status: 'bogus', reason: 'x y z' } }))).body.code)
+      .toBe('INVALID_REQUEST');
+
+    const after = (await as(admin, () => call('admin/case', { query: { id } }))).body;
+    expect(after.case).toMatchObject({ case_status: 'awaiting_customer', status: 'open', draft_template_version: 'draft-v1-unreviewed' });
+    expect(after.case.notes).toEqual([expect.objectContaining({ text: 'customer emailed support', by: admin })]);
+    expect(after.draft_saved).toBe(true);
+    expect(after.actions.map((a: any) => a.action)).toEqual(['add_case_note', 'set_case_status', 'save_case_draft']);
+
+    await as(admin, () => call('admin/cases/status', { method: 'POST', body: { id, case_status: 'resolved', reason: 'refund confirmed' } }));
+    expect(await db.one<any>('SELECT status, case_status, resolved_by FROM billing_alerts WHERE id = $1', [alert.id]))
+      .toEqual({ status: 'resolved', case_status: 'resolved', resolved_by: admin });
+    const history = (await as(admin, () => call('admin/actions'))).body.actions;
+    expect(history[0]).toMatchObject({ action: 'set_case_status', target: `alert:${id}` });
+    expect((await as(admin, () => call('admin/case', { query: { id: 'nope' } }))).statusCode).toBe(404);
   });
 
   test('manual reconciliation from the console is audited', async () => {

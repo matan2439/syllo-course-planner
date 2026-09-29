@@ -10,6 +10,7 @@ import { randomUUID } from 'crypto';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import type { BillingSql } from '../ai/credits';
 import { buildEvidence, evidenceText, type EvidencePackage } from './evidence';
+import { DRAFT_TEMPLATE_VERSION, draftReply } from './case_draft';
 import type { PaddleApi, PaddleEnvironment } from './paddle';
 import { reconcile } from './reconcile';
 
@@ -127,6 +128,38 @@ export async function handleAdmin(route: string, req: VercelRequest, res: Vercel
     return;
   }
 
+  if (req.method === 'GET' && route === 'case') {
+    // A case = one billing_alerts row. The suggested reply is generated from the
+    // record unless an admin already saved one; nothing is ever sent from here.
+    const [alert] = /^\d+$/.test(id) ? await q(sql, 'SELECT * FROM public.billing_alerts WHERE id = $1', [id]) : [];
+    if (!alert) { fail(res, 404, 'NOT_FOUND'); return; }
+    const evidence = alert.payment_id == null ? null : await buildEvidence(sql, String(alert.payment_id));
+    const userId = alert.user_id ?? evidence?.purchase.syllo_user_id ?? null;
+    const [profile] = userId ? await q(sql, 'SELECT email FROM public.profiles WHERE id = $1', [userId]) : [];
+    const [pay] = alert.payment_id == null ? [] : await q(sql, 'SELECT created_at FROM public.payments WHERE id = $1', [alert.payment_id]);
+    const actions = await q(sql, 'SELECT * FROM public.billing_admin_actions WHERE target = $1 ORDER BY id', [`alert:${id}`]);
+    res.status(200).json({
+      ok: true,
+      case: { ...alert, customer_email: alert.customer_email ?? profile?.email ?? null },
+      draft: alert.draft_reply ?? draftReply(alert as { id: string; code: string }, evidence),
+      draft_saved: alert.draft_reply != null,
+      evidence,
+      timeline: evidence && pay ? timeline(evidence, new Date(pay.created_at).toISOString()) : [],
+      actions,
+    });
+    return;
+  }
+
+  if (req.method === 'GET' && route === 'actions') {
+    res.status(200).json({ ok: true, actions: await q(sql, 'SELECT * FROM public.billing_admin_actions ORDER BY id DESC LIMIT 200') });
+    return;
+  }
+
+  if (req.method === 'GET' && route === 'reconcile-runs') {
+    res.status(200).json({ ok: true, runs: await q(sql, 'SELECT * FROM public.billing_reconciliation_runs ORDER BY id DESC LIMIT 50') });
+    return;
+  }
+
   if (req.method === 'GET' && route === 'alerts') {
     const rows = await q(sql, 
       `SELECT * FROM public.billing_alerts WHERE status = $1 ORDER BY CASE severity WHEN 'critical' THEN 0 ELSE 1 END, id DESC LIMIT 200`,
@@ -138,14 +171,57 @@ export async function handleAdmin(route: string, req: VercelRequest, res: Vercel
   if (req.method !== 'POST') { fail(res, 404, 'NOT_FOUND'); return; }
   const reason = reasonOf(body);
   if (!reason) { fail(res, 400, 'REASON_REQUIRED'); return; }
+  if ((route.startsWith('cases/') || route.startsWith('alerts/')) && !/^\d+$/.test(id)) { fail(res, 404, 'NOT_FOUND'); return; }
 
   if (route === 'alerts/resolve') {
     const [row] = await q(sql, 
-      `UPDATE public.billing_alerts SET status = 'resolved', resolved_by = $2, resolution_note = $3, resolved_at = now()
+      `UPDATE public.billing_alerts SET status = 'resolved', case_status = 'resolved', resolved_by = $2, resolution_note = $3, resolved_at = now()
         WHERE id = $1 AND status = 'open' RETURNING id`, [id, ctx.actorId, reason]);
     if (!row) { fail(res, 404, 'NOT_FOUND'); return; }
     await audit(sql, ctx, 'resolve_alert', `alert:${id}`, reason);
     res.status(200).json({ ok: true });
+    return;
+  }
+
+  if (route === 'cases/status') {
+    const next = String(body.case_status);
+    if (!['open', 'in_progress', 'awaiting_customer', 'resolved'].includes(next)) { fail(res, 400, 'INVALID_REQUEST'); return; }
+    const [row] = await q(sql,
+      `UPDATE public.billing_alerts SET case_status = $2,
+              status = CASE WHEN $2 = 'resolved' THEN 'resolved' ELSE 'open' END,
+              resolved_by = CASE WHEN $2 = 'resolved' THEN $3::uuid END,
+              resolution_note = CASE WHEN $2 = 'resolved' THEN $4 END,
+              resolved_at = CASE WHEN $2 = 'resolved' THEN now() END,
+              reason = COALESCE(reason, $4)
+        WHERE id = $1 RETURNING id`, [id, next, ctx.actorId, reason]);
+    if (!row) { fail(res, 404, 'NOT_FOUND'); return; }
+    await audit(sql, ctx, 'set_case_status', `alert:${id}`, reason, { case_status: next });
+    res.status(200).json({ ok: true });
+    return;
+  }
+
+  if (route === 'cases/note') {
+    // The reason IS the note (append-only; the audit row mirrors it).
+    const [row] = await q(sql,
+      `UPDATE public.billing_alerts SET notes = notes || jsonb_build_array(jsonb_build_object('at', now(), 'by', $2::text, 'text', $3::text))
+        WHERE id = $1 RETURNING id`, [id, ctx.actorId, reason]);
+    if (!row) { fail(res, 404, 'NOT_FOUND'); return; }
+    await audit(sql, ctx, 'add_case_note', `alert:${id}`, reason);
+    res.status(200).json({ ok: true });
+    return;
+  }
+
+  if (route === 'cases/draft') {
+    const [alert] = /^\d+$/.test(id) ? await q(sql, 'SELECT * FROM public.billing_alerts WHERE id = $1', [id]) : [];
+    if (!alert) { fail(res, 404, 'NOT_FOUND'); return; }
+    const evidence = alert.payment_id == null ? null : await buildEvidence(sql, String(alert.payment_id));
+    const draft = typeof body.draft === 'string' && body.draft.trim()
+      ? body.draft.slice(0, 20_000)
+      : draftReply(alert as { id: string; code: string }, evidence);
+    await q(sql, 'UPDATE public.billing_alerts SET draft_reply = $2, draft_template_version = $3 WHERE id = $1',
+      [id, draft, typeof body.draft === 'string' && body.draft.trim() ? 'admin-edited' : DRAFT_TEMPLATE_VERSION]);
+    await audit(sql, ctx, 'save_case_draft', `alert:${id}`, reason);
+    res.status(200).json({ ok: true, draft });
     return;
   }
 
@@ -163,6 +239,12 @@ export async function handleAdmin(route: string, req: VercelRequest, res: Vercel
   if (route === 'adjust') {
     const delta = Number(body.delta);
     if (!UUID.test(String(body.user_id)) || !Number.isInteger(delta) || delta === 0 || Math.abs(delta) > 100_000) { fail(res, 400, 'INVALID_REQUEST'); return; }
+    // Positive adjustments become INTERNAL lots, spendable only by staff accounts
+    // (billing/005). Never hand dev credits to a customer: sell or promote instead.
+    if (delta > 0) {
+      const [staff] = await q(sql, 'SELECT public.billing_staff($1) AS ok', [body.user_id]);
+      if (!staff?.ok) { fail(res, 400, 'INTERNAL_CREDITS_STAFF_ONLY'); return; }
+    }
     const reference = `admin:${randomUUID()}`;
     const [r] = await q(sql, 'SELECT status, balance FROM public.apply_credit_transaction($1, $2, $3, $4, $5::jsonb)',
       [body.user_id, delta, 'admin_adjustment', reference, JSON.stringify({ reason, actor_id: ctx.actorId })]);

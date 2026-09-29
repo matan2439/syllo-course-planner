@@ -6,9 +6,8 @@ import {
   type ConversationProposal,
 } from '../../shared/planner/conversation-wire';
 import type { Model } from '@openai/agents';
-import { isBypassQuota, isTestModeBypass } from './course-planner';
-import { checkAndEnsureSession, incrementCreditsUsed, logUsageEvent } from './_quota';
-import { openMeteredOperation } from './metering';
+import { openMeteredOperation, sendMeterRefusal } from './metering';
+import type { OperationUsage } from './credits';
 import { PlanningSession } from './agent/session';
 import {
   agentModelName,
@@ -61,28 +60,8 @@ function defaultResolveModel(): AgentModelConfig | null {
   return { model: name, name };
 }
 
-/** Quota gate. ponytail: no DATABASE_URL (local/dev) means no quota tracking. */
-async function defaultCheckQuota(sessionToken: string): Promise<{ allowed: boolean }> {
-  const dbUrl = (process.env.DATABASE_URL ?? '').trim();
-  if (!dbUrl || isBypassQuota()) return { allowed: true };
-  const quota = await checkAndEnsureSession(sessionToken, dbUrl);
-  return { allowed: quota.allowed || isTestModeBypass() };
-}
-
-/** One credit per delivered proposal — a chat turn that only asks or answers is free. */
-async function defaultRecordUsage(sessionToken: string, modelName: string): Promise<void> {
-  const dbUrl = (process.env.DATABASE_URL ?? '').trim();
-  if (!dbUrl || isBypassQuota()) return;
-  await Promise.allSettled([
-    incrementCreditsUsed(sessionToken, dbUrl),
-    logUsageEvent(sessionToken, modelName, dbUrl),
-  ]);
-}
-
 type ConversationEndpointDeps = {
   resolveModel?: () => AgentModelConfig | null;
-  checkQuota?: (sessionToken: string) => Promise<{ allowed: boolean }>;
-  recordUsage?: (sessionToken: string, modelName: string) => Promise<void>;
   openMeter?: typeof openMeteredOperation;
   loadBoard?: (ownerId: string, programId: string) => Promise<CommittedBoard | null>;
   loadAcademicContext?: (ownerId: string, programId: string) => Promise<AcademicContextRecord | null>;
@@ -178,8 +157,6 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
     ?? ((ownerId, programId) => getAcademicContextStore().load(ownerId, programId));
   const loadProgramBoard = deps.loadProgramBoard ?? loadLocalBoardJson;
   const runAgent = deps.runAgent ?? runPlannerAgent;
-  const checkQuota = deps.checkQuota ?? defaultCheckQuota;
-  const recordUsage = deps.recordUsage ?? defaultRecordUsage;
   const openMeter = deps.openMeter ?? openMeteredOperation;
   const runAcademicDecisionAgent = deps.runAcademicDecisionAgent ?? runAcademicDecisionAgentDefault;
   const putProposal = deps.putProposal ?? ((record: ProposalRecord) => getProposalStore().put(record));
@@ -203,20 +180,12 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
       return;
     }
 
-    let quota: { allowed: boolean };
-    try {
-      quota = await checkQuota(parsed.data.session_token);
-    } catch (error) {
-      console.error('[ai/conversation] quota check failed:', (error as Error)?.constructor?.name);
-      res.status(503).json({ ok: false, code: 'QUOTA_UNAVAILABLE', message_he: 'לא ניתן לבדוק מכסת AI כרגע. נא לנסות שוב.' });
-      return;
-    }
-    // Free quota first (unchanged); once exhausted, a signed-in user spends Syllo Credits.
+    // Every reply is metered: sign-in required, 1 purchased credit per delivered reply.
     const meter = await openMeter(req as unknown as { headers?: Record<string, string | string[] | undefined> }, res, {
-      endpoint: 'conversation', model: modelConfig.name, freeQuotaAllowed: quota.allowed,
+      endpoint: 'conversation', model: modelConfig.name,
     });
-    if (!meter) {
-      res.status(429).json({ ok: false, code: 'QUOTA_EXCEEDED', message_he: 'מכסת שאלות ה-AI החינמית נוצלה.' });
+    if ('refused' in meter) {
+      sendMeterRefusal(res, meter.refused);
       return;
     }
 
@@ -226,6 +195,11 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
     const streaming = String(req.headers?.accept ?? '').includes('application/x-ndjson');
     const writeLine = (line: unknown) => res.write(`${JSON.stringify(line)}\n`);
     let out: Pick<VercelResponse, 'status' | 'json'> = res;
+    // Charged only when a real agent reply reached the student (answered, or streamed).
+    let billable: OperationUsage | null = null;
+    let replied = false;
+    let streamedText = false;
+    const reply = (body: unknown) => { replied = true; out.status(200).json(body); };
     try {
       const owner = await resolveRequestOwner(req as unknown as { headers?: Record<string, string | string[] | undefined> }, res);
       const board = await loadBoard(owner.ownerId, parsed.data.program_id);
@@ -368,7 +342,7 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
         },
         {
           model: modelConfig.model,
-          ...(streaming ? { onTextDelta: (text: string) => writeLine({ type: 'text_delta', text }) } : {}),
+          ...(streaming ? { onTextDelta: (text: string) => { streamedText = true; writeLine({ type: 'text_delta', text }); } } : {}),
         },
       );
 
@@ -376,6 +350,7 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
         out.status(503).json(unavailable());
         return;
       }
+      billable = agent.usage ?? null;
 
       // Preferences the agent recorded are persisted, so apply-time validation
       // (and the next turn) builds the same constraint model.
@@ -425,7 +400,7 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
         const events = boundEvents(question
           ? [...agent.events, clarificationEvent(question)]
           : agent.events);
-        out.status(200).json({
+        reply({
           outcome: 'clarification_required',
           message_he: 'לפני בניית חלופות אני צריך להשלים כמה פרטים אקדמיים חשובים.',
           events,
@@ -461,7 +436,7 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
           const events = boundEvents(question
             ? [...agent.events, clarificationEvent(question)]
             : agent.events);
-          out.status(200).json({
+          reply({
             outcome: 'clarification_required',
             message_he: 'הטיוטה מוכנה לבדיקה, אבל חסר עדיין מידע שמונע הצעה סופית.',
             events,
@@ -480,7 +455,7 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
 
       const messageHe = agent.messageHe.trim().slice(0, 4_000);
       if (agent.outcome !== 'proposal' || !agent.validation.valid) {
-        out.status(200).json({
+        reply({
           outcome: 'conversation',
           message_he: messageHe,
           events: boundEvents(agent.events),
@@ -649,15 +624,12 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
         applyEligible: true,
       };
       await putProposal(record);
-      await recordUsage(parsed.data.session_token, modelConfig.name);
-      // The proposal is persisted and retrievable by id: service delivered.
-      await meter.deliver(agent.outcome === 'proposal' ? agent.usage : undefined);
       const receipt = toReceipt(record);
       const events = boundEvents([
         ...agent.events,
         { type: 'alternatives_ready' as const, proposal_id: proposalId, candidate_ids: [candidateId] },
       ]);
-      out.status(200).json({
+      reply({
         outcome: 'proposal',
         message_he: messageHe,
         events,
@@ -710,8 +682,10 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
       console.error('[ai/conversation] unexpected error');
       out.status(500).json({ ok: false, code: 'INTERNAL_ERROR', message_he: 'אירעה שגיאה פנימית.' });
     } finally {
-      // Chat-only turns, conflicts and failures deliver no proposal: credits return.
-      await meter.release();
+      // A reply the student received is service delivered; conflicts, failures,
+      // early stops and empty runs return the reserved credit.
+      if (billable && (replied || streamedText)) await meter.deliver(billable);
+      else await meter.release(billable ? 'reply_not_sent' : 'no_reply');
     }
   };
 }

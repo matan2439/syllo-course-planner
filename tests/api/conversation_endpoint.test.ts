@@ -317,18 +317,22 @@ test('conversation blocks an early proposal until critical academic facts are kn
   expect(runDecisionPipeline).not.toHaveBeenCalled()
 })
 
-test('conversation refuses a turn once the AI quota is exhausted, before running the agent', async () => {
+test.each([
+  ['auth_required', 401, 'AUTH_REQUIRED'],
+  ['insufficient', 402, 'INSUFFICIENT_CREDITS'],
+  ['unavailable', 503, 'BILLING_UNAVAILABLE'],
+] as const)('a refused meter (%s) answers %i before the agent runs', async (refused, status, code) => {
   const runAgent = jest.fn()
   const handler = createConversationHandler({
     resolveModel: () => ({ model: {} as any, name: 'test-model' }),
-    checkQuota: async () => ({ allowed: false }),
+    openMeter: async () => ({ refused }),
     runAgent: runAgent as any,
   })
   const res = response()
   await handler({ method: 'POST', headers: { cookie: `syllo_owner=${'x'.repeat(43)}` }, body: validBody } as any, res)
 
-  expect(res.statusCode).toBe(429)
-  expect(res.body).toEqual(expect.objectContaining({ code: 'QUOTA_EXCEEDED' }))
+  expect(res.statusCode).toBe(status)
+  expect(res.body).toEqual(expect.objectContaining({ ok: false, code }))
   expect(runAgent).not.toHaveBeenCalled()
 })
 
@@ -367,10 +371,8 @@ test('preferences the agent records are persisted and returned as a context upda
 test('the plan the agent submitted is stored as the recommended, apply-checkable candidate', async () => {
   const preferences = { max_weekly_hours: 22, disallowed_course_ids: [] }
   const putProposal = jest.fn(async (record: any) => record)
-  const recordUsage = jest.fn(async () => undefined)
   const handler = createConversationHandler({
     resolveModel: () => ({ model: {} as any, name: 'test-model' }),
-    recordUsage,
     loadBoard: async () => null,
     loadAcademicContext: async () => ({
       ownerId: 'server-owner', programId: validBody.program_id, digest: validBody.academic_status_digest,
@@ -398,7 +400,6 @@ test('the plan the agent submitted is stored as the recommended, apply-checkable
   expect(recommended.normalizedIdentity).toBe(JSON.stringify([['COURSE-1', 'semester_a']]))
   expect(record.constraintFingerprint).toMatch(/^cf_[0-9a-f]{16}$/)
   expect(record.recommendedCandidateId).toBe(recommended.candidateId)
-  expect(recordUsage).toHaveBeenCalledWith(validBody.session_token, 'test-model')
 })
 
 test('conversation persists a structured clarification answer and returns refreshed context digests', async () => {
@@ -686,22 +687,32 @@ describe('a long agent run still fits the wire (many tool calls)', () => {
   })
 })
 
-test('metering: a delivered proposal consumes the reserved credit; a chat-only turn releases it', async () => {
+test('metering: every delivered reply consumes its credit; failures, conflicts and early stops release it', async () => {
   const preferences = { max_weekly_hours: 22, disallowed_course_ids: [] }
   const calls: string[] = []
-  const openMeter = jest.fn(async (_req: any, _res: any, opts: any) => {
-    calls.push(`open:${opts.freeQuotaAllowed}`)
+  const openMeter = jest.fn(async () => {
+    calls.push('open')
     return {
       funding: 'credits' as const,
       deliver: async (usage?: any) => { calls.push(`deliver:${usage?.input_tokens ?? '-'}`) },
-      release: async () => { calls.push('release') },
+      release: async (reason?: string) => { calls.push(`release:${reason}`) },
     }
   })
-  const make = (outcome: 'proposal' | 'conversation') => createConversationHandler({
+  const agents: Record<string, () => any> = {
+    proposal: () => ({
+      outcome: 'proposal', messageHe: 'הכנתי חלופה חוקית.', events: [],
+      draftPlan: { semesters: { semester_a: ['COURSE-1'] } }, validation: { valid: true },
+      usage: { input_tokens: 321 },
+    }),
+    chat: () => ({ outcome: 'conversation', messageHe: 'תשובה', events: [], usage: { input_tokens: 12 } }),
+    ask: () => ({ outcome: 'conversation', nextAction: 'ask', messageHe: 'שאלה?', events: [], usage: { input_tokens: 7 } }),
+    stoppedEarly: () => ({ outcome: 'conversation', messageHe: 'עצרתי', events: [] }),
+    unavailable: () => ({ outcome: 'assistant_unavailable', messageHe: 'x', events: [] }),
+    throws: () => { throw new Error('boom') },
+  }
+  const make = (kind: string) => createConversationHandler({
     resolveModel: () => ({ model: {} as any, name: 'test-model' }),
-    checkQuota: async () => ({ allowed: false }),
-    recordUsage: async () => undefined,
-    openMeter,
+    openMeter: openMeter as any,
     loadBoard: async () => null,
     loadAcademicContext: async () => ({
       ownerId: 'server-owner', programId: validBody.program_id, digest: validBody.academic_status_digest,
@@ -709,30 +720,25 @@ test('metering: a delivered proposal consumes the reserved credit; a chat-only t
       planContext: {}, preferences, updatedAt: 1,
     }),
     loadProgramBoard: () => ({ semesters: [], metadata: {} }),
-    runAgent: async () => (outcome === 'proposal' ? {
-      outcome: 'proposal', messageHe: 'הכנתי חלופה חוקית.', events: [],
-      draftPlan: { semesters: { semester_a: ['COURSE-1'] } }, validation: { valid: true },
-      usage: { input_tokens: 321 },
-    } : { outcome: 'conversation', messageHe: 'שאלה', events: [] }) as any,
+    runAgent: async () => agents[kind](),
     putProposal: async (record: any) => record,
   })
   const body = { ...validBody, preference_digest: preferenceDigest(preferences) }
   const headers = { cookie: `syllo_owner=${'x'.repeat(43)}` }
+  const run = async (kind: string, requestBody: any = body) => {
+    calls.length = 0
+    const res = response()
+    jest.spyOn(console, 'error').mockImplementation(() => {})
+    await make(kind)({ method: 'POST', headers, body: requestBody } as any, res)
+    return { status: res.statusCode, calls: [...calls] }
+  }
 
-  const proposal = response()
-  await make('proposal')({ method: 'POST', headers, body } as any, proposal)
-  expect(proposal.statusCode).toBe(200)
-  // release() after deliver() is a no-op inside the real meter.
-  expect(calls).toEqual(['open:false', 'deliver:321', 'release'])
-
-  calls.length = 0
-  const chat = response()
-  await make('conversation')({ method: 'POST', headers, body } as any, chat)
-  expect(calls).toEqual(['open:false', 'release'])
-
-  // No credits (meter refused) → the same 429 as before credits existed.
-  openMeter.mockResolvedValueOnce(null as any)
-  const refused = response()
-  await make('proposal')({ method: 'POST', headers, body } as any, refused)
-  expect(refused.statusCode).toBe(429)
+  expect(await run('proposal')).toEqual({ status: 200, calls: ['open', 'deliver:321'] })
+  expect(await run('chat')).toEqual({ status: 200, calls: ['open', 'deliver:12'] })
+  expect(await run('ask')).toEqual({ status: 200, calls: ['open', 'deliver:7'] })
+  expect(await run('stoppedEarly')).toEqual({ status: 200, calls: ['open', 'release:no_reply'] })
+  expect(await run('unavailable')).toEqual({ status: 503, calls: ['open', 'release:no_reply'] })
+  expect(await run('throws')).toEqual({ status: 500, calls: ['open', 'release:no_reply'] })
+  // A stale board is refused before the model runs: nothing charged.
+  expect(await run('chat', { ...body, board_version: 'stale-version' })).toEqual({ status: 409, calls: ['open', 'release:no_reply'] })
 })
