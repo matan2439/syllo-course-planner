@@ -436,7 +436,7 @@ describe('customer views and authorization', () => {
     // There is no public route that refunds, grants or adjusts.
     for (const route of ['refund', 'grant', 'adjust', 'admin/adjust']) {
       currentUser = me;
-      expect((await call(route, { method: 'POST', body: { credits: 100 } })).statusCode).toBe(404);
+      expect([403, 404]).toContain((await call(route, { method: 'POST', body: { credits: 100 } })).statusCode);
     }
     currentUser = null;
   });

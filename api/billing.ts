@@ -8,10 +8,13 @@
  *   POST /api/billing/webhook    Paddle only: signature-verified events
  *   GET  /api/billing/status     signed-in: one of MY checkouts (after Paddle.js reports success)
  *   GET  /api/billing/me         signed-in: my balance and per-purchase consumed / unused
+ *   GET  /api/billing/reconcile  Vercel Cron only (Authorization: Bearer CRON_SECRET)
+ *   *    /api/billing/admin/*    developers only (see billing/admin.ts)
  *
  * The browser never tells the server a price, a credit amount, a user id or a
  * payment outcome. Credits change only after a verified Paddle event.
  */
+import { timingSafeEqual } from 'crypto';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { verifiedUserId } from './ai/auth_session';
 import { getCreditBalance, lotSummary, type BillingSql } from './ai/credits';
@@ -21,7 +24,9 @@ import {
   paddleApi, paddleConfig, verifyPaddleSignature, PaddleConfigError,
   type PaddleApi, type PaddleConfig, type PaddleEvent,
 } from './billing/paddle';
-import { processPaddleEvent } from './billing/process_event';
+import { handleAdmin, isAdmin } from './billing/admin';
+import { processPaddleEvent, raiseAlert } from './billing/process_event';
+import { reconcile } from './billing/reconcile';
 import { IMMEDIATE_SERVICE_CONSENT_VERSION, LEGAL_VERSIONS, type AcceptedTerms } from '../shared/billing/legal_versions';
 
 export interface BillingDeps {
@@ -68,6 +73,12 @@ export function createBillingHandler(deps: BillingDeps = {}) {
     const header = req.headers['paddle-signature'];
     if (!verifyPaddleSignature(raw, Array.isArray(header) ? header[0] : header, config.webhookSecret)) {
       console.warn('[billing] webhook signature rejected');
+      // Visible in the admin console (one alert per hour): a rotated/mismatched secret rejects every real event.
+      const sql = getSql();
+      if (sql) {
+        await raiseAlert(sql, { severity: 'critical', code: 'webhook_failing', dedupeKey: `webhook_signature:${new Date().toISOString().slice(0, 13)}`,
+          details: { reason: 'signature rejected' } }).catch(() => {});
+      }
       return fail(res, 401, 'INVALID_SIGNATURE');
     }
     let event: PaddleEvent;
@@ -163,6 +174,34 @@ export function createBillingHandler(deps: BillingDeps = {}) {
     });
   }
 
+  /** Vercel Cron → scheduled reconciliation. No public trigger: the secret is required. */
+  async function cron(req: VercelRequest, res: VercelResponse) {
+    const secret = (deps.env ?? process.env).CRON_SECRET ?? '';
+    const given = Buffer.from(String(req.headers.authorization ?? ''));
+    const expected = Buffer.from(`Bearer ${secret}`);
+    if (!secret || given.length !== expected.length || !timingSafeEqual(given, expected)) return fail(res, 401, 'UNAUTHORIZED');
+    let config: PaddleConfig;
+    try { config = getConfig(); } catch { return fail(res, 503, 'BILLING_NOT_CONFIGURED'); }
+    const sql = getSql();
+    if (!sql) return fail(res, 503, 'DATABASE_UNAVAILABLE');
+    const report = await reconcile({ sql, environment: config.environment, api: getApi(config), trigger: 'cron', env: deps.env });
+    return res.status(200).json({ ok: true, run_id: report.runId, status: report.status, findings: report.findings.length });
+  }
+
+  async function admin(route: string, req: VercelRequest, res: VercelResponse) {
+    const userId = await verifyUser(req, res);
+    if (!userId) return fail(res, 401, 'SIGN_IN_REQUIRED');
+    const sql = getSql();
+    if (!sql) return fail(res, 503, 'DATABASE_UNAVAILABLE');
+    if (!(await isAdmin(sql, userId))) return fail(res, 403, 'FORBIDDEN');
+    let config: PaddleConfig | null = null;
+    try { config = getConfig(); } catch { /* the console still works without Paddle; reconciliation does not */ }
+    return handleAdmin(route, req, res, {
+      sql, actorId: userId, environment: config?.environment ?? null,
+      api: config ? () => getApi(config!) : null, env: deps.env,
+    });
+  }
+
   return async function billingHandler(req: VercelRequest, res: VercelResponse): Promise<void> {
     res.setHeader('Cache-Control', 'no-store');
     const route = routeOf(req);
@@ -175,6 +214,8 @@ export function createBillingHandler(deps: BillingDeps = {}) {
         res.status(200).json({ ok: true, environment, packages: packages.map((p) => ({ id: p.id, name_he: p.nameHe, credits: p.credits, paddle_price_id: p.paddlePriceId })) });
         return;
       }
+      if (route === 'reconcile' && req.method === 'GET') { await cron(req, res); return; }
+      if (route.startsWith('admin/')) { await admin(route.slice('admin/'.length), req, res); return; }
       const routes: Record<string, string> = { checkout: 'POST', status: 'GET', me: 'GET' };
       if (routes[route] !== req.method) { fail(res, 404, 'NOT_FOUND'); return; }
       const userId = await verifyUser(req, res);

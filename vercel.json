@@ -134,10 +134,22 @@
       "destination": "/web/:path*"
     }
   ],
+  "crons": [
+    {
+      "path": "/api/billing/reconcile",
+      "schedule": "17 3 * * *"
+    }
+  ],
   "headers": [
     {
       "source": "/api/(.*)",
-      "headers": [
+      "crons": [
+    {
+      "path": "/api/billing/reconcile",
+      "schedule": "17 3 * * *"
+    }
+  ],
+  "headers": [
         {
           "key": "Access-Control-Allow-Origin",
           "value": "*"
