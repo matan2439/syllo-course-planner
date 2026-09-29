@@ -68,6 +68,10 @@
       "use": "@vercel/node"
     },
     {
+      "src": "api/billing.ts",
+      "use": "@vercel/node"
+    },
+    {
       "src": "data/**",
       "use": "@vercel/static"
     }
@@ -116,6 +120,10 @@
     {
       "source": "/api/ai/course-insights",
       "destination": "/api/ai/course-insights.ts"
+    },
+    {
+      "source": "/api/billing/:path*",
+      "destination": "/api/billing.ts?route=:path*"
     },
     {
       "source": "/",

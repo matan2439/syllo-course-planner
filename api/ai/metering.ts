@@ -18,7 +18,7 @@
 import { randomUUID } from 'crypto';
 import postgres from 'postgres';
 import { verifiedUserId } from './auth_session';
-import { finalizeCredits, releaseCredits, reserveCredits, type CreditsSql, type OperationUsage } from './credits';
+import { finalizeCredits, releaseCredits, reserveCredits, type BillingSql, type CreditsSql, type OperationUsage } from './credits';
 import { PG_OPTS } from './_quota';
 import type { OwnerRequestLike, OwnerResponseLike } from './session_owner';
 
@@ -35,12 +35,12 @@ export interface MeteredOperation {
 
 const ANONYMOUS: MeteredOperation = { funding: 'anonymous', deliver: async () => {}, release: async () => {} };
 
-let shared: CreditsSql | null | undefined;
+let shared: BillingSql | null | undefined;
 /** A small shared pool for billing calls; null when no DATABASE_URL (local dev). */
-export function billingSql(): CreditsSql | null {
+export function billingSql(): BillingSql | null {
   if (shared === undefined) {
     const url = (process.env.DATABASE_URL ?? '').trim();
-    shared = url ? (postgres(url, { ...PG_OPTS, max: 3 }) as unknown as CreditsSql) : null;
+    shared = url ? (postgres(url, { ...PG_OPTS, max: 3 }) as unknown as BillingSql) : null;
   }
   return shared;
 }

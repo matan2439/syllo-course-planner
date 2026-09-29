@@ -12,6 +12,11 @@ export interface CreditsSql {
   unsafe(query: string, parameters?: readonly unknown[]): Promise<Array<Record<string, unknown>>>;
 }
 
+/** A CreditsSql that can also run a transaction (postgres.js `sql.begin`). */
+export interface BillingSql extends CreditsSql {
+  begin<T>(fn: (tx: CreditsSql) => Promise<T>): Promise<T>;
+}
+
 export type CreditKind =
   | 'purchase' | 'promo_grant' | 'subscription_grant'
   | 'admin_adjustment' | 'refund' | 'ai_usage';

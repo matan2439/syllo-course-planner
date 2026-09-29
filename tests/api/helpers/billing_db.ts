@@ -8,7 +8,7 @@ import fs from 'fs';
 import path from 'path';
 import { randomUUID } from 'crypto';
 import { PGlite } from '@electric-sql/pglite';
-import type { CreditsSql } from '../../../api/ai/credits';
+import type { BillingSql } from '../../../api/ai/credits';
 
 export const migration = (rel: string) =>
   fs.readFileSync(path.resolve(__dirname, '../../../scripts/migrations', rel), 'utf8');
@@ -25,7 +25,7 @@ const SUPABASE_STUB = `
 
 export interface BillingDb {
   pg: PGlite;
-  sql: CreditsSql;
+  sql: BillingSql;
   newUser(): Promise<string>;
   asClient<T>(userId: string, fn: () => Promise<T>): Promise<T>;
   one<T = Record<string, unknown>>(query: string, params?: unknown[]): Promise<T>;
@@ -43,7 +43,10 @@ export async function createBillingDb(migrations: string[]): Promise<BillingDb> 
   const rows = async <T>(q: string, p?: unknown[]) => (await pg.query<T>(q, p)).rows;
   return {
     pg,
-    sql: { unsafe: async (q, p) => rows<Record<string, unknown>>(q, p as unknown[]) },
+    sql: {
+      unsafe: async (q, p) => rows<Record<string, unknown>>(q, p as unknown[]),
+      begin: (fn) => pg.transaction((tx) => fn({ unsafe: async (q, p) => (await tx.query<Record<string, unknown>>(q, p as unknown[])).rows })),
+    },
     async newUser() {
       const id = randomUUID();
       await pg.query('INSERT INTO auth.users (id, email) VALUES ($1, $2)', [id, `${id}@test`]);
