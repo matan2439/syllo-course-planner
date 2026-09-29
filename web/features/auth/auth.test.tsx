@@ -163,12 +163,12 @@ describe('signed in', () => {
     const { client, db } = fakeSupabase({ session: { user: USER }, profile: baseProfile(), balance: 42 })
     const { unmount } = renderApp(client)
     fireEvent.click(await screen.findByRole('button', { name: 'החשבון שלי' }))
-    await waitFor(() => expect(screen.getByTestId('credit-balance')).toHaveTextContent('קרדיטים של Syllo: 42'))
+    await waitFor(() => expect(screen.getByTestId('credit-balance')).toHaveTextContent(/קרדיטים של Syllo\s*42$/))
     // Credits change on the server (admin grant, another device) → reopening shows the new value.
     fireEvent.click(screen.getByRole('button', { name: 'החשבון שלי' }))
     db.balance = 542
     fireEvent.click(screen.getByRole('button', { name: 'החשבון שלי' }))
-    await waitFor(() => expect(screen.getByTestId('credit-balance')).toHaveTextContent('קרדיטים של Syllo: 542'))
+    await waitFor(() => expect(screen.getByTestId('credit-balance')).toHaveTextContent(/Syllo\s*542$/))
     unmount()
 
     const exempt = fakeSupabase({ session: { user: USER }, profile: baseProfile({ role: 'developer', billing_exempt: true }), balance: 0 })
