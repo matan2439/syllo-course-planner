@@ -36,6 +36,7 @@ export function semesterWindowSlots(window: SemesterWindow = DEFAULT_SEMESTER_WI
 /** The student's current year in the degree — a profile fact, not UI state. */
 export type DegreeYear = 1 | 2 | 3 | 4
 export const DEGREE_YEARS: readonly DegreeYear[] = [1, 2, 3, 4]
+export const DEGREE_YEAR_LABELS: Record<DegreeYear, string> = { 1: 'שנה א׳', 2: 'שנה ב׳', 3: 'שנה ג׳', 4: 'שנה ד׳' }
 
 /** The one place that maps the student's year to the visible window. Unknown year → the default. */
 export function semesterWindowForDegreeYear(year: DegreeYear | null | undefined): SemesterWindow {

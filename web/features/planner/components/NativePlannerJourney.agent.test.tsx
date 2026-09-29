@@ -132,14 +132,14 @@ describe('NativePlannerJourney — mounted preference conversation', () => {
     await screen.findByText('קיבלתי את הבחירה')
     expect(send.mock.calls[0][0]).toEqual(expect.objectContaining({
       academic_status_digest: 'as_saved',
-      clarification_answers: [{ question_id: 'completed_courses', value: ['0509-1510'] }],
+      clarification_answers: [{ question_id: 'completed_courses', value: ['0542-1510'] }],
     }))
   })
 
   test('a delayed earlier context refresh cannot replace a newer accepted chat answer', async () => {
     server = createServerApplyStub({ proposalId: PROPOSAL_ID, candidates: [] })
     const oldContext = { academicStatusDigest: 'as_one', preferenceDigest: 'pref_one', personalStatus: {
-      completed: [{ course_id: '0509-1510' }], completed_knowledge: { status: 'known' },
+      completed: [{ course_id: '0542-1510' }], completed_knowledge: { status: 'known' },
     }, preferences: {} }
     const newContext = { ...oldContext, academicStatusDigest: 'as_two', preferenceDigest: 'pref_two', personalStatus: {
       completed: [], completed_knowledge: { status: 'known' },
@@ -187,7 +187,7 @@ describe('NativePlannerJourney — mounted preference conversation', () => {
       planningContextFn={async () => stored}
       sendConversationFn={async () => {
         stored = { ...stored, academicStatusDigest: 'as_new', personalStatus: {
-          completed: [{ course_id: '0509-1510' }], completed_knowledge: { status: 'known' },
+          completed: [{ course_id: '0542-1510' }], completed_knowledge: { status: 'known' },
         } }
         return { outcome: 'conversation', next_action: 'ask', message_he: 'שמרתי את הקורסים', events: [],
           context_update: { academic_status_digest: 'as_new', preference_digest: 'pref_old' } }
@@ -259,7 +259,7 @@ describe('NativePlannerJourney — mounted preference conversation', () => {
     fireEvent.click(screen.getByRole('button', { name: 'שלח לעוזר' }))
     await screen.findByRole('button', { name: 'בנה חלופות' })
     expect(send.mock.calls[0][0].clarification_answers).toEqual([
-      { question_id: 'completed_courses', value: ['0509-1510'] },
+      { question_id: 'completed_courses', value: ['0542-1510'] },
     ])
     fireEvent.change(composer, { target: { value: 'חשוב לי שבוע קל' } })
     fireEvent.click(screen.getByRole('button', { name: 'שלח לעוזר' }))

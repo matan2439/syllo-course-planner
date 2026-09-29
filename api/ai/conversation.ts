@@ -336,6 +336,7 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
       const session = new PlanningSession({
         programId: parsed.data.program_id,
         programBoard,
+        currentDegreeYear: parsed.data.current_degree_year ?? null,
         // The model must see the student's completed courses even when the stored
         // plan context keeps them only in personal status.
         planContext: contextWithStatus,

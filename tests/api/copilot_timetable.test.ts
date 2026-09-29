@@ -1,5 +1,5 @@
 import { RunContext, type FunctionTool } from '@openai/agents'
-import { checkTimetable } from '../../api/ai/agent/timetable'
+import { checkTimetable, lockKey, weekCost } from '../../shared/planner/timetable'
 import { PlanningSession } from '../../api/ai/agent/session'
 import { buildAgentTools } from '../../api/ai/agent/tools'
 import { loadLocalBoardJson } from '../../api/ai/board_loader'
@@ -75,6 +75,36 @@ test('a group without meeting times is never picked; a choice with only such gro
   ])
   expect(untimedChoice.unknownCourseIds).toEqual(['A'])
   expect(untimedChoice.selection).toEqual([])
+})
+
+test('picks the most convenient week, not just the first one that fits', () => {
+  const result = checkTimetable([
+    // Group 01 alone would add a campus day (Monday); 02 shares Sunday with B.
+    course('A', group('01', 'שיעור', 'ב 10:00-12:00'), group('02', 'שיעור', 'א 12:00-14:00')),
+    course('B', group('01', 'שיעור', 'א 10:00-12:00')),
+    // Recitations: 11 leaves a 4h hole on Sunday, 12 follows right after.
+    course('C', group('11', 'תרגיל', 'א 18:00-19:00'), group('12', 'תרגיל', 'א 14:00-15:00')),
+  ])
+  expect(result.feasible).toBe(true)
+  expect(result.daysUsed).toEqual(['א'])
+  expect(result.selection).toEqual(expect.arrayContaining([
+    expect.objectContaining({ courseId: 'A', groupId: '02' }),
+    expect.objectContaining({ courseId: 'C', groupId: '12', groupLabel: '12' }),
+  ]))
+})
+
+test('keeps the student’s own pick when it still fits', () => {
+  const a = course('A', group('01', 'שיעור', 'ב 10:00-12:00'), group('02', 'שיעור', 'א 12:00-14:00'))
+  const b = course('B', group('01', 'שיעור', 'א 10:00-12:00'))
+  const locked = { [lockKey('A', a.groups[0])]: '01' }
+  const result = checkTimetable([a, b], [], locked)
+  expect(result.selection).toEqual(expect.arrayContaining([expect.objectContaining({ courseId: 'A', groupId: '01' })]))
+})
+
+test('week cost counts days, idle gaps and off-hours meetings', () => {
+  expect(weekCost([
+    group('1', 'x', 'א 08:00-10:00'), group('2', 'x', 'א 12:00-13:00'), group('3', 'x', 'ג 17:00-19:00'),
+  ])).toEqual([2, 120, 2])
 })
 
 test('courses without timetable data are reported, not guessed', () => {

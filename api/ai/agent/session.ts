@@ -25,7 +25,7 @@ export const EXCLUDED_ASKED_KEY = '__excluded_courses_asked';
 export const MAX_EXCLUDED_ASKS = 2;
 
 export type ClarificationQuestionId =
-  | 'completed_courses' | 'current_courses' | 'excluded_courses' | 'max_weekly_hours' | 'track_or_focus';
+  | 'completed_courses' | 'current_courses' | 'excluded_courses' | 'max_weekly_hours' | 'track_or_focus' | 'degree_year';
 
 export interface AgentQuestion {
   questionHe: string;
@@ -41,6 +41,8 @@ export interface AgentSubmission {
 export interface PlanningSessionInput {
   programId: string;
   programBoard: unknown;
+  /** The student's year in the degree (1–4) from their profile; null when they have not said. */
+  currentDegreeYear?: number | null;
   /** Stored plan_context (personal status, progress). */
   planContext: Record<string, unknown>;
   /** plan_context with the committed board's semesters — the draft starts here. */

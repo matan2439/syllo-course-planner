@@ -6,7 +6,7 @@
  */
 import { tool, type RunContext } from '@openai/agents';
 import { z } from 'zod';
-import type { PlanningSession } from './session';
+import type { ClarificationQuestionId, PlanningSession } from './session';
 import {
   allowedSemesters,
   fact,
@@ -27,8 +27,8 @@ import { analyzeHardConstraints } from '../hard_constraints';
 import { normalizeHebrew } from '../planning_intent';
 import { ACADEMIC_FOCUS_AREAS } from '../academic_interest_profile';
 import { INTERNAL_DISTRIBUTION_POLICY } from '../planner_policy_context';
-import { defaultTermMapping } from '../../../shared/planner/schedule';
-import { checkTimetable, WEEK_DAYS } from './timetable';
+import { currentSemesterId, defaultTermMapping } from '../../../shared/planner/schedule';
+import { checkTimetable, WEEK_DAYS } from '../../../shared/planner/timetable';
 import { fetchScheduleFromBidit } from './session';
 import { earlyYearCoursesFor } from '../../../shared/planner/early_year_courses';
 import { completedCreditHours } from '../conversation_clarification';
@@ -81,6 +81,15 @@ export function offeringSourceHe(url: string | null): string | null {
 
 const SYLLABUS_SEMESTER_NOTE =
   'Not a source for semesters, days or hours. For which semester the course runs use get_course_details.allowed_semesters and cite its offering_source_he / offering_source_url.';
+
+/** `year_2_semester_a` → 2. */
+const degreeYearOf = (semesterId: string) => Number(/^year_(\d+)_/.exec(semesterId)?.[1] ?? 0);
+
+/** Which degree years the board plans, e.g. "years_1_2". */
+function planningWindow(semesterIds: readonly string[]): string | null {
+  const years = [...new Set(semesterIds.map(degreeYearOf).filter(Boolean))].sort();
+  return years.length ? `years_${years.join('_')}` : null;
+}
 
 const nameOf = (session: PlanningSession, id: string) => session.model.profiles.get(id)?.name_he ?? null;
 
@@ -178,6 +187,10 @@ export function buildAgentTools() {
         return grounded({
           program_id: session.input.programId,
           semester_ids: model.knownSemesterIds,
+          // The student's year in the degree (their profile); null = unknown → ask (question_id degree_year).
+          current_degree_year: session.input.currentDegreeYear ?? null,
+          current_semester_id: currentSemesterId(session.input.currentDegreeYear, new Date()),
+          planning_window: planningWindow(model.knownSemesterIds),
           completed_course_ids: [...model.completedCourseIds],
           currently_taking_course_ids: [...(model.currentlyPlannedCourseIds ?? [])],
           committed_plan: planSummary(session),
@@ -199,14 +212,14 @@ export function buildAgentTools() {
 
     tool({
       name: 'record_completed_courses',
-      description: 'Record the courses the student says they completed, so they are never planned again and count toward degree hours. include_early_years adds every Years 1–2 course of the program (for "I finished years 1–2"). Resolve other names with search_courses first. Tell the student what was recorded so they can correct it.',
+      description: 'Record the courses the student says they completed, so they are never planned again and count toward degree hours. include_years adds every official mandatory course of those degree years ([1] = "I finished year 1", [1, 2] = "I finished years 1–2"). Resolve other names with search_courses first. Tell the student what was recorded so they can correct it. Calling it with nothing to add records that the student has completed nothing yet (a first-semester student).',
       parameters: z.object({
-        include_early_years: z.boolean().nullable().describe('Add all of the program\'s Years 1–2 courses'),
+        include_years: z.array(z.number().int().min(1).max(2)).max(2).nullable().describe('Degree years whose official mandatory courses were all completed'),
         add_course_ids: listOrNull(courseId),
         remove_course_ids: listOrNull(courseId).describe('e.g. a Years 1–2 course the student has NOT completed yet'),
       }),
       execute: observed('record_completed_courses', (session, args: {
-        include_early_years: boolean | null; add_course_ids: string[] | null; remove_course_ids: string[] | null;
+        include_years: number[] | null; add_course_ids: string[] | null; remove_course_ids: string[] | null;
       }) => {
         const early = earlyYearCoursesFor(session.input.programId);
         const known = (id: string) => session.model.profiles.has(id) || early.some((course) => course.courseId === id);
@@ -215,7 +228,8 @@ export function buildAgentTools() {
           return { accepted: false, reason: 'Unknown course ids — resolve them with search_courses first.', unknown_course_ids: unknown };
         }
         const ids = new Set(session.completedCourseIds());
-        if (args.include_early_years) for (const course of early) ids.add(course.courseId);
+        const years = new Set(args.include_years ?? []);
+        for (const course of early) if (years.has(degreeYearOf(course.semesterId))) ids.add(course.courseId);
         for (const id of args.add_course_ids ?? []) ids.add(id);
         for (const id of args.remove_course_ids ?? []) ids.delete(id);
         session.setCompletedCourses([...ids]);
@@ -586,7 +600,7 @@ export function buildAgentTools() {
       execute: observed('check_timetable', async (session, args: { semester_id: string; free_days: string[] | null }) => {
         const courseIds = session.worker.getPlan().semesters[args.semester_id];
         if (!courseIds) return { accepted: false, reason: `Unknown semester_id. Known: ${session.model.knownSemesterIds.join(', ')}` };
-        const term = defaultTermMapping(session.model.knownSemesterIds, new Date())[args.semester_id];
+        const term = defaultTermMapping(session.model.knownSemesterIds, new Date(), session.input.currentDegreeYear)[args.semester_id];
         const freeDays = args.free_days ?? (Array.isArray(session.preferences.free_days) ? session.preferences.free_days as string[] : []);
         let courses;
         try {
@@ -605,7 +619,7 @@ export function buildAgentTools() {
           days_used: result.daysUsed,
           free_days_kept: result.feasible ? WEEK_DAYS.filter((day) => !result.daysUsed.includes(day)) : [],
           selection: result.selection.map((item) => ({
-            course: label(item.courseId), kind: item.kind, mode: item.mode, group: item.groupId,
+            course: label(item.courseId), kind: item.kind, mode: item.mode, group: item.groupId, group_label: item.groupLabel,
             meetings: item.slots.map((slot) => `${slot.day} ${slot.start}-${slot.end}`),
           })),
           courses_without_timetable_data: result.unknownCourseIds.map(label),
@@ -621,9 +635,9 @@ export function buildAgentTools() {
       parameters: z.object({
         question_he: z.string().trim().min(1).max(400),
         options_he: z.array(z.string().trim().min(1).max(160)).max(5).describe('2-5 suggested answers, or empty for free text'),
-        question_id: z.enum(['completed_courses', 'current_courses', 'excluded_courses', 'max_weekly_hours', 'track_or_focus']).nullable(),
+        question_id: z.enum(['completed_courses', 'current_courses', 'excluded_courses', 'max_weekly_hours', 'track_or_focus', 'degree_year']).nullable(),
       }),
-      execute: observed('ask_student', (session, args: { question_he: string; options_he: string[]; question_id: 'completed_courses' | 'current_courses' | 'excluded_courses' | 'max_weekly_hours' | 'track_or_focus' | null }) => {
+      execute: observed('ask_student', (session, args: { question_he: string; options_he: string[]; question_id: ClarificationQuestionId | null }) => {
         if (args.question_id === 'excluded_courses' && session.excludedCoursesKnown()) {
           return { accepted: false, reason: 'Courses to leave out are already known (recorded, or taken as none after two unanswered asks). Do not ask again.' };
         }

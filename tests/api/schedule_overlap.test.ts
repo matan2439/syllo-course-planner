@@ -2,6 +2,7 @@ import {
   hasOverlap,
   groupsOverlap,
   defaultTermMapping,
+  currentSemesterId,
   type TimeSlot,
   type ScheduleGroup,
 } from '../../shared/planner/schedule';
@@ -65,12 +66,26 @@ describe('defaultTermMapping', () => {
     });
   });
 
-  test('a date before August maps to semester 2 of the previous calendar year', () => {
+  test('סמסטר א/ב comes from the id, not the position — also in spring', () => {
     const ids = ['year_3_semester_a', 'year_3_semester_b'];
     const mapping = defaultTermMapping(ids, new Date('2026-03-01T00:00:00Z'));
     expect(mapping).toEqual({
-      year_3_semester_a: { year: 2025, semester: 2 },
-      year_3_semester_b: { year: 2026, semester: 1 },
+      year_3_semester_a: { year: 2025, semester: 1 },
+      year_3_semester_b: { year: 2025, semester: 2 },
     });
+  });
+
+  test('the student’s degree year anchors the academic year of each column', () => {
+    const ids = ['year_1_semester_a', 'year_1_semester_b', 'year_2_semester_a', 'year_2_semester_b'];
+    const mapping = defaultTermMapping(ids, new Date('2026-10-01T00:00:00Z'), 2);
+    expect(mapping.year_1_semester_a).toEqual({ year: 2025, semester: 1 });
+    expect(mapping.year_2_semester_b).toEqual({ year: 2026, semester: 2 });
+  });
+
+  test('current semester id follows the calendar half', () => {
+    expect(currentSemesterId(2, new Date('2026-10-01T00:00:00Z'))).toBe('year_2_semester_a');
+    expect(currentSemesterId(2, new Date('2026-01-15T00:00:00Z'))).toBe('year_2_semester_a');
+    expect(currentSemesterId(1, new Date('2026-03-01T00:00:00Z'))).toBe('year_1_semester_b');
+    expect(currentSemesterId(null, new Date('2026-03-01T00:00:00Z'))).toBeNull();
   });
 });

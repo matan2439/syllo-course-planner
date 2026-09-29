@@ -167,7 +167,7 @@ export async function runPlannerAgent(input: PlannerAgentInput, deps: PlannerAge
         question_he: session.question.questionHe,
         ...(questionId ? {
           question_id: questionId,
-          answer_type: questionId === 'max_weekly_hours' ? 'number' as const
+          answer_type: questionId === 'max_weekly_hours' || questionId === 'degree_year' ? 'number' as const
             : questionId === 'track_or_focus' ? 'text' as const : 'course_id_list' as const,
         } : {}),
         ...(session.question.optionsHe.length >= 2 ? { options_he: session.question.optionsHe } : {}),

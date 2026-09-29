@@ -5,6 +5,7 @@
     "moduleResolution": "node",
     "strict": true,
     "esModuleInterop": true,
+    "resolveJsonModule": true,
     "skipLibCheck": true,
     "outDir": ".build",
     "lib": ["ES2020", "DOM"]

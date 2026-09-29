@@ -5,9 +5,8 @@ import PreferenceConversation from '../../agent/components/PreferenceConversatio
 import CompletedCoursesPanel, { type AcademicStatusDraft } from '../../courses/components/CompletedCoursesPanel'
 import CourseNamePicker, { type PickerCourse } from '../../courses/components/CourseNamePicker'
 import type { RequirementCategoryVM } from '../../../lib/requirements'
-import { DEGREE_YEARS, type DegreeYear } from '../../../lib/planner/semester-window'
+import { DEGREE_YEAR_LABELS, DEGREE_YEARS, type DegreeYear } from '../../../lib/planner/semester-window'
 
-const DEGREE_YEAR_LABELS: Record<DegreeYear, string> = { 1: 'שנה א׳', 2: 'שנה ב׳', 3: 'שנה ג׳', 4: 'שנה ד׳' }
 
 /** Values match api/ai/gateway_assessment.ts GATEWAY_ASSESSMENT_TYPES. */
 const GATEWAY_ASSESSMENT_OPTIONS = [

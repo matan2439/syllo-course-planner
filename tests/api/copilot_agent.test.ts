@@ -292,7 +292,7 @@ describe('completed courses carry their degree credit', () => {
   test('"I finished years 1–2" records every Years 1–2 course and ~90h of credit (was 5h)', async () => {
     const session = await meSession()
     expect(session.missingCriticalInputs().map((input) => input.field)).toContain('completedCourses')
-    const output = await callTool(session, 'record_completed_courses', { include_early_years: true, add_course_ids: null, remove_course_ids: null })
+    const output = await callTool(session, 'record_completed_courses', { include_years: [1, 2], add_course_ids: null, remove_course_ids: null })
 
     expect(output).toEqual(expect.objectContaining({ accepted: true, completed_count: 24 }))
     expect(output.completed_credit_hours).toBeGreaterThan(85)
@@ -301,42 +301,69 @@ describe('completed courses carry their degree credit', () => {
     expect(session.missingCriticalInputs().map((input) => input.field)).not.toContain('completedCourses')
   })
 
+  test('"I finished year 1" records only the official Year 1 courses', async () => {
+    const session = await meSession()
+    const output = await callTool(session, 'record_completed_courses', { include_years: [1], add_course_ids: null, remove_course_ids: null })
+    expect(output).toEqual(expect.objectContaining({ accepted: true, completed_count: 13 }))
+    expect(session.completedCourseIds()).toContain('0542-1510') // official id, not the retired 0509-1510
+    expect(session.completedCourseIds()).not.toContain('0542-2110') // Year 2
+  })
+
+  test('a first-semester student records "nothing completed" and is not asked again', async () => {
+    const session = await meSession()
+    const output = await callTool(session, 'record_completed_courses', { include_years: null, add_course_ids: null, remove_course_ids: null })
+    expect(output).toEqual(expect.objectContaining({ accepted: true, completed_count: 0 }))
+    expect(session.missingCriticalInputs().map((input) => input.field)).not.toContain('completedCourses')
+  })
+
+  test('the student context carries the degree year and the semester they are in', async () => {
+    const context = { semesters: [], personal_status: { completed: [], currently_taking: [], planned: [] } }
+    const session = new PlanningSession({
+      programId: ME, programBoard: loadLocalBoardJson(ME), planContext: context, committedContext: context, currentDegreeYear: 2,
+      preferences: {}, clarification: { needsClarification: false, missingInputs: [], questions: [] },
+    })
+    const { data: output } = await callTool(session, 'get_student_context', {})
+    expect(output.current_degree_year).toBe(2)
+    expect(output.current_semester_id).toMatch(/^year_2_semester_[ab]$/)
+    expect(output.planning_window).toBe('years_3_4')
+  })
+
   test('a course the student has not finished can be taken out, and unknown ids are refused', async () => {
     const session = await meSession()
-    await callTool(session, 'record_completed_courses', { include_early_years: true, add_course_ids: null, remove_course_ids: null })
-    const output = await callTool(session, 'record_completed_courses', { include_early_years: null, add_course_ids: null, remove_course_ids: ['0509-2846'] })
+    await callTool(session, 'record_completed_courses', { include_years: [1, 2], add_course_ids: null, remove_course_ids: null })
+    const output = await callTool(session, 'record_completed_courses', { include_years: null, add_course_ids: null, remove_course_ids: ['0509-2846'] })
     expect(output.completed_count).toBe(23)
     expect(session.completedCourseIds()).not.toContain('0509-2846')
-    expect(await callTool(session, 'record_completed_courses', { include_early_years: null, add_course_ids: ['NOPE'], remove_course_ids: null }))
+    expect(await callTool(session, 'record_completed_courses', { include_years: null, add_course_ids: ['NOPE'], remove_course_ids: null }))
       .toEqual(expect.objectContaining({ accepted: false, unknown_course_ids: ['NOPE'] }))
   })
 
   test('removing a completed course lowers the credit, while hand-entered extra credit is kept', () => {
-    const withTwo = withCompletedCredit({ personal_status: { completed: [{ course_id: '0509-1510' }, { course_id: '0509-1624' }] } }, ME, null)
+    const withTwo = withCompletedCredit({ personal_status: { completed: [{ course_id: '0542-1510' }, { course_id: '0509-1624' }] } }, ME, null)
     expect(withTwo.total_hours_progress).toEqual(expect.objectContaining({ known_completed_hours: 10.5 }))
-    const withOne = withCompletedCredit({ ...withTwo, personal_status: { completed: [{ course_id: '0509-1510' }] } }, ME, null)
+    const withOne = withCompletedCredit({ ...withTwo, personal_status: { completed: [{ course_id: '0542-1510' }] } }, ME, null)
     expect(withOne.total_hours_progress).toEqual(expect.objectContaining({ known_completed_hours: 4 }))
 
     const manual = { ...withTwo, total_hours_progress: { ...(withTwo.total_hours_progress as object), known_completed_hours: 120 } }
-    const stillManual = withCompletedCredit({ ...manual, personal_status: { completed: [{ course_id: '0509-1510' }] } }, ME, null)
+    const stillManual = withCompletedCredit({ ...manual, personal_status: { completed: [{ course_id: '0542-1510' }] } }, ME, null)
     expect(stillManual.total_hours_progress).toEqual(expect.objectContaining({ known_completed_hours: 120 }))
   })
 
   test('a context saved before the credit marker still lowers credit on removal', () => {
     // Stored by the previous release: derived 10.5h, no marker.
     const legacy = {
-      personal_status: { completed: [{ course_id: '0509-1510' }] },
+      personal_status: { completed: [{ course_id: '0542-1510' }] },
       total_hours_progress: { known_completed_hours: 10.5 },
     }
-    const next = withCompletedCredit(legacy, ME, null, ['0509-1510', '0509-1624'])
+    const next = withCompletedCredit(legacy, ME, null, ['0542-1510', '0509-1624'])
     expect(next.total_hours_progress).toEqual(expect.objectContaining({ known_completed_hours: 4, completed_courses_credit_hours: 4 }))
     // …and a later edit does not resurrect the old total as "manual" credit.
-    const later = withCompletedCredit({ ...next, personal_status: { completed: [{ course_id: '0509-1510' }, { course_id: '0509-1815' }] } }, ME, null)
+    const later = withCompletedCredit({ ...next, personal_status: { completed: [{ course_id: '0542-1510' }, { course_id: '0509-1815' }] } }, ME, null)
     expect(later.total_hours_progress).toEqual(expect.objectContaining({ known_completed_hours: 7 }))
   })
 
   test('withCompletedCredit keeps larger hand-entered credit', () => {
-    const base = { personal_status: { completed: [{ course_id: '0509-1510' }] } }
+    const base = { personal_status: { completed: [{ course_id: '0542-1510' }] } }
     expect(withCompletedCredit(base, ME, null).total_hours_progress).toEqual(expect.objectContaining({ known_completed_hours: 4 }))
     expect(withCompletedCredit({ ...base, total_hours_progress: { known_completed_hours: 100 } }, ME, null).total_hours_progress)
       .toEqual(expect.objectContaining({ known_completed_hours: 100 }))

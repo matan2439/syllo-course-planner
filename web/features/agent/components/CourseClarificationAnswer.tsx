@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react'
 import { rankCourseMatches } from '../../../../shared/search/course-name-match'
 
-type CourseQuestionId = 'completed_courses' | 'current_courses' | 'excluded_courses'
+export type CourseQuestionId = 'completed_courses' | 'current_courses' | 'excluded_courses'
 
 const ANSWER_LABELS = {
   completed_courses: { prefix: 'הקורסים שהשלמתי', none: 'לא השלמתי קורסים' },

@@ -650,6 +650,21 @@ body {
 .weekly-search-controls button,
 .weekly-search-result { border: 1px solid color-mix(in srgb, var(--purple) 52%, var(--border)); border-radius: .6rem; background: var(--purple); color: white; padding: .45rem .65rem; font-size: .72rem; font-weight: 750; }
 .weekly-search-result { display: block; width: 100%; margin-top: .4rem; background: color-mix(in srgb, var(--purple) 12%, var(--surface)); color: var(--text); text-align: right; }
+.weekly-best-groups { display: grid; gap: .5rem; border: 1px solid color-mix(in srgb, var(--purple) 23%, var(--border)); border-radius: .75rem; padding: .7rem; }
+.weekly-free-days { display: flex; flex-wrap: wrap; align-items: center; gap: .3rem; margin: 0; border: 0; padding: 0; font-size: .72rem; }
+.weekly-free-days legend { width: 100%; margin-bottom: .3rem; color: var(--text-muted); font-weight: 750; }
+.weekly-free-days button { min-width: 2.2rem; border: 1px solid var(--border); border-radius: 999px; padding: .25rem .5rem; font-weight: 750; }
+.weekly-free-days button[aria-pressed="true"] { border-color: var(--purple); background: color-mix(in srgb, var(--purple) 16%, var(--surface)); }
+.weekly-best-button { border-radius: .6rem; background: var(--purple); color: white; padding: .5rem .7rem; font-size: .76rem; font-weight: 800; }
+.weekly-best-reset { justify-self: start; color: var(--text-muted); font-size: .68rem; text-decoration: underline; }
+.weekly-best-message { margin: 0; font-size: .72rem; line-height: 1.45; }
+.weekly-bidding-list { margin-top: .9rem; border-top: 1px solid var(--border); padding-top: .7rem; font-size: .74rem; }
+.weekly-bidding-heading { display: flex; align-items: center; justify-content: space-between; gap: .5rem; margin-bottom: .45rem; }
+.weekly-bidding-heading h3 { margin: 0; font-size: .9rem; font-weight: 800; }
+.weekly-bidding-heading button { border: 1px solid var(--border); border-radius: .5rem; padding: .25rem .6rem; font-weight: 750; }
+.weekly-bidding-list table { width: 100%; border-collapse: collapse; display: block; overflow-x: auto; }
+.weekly-bidding-list th, .weekly-bidding-list td { border-bottom: 1px solid var(--border); padding: .35rem .4rem; text-align: right; white-space: nowrap; }
+.weekly-bidding-list th { color: var(--text-muted); font-weight: 750; }
 
 @media (max-width: 780px) {
   .weekly-schedule-header { display: grid; }

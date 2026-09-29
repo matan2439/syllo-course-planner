@@ -270,3 +270,29 @@ test('when the year changes the window, an out-of-window selection moves to a va
   expect(screen.getByRole('tab', { name: 'שנה ב׳ — סמסטר א׳' })).toHaveAttribute('aria-selected', 'true')
   expect(screen.getAllByRole('tab', { selected: true })).toHaveLength(1)
 })
+
+test('picks the most convenient groups, honors free days, and lists them for bidding', async () => {
+  const lecture = (groupId: string, day: string, start: string, end: string) => ({
+    groupId, havura: groupId, kind: 'ראשית', teachingMode: 'שיעור', lecturer: null, room: null,
+    slots: [{ day, start, end }],
+  })
+  const fetchScheduleGroupsFn = jest.fn().mockResolvedValue(groupsResponse({
+    courses: [
+      { ...groupsResponse().courses[0], groups: [lecture('01', 'ב', '10:00', '12:00'), lecture('02', 'א', '12:00', '14:00')] },
+      { ...groupsResponse().courses[1], groups: [lecture('01', 'א', '10:00', '12:00')] },
+    ],
+  }))
+  renderDrawer({ fetchScheduleGroupsFn })
+
+  fireEvent.click(await screen.findByRole('button', { name: 'בחירת הקבוצות הטובות ביותר' }))
+  expect(await screen.findByText(/1 ימים בקמפוס/)).toBeInTheDocument()
+  const bidding = screen.getByRole('region', { name: 'רשימה לבידינג' })
+  expect(bidding).toHaveTextContent('0542-2400')
+  expect(bidding).toHaveTextContent('02')
+
+  // Sunday free: only Monday's lecture of the first course is left, the second course blocks it.
+  fireEvent.click(screen.getByRole('button', { name: 'א׳' }))
+  fireEvent.click(screen.getByRole('button', { name: 'חישוב מחדש בלי הבחירות שלי' }))
+  expect(await screen.findByText(/לא ניתן לפנות את הימים שבחרתם בגלל: אבטחה ובטיחות/)).toBeInTheDocument()
+  expect(JSON.parse(window.localStorage.getItem('tau_weekly_schedule:mechanical_engineering_2027')!).freeDays).toEqual(['א'])
+})
