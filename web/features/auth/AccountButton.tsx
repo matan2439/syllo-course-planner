@@ -60,7 +60,7 @@ export default function AccountButton() {
           aria-expanded={open}
           aria-label="החשבון שלי"
           title={user.email ?? 'החשבון שלי'}
-          onClick={() => setOpen((v) => !v)}
+          onClick={() => { if (!open) auth.refreshCreditBalance(); setOpen((v) => !v) }}
         >
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
             <circle cx="12" cy="8" r="4" />
@@ -85,10 +85,23 @@ export default function AccountButton() {
                 <span className="inline-block rounded-full bg-[var(--purple)]/15 px-2 py-0.5 text-xs font-semibold text-[var(--purple)]">מפתח</span>
               )}
               {(auth.profile?.billing_exempt || auth.creditBalance != null) && (
-                <p className="text-sm text-[var(--text)]" data-testid="credit-balance">
-                  קרדיטים של Syllo:{' '}
-                  <span className="font-semibold">{auth.profile?.billing_exempt ? 'ללא חיוב' : auth.creditBalance}</span>
-                </p>
+                <div
+                  data-testid="credit-balance"
+                  className="flex items-center gap-3 rounded-xl border border-[color-mix(in_srgb,var(--purple)_45%,transparent)] bg-[linear-gradient(135deg,color-mix(in_srgb,var(--purple)_22%,transparent),color-mix(in_srgb,var(--purple)_6%,transparent))] p-3"
+                >
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--purple-strong)] text-white shadow-sm" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                      <path d="M12 2l2.2 6.3L20.5 10.5l-6.3 2.2L12 19l-2.2-6.3L3.5 10.5l6.3-2.2z" />
+                      <path d="M19 15l.9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9z" />
+                    </svg>
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-xs text-[var(--text-muted)]">קרדיטים של <bdi>Syllo</bdi></p>
+                    <p className="text-xl font-bold leading-tight text-[var(--text)]">
+                      {auth.profile?.billing_exempt ? 'ללא חיוב' : auth.creditBalance?.toLocaleString('he-IL')}
+                    </p>
+                  </div>
+                </div>
               )}
               <p className="text-xs text-[var(--text-muted)]">הפרופיל והתוכנית שלך נשמרים בחשבון.</p>
               <button type="button" className={SECONDARY + ' w-full'} onClick={() => { void auth.signOut(); setOpen(false) }}>
