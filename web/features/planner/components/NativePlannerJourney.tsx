@@ -406,6 +406,8 @@ export default function NativePlannerJourney({
           conversationReady={academicContextPhase === 'ready' && Boolean(loadedAcademicContext || !initializePlanningContext)}
           sendConversationFn={sendConversationWithPanel}
           localContextVersion={statusVersion + preferenceVersion}
+          currentDegreeYear={currentDegreeYear}
+          onCurrentDegreeYearChange={onCurrentDegreeYearChange}
           courseScopes={[
             { id: 'early-years', label: 'קורסי שנים א׳–ב׳', courseIds: earlyYearCoursesFor(programId).map((course) => course.courseId) },
             { id: 'board', label: 'הקורסים בלוח הנוכחי', courseIds: [...new Set(current.semesters.flatMap((semester) => semester.courses.map((course) => course.courseId)))] },

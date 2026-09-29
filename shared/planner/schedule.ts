@@ -75,29 +75,48 @@ export function groupsOverlap(
   return a.slots.some((slotA) => b.slots.some((slotB) => hasOverlap(slotA, slotB)));
 }
 
+/** August–January is סמסטר א׳ of the academic year that started that August; February–July is סמסטר ב׳. */
+function currentTerm(today: Date): SemesterTerm {
+  const month = today.getMonth() + 1; // 1-12
+  const inFirstHalf = month >= 8 || month === 1;
+  const startYear = month >= 8 ? today.getFullYear() : today.getFullYear() - 1;
+  return { year: startYear, semester: inFirstHalf ? 1 : 2 };
+}
+
+const SLOT_ID = /^year_(\d+)_semester_([ab])$/;
+
+/** The board semester the student is in now (`year_2_semester_b`), or null when their year is unknown. */
+export function currentSemesterId(degreeYear: number | null | undefined, today: Date): string | null {
+  if (!degreeYear) return null;
+  return `year_${degreeYear}_semester_${currentTerm(today).semester === 1 ? 'a' : 'b'}`;
+}
+
 /**
- * Default academic-term mapping for a list of board semester ids, in order:
- * 4 consecutive terms (year, 1|2) starting from the CURRENT calendar term.
- * August–January of year Y is treated as Y/סמסטר א׳; February–July is
- * סמסטר ב׳ of the year that started the previous August. Editable per-column
- * afterward — this is only the starting default.
+ * Academic term of each board semester id. סמסטר א׳/ב׳ comes from the id itself
+ * (`…_semester_a|b`), never from its position. The year is the current academic year
+ * shifted by how far the column's degree year is from the student's (`degreeYear`);
+ * with the year unknown, the first column is taken as the current degree year.
+ * Ids outside the `year_N_semester_a|b` convention fall back to consecutive terms
+ * from the current one.
  */
 export function defaultTermMapping(
   semesterIds: readonly string[],
   today: Date,
+  degreeYear?: number | null,
 ): Record<string, SemesterTerm> {
-  const month = today.getMonth() + 1; // 1-12
-  const isAugustOrLater = month >= 8;
-  const startYear = isAugustOrLater ? today.getFullYear() : today.getFullYear() - 1;
-  const startSemester: 1 | 2 = isAugustOrLater ? 1 : 2;
+  const now = currentTerm(today);
+  const firstSlotYear = semesterIds.map((id) => SLOT_ID.exec(id)).find(Boolean)?.[1];
+  const anchorYear = degreeYear ?? (firstSlotYear ? Number(firstSlotYear) : 1);
 
   const mapping: Record<string, SemesterTerm> = {};
   semesterIds.forEach((id, index) => {
-    // Calculate which academic term this index represents
-    const totalSemestersFromStart = index;
-    const year = startYear + Math.floor((startSemester - 1 + totalSemestersFromStart) / 2);
-    const semester: 1 | 2 = ((startSemester - 1 + totalSemestersFromStart) % 2) + 1 as 1 | 2;
-    mapping[id] = { year, semester };
+    const slot = SLOT_ID.exec(id);
+    if (slot) {
+      mapping[id] = { year: now.year + Number(slot[1]) - anchorYear, semester: slot[2] === 'a' ? 1 : 2 };
+      return;
+    }
+    const offset = now.semester - 1 + index;
+    mapping[id] = { year: now.year + Math.floor(offset / 2), semester: ((offset % 2) + 1) as 1 | 2 };
   });
   return mapping;
 }

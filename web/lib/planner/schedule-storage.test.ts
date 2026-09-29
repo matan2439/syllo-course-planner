@@ -21,13 +21,14 @@ describe('selectionKey', () => {
 describe('loadWeeklyScheduleState', () => {
   test('returns the default mapping and empty selections when nothing is stored', () => {
     const state = loadWeeklyScheduleState('mechanical_engineering_2027', DEFAULT_MAPPING);
-    expect(state).toEqual({ termMapping: DEFAULT_MAPPING, selections: {} });
+    expect(state).toEqual({ termMapping: DEFAULT_MAPPING, selections: {}, freeDays: [] });
   });
 
   test('round-trips through save/load, merging the default mapping under any missing keys', () => {
     const state: WeeklyScheduleState = {
       termMapping: { year_3_semester_a: { year: 2030, semester: 2 } },
       selections: { '0542-2400:2030:2': ['01', '02'] },
+      freeDays: ['ה'],
     };
     saveWeeklyScheduleState('mechanical_engineering_2027', state);
     const loaded = loadWeeklyScheduleState('mechanical_engineering_2027', DEFAULT_MAPPING);
@@ -38,6 +39,7 @@ describe('loadWeeklyScheduleState', () => {
     saveWeeklyScheduleState('program_a', {
       termMapping: DEFAULT_MAPPING,
       selections: { x: ['01'] },
+      freeDays: [],
     });
     const loaded = loadWeeklyScheduleState('program_b', DEFAULT_MAPPING);
     expect(loaded.selections).toEqual({});
@@ -46,6 +48,6 @@ describe('loadWeeklyScheduleState', () => {
   test('corrupt stored JSON falls back to defaults instead of throwing', () => {
     window.localStorage.setItem('tau_weekly_schedule:mechanical_engineering_2027', '{not json');
     const state = loadWeeklyScheduleState('mechanical_engineering_2027', DEFAULT_MAPPING);
-    expect(state).toEqual({ termMapping: DEFAULT_MAPPING, selections: {} });
+    expect(state).toEqual({ termMapping: DEFAULT_MAPPING, selections: {}, freeDays: [] });
   });
 });

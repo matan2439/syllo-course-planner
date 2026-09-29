@@ -6,6 +6,8 @@ export interface WeeklyScheduleState {
   termMapping: Record<string, SemesterTerm>;
   /** key = `${courseId}:${year}:${semester}` → selected group ids for that course+term. */
   selections: Record<string, string[]>;
+  /** Weekdays (א..ו) the student wants free of classes — the best-groups search avoids them. */
+  freeDays: string[];
 }
 
 export function selectionKey(courseId: string, term: SemesterTerm): string {
@@ -22,14 +24,15 @@ export function loadWeeklyScheduleState(
 ): WeeklyScheduleState {
   try {
     const raw = window.localStorage.getItem(storageKey(programId));
-    if (!raw) return { termMapping: defaultMapping, selections: {} };
+    if (!raw) return { termMapping: defaultMapping, selections: {}, freeDays: [] };
     const parsed = JSON.parse(raw) as Partial<WeeklyScheduleState>;
     return {
       termMapping: { ...defaultMapping, ...(parsed.termMapping ?? {}) },
       selections: parsed.selections ?? {},
+      freeDays: Array.isArray(parsed.freeDays) ? parsed.freeDays : [],
     };
   } catch {
-    return { termMapping: defaultMapping, selections: {} };
+    return { termMapping: defaultMapping, selections: {}, freeDays: [] };
   }
 }
 

@@ -14,7 +14,8 @@ Everything comes from data — no course ids, names or hours live in this file:
     ONLY in years outside the window (e.g. core courses, "שנים ג'+ד'").
 
 Output: data/boards/<base>_years_<a>_<b>_<year>.json — the id convention
-web/lib/planner/semester-window.ts#windowBoardId resolves.
+web/lib/planner/semester-window.ts#windowBoardId resolves — and the Years 1–2
+course index data/config/early_year_courses.json (see write_early_year_index).
 
 Usage:
     python scripts/build_early_years_board.py                       # mechanical_engineering_2027, years 1–2
@@ -39,6 +40,7 @@ from app.scraping.tau_program_scraper import fetch_program_data  # noqa: E402
 from scripts.refresh_course_data import ACADEMIC_YEAR, PROGRAM_TCID  # noqa: E402
 
 BOARDS_DIR = ROOT / "data" / "boards"
+EARLY_YEAR_INDEX = ROOT / "data" / "config" / "early_year_courses.json"
 HEBREW_NUMERALS = "אבגדהוזחט"  # א=1, ב=2, …
 _YEARS_TITLE = re.compile(r"שנ(?:ה|ים)\s+([א-ט'׳\s+]+)")
 _SEMESTER_TITLE = re.compile(r"סמסטר\s+([אב])")
@@ -198,6 +200,33 @@ def build(program_id: str, start_year: int, tcid: str, shana: int) -> Path:
     return out
 
 
+def write_early_year_index() -> Path:
+    """
+    The official Years 1–2 mandatory courses of every program that has an early window
+    board, keyed by program id — shared/planner/early_year_courses.ts reads it (client and
+    server), so "which courses are Years 1–2" never lives in code.
+    """
+    index: dict[str, list[dict]] = {}
+    for path in sorted(BOARDS_DIR.glob("*_years_*_*.json")):
+        board = json.loads(path.read_text(encoding="utf-8"))
+        meta = board.get("metadata") or {}
+        if meta.get("start_year") != 1 or not meta.get("window_of_program_id"):
+            continue
+        index[meta["window_of_program_id"]] = [
+            {
+                "courseId": course["course_id"],
+                "nameHe": course["name_he"],
+                "semesterId": semester["semester_id"],
+                "creditHours": course.get("credits") or 0,
+            }
+            for semester in board["semesters"]
+            for course in semester["courses"]
+            if course.get("is_mandatory")
+        ]
+    EARLY_YEAR_INDEX.write_text(json.dumps(index, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    return EARLY_YEAR_INDEX
+
+
 def main() -> int:
     cli = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     cli.add_argument("--program", default="mechanical_engineering_2027")
@@ -208,6 +237,7 @@ def main() -> int:
     out = build(args.program, args.start_year, args.tcid, args.shana)
     board = json.loads(out.read_text(encoding="utf-8"))
     print(f"[early-board] wrote {out.relative_to(ROOT)}")
+    print(f"[early-board] wrote {write_early_year_index().relative_to(ROOT)}")
     for sem in board["semesters"]:
         print(f"  {sem['semester_id']:20s} {len(sem['courses'])} courses  {sem['total_weekly_hours']} h")
     meta = board["metadata"]

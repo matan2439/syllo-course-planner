@@ -18,7 +18,8 @@ import {
 } from '../../../../shared/planner/conversation-wire'
 import type { PreferenceProfile } from '../../../../api/ai/preference_model'
 import { Card } from '../../../components/ui'
-import CourseClarificationAnswer, { isCourseQuestion } from './CourseClarificationAnswer'
+import CourseClarificationAnswer, { isCourseQuestion, type CourseQuestionId } from './CourseClarificationAnswer'
+import { DEGREE_YEAR_LABELS, DEGREE_YEARS, type DegreeYear } from '../../../lib/planner/semester-window'
 import CourseAnswerReview, { reviewCourseText, type CourseScope, type CourseTextReview } from './CourseAnswerReview'
 
 type SendConversation = (
@@ -118,6 +119,8 @@ export default function AcademicAgentConversation({
   localContextVersion = 0,
   courseScopes = [],
   onShowProposal,
+  currentDegreeYear = null,
+  onCurrentDegreeYearChange,
 }: {
   programId: string
   sessionToken: string
@@ -144,6 +147,10 @@ export default function AcademicAgentConversation({
   courseScopes?: readonly CourseScope[]
   /** Brings the previewed proposal on the board into view. */
   onShowProposal?: () => void
+  /** The student's year in the degree (profile); sent with every turn. */
+  currentDegreeYear?: DegreeYear | null
+  /** Answering the co-pilot's degree-year question updates the profile (and may switch boards). */
+  onCurrentDegreeYearChange?: (year: DegreeYear) => void
 }) {
   const [transcript, setTranscript] = useState<ConversationTurn[]>([])
   const [draft, setDraft] = useState('')
@@ -194,7 +201,7 @@ export default function AcademicAgentConversation({
       : undefined
   }
 
-  const submit = async (text: string, explicitAnswer?: ClarificationAnswer, opts?: { skipReview?: boolean }) => {
+  const submit = async (text: string, explicitAnswer?: ClarificationAnswer, opts?: { skipReview?: boolean; degreeYear?: DegreeYear }) => {
     const trimmed = text.trim()
     if (!trimmed || pending || contextConflict || !conversationReady) return
     const answer = explicitAnswer ?? clarificationAnswerFromText(trimmed)
@@ -217,6 +224,7 @@ export default function AcademicAgentConversation({
         board_version: boardVersion,
         academic_status_digest: academicStatusDigest,
         preference_digest: preferenceDigest,
+        current_degree_year: opts?.degreeYear ?? currentDegreeYear,
         ...(preferenceProfile ? { preference_profile: preferenceProfile } : {}),
         ...(answer
           ? { clarification_answers: [answer] }
@@ -239,7 +247,8 @@ export default function AcademicAgentConversation({
         .reverse()
         .find((event): event is Extract<typeof event, { type: 'clarification' }> =>
           event.type === 'clarification' && Boolean(event.question_id && event.answer_type))
-      setActiveClarification(nextClarification
+      // The degree year is answered into the profile (its buttons), not as a stored clarification.
+      setActiveClarification(nextClarification && nextClarification.question_id !== 'degree_year'
         ? { question_id: nextClarification.question_id!, answer_type: nextClarification.answer_type! }
         : null)
       if (response.outcome !== 'assistant_unavailable' && response.context_update) {
@@ -438,17 +447,36 @@ export default function AcademicAgentConversation({
                 questionId={event.question_id}
                 courseNameById={courseNameById}
                 disabled={blocked}
-                onConfirm={(ids, text) => void submit(text, { question_id: event.question_id!, value: ids })}
+                onConfirm={(ids, text) => void submit(text, { question_id: event.question_id as CourseQuestionId, value: ids })}
               />
             )}
-            {event.options_he && !(event.answer_type === 'course_id_list' && isCourseQuestion(event.question_id)) && (
+            {event.question_id === 'degree_year' && (
+              <div className="flex flex-wrap gap-2">
+                {DEGREE_YEARS.map((year) => (
+                  <button
+                    key={year}
+                    type="button"
+                    disabled={blocked}
+                    aria-pressed={currentDegreeYear === year}
+                    onClick={() => {
+                      onCurrentDegreeYearChange?.(year)
+                      void submit(DEGREE_YEAR_LABELS[year], undefined, { degreeYear: year })
+                    }}
+                    className="rounded-full border border-[var(--purple)]/50 px-3.5 py-1.5 text-sm transition-colors hover:bg-[var(--purple)]/10 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {DEGREE_YEAR_LABELS[year]}
+                  </button>
+                ))}
+              </div>
+            )}
+            {event.options_he && event.question_id !== 'degree_year' && !(event.answer_type === 'course_id_list' && isCourseQuestion(event.question_id)) && (
               <div className="flex flex-wrap gap-2">
                 {event.options_he.map((option) => (
                   <button
                     key={option}
                     type="button"
                     disabled={blocked}
-                    onClick={() => void submit(option, event.question_id && event.answer_type
+                    onClick={() => void submit(option, event.question_id && event.question_id !== 'degree_year' && event.answer_type
                       ? {
                           question_id: event.question_id,
                           value: event.answer_type === 'course_id_list' ? [option]

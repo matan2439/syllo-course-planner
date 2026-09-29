@@ -60,7 +60,7 @@ test('confirmed completed courses are sent as the next structured agent answer',
   fireEvent.click(screen.getByRole('button', { name: 'שלח לעוזר' }))
   await waitFor(() => expect(sendConversationFn).toHaveBeenCalledTimes(1))
   expect((sendConversationFn as jest.Mock).mock.calls[0][0]).toEqual(expect.objectContaining({
-    clarification_answers: [{ question_id: 'completed_courses', value: ['0509-1510'] }],
+    clarification_answers: [{ question_id: 'completed_courses', value: ['0542-1510'] }],
   }))
 })
 

@@ -1,0 +1,148 @@
+{
+  "mechanical_engineering_2027": [
+    {
+      "courseId": "0542-1510",
+      "nameHe": "גרפיקה הנדסית",
+      "semesterId": "year_1_semester_a",
+      "creditHours": 4.0
+    },
+    {
+      "courseId": "0509-1624",
+      "nameHe": "אלגברה ליניארית להנדסה מכנית",
+      "semesterId": "year_1_semester_a",
+      "creditHours": 6.5
+    },
+    {
+      "courseId": "0509-1646",
+      "nameHe": "חשבון דיפרנציאלי ואינטגרלי 1ב' להנדסה מכנית ומדע והנדסה של חומרים",
+      "semesterId": "year_1_semester_a",
+      "creditHours": 5.5
+    },
+    {
+      "courseId": "0509-1815",
+      "nameHe": "כימיה בסיסית להנדסה",
+      "semesterId": "year_1_semester_a",
+      "creditHours": 3.0
+    },
+    {
+      "courseId": "0542-1821",
+      "nameHe": "תכנות בסיסי להנדסה מכנית",
+      "semesterId": "year_1_semester_a",
+      "creditHours": 3.5
+    },
+    {
+      "courseId": "0542-1800",
+      "nameHe": "מבוא להנדסה מכנית",
+      "semesterId": "year_1_semester_a",
+      "creditHours": 0
+    },
+    {
+      "courseId": "0509-1645",
+      "nameHe": "משוואות דיפרנציאליות רגילות להנדסה מכנית",
+      "semesterId": "year_1_semester_b",
+      "creditHours": 4.0
+    },
+    {
+      "courseId": "0509-1647",
+      "nameHe": "חשבון דיפרנציאלי ואינטגרלי 2ב' למכנית",
+      "semesterId": "year_1_semester_b",
+      "creditHours": 5.5
+    },
+    {
+      "courseId": "0509-1834",
+      "nameHe": "מעבדה בפיזיקה",
+      "semesterId": "year_1_semester_b",
+      "creditHours": 2.0
+    },
+    {
+      "courseId": "0542-1810",
+      "nameHe": "מכניקה של חלקיקים",
+      "semesterId": "year_1_semester_b",
+      "creditHours": 4.5
+    },
+    {
+      "courseId": "0542-1820",
+      "nameHe": "סטטיקה של גוף קשיח",
+      "semesterId": "year_1_semester_b",
+      "creditHours": 4.0
+    },
+    {
+      "courseId": "0581-1111",
+      "nameHe": "מבוא למדע והנדסה של חומרים",
+      "semesterId": "year_1_semester_b",
+      "creditHours": 4.0
+    },
+    {
+      "courseId": "0581-1132",
+      "nameHe": "מבוא למדע והנדסה של חומרים - מעבדה",
+      "semesterId": "year_1_semester_b",
+      "creditHours": 0.5
+    },
+    {
+      "courseId": "0509-1829",
+      "nameHe": "פיזיקה (2)",
+      "semesterId": "year_2_semester_a",
+      "creditHours": 5.5
+    },
+    {
+      "courseId": "0509-2805",
+      "nameHe": "מבוא להסתברות וסטטיסטיקה להנדסה מכנית וחומרים",
+      "semesterId": "year_2_semester_a",
+      "creditHours": 4.0
+    },
+    {
+      "courseId": "0509-2844",
+      "nameHe": "פונקציות מרוכבות",
+      "semesterId": "year_2_semester_a",
+      "creditHours": 3.0
+    },
+    {
+      "courseId": "0542-2110",
+      "nameHe": "דינמיקה של גוף קשיח",
+      "semesterId": "year_2_semester_a",
+      "creditHours": 4.0
+    },
+    {
+      "courseId": "0542-2200",
+      "nameHe": "מכניקת המוצקים (1)",
+      "semesterId": "year_2_semester_a",
+      "creditHours": 5.0
+    },
+    {
+      "courseId": "0542-3804",
+      "nameHe": "אנליזה נומרית להנדסה מכנית",
+      "semesterId": "year_2_semester_b",
+      "creditHours": 4.5
+    },
+    {
+      "courseId": "0509-2843",
+      "nameHe": "אנליזה הרמונית",
+      "semesterId": "year_2_semester_b",
+      "creditHours": 3.0
+    },
+    {
+      "courseId": "0509-2846",
+      "nameHe": "משוואות דיפרנציאליות חלקיות",
+      "semesterId": "year_2_semester_b",
+      "creditHours": 3.0
+    },
+    {
+      "courseId": "0512-1205",
+      "nameHe": "מבוא למעגלים מערכות ואותות חשמליים",
+      "semesterId": "year_2_semester_b",
+      "creditHours": 4.0
+    },
+    {
+      "courseId": "0542-2500",
+      "nameHe": "מכניקת הזורמים (1)",
+      "semesterId": "year_2_semester_b",
+      "creditHours": 5.0
+    },
+    {
+      "courseId": "0542-2600",
+      "nameHe": "תרמודינמיקה (1)",
+      "semesterId": "year_2_semester_b",
+      "creditHours": 5.0
+    }
+  ]
+}

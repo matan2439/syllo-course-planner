@@ -43,6 +43,8 @@ export const conversationRequestSchema = z.object({
   board_version: z.string().trim().min(1).max(256).nullable(),
   academic_status_digest: digest,
   preference_digest: digest,
+  /** The student's year in the degree (profile, 1–4); null/absent when they have not said. */
+  current_degree_year: z.number().int().min(1).max(4).nullable().optional(),
   /** The typed answers from the unified agent intake, not a UI-only shadow. */
   preference_profile: preferenceProfileSchema.optional(),
   /** Answers to the current server-issued clarification question. */
@@ -117,6 +119,8 @@ const clarificationEventSchema = z.object({
     'excluded_courses',
     'max_weekly_hours',
     'track_or_focus',
+    // Answered on the client (profile year), never sent back as a clarification answer.
+    'degree_year',
   ]).optional(),
   answer_type: z.enum(['course_id_list', 'number', 'text']).optional(),
   question_he: boundedText,

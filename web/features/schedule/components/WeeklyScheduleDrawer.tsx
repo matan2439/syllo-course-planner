@@ -11,6 +11,9 @@ import {
 } from '../../../lib/planner/schedule-storage'
 import { resolveSelectedSemester, type DegreeYear } from '../../../lib/planner/semester-window'
 import { defaultTermMapping, groupsOverlap } from '../../../../shared/planner/schedule'
+import {
+  WEEK_DAYS, checkTimetable, choiceKey, groupLabel, groupsByChoice, lockKey,
+} from '../../../../shared/planner/timetable'
 import type {
   ScheduleGroupsResponse,
   ScheduleGroup,
@@ -25,21 +28,6 @@ interface SemesterCourses {
 
 type SelectedScheduleGroup = { courseId: string; courseName: string; group: ScheduleGroup }
 
-/** A lecture and its tutorial are separate choices; parallel groups of the
- * same kind/mode are alternatives for the student to choose between. */
-function choiceKey(group: ScheduleGroup): string {
-  return `${group.kind}\u0000${group.teachingMode}`
-}
-
-function groupsByChoice(groups: readonly ScheduleGroup[]): ScheduleGroup[][] {
-  const byChoice = new Map<string, ScheduleGroup[]>()
-  for (const group of groups) {
-    const key = choiceKey(group)
-    byChoice.set(key, [...(byChoice.get(key) ?? []), group])
-  }
-  return [...byChoice.values()]
-}
-
 function automaticGroupIds(groups: readonly ScheduleGroup[]): string[] {
   return groupsByChoice(groups)
     .filter((choices) => choices.length === 1 && choices[0].slots.length > 0)
@@ -49,8 +37,8 @@ function automaticGroupIds(groups: readonly ScheduleGroup[]): string[] {
 function groupDescription(group: ScheduleGroup): string {
   const slot = group.slots[0]
   return slot
-    ? `${group.kind} · קבוצה ${group.havura || group.groupId} · יום ${slot.day} ${slot.start}–${slot.end}`
-    : `${group.kind} · קבוצה ${group.havura || group.groupId} · ללא שעות`
+    ? `${group.kind} · קבוצה ${groupLabel(group)} · יום ${slot.day} ${slot.start}–${slot.end}`
+    : `${group.kind} · קבוצה ${groupLabel(group)} · ללא שעות`
 }
 
 export default function WeeklyScheduleDrawer({
@@ -70,8 +58,8 @@ export default function WeeklyScheduleDrawer({
   fetchCourseSearchFn?: typeof fetchCourseSearch
 }) {
   const defaultMapping = useMemo(
-    () => defaultTermMapping(semesterDestinations.map((d) => d.id), new Date()),
-    [semesterDestinations],
+    () => defaultTermMapping(semesterDestinations.map((d) => d.id), new Date(), currentDegreeYear),
+    [semesterDestinations, currentDegreeYear],
   )
   const [state, setState] = useState(() => loadWeeklyScheduleState(programId, defaultMapping))
   // The student's pick; the shown semester is always resolved into the current window.
@@ -86,6 +74,8 @@ export default function WeeklyScheduleDrawer({
   const [conflictMessage, setConflictMessage] = useState<string | null>(null)
   const [searchError, setSearchError] = useState<string | null>(null)
   const [fetchError, setFetchError] = useState<string | null>(null)
+  const [bestMessage, setBestMessage] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
 
   useEffect(() => {
     saveWeeklyScheduleState(programId, state)
@@ -112,6 +102,7 @@ export default function WeeklyScheduleDrawer({
 
   useEffect(() => {
     setExtraCourseIds([])
+    setBestMessage(null)
     setConflictMessage(null)
     setSearchError(null)
   }, [activeSemesterId])
@@ -267,6 +258,55 @@ export default function WeeklyScheduleDrawer({
     }))
   }
 
+  const courseName = (courseId: string) =>
+    scheduleData?.courses.find((course) => course.courseId === courseId)?.nameHe ?? courseId
+
+  /** Fill every lecture/recitation choice with the most convenient clash-free week. */
+  const pickBestGroups = (keepMyPicks: boolean) => {
+    if (!scheduleData) return
+    const locked: Record<string, string> = {}
+    if (keepMyPicks) {
+      for (const course of scheduleData.courses) {
+        for (const groupId of persistedGroupIds(course.courseId)) {
+          const group = course.groups.find((candidate) => candidate.groupId === groupId)
+          if (group) locked[lockKey(course.courseId, group)] = groupId
+        }
+      }
+    }
+    const result = checkTimetable(scheduleData.courses, state.freeDays, locked)
+    setConflictMessage(null)
+    setCopied(false)
+    if (result.feasible === null) {
+      setBestMessage('יש יותר מדי אפשרויות לבדיקה. בחרו ידנית חלק מהקבוצות ונסו שוב.')
+      return
+    }
+    if (!result.feasible) {
+      const pairs = result.conflictingCoursePairs.map(([a, b]) => `${courseName(a)} ו־${courseName(b)}`)
+      const blocking = result.coursesBlockingFreeDays.map(courseName)
+      setBestMessage([
+        'לא נמצא שילוב קבוצות בלי חפיפות.',
+        pairs.length ? `חופפים תמיד: ${pairs.join('; ')}.` : '',
+        blocking.length ? `לא ניתן לפנות את הימים שבחרתם בגלל: ${blocking.join(', ')}.` : '',
+      ].filter(Boolean).join(' '))
+      return
+    }
+    const nextSelections = { ...state.selections }
+    for (const course of scheduleData.courses) {
+      const picked = result.selection.filter((item) => item.courseId === course.courseId).map((item) => item.groupId)
+      if (picked.length) nextSelections[selectionKey(course.courseId, term)] = picked
+    }
+    setState((previous) => ({ ...previous, selections: nextSelections }))
+    const freeKept = WEEK_DAYS.filter((day) => !result.daysUsed.includes(day))
+    setBestMessage(`נבחרו הקבוצות הנוחות ביותר: ${result.daysUsed.length} ימים בקמפוס${freeKept.length ? ` (פנויים: ${freeKept.join(', ')})` : ''}.`)
+  }
+
+  const toggleFreeDay = (day: string) => setState((previous) => ({
+    ...previous,
+    freeDays: previous.freeDays.includes(day)
+      ? previous.freeDays.filter((value) => value !== day)
+      : [...previous.freeDays, day],
+  }))
+
   const runSearch = async () => {
     if (!searchText.trim()) { setSearchResults([]); setSearchError(null); return }
     try {
@@ -284,6 +324,20 @@ export default function WeeklyScheduleDrawer({
       courseId, courseName, groupId: group.groupId, kind: group.kind, slot,
     })),
   )
+
+  // What the student types into the bidding system: course, mode, group — one row per choice.
+  const biddingRows = allSelectedGroups().map(({ courseId, courseName: name, group }) => ({
+    key: `${courseId}:${group.groupId}`,
+    courseId,
+    name,
+    mode: group.teachingMode || group.kind,
+    group: groupLabel(group),
+    times: group.slots.map((slot) => `${slot.day} ${slot.start}–${slot.end}`).join(', '),
+  }))
+  const copyBiddingList = () => {
+    const text = biddingRows.map((row) => `${row.courseId} ${row.name} · ${row.mode} · קבוצה ${row.group} · ${row.times}`).join('\n')
+    navigator.clipboard?.writeText(text).then(() => setCopied(true), () => setCopied(false))
+  }
 
   const courses = scheduleData?.courses ?? []
   const coursesWithAlternatives = courses.filter((course) =>
@@ -319,6 +373,29 @@ export default function WeeklyScheduleDrawer({
           <WeeklyScheduleGrid blocks={blocks} />
           {fetchError && <p role="alert" className="weekly-schedule-alert">{fetchError}</p>}
           {conflictMessage && <p role="alert" className="weekly-schedule-alert">{conflictMessage}</p>}
+          {biddingRows.length > 0 && (
+            <section className="weekly-bidding-list" aria-label="רשימה לבידינג">
+              <div className="weekly-bidding-heading">
+                <h3>רשימה לבידינג</h3>
+                <button type="button" onClick={copyBiddingList}>{copied ? 'הועתק' : 'העתק'}</button>
+              </div>
+              <table>
+                <thead>
+                  <tr><th>קורס</th><th>סוג</th><th>קבוצה</th><th>מועד</th></tr>
+                </thead>
+                <tbody>
+                  {biddingRows.map((row) => (
+                    <tr key={row.key}>
+                      <td><span dir="ltr">{row.courseId}</span> {row.name}</td>
+                      <td>{row.mode}</td>
+                      <td>{row.group}</td>
+                      <td>{row.times}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </section>
+          )}
           {scheduleData && (
             <p className="weekly-schedule-provenance">מקור: bid-it (לא רשמי) · עודכן {new Date(scheduleData.fetchedAt).toLocaleTimeString('he-IL')}</p>
           )}
@@ -329,6 +406,25 @@ export default function WeeklyScheduleDrawer({
             <h3>בחירת קבוצות</h3>
             <span>{coursesWithAlternatives.length} קורסים לבחירה</span>
           </div>
+          {courses.some((course) => course.found) && (
+            <div className="weekly-best-groups">
+              <fieldset className="weekly-free-days">
+                <legend>ימים שתרצו להשאיר פנויים</legend>
+                {WEEK_DAYS.map((day) => (
+                  <button key={day} type="button" aria-pressed={state.freeDays.includes(day)} onClick={() => toggleFreeDay(day)}>
+                    {day}׳
+                  </button>
+                ))}
+              </fieldset>
+              <button type="button" className="weekly-best-button" onClick={() => pickBestGroups(true)}>
+                בחירת הקבוצות הטובות ביותר
+              </button>
+              <button type="button" className="weekly-best-reset" onClick={() => pickBestGroups(false)}>
+                חישוב מחדש בלי הבחירות שלי
+              </button>
+              {bestMessage && <p role="status" className="weekly-best-message">{bestMessage}</p>}
+            </div>
+          )}
           {courses.filter((course) => course.found && !groupsByChoice(course.groups).some((choices) => choices.length > 1)).map((course) => (
             <p key={course.courseId} className="weekly-auto-course">
               <strong>{course.nameHe ?? course.courseId}</strong>
