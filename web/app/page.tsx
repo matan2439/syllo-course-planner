@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import BrandLogo from '../features/shell/components/BrandLogo'
 import ShaderGradientBackground from '../features/shell/components/ShaderGradientBackground'
 import LandingCtas from '../features/shell/components/LandingCtas'
@@ -45,7 +46,7 @@ export default function Home() {
         </main>
 
         <footer className="px-6 py-5 text-center text-xs text-[var(--text-muted)] opacity-70">
-          אוניברסיטת תל אביב
+          אוניברסיטת תל אביב · <Link href="/privacy" className="underline hover:text-[var(--purple)]">מדיניות פרטיות</Link>
         </footer>
       </div>
     </>

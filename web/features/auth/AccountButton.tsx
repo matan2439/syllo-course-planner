@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useState, type FormEvent } from 'react'
 import { useAuth } from './AuthProvider'
 
@@ -23,6 +24,7 @@ export default function AccountButton() {
   const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
+  const [confirmDelete, setConfirmDelete] = useState(false)
 
   if (!auth.enabled || auth.loading) return null
 
@@ -51,9 +53,25 @@ export default function AccountButton() {
   const user = auth.user
   return (
     <div className="relative">
-      <button type="button" className={CHIP} aria-expanded={open} onClick={() => setOpen((v) => !v)}>
-        {user ? 'החשבון שלי' : 'התחברות'}
-      </button>
+      {user ? (
+        <button
+          type="button"
+          className={CHIP + ' flex h-[30px] w-[30px] items-center justify-center !px-0 !py-0'}
+          aria-expanded={open}
+          aria-label="החשבון שלי"
+          title={user.email ?? 'החשבון שלי'}
+          onClick={() => setOpen((v) => !v)}
+        >
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+            <circle cx="12" cy="8" r="4" />
+            <path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7" />
+          </svg>
+        </button>
+      ) : (
+        <button type="button" className={CHIP} aria-expanded={open} onClick={() => setOpen((v) => !v)}>
+          התחברות
+        </button>
+      )}
       {open && (
         <div
           role="dialog"
@@ -70,6 +88,23 @@ export default function AccountButton() {
               <button type="button" className={SECONDARY + ' w-full'} onClick={() => { void auth.signOut(); setOpen(false) }}>
                 התנתקות
               </button>
+              {confirmDelete ? (
+                <div className="space-y-2 rounded-lg border border-red-500/40 p-3">
+                  <p className="text-xs text-[var(--text)]">למחוק את החשבון ואת כל נתוני התכנון שלו? אי אפשר לבטל את זה.</p>
+                  <div className="flex gap-2">
+                    <button type="button" className="flex-1 rounded-lg bg-red-600 px-3 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60" disabled={busy}
+                      onClick={() => void run(async () => { const error = await auth.deleteAccount(); if (!error) setConfirmDelete(false); return error })}>
+                      מחיקה לצמיתות
+                    </button>
+                    <button type="button" className={SECONDARY} disabled={busy} onClick={() => setConfirmDelete(false)}>ביטול</button>
+                  </div>
+                </div>
+              ) : (
+                <button type="button" className="w-full text-xs text-[var(--text-muted)] underline hover:text-red-500" onClick={() => setConfirmDelete(true)}>
+                  מחיקת חשבון
+                </button>
+              )}
+              {message && <p role="status" className="text-xs text-[var(--text-muted)]">{message}</p>}
             </div>
           ) : (
             <form className="space-y-3" onSubmit={signIn}>
@@ -90,6 +125,7 @@ export default function AccountButton() {
                 המשך עם Google
               </button>
               {message && <p role="status" className="text-xs text-[var(--text-muted)]">{message}</p>}
+              <Link href="/privacy" className="block text-center text-xs text-[var(--text-muted)] underline hover:text-[var(--purple)]">מדיניות פרטיות</Link>
             </form>
           )}
         </div>

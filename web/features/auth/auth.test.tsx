@@ -33,6 +33,11 @@ function fakeSupabase({ session = null as null | { user: typeof USER }, profile 
       signInWithOAuth: jest.fn(async () => ({ error: null })),
       signOut: jest.fn(async () => { listener('SIGNED_OUT', null); return { error: null } }),
     },
+    rpc: jest.fn(async (fn: string) => {
+      if (fn !== 'delete_my_account') return { error: { message: 'unknown function' } }
+      db.profile = null
+      return { error: null }
+    }),
     from: jest.fn(() => {
       let id: string | undefined
       let patch: Record<string, unknown> = {}
@@ -160,6 +165,18 @@ describe('signed in', () => {
     expect(raw.auth.signOut).toHaveBeenCalled()
     expect(localStorage.getItem(CURRENT_DEGREE_YEAR_KEY)).toBe('3')
   })
+})
+
+test('account deletion asks for confirmation, calls delete_my_account, then signs out', async () => {
+  const { client, raw, db } = fakeSupabase({ session: { user: USER }, profile: baseProfile() })
+  renderApp(client)
+  fireEvent.click(await screen.findByRole('button', { name: 'החשבון שלי' }))
+  fireEvent.click(screen.getByRole('button', { name: 'מחיקת חשבון' }))
+  expect(raw.rpc).not.toHaveBeenCalled()
+  fireEvent.click(screen.getByRole('button', { name: 'מחיקה לצמיתות' }))
+  expect(await screen.findByRole('button', { name: 'התחברות' })).toBeInTheDocument()
+  expect(raw.rpc).toHaveBeenCalledWith('delete_my_account')
+  expect(db.profile).toBeNull()
 })
 
 test('reconcileProfile is per field and deterministic', () => {

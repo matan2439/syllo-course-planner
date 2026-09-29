@@ -33,3 +33,13 @@ test('every other public table is locked out of the Data API', () => {
 test('no admin secret or service role is referenced', () => {
   expect(sql).not.toMatch(/service_role/i);
 });
+
+test('self-serve deletion only ever deletes the caller, and only signed-in users may call it', () => {
+  const del = fs.readFileSync(path.resolve(__dirname, '../../scripts/migrations/auth/002_delete_account.sql'), 'utf8')
+    .replace(/--.*$/gm, '');
+  expect(del).toMatch(/FUNCTION public\.delete_my_account\(\)\s/); // no argument: cannot target someone else
+  expect(del).toMatch(/uid uuid := auth\.uid\(\)/);
+  expect(del).toMatch(/DELETE FROM auth\.users WHERE id = uid;/);
+  expect(del).toMatch(/REVOKE EXECUTE ON FUNCTION public\.delete_my_account\(\) FROM PUBLIC, anon;/);
+  expect(del).toMatch(/GRANT EXECUTE ON FUNCTION public\.delete_my_account\(\) TO authenticated;/);
+});
