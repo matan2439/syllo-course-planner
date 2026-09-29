@@ -37,6 +37,15 @@
    Never put a secret in a `NEXT_PUBLIC_` variable.
 6. **Protected Preview?** Vercel Deployment Protection blocks Paddle's webhook. Either use a protection-bypass for automation or an unprotected branch alias.
 
+### Sandbox catalog (created 2026-09-29, SANDBOX placeholders — not final pricing)
+| Package (`catalog.ts`) | Credits | Paddle product | Paddle price (one-time, qty 1) | Env var |
+|---|---|---|---|---|
+| `credits_small` | 50 | `pro_01m3qasa6wbj8qvm4wdsqztn1s` Syllo Credits Small | `pri_01m3qasab7exbpj6dv3k70tjn9` USD 5.00 | `PADDLE_PRICE_CREDITS_SMALL` |
+| `credits_medium` | 150 | `pro_01m3qasahbx2e56m179z4kn58f` Syllo Credits Medium | `pri_01m3qasant31p8d69jr7r90ky5` USD 12.00 | `PADDLE_PRICE_CREDITS_MEDIUM` |
+| `credits_large` | 400 | `pro_01m3qasaw3v1y3rcnk0bc7dnw4` Syllo Credits Large | `pri_01m3qasb0c3gcb343ccx7vat03` USD 25.00 | `PADDLE_PRICE_CREDITS_LARGE` |
+
+Credits come only from `catalog.ts` via the price id; Paddle `custom_data` on the product is informational.
+
 ## 2. Sandbox E2E checklist (all must pass before production)
 Use Paddle's test cards (sandbox only). Check each result in `/admin/billing` (developer account).
 
