@@ -8,6 +8,7 @@ import {
 import type { Model } from '@openai/agents';
 import { isBypassQuota, isTestModeBypass } from './course-planner';
 import { checkAndEnsureSession, incrementCreditsUsed, logUsageEvent } from './_quota';
+import { openMeteredOperation } from './metering';
 import { PlanningSession } from './agent/session';
 import {
   agentModelName,
@@ -82,6 +83,7 @@ type ConversationEndpointDeps = {
   resolveModel?: () => AgentModelConfig | null;
   checkQuota?: (sessionToken: string) => Promise<{ allowed: boolean }>;
   recordUsage?: (sessionToken: string, modelName: string) => Promise<void>;
+  openMeter?: typeof openMeteredOperation;
   loadBoard?: (ownerId: string, programId: string) => Promise<CommittedBoard | null>;
   loadAcademicContext?: (ownerId: string, programId: string) => Promise<AcademicContextRecord | null>;
   loadProgramBoard?: (programId: string) => unknown | null;
@@ -178,6 +180,7 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
   const runAgent = deps.runAgent ?? runPlannerAgent;
   const checkQuota = deps.checkQuota ?? defaultCheckQuota;
   const recordUsage = deps.recordUsage ?? defaultRecordUsage;
+  const openMeter = deps.openMeter ?? openMeteredOperation;
   const runAcademicDecisionAgent = deps.runAcademicDecisionAgent ?? runAcademicDecisionAgentDefault;
   const putProposal = deps.putProposal ?? ((record: ProposalRecord) => getProposalStore().put(record));
   const putAcademicContext = deps.putAcademicContext ?? ((input: Parameters<AcademicContextStore['put']>[0]) => getAcademicContextStore().put(input));
@@ -208,7 +211,11 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
       res.status(503).json({ ok: false, code: 'QUOTA_UNAVAILABLE', message_he: 'לא ניתן לבדוק מכסת AI כרגע. נא לנסות שוב.' });
       return;
     }
-    if (!quota.allowed) {
+    // Free quota first (unchanged); once exhausted, a signed-in user spends Syllo Credits.
+    const meter = await openMeter(req as unknown as { headers?: Record<string, string | string[] | undefined> }, res, {
+      endpoint: 'conversation', model: modelConfig.name, freeQuotaAllowed: quota.allowed,
+    });
+    if (!meter) {
       res.status(429).json({ ok: false, code: 'QUOTA_EXCEEDED', message_he: 'מכסת שאלות ה-AI החינמית נוצלה.' });
       return;
     }
@@ -643,6 +650,8 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
       };
       await putProposal(record);
       await recordUsage(parsed.data.session_token, modelConfig.name);
+      // The proposal is persisted and retrievable by id: service delivered.
+      await meter.deliver(agent.outcome === 'proposal' ? agent.usage : undefined);
       const receipt = toReceipt(record);
       const events = boundEvents([
         ...agent.events,
@@ -700,6 +709,9 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
       }
       console.error('[ai/conversation] unexpected error');
       out.status(500).json({ ok: false, code: 'INTERNAL_ERROR', message_he: 'אירעה שגיאה פנימית.' });
+    } finally {
+      // Chat-only turns, conflicts and failures deliver no proposal: credits return.
+      await meter.release();
     }
   };
 }

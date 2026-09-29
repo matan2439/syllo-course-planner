@@ -32,6 +32,7 @@ import { z } from 'zod';
 import { streamCourseAdvisor } from './agent/course_advisor';
 import { agentModelName } from './agent/planner_agent';
 import { checkAndEnsureSession, incrementCreditsUsed, logUsageEvent, FREE_LIMIT } from './_quota';
+import { openMeteredOperation, type MeteredOperation } from './metering';
 
 // ── Input schema ──────────────────────────────────────────────────────────────
 
@@ -349,15 +350,20 @@ async function pipeTextStream(
 // ── Quota helper ──────────────────────────────────────────────────────────────
 
 /**
- * Check quota in Supabase.
- * Returns true if the request is allowed; returns false and writes an error
- * response if quota is exceeded or the DB is unreachable.
+ * Check quota in Supabase; once the free quota is exhausted, a signed-in user
+ * spends Syllo Credits (see metering.ts).
+ * Returns the admitted operation, or null after writing an error response if
+ * quota and credits are exhausted or the DB is unreachable.
  */
 async function runQuotaCheck(
   session_token: string,
   dbUrl: string,
+  req: VercelRequest,
   res: VercelResponse,
-): Promise<boolean> {
+  model: string,
+): Promise<MeteredOperation | null> {
+  const open = (freeQuotaAllowed: boolean) =>
+    openMeteredOperation(req, res, { endpoint: 'course-planner', model, freeQuotaAllowed });
   let quota;
   try {
     quota = await checkAndEnsureSession(session_token, dbUrl);
@@ -377,7 +383,7 @@ async function runQuotaCheck(
         safeMessage: errMsg,
         ...(sqlState ? { sqlState } : {}),
       });
-    return false;
+    return null;
   }
 
   console.log('[ai] quota check — credits_used:', quota.credits_used, 'remaining:', quota.remaining,
@@ -389,17 +395,19 @@ async function runQuotaCheck(
       console.warn('[ai] AI_TEST_MODE=true — bypassing QUOTA_EXCEEDED for testing',
         '(credits_used:', quota.credits_used, 'free_limit:', quota.free_limit, ')');
       res.setHeader('X-AI-Quota-Bypass', 'true');
-      return true;
+      return open(true);
     }
+    const paid = await open(false);
+    if (paid) return paid;
     sendError(res, 429, 'מכסת שאלות ה-AI החינמית נוצלה.', 'QUOTA_EXCEEDED', {
       credits_used: quota.credits_used,
       free_limit:   quota.free_limit,
       credits_paid:  quota.credits_paid,
       remaining:     0,
     });
-    return false;
+    return null;
   }
-  return true;
+  return open(true);
 }
 
 // ── Handler ───────────────────────────────────────────────────────────────────
@@ -451,13 +459,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       return;
     }
 
-    const allowed = await runQuotaCheck(session_token, dbUrl, res);
-    if (!allowed) return;
+    const meter = await runQuotaCheck(session_token, dbUrl, req, res, 'dev-mock');
+    if (!meter) return;
 
     await Promise.allSettled([
       incrementCreditsUsed(session_token, dbUrl),
       logUsageEvent(session_token, 'dev-mock', dbUrl),
     ]);
+    await meter.deliver();
 
     await sendMockStream(res);
     return;
@@ -484,8 +493,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     return;
   }
 
-  const allowed = await runQuotaCheck(session_token, dbUrl, res);
-  if (!allowed) return;
+  const meter = await runQuotaCheck(session_token, dbUrl, req, res, modelName);
+  if (!meter) return;
 
   let advisor;
   try {
@@ -499,6 +508,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       preferences,
     });
   } catch (err) {
+    await meter.release();
     classifyAndSendProviderError(res, err, 'openai');
     return;
   }
@@ -513,10 +523,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   console.log('[ai] stream started');
   const delivered = await pipeTextStream(res, advisor.textStream, 'openai');
   // One credit per delivered, completed answer; an empty or failed run is not charged.
+  // Streaming finalization: delivered = the whole answer was written AND the run completed.
   if (delivered && await completed) {
     await Promise.allSettled([
       incrementCreditsUsed(session_token, dbUrl),
       logUsageEvent(session_token, modelName, dbUrl),
     ]);
+    await meter.deliver(advisor.usage?.());
+  } else {
+    await meter.release();
   }
 }

@@ -29,7 +29,7 @@ export interface QuotaStatus {
 }
 
 /** Shared postgres connection options for short-lived serverless calls. */
-const PG_OPTS = {
+export const PG_OPTS = {
   max: 1,
   idle_timeout: 5,
   connect_timeout: 10,
