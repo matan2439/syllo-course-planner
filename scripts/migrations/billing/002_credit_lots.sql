@@ -424,6 +424,8 @@ BEGIN
   v_left := v_left - v_now;
   v_pending := LEAST(v_left, lot.credits_reserved - lot.revoke_pending);
   v_left := v_left - v_pending;
+  -- "Everything": what stays is exactly the service already delivered.
+  IF p_credits IS NULL THEN v_left := lot.credits_consumed; END IF;
 
   IF v_now > 0 THEN
     INSERT INTO public.credit_transactions (user_id, delta, kind, reference, metadata, balance_after)

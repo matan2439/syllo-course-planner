@@ -148,7 +148,7 @@ describe('lot revocation (the primitive refunds and chargebacks use)', () => {
     await grant(user, 500, 'purchase', 'pur_120');
     await spend(user, 120, 'op_120');
     const [lot] = await lotsOf(user);
-    expect(await revoke(lot.lotId, null, 'rf_120')).toMatchObject({ revoked_now: 380, unrevocable: 0 });
+    expect(await revoke(lot.lotId, null, 'rf_120')).toMatchObject({ revoked_now: 380, unrevocable: 120 });
     expect((await lotsOf(user))[0]).toMatchObject({ granted: 500, consumed: 120, revoked: 380, unused: 0 });
     const history = await db.rows<any>('SELECT kind, delta FROM credit_transactions WHERE user_id = $1 ORDER BY id', [user]);
     expect(history).toEqual([{ kind: 'purchase', delta: 500 }, { kind: 'ai_usage', delta: -120 }, { kind: 'refund', delta: -380 }]);
