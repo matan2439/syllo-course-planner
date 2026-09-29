@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { RepositoryVM } from '../../../lib/repository'
 import NativePlannerJourney, { type ManualAddIntent } from './NativePlannerJourney'
+import { CLOSE_PANELS_EVENT } from '../../billing/ai_access'
 import UnifiedCourseRepository, { type SemesterDestination } from '../../courses/components/UnifiedCourseRepository'
 import WeeklyScheduleDrawer from '../../schedule/components/WeeklyScheduleDrawer'
 import type { PlannerDragPayload } from '../../../lib/planner/drag-payload'
@@ -105,6 +106,12 @@ export default function UnifiedPlannerWorkspace({
     setRailTab(null)
     toggleRef.current?.focus()
   }
+
+  useEffect(() => {
+    const close = () => setRailTab(null)
+    window.addEventListener(CLOSE_PANELS_EVENT, close)
+    return () => window.removeEventListener(CLOSE_PANELS_EVENT, close)
+  }, [])
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {

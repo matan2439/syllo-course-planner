@@ -68,7 +68,7 @@ export default function ProductShell({
             )}
             {/* The planner portals its live requirements badge here (see CurrentPlanSection). */}
             {programId && <span id="shell-progress-slot" className="contents" />}
-            <CreditsChip />
+            {programId && <CreditsChip />}
             {progress}
             <ThemeToggle />
             <AccountButton />

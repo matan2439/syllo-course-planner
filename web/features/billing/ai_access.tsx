@@ -12,8 +12,14 @@ import { CREDITS_PER_REPLY } from '../../../shared/billing/pricing'
  */
 export const BUY_CREDITS_EVENT = 'syllo:buy-credits'
 export const OPEN_ACCOUNT_EVENT = 'syllo:open-account'
-export const openBuyCredits = () => window.dispatchEvent(new Event(BUY_CREDITS_EVENT))
-export const openAccount = () => window.dispatchEvent(new Event(OPEN_ACCOUNT_EVENT))
+/** Open panels (course details, tools drawer) close so the account menu / purchase dialog is visible. */
+export const CLOSE_PANELS_EVENT = 'syllo:close-panels'
+const reveal = (event: string) => {
+  window.dispatchEvent(new Event(CLOSE_PANELS_EVENT))
+  window.dispatchEvent(new Event(event))
+}
+export const openBuyCredits = () => reveal(BUY_CREDITS_EVENT)
+export const openAccount = () => reveal(OPEN_ACCOUNT_EVENT)
 
 /** signed_out / never_purchased: first-time users → full paywall; no_credits: ran out → inline notice. */
 export type AiAccess = 'ok' | 'signed_out' | 'never_purchased' | 'no_credits'
@@ -49,9 +55,11 @@ export function AiPaywall({ access, children }: { access: AiAccess; children: Re
   if (access !== 'signed_out' && access !== 'never_purchased') return <>{children}</>
   const copy = PAYWALL[access]
   return (
-    <div className="relative h-full min-h-0">
-      <div aria-hidden="true" inert className="pointer-events-none h-full select-none blur-[3px] opacity-60">{children}</div>
-      <div className="absolute inset-0 flex items-center justify-center p-4">
+    // One grid cell for both layers: the area is at least as tall as the card, so the
+    // card never overflows a short host (e.g. the chat at the bottom of a course panel).
+    <div className="grid h-full min-h-0">
+      <div aria-hidden="true" inert className="pointer-events-none min-h-0 select-none overflow-hidden blur-[3px] opacity-60 [grid-area:1/1]">{children}</div>
+      <div className="flex items-center justify-center p-4 [grid-area:1/1]">
         <div data-testid="ai-paywall" role="region" aria-label={copy.title}
           className="w-full max-w-xs space-y-3 rounded-2xl border border-[var(--purple)]/40 bg-[var(--surface-panel)] p-5 text-center shadow-[var(--shadow-premium)]">
           <span className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-[var(--purple-strong)] text-white" aria-hidden="true">✦</span>

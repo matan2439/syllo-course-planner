@@ -2,7 +2,8 @@ import { act, fireEvent, render, screen } from '@testing-library/react'
 import CourseAiChat from '../courses/components/CourseAiChat'
 import BuyCredits from './BuyCredits'
 import CreditsChip from './CreditsChip'
-import { BUY_CREDITS_EVENT, OPEN_ACCOUNT_EVENT, openBuyCredits } from './ai_access'
+import { BUY_CREDITS_EVENT, CLOSE_PANELS_EVENT, OPEN_ACCOUNT_EVENT, openAccount, openBuyCredits } from './ai_access'
+import CourseDetailsPanel from '../courses/components/CourseDetailsPanel'
 
 let mockAuth: Record<string, unknown>
 jest.mock('../auth/AuthProvider', () => ({ useAuth: () => mockAuth }))
@@ -102,4 +103,21 @@ test('header credits chip is hidden for exempt developers and signed-out visitor
   mockAuth = { ...base, user: null, profile: null, creditBalance: null, hasPurchased: null }
   const second = render(<CreditsChip />)
   expect(second.container).toBeEmptyDOMElement()
+})
+
+test('sign-in / buy-credits first close open panels so their UI is visible', () => {
+  const closed = jest.fn()
+  window.addEventListener(CLOSE_PANELS_EVENT, closed)
+  openAccount()
+  openBuyCredits()
+  expect(closed).toHaveBeenCalledTimes(2)
+  window.removeEventListener(CLOSE_PANELS_EVENT, closed)
+})
+
+test('an open course panel closes when a sign-in / buy button asks for it', () => {
+  mockAuth = { ...base, user: null, profile: null, creditBalance: null, hasPurchased: null }
+  const onClose = jest.fn()
+  render(<CourseDetailsPanel course={course} onClose={onClose} programId="p" insightsFetch={async () => null as never} />)
+  fireEvent.click(screen.getByRole('button', { name: 'התחברות' }))
+  expect(onClose).toHaveBeenCalled()
 })
