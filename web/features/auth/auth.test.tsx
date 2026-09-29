@@ -17,7 +17,7 @@ function fakeSupabase({
   session = null as null | { user: typeof USER }, profile = null as Profile | null, balance = null as number | null,
 } = {}) {
   let listener: (event: string, s: unknown) => void = () => {}
-  const db = { profile }
+  const db = { profile, balance }
   const updates: Array<Record<string, unknown>> = []
   const client = {
     auth: {
@@ -48,7 +48,7 @@ function fakeSupabase({
         eq: (_column: string, value: string) => { id = value; return q },
         update: (p: Record<string, unknown>) => { patch = p; return q },
         maybeSingle: async () => table === 'credit_accounts'
-          ? { data: id === USER.id && balance != null ? { balance } : null, error: null }
+          ? { data: id === USER.id && db.balance != null ? { balance: db.balance } : null, error: null }
           : { data: db.profile?.id === id ? db.profile : null, error: null },
         single: async () => {
           updates.push(patch)
@@ -160,10 +160,15 @@ describe('signed in', () => {
   })
 
   test('shows the Syllo Credits balance; exempt accounts show no charge', async () => {
-    const { client } = fakeSupabase({ session: { user: USER }, profile: baseProfile(), balance: 42 })
+    const { client, db } = fakeSupabase({ session: { user: USER }, profile: baseProfile(), balance: 42 })
     const { unmount } = renderApp(client)
     fireEvent.click(await screen.findByRole('button', { name: 'החשבון שלי' }))
     await waitFor(() => expect(screen.getByTestId('credit-balance')).toHaveTextContent('קרדיטים של Syllo: 42'))
+    // Credits change on the server (admin grant, another device) → reopening shows the new value.
+    fireEvent.click(screen.getByRole('button', { name: 'החשבון שלי' }))
+    db.balance = 542
+    fireEvent.click(screen.getByRole('button', { name: 'החשבון שלי' }))
+    await waitFor(() => expect(screen.getByTestId('credit-balance')).toHaveTextContent('קרדיטים של Syllo: 542'))
     unmount()
 
     const exempt = fakeSupabase({ session: { user: USER }, profile: baseProfile({ role: 'developer', billing_exempt: true }), balance: 0 })

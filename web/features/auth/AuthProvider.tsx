@@ -21,6 +21,8 @@ export interface AuthState {
   profile: Profile | null
   /** Syllo Credits balance of the signed-in account; null when unknown. */
   creditBalance: number | null
+  /** Re-reads the balance (it can change on the server at any time). */
+  refreshCreditBalance(): void
   signIn(email: string, password: string): AuthResult
   signUp(email: string, password: string): Promise<{ error: string | null; needsConfirmation: boolean }>
   signInWithGoogle(): AuthResult
@@ -39,6 +41,7 @@ const signedOut: AuthState = {
   signOut: async () => {},
   deleteAccount: async () => null,
   updateProfile: async () => {},
+  refreshCreditBalance: () => {},
 }
 
 const AuthContext = createContext<AuthState>(signedOut)
@@ -98,6 +101,11 @@ export function AuthProvider({ children, client = getBrowserSupabase() }: {
     return () => { live = false }
   }, [client, userId])
 
+  const refreshCreditBalance = useCallback(() => {
+    if (!client || !userId) return
+    fetchCreditBalance(client, userId).then(setCreditBalance, () => {})
+  }, [client, userId])
+
   const updateProfile = useCallback(async (patch: ProfilePatch) => {
     if (!client || !userId) return
     setProfile((prev) => (prev ? { ...prev, ...patch } : prev))
@@ -111,7 +119,7 @@ export function AuthProvider({ children, client = getBrowserSupabase() }: {
   const value = useMemo<AuthState>(() => {
     if (!client) return signedOut
     return {
-      enabled: true, loading, user, profile, creditBalance, updateProfile,
+      enabled: true, loading, user, profile, creditBalance, refreshCreditBalance, updateProfile,
       signIn: async (email, password) =>
         hebrewAuthError((await client.auth.signInWithPassword({ email, password })).error),
       signUp: async (email, password) => {
@@ -132,7 +140,7 @@ export function AuthProvider({ children, client = getBrowserSupabase() }: {
         return null
       },
     }
-  }, [client, loading, user, profile, creditBalance, updateProfile])
+  }, [client, loading, user, profile, creditBalance, refreshCreditBalance, updateProfile])
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
