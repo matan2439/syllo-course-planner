@@ -4,7 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { getBrowserSupabase } from './supabase-client'
 import {
-  fetchProfile, readLocalProfile, reconcileProfile, saveProfile, writeLocalProfile,
+  fetchCreditBalance, fetchProfile, readLocalProfile, reconcileProfile, saveProfile, writeLocalProfile,
   type Profile, type ProfilePatch,
 } from './profile-repository'
 
@@ -19,6 +19,8 @@ export interface AuthState {
   user: AuthUser | null
   /** The signed-in student's profile, once loaded and reconciled with this device. */
   profile: Profile | null
+  /** Syllo Credits balance of the signed-in account; null when unknown. */
+  creditBalance: number | null
   signIn(email: string, password: string): AuthResult
   signUp(email: string, password: string): Promise<{ error: string | null; needsConfirmation: boolean }>
   signInWithGoogle(): AuthResult
@@ -30,7 +32,7 @@ export interface AuthState {
 }
 
 const signedOut: AuthState = {
-  enabled: false, loading: false, user: null, profile: null,
+  enabled: false, loading: false, user: null, profile: null, creditBalance: null,
   signIn: async () => null,
   signUp: async () => ({ error: null, needsConfirmation: false }),
   signInWithGoogle: async () => null,
@@ -60,6 +62,7 @@ export function AuthProvider({ children, client = getBrowserSupabase() }: {
   const [user, setUser] = useState<AuthUser | null>(null)
   const [loading, setLoading] = useState(client != null)
   const [profile, setProfile] = useState<Profile | null>(null)
+  const [creditBalance, setCreditBalance] = useState<number | null>(null)
 
   // Session restoration (cookie) + live sign-in/out events.
   useEffect(() => {
@@ -80,8 +83,10 @@ export function AuthProvider({ children, client = getBrowserSupabase() }: {
   const userId = user?.id ?? null
   useEffect(() => {
     setProfile(null)
+    setCreditBalance(null)
     if (!client || !userId) return
     let live = true
+    fetchCreditBalance(client, userId).then((balance) => live && setCreditBalance(balance), () => {})
     ;(async () => {
       const server = await fetchProfile(client, userId)
       if (!server || !live) return
@@ -106,7 +111,7 @@ export function AuthProvider({ children, client = getBrowserSupabase() }: {
   const value = useMemo<AuthState>(() => {
     if (!client) return signedOut
     return {
-      enabled: true, loading, user, profile, updateProfile,
+      enabled: true, loading, user, profile, creditBalance, updateProfile,
       signIn: async (email, password) =>
         hebrewAuthError((await client.auth.signInWithPassword({ email, password })).error),
       signUp: async (email, password) => {
@@ -127,7 +132,7 @@ export function AuthProvider({ children, client = getBrowserSupabase() }: {
         return null
       },
     }
-  }, [client, loading, user, profile, updateProfile])
+  }, [client, loading, user, profile, creditBalance, updateProfile])
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

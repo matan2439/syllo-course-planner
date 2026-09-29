@@ -10,6 +10,8 @@ export const profileSchema = z.object({
   role: z.enum(['user', 'developer']),
   program_id: z.string().nullable(),
   current_degree_year: z.number().int().min(1).max(4).nullable(),
+  /** Server-set entitlement: AI use is not charged in Syllo Credits. */
+  billing_exempt: z.boolean().default(false),
   created_at: z.string(),
   updated_at: z.string(),
 })
@@ -28,6 +30,16 @@ export async function saveProfile(client: SupabaseClient, userId: string, patch:
   const { data, error } = await client.from('profiles').update(patch).eq('id', userId).select('*').single()
   if (error) throw error
   return profileSchema.parse(data)
+}
+
+/**
+ * The signed-in user's Syllo Credits balance (RLS: own row only, read-only).
+ * No account row yet → 0. Unavailable (e.g. migration not applied) → null, so the UI hides it.
+ */
+export async function fetchCreditBalance(client: SupabaseClient, userId: string): Promise<number | null> {
+  const { data, error } = await client.from('credit_accounts').select('balance').eq('user_id', userId).maybeSingle()
+  if (error) return null
+  return data ? Number(data.balance) : 0
 }
 
 /**

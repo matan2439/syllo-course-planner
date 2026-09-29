@@ -84,6 +84,12 @@ export default function AccountButton() {
               {auth.profile?.role === 'developer' && (
                 <span className="inline-block rounded-full bg-[var(--purple)]/15 px-2 py-0.5 text-xs font-semibold text-[var(--purple)]">מפתח</span>
               )}
+              {(auth.profile?.billing_exempt || auth.creditBalance != null) && (
+                <p className="text-sm text-[var(--text)]" data-testid="credit-balance">
+                  קרדיטים של Syllo:{' '}
+                  <span className="font-semibold">{auth.profile?.billing_exempt ? 'ללא חיוב' : auth.creditBalance}</span>
+                </p>
+              )}
               <p className="text-xs text-[var(--text-muted)]">הפרופיל והתוכנית שלך נשמרים בחשבון.</p>
               <button type="button" className={SECONDARY + ' w-full'} onClick={() => { void auth.signOut(); setOpen(false) }}>
                 התנתקות
