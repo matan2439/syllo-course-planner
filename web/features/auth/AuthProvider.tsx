@@ -23,6 +23,8 @@ export interface AuthState {
   signUp(email: string, password: string): Promise<{ error: string | null; needsConfirmation: boolean }>
   signInWithGoogle(): AuthResult
   signOut(): Promise<void>
+  /** Permanently deletes the signed-in account and its planner data, then signs out. */
+  deleteAccount(): AuthResult
   /** Signed in: persists to the account. Signed out: no-op (callers keep their local cache). */
   updateProfile(patch: ProfilePatch): Promise<void>
 }
@@ -33,6 +35,7 @@ const signedOut: AuthState = {
   signUp: async () => ({ error: null, needsConfirmation: false }),
   signInWithGoogle: async () => null,
   signOut: async () => {},
+  deleteAccount: async () => null,
   updateProfile: async () => {},
 }
 
@@ -117,6 +120,12 @@ export function AuthProvider({ children, client = getBrowserSupabase() }: {
           provider: 'google', options: { redirectTo: window.location.href },
         })).error),
       signOut: async () => { await client.auth.signOut() },
+      deleteAccount: async () => {
+        const { error } = await client.rpc('delete_my_account')
+        if (error) return 'מחיקת החשבון נכשלה. נסו שוב.'
+        await client.auth.signOut()
+        return null
+      },
     }
   }, [client, loading, user, profile, updateProfile])
 
