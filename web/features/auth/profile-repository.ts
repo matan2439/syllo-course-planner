@@ -36,6 +36,16 @@ export async function saveProfile(client: SupabaseClient, userId: string, patch:
  * The signed-in user's Syllo Credits balance (RLS: own row only, read-only).
  * No account row yet → 0. Unavailable (e.g. migration not applied) → null, so the UI hides it.
  */
+/** Payment statuses that mean a purchase went through (billing/003 payments.status). */
+const PURCHASED_STATUSES = ['completed', 'partially_refunded', 'refunded', 'disputed', 'chargeback']
+
+/** Has this account ever completed a purchase? RLS limits the read to the user's own payments. */
+export async function fetchHasPurchased(client: SupabaseClient): Promise<boolean | null> {
+  const { data, error } = await client.from('payments').select('id').in('status', PURCHASED_STATUSES).limit(1)
+  if (error) return null
+  return (data ?? []).length > 0
+}
+
 export async function fetchCreditBalance(client: SupabaseClient, userId: string): Promise<number | null> {
   const { data, error } = await client.from('credit_accounts').select('balance').eq('user_id', userId).maybeSingle()
   if (error) return null

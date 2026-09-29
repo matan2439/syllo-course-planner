@@ -13,6 +13,8 @@
   --purple:     #7C3AED;
   --purple-strong: #6D28D9;
   --surface:    rgba(255, 255, 255, 0.72);
+  /* Floating panels (drawer, menus, dialogs): near-opaque for readability over the board. */
+  --surface-panel: rgba(255, 255, 255, 0.97);
   --border:     rgba(17, 24, 39, 0.08);
   --shadow-premium: 0 10px 28px rgba(76, 89, 224, 0.10), 0 2px 6px rgba(17, 24, 39, 0.06);
   --syllo-logo-shadow: 0 7px 14px rgba(27, 22, 54, 0.18);
@@ -45,6 +47,7 @@
   --purple:     #A78BFA;
   --purple-strong: #8B5CF6;
   --surface:    rgba(23, 26, 35, 0.62);
+  --surface-panel: rgba(23, 26, 35, 0.96);
   --border:     rgba(167, 139, 250, 0.16);
   --shadow-premium: 0 16px 48px rgba(0,0,0,.45), 0 2px 8px rgba(0,0,0,.3), 0 0 24px rgba(124,58,237,.20);
   --syllo-logo-shadow: 0 7px 16px rgba(0, 0, 0, 0.42);
@@ -70,6 +73,7 @@
     --purple:     #A78BFA;
     --purple-strong: #8B5CF6;
     --surface:    rgba(23, 26, 35, 0.62);
+    --surface-panel: rgba(23, 26, 35, 0.96);
     --border:     rgba(167, 139, 250, 0.16);
     --shadow-premium: 0 16px 48px rgba(0,0,0,.45), 0 2px 8px rgba(0,0,0,.3), 0 0 24px rgba(124,58,237,.20);
     --syllo-logo-shadow: 0 7px 16px rgba(0, 0, 0, 0.42);
@@ -222,7 +226,7 @@ body {
   overflow: hidden;
   border: 1px solid var(--border);
   border-radius: 1.25rem;
-  background: color-mix(in srgb, var(--surface) 96%, transparent);
+  background: var(--surface-panel);
   box-shadow: 0 24px 70px rgb(20 12 52 / 32%);
   backdrop-filter: blur(18px);
   transition: transform 240ms cubic-bezier(.2,.7,.3,1), opacity 180ms ease;

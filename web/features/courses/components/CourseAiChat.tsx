@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useAuth } from '../../auth/AuthProvider'
-import { AiAccessNotice, useAiAccess } from '../../billing/ai_access'
+import { AiAccessNotice, AiPaywall, useAiAccess } from '../../billing/ai_access'
 import type { CourseDetailsVM } from '../../../lib/course-details'
 import { getAiSessionToken } from '../../../lib/ai-session-token'
 
@@ -137,6 +137,7 @@ export default function CourseAiChat({
   const chips = (suggestions ?? []).filter((chip) => !askedAlready.has(chip))
 
   return (
+    <AiPaywall access={aiAccess}>
     <div className="flex flex-col gap-3 border-t border-[var(--border)] pt-4">
       <h3 className="text-xs font-semibold">שאלו את העוזר האקדמי על {course.name}</h3>
 
@@ -205,5 +206,6 @@ export default function CourseAiChat({
 
       {error && <p role="alert" className="text-xs text-red-700 dark:text-red-300">{error}</p>}
     </div>
+    </AiPaywall>
   )
 }

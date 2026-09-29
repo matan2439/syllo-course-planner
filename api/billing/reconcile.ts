@@ -114,12 +114,12 @@ export async function reconcile(ctx: ReconcileContext): Promise<{ runId: string;
     const repaired = findings.filter((f) => f.outcome === 'repaired').length;
     const status = escalated ? 'issues' : 'ok';
     await q(ctx.sql, 
-      `UPDATE public.billing_reconciliation_runs SET finished_at = now(), status = $2, checked = $3, repaired = $4, escalated = $5, findings = $6::jsonb WHERE id = $1`,
+      `UPDATE public.billing_reconciliation_runs SET finished_at = now(), status = $2, checked = $3, repaired = $4, escalated = $5, findings = $6::text::jsonb WHERE id = $1`,
       [run.id, status, checked, repaired, escalated, JSON.stringify(findings)]);
     return { runId: String(run.id), status, findings };
   } catch (error) {
     await q(ctx.sql, 
-      `UPDATE public.billing_reconciliation_runs SET finished_at = now(), status = 'failed', findings = $2::jsonb WHERE id = $1`,
+      `UPDATE public.billing_reconciliation_runs SET finished_at = now(), status = 'failed', findings = $2::text::jsonb WHERE id = $1`,
       [run.id, JSON.stringify([...findings, { code: 'run_failed', subject: 'reconciliation', outcome: 'escalated', detail: (error as Error)?.message }])]);
     await raiseAlert(ctx.sql, { severity: 'critical', code: 'reconciliation_failed', dedupeKey: `recon_run:${day}`, details: { error: (error as Error)?.message } });
     throw error;

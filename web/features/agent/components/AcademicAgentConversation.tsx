@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useAuth } from '../../auth/AuthProvider'
-import { AiAccessNotice, useAiAccess } from '../../billing/ai_access'
+import { AiAccessNotice, AiPaywall, useAiAccess } from '../../billing/ai_access'
 import {
   ConversationContextConflictError,
   ConversationRefusedError,
@@ -310,6 +310,7 @@ export default function AcademicAgentConversation({
   const doneSteps = live ? live.steps.filter((step) => step.status !== 'started').length : 0
 
   return (
+    <AiPaywall access={aiAccess}>
     <div dir="rtl" data-testid="academic-agent-conversation" className="flex h-full flex-col">
       <Card className="flex min-h-[32rem] flex-1 flex-col overflow-hidden p-0">
       <header className="flex items-center justify-between gap-2 border-b border-[var(--border)] px-4 py-3">
@@ -559,5 +560,6 @@ export default function AcademicAgentConversation({
       </form>
       </Card>
     </div>
+    </AiPaywall>
   )
 }

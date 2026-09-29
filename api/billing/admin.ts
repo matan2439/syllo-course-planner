@@ -34,7 +34,7 @@ export async function isAdmin(sql: BillingSql, userId: string): Promise<boolean>
 
 async function audit(sql: BillingSql, ctx: AdminContext, action: string, target: string, reason: string, details: unknown = {}) {
   await q(sql, 
-    'INSERT INTO public.billing_admin_actions (actor_id, action, target, reason, details) VALUES ($1, $2, $3, $4, $5::jsonb)',
+    'INSERT INTO public.billing_admin_actions (actor_id, action, target, reason, details) VALUES ($1, $2, $3, $4, $5::text::jsonb)',
     [ctx.actorId, action, target, reason, JSON.stringify(details)]);
 }
 
@@ -246,7 +246,7 @@ export async function handleAdmin(route: string, req: VercelRequest, res: Vercel
       if (!staff?.ok) { fail(res, 400, 'INTERNAL_CREDITS_STAFF_ONLY'); return; }
     }
     const reference = `admin:${randomUUID()}`;
-    const [r] = await q(sql, 'SELECT status, balance FROM public.apply_credit_transaction($1, $2, $3, $4, $5::jsonb)',
+    const [r] = await q(sql, 'SELECT status, balance FROM public.apply_credit_transaction($1, $2, $3, $4, $5::text::jsonb)',
       [body.user_id, delta, 'admin_adjustment', reference, JSON.stringify({ reason, actor_id: ctx.actorId })]);
     if (r.status !== 'applied') { fail(res, 409, r.status === 'insufficient' ? 'INSUFFICIENT_CREDITS' : 'NOT_APPLIED'); return; }
     await audit(sql, ctx, 'credit_adjustment', `user:${body.user_id}`, reason, { delta, reference });

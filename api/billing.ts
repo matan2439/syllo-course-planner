@@ -123,7 +123,7 @@ export function createBillingHandler(deps: BillingDeps = {}) {
     };
     const [payment] = await sql.unsafe(
       `INSERT INTO public.payments (environment, user_id, package_id, package_version, credits_purchased, paddle_price_id, terms)
-       VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb) RETURNING id`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7::text::jsonb) RETURNING id`,
       [config.environment, userId, pkg.id, pkg.version, pkg.credits, pkg.paddlePriceId, JSON.stringify(terms)]);
     try {
       // custom_data is set server-side on a server-created transaction: the buyer cannot redirect the grant.

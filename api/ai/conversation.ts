@@ -199,7 +199,12 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
     let billable: OperationUsage | null = null;
     let replied = false;
     let streamedText = false;
-    const reply = (body: unknown) => { replied = true; out.status(200).json(body); };
+    // A reply is charged BEFORE it is written: the student never holds an unbilled answer.
+    const reply = async (body: unknown) => {
+      replied = true;
+      if (billable) await meter.deliver(billable);
+      out.status(200).json(body);
+    };
     try {
       const owner = await resolveRequestOwner(req as unknown as { headers?: Record<string, string | string[] | undefined> }, res);
       const board = await loadBoard(owner.ownerId, parsed.data.program_id);
@@ -400,7 +405,7 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
         const events = boundEvents(question
           ? [...agent.events, clarificationEvent(question)]
           : agent.events);
-        reply({
+        await reply({
           outcome: 'clarification_required',
           message_he: 'לפני בניית חלופות אני צריך להשלים כמה פרטים אקדמיים חשובים.',
           events,
@@ -436,7 +441,7 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
           const events = boundEvents(question
             ? [...agent.events, clarificationEvent(question)]
             : agent.events);
-          reply({
+          await reply({
             outcome: 'clarification_required',
             message_he: 'הטיוטה מוכנה לבדיקה, אבל חסר עדיין מידע שמונע הצעה סופית.',
             events,
@@ -455,7 +460,7 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
 
       const messageHe = agent.messageHe.trim().slice(0, 4_000);
       if (agent.outcome !== 'proposal' || !agent.validation.valid) {
-        reply({
+        await reply({
           outcome: 'conversation',
           message_he: messageHe,
           events: boundEvents(agent.events),
@@ -629,7 +634,7 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
         ...agent.events,
         { type: 'alternatives_ready' as const, proposal_id: proposalId, candidate_ids: [candidateId] },
       ]);
-      reply({
+      await reply({
         outcome: 'proposal',
         message_he: messageHe,
         events,
@@ -684,7 +689,9 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
     } finally {
       // A reply the student received is service delivered; conflicts, failures,
       // early stops and empty runs return the reserved credit.
-      if (billable && (replied || streamedText)) await meter.deliver(billable);
+      // A reply was already charged in reply(); streamed text the student saw is charged here.
+      if (billable && replied) { /* charged */ }
+      else if (billable && streamedText) await meter.deliver(billable);
       else await meter.release(billable ? 'reply_not_sent' : 'no_reply');
     }
   };

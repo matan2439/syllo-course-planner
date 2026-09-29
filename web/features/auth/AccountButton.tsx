@@ -86,7 +86,7 @@ export default function AccountButton() {
         <div
           role="dialog"
           aria-label={user ? 'החשבון שלי' : 'התחברות לחשבון'}
-          className="absolute end-0 top-full z-50 mt-2 w-72 max-w-[calc(100vw-2rem)] rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 text-sm shadow-[var(--shadow-premium)]"
+          className="absolute end-0 top-full z-50 mt-2 w-72 max-w-[calc(100vw-2rem)] rounded-2xl border border-[var(--border)] bg-[var(--surface-panel)] p-4 text-sm shadow-[var(--shadow-premium)]"
         >
           {user ? (
             <div className="space-y-3">

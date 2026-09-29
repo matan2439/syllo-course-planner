@@ -18,12 +18,14 @@
  */
 import { randomUUID } from 'crypto';
 import postgres from 'postgres';
+import { waitUntil } from '@vercel/functions';
 import { verifiedUserId } from './auth_session';
 import { finalizeCredits, releaseCredits, reserveCredits, type BillingSql, type CreditsSql, type OperationUsage } from './credits';
 import { PG_OPTS } from './_quota';
 import type { OwnerRequestLike, OwnerResponseLike } from './session_owner';
+import { CREDITS_PER_REPLY } from '../../shared/billing/pricing';
 
-export const CREDITS_PER_OPERATION = 1;
+export const CREDITS_PER_OPERATION = CREDITS_PER_REPLY;
 /** The metering unit in force; stored per operation (ai_operations.pricing_version default, billing/005). */
 export const METERING_VERSION = 'v1-1credit-per-reply';
 
@@ -83,16 +85,18 @@ export async function openMeteredOperation(
   }
   if (status === 'insufficient') return { refused: 'insufficient' };
 
-  let settled = false;
-  const settle = async (label: string, fn: () => Promise<unknown>) => {
-    if (settled) return;
-    settled = true;
-    try {
-      await fn();
-    } catch (error) {
+  // Settled exactly once. Vercel freezes the instance when the response ends, so
+  // the settlement is also registered with waitUntil (a no-op outside Vercel);
+  // callers that must charge BEFORE answering simply await deliver().
+  let settlement: Promise<void> | null = null;
+  const settle = (label: string, fn: () => Promise<unknown>): Promise<void> => {
+    if (settlement) return settlement;
+    settlement = fn().then(() => {}, (error) => {
       // A reservation left open is surfaced by reconciliation (stale reserved ops).
       console.error(`[metering] ${label} failed for ${operationId}:`, (error as Error)?.message);
-    }
+    });
+    waitUntil(settlement);
+    return settlement;
   };
   return {
     funding: status === 'exempt' ? 'exempt' : 'credits',
