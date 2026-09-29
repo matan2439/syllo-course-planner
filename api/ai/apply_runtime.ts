@@ -188,6 +188,17 @@ export function getAuthoritativeApplyStore(): AuthoritativeApplyStore | null {
   return initializePostgresState().authoritativeApplyStore;
 }
 
+/**
+ * Move an anonymous browser's durable planner state onto a signed-in account.
+ * Returns whether adoption actually ran.
+ * ponytail: Postgres only — file/memory storage is local-dev, where re-entering state is cheap.
+ */
+export async function adoptAnonymousPlannerState(fromOwnerId: string, toOwnerId: string): Promise<boolean> {
+  if (selectedKind() !== 'postgres') return false;
+  await initializePostgresState().adoptOwner(fromOwnerId, toOwnerId);
+  return true;
+}
+
 /** Test-only: drop both stores so suites cannot leak state into each other. */
 export function resetApplyRuntime(): void {
   boardRepo = undefined;

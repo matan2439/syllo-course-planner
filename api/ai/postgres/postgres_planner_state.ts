@@ -7,6 +7,7 @@ import { PostgresAuthoritativeApplyStore } from './postgres_authoritative_apply_
 import { PostgresBoardRepository } from './postgres_board_repository';
 import { PostgresProposalStore } from './postgres_proposal_store';
 import { checkPlannerSchema } from './planner_schema';
+import { adoptOwnerState } from './adopt_owner';
 
 type PlannerRow = Record<string, unknown>;
 
@@ -24,6 +25,7 @@ export interface PostgresPlannerState {
   proposalStore: ProposalStore;
   authoritativeApplyStore: AuthoritativeApplyStore;
   ensureSchemaCurrent(): Promise<void>;
+  adoptOwner(fromOwnerId: string, toOwnerId: string): Promise<void>;
 }
 
 export class PlannerSchemaMismatchError extends Error {
@@ -42,6 +44,7 @@ export function createPostgresPlannerState(sql: PlannerPostgresSql): PostgresPla
     academicContextStore: new PostgresAcademicContextStore(sql),
     proposalStore: new PostgresProposalStore(sql),
     authoritativeApplyStore: new PostgresAuthoritativeApplyStore(sql),
+    adoptOwner: (fromOwnerId, toOwnerId) => adoptOwnerState(sql, fromOwnerId, toOwnerId),
     ensureSchemaCurrent(): Promise<void> {
       schemaCheck ??= checkPlannerSchema(sql).then((status) => {
         if (status !== 'current') throw new PlannerSchemaMismatchError();

@@ -9,6 +9,7 @@ import type { PlannerDragPayload } from '../../../lib/planner/drag-payload'
 import { LAST_PROGRAM_KEY } from '../../shell/last-program'
 import { semesterWindowForDegreeYear, semesterWindowSlots, type SemesterWindow } from '../../../lib/planner/semester-window'
 import { useCurrentDegreeYear } from '../hooks/use-current-degree-year'
+import { useAuth } from '../../auth/AuthProvider'
 
 type RailTab = 'courses' | 'agent' | 'profile'
 type MainTab = 'board' | 'schedule'
@@ -64,6 +65,12 @@ export default function UnifiedPlannerWorkspace({
       setShowSetup(localStorage.getItem(setupKey) !== '1')
     } catch { /* storage unavailable: no card, no memory */ }
   }, [programId, setupKey])
+  // Signed in: the program is part of the account profile too (resumes on any device).
+  const { profile, updateProfile } = useAuth()
+  const accountProgramId = profile ? profile.program_id : undefined
+  useEffect(() => {
+    if (accountProgramId !== undefined && accountProgramId !== programId) void updateProfile({ program_id: programId })
+  }, [accountProgramId, programId, updateProfile])
   const finishSetup = (tab?: RailTab) => {
     setShowSetup(false)
     try { localStorage.setItem(setupKey, '1') } catch { /* best effort */ }

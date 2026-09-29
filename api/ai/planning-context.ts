@@ -8,7 +8,7 @@ import {
   plannerStorageErrorCode,
   preferenceDigest,
 } from './apply_runtime';
-import { resolveOwner } from './session_owner';
+import { resolveRequestOwner } from './auth_session';
 
 export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
   if (req.method !== 'POST' && req.method !== 'GET') {
@@ -23,7 +23,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
 
   try {
     await ensurePlannerStorageReady();
-    const owner = resolveOwner(req as any, res);
+    const owner = await resolveRequestOwner(req as any, res);
     if (req.method === 'GET') {
       const rawProgramId = req.query?.program_id;
       const programId = typeof rawProgramId === 'string' ? rawProgramId.trim() : '';

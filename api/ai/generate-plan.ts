@@ -100,7 +100,7 @@ import {
 import { buildPlanAlternatives, constraintFingerprint } from './plan_alternatives';
 import { computePriorityQuestionImpact } from './priority_impact';
 import { describeAcademicProgress } from './academic_progress';
-import { resolveOwner } from './session_owner';
+import { resolveRequestOwner } from './auth_session';
 import {
   academicStatusDigest,
   ensurePlannerStorageReady,
@@ -1447,7 +1447,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
    * ownership key at all.
    */
   const owner = use_academic_decision_agent === true
-    ? resolveOwner(req as unknown as { headers?: Record<string, string | string[] | undefined> }, res)
+    ? await resolveRequestOwner(req as unknown as { headers?: Record<string, string | string[] | undefined> }, res)
     : { ownerId: '', issued: false };
 
   if (use_academic_decision_agent === true) {
