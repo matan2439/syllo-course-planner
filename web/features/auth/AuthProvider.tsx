@@ -47,9 +47,13 @@ const signedOut: AuthState = {
 const AuthContext = createContext<AuthState>(signedOut)
 export const useAuth = () => useContext(AuthContext)
 
-function hebrewAuthError(error: { message?: string } | null | undefined): string | null {
+function hebrewAuthError(error: { message?: string; code?: string } | null | undefined): string | null {
   if (!error) return null
   const message = error.message ?? ''
+  if (error.code === 'over_email_send_rate_limit' || /only request this after|rate limit/i.test(message)) {
+    return 'כבר שלחנו מייל אישור לכתובת הזו. אשרו את החשבון דרך הקישור במייל (בדקו גם בספאם) ואז התחברו. שליחה חוזרת אפשרית בעוד כדקה.'
+  }
+  if (error.code === 'email_not_confirmed') return 'יש לאשר את כתובת האימייל (בדקו את תיבת הדואר).'
   if (/invalid login credentials/i.test(message)) return 'אימייל או סיסמה שגויים.'
   if (/email not confirmed/i.test(message)) return 'יש לאשר את כתובת האימייל (בדקו את תיבת הדואר).'
   if (/already registered/i.test(message)) return 'כתובת האימייל כבר רשומה. נסו להתחבר.'

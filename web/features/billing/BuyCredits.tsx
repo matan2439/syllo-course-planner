@@ -1,6 +1,8 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
+import { BUY_CREDITS_EVENT } from './ai_access'
 import { LEGAL_VERSIONS, PURCHASE_DISCLOSURE_HE } from '../../../shared/billing/legal_versions'
 import { loadPaddle, paddleClientConfigured, type PaddleEventData } from './paddle-client'
 
@@ -41,7 +43,11 @@ async function getJson(url: string, init?: RequestInit) {
  * Buy Syllo Credits. The balance changes ONLY after the server processed Paddle's
  * verified webhook — never optimistically from the browser's checkout event.
  */
-export default function BuyCredits({ onBalanceChanged }: { onBalanceChanged(): void }) {
+export default function BuyCredits({ onBalanceChanged, trigger = true }: {
+  onBalanceChanged(): void
+  /** Render the inline "buy credits" link; false = open only via openBuyCredits(). */
+  trigger?: boolean
+}) {
   const [phase, setPhase] = useState<Phase>({ kind: 'idle' })
   const [packages, setPackages] = useState<Pkg[]>([])
   const [prices, setPrices] = useState<Record<string, string>>({})
@@ -65,6 +71,12 @@ export default function BuyCredits({ onBalanceChanged }: { onBalanceChanged(): v
     }, POLL_MS)
     return () => clearInterval(timer)
   }, [phase, onBalanceChanged])
+
+  useEffect(() => {
+    const onOpen = () => { if (paddleClientConfigured()) void open() }
+    window.addEventListener(BUY_CREDITS_EVENT, onOpen)
+    return () => window.removeEventListener(BUY_CREDITS_EVENT, onOpen)
+  })
 
   if (!paddleClientConfigured()) return null
 
@@ -115,11 +127,20 @@ export default function BuyCredits({ onBalanceChanged }: { onBalanceChanged(): v
   }
 
   if (phase.kind === 'idle') {
-    return <button type="button" className={LINK} onClick={() => void open()}>קניית קרדיטים</button>
+    return trigger ? <button type="button" className={LINK} onClick={() => void open()}>קניית קרדיטים</button> : null
   }
 
-  return (
-    <div data-testid="buy-credits" className="space-y-2 rounded-xl border border-[var(--border)] p-3">
+  const close = () => setPhase({ kind: 'idle' })
+  // A dialog of its own (not inside the account popover), portaled to <body>.
+  return createPortal(
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4" onClick={(e) => { if (e.target === e.currentTarget) close() }}>
+    <div role="dialog" aria-modal="true" aria-label="קניית קרדיטים" data-testid="buy-credits"
+      className="max-h-[90vh] w-full max-w-md space-y-3 overflow-y-auto rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 text-sm shadow-[var(--shadow-premium)]">
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="text-base font-bold text-[var(--text)]">קניית קרדיטים</h2>
+        <button type="button" aria-label="סגירה" onClick={close} className="rounded-full px-2 text-lg leading-none text-[var(--text-muted)] hover:text-[var(--text)]">×</button>
+      </div>
+      <p className="text-xs text-[var(--text-muted)]">כל תשובה של העוזר החכם עולה קרדיט אחד.</p>
       {phase.kind === 'loading' && <p className="text-xs text-[var(--text-muted)]">טוען חבילות…</p>}
       {(phase.kind === 'choose' || phase.kind === 'creating' || phase.kind === 'checkout') && (
         <>
@@ -158,5 +179,7 @@ export default function BuyCredits({ onBalanceChanged }: { onBalanceChanged(): v
         </div>
       )}
     </div>
+    </div>,
+    document.body,
   )
 }
