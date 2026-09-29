@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import ThemeAwareFavicon from '../features/shell/components/ThemeAwareFavicon'
+import { AuthProvider } from '../features/auth/AuthProvider'
 
 export const metadata: Metadata = {
   title: 'Syllo — תכנון לימודים, אוניברסיטת תל אביב',
@@ -39,7 +40,7 @@ export default function RootLayout({
       </head>
       <body className="min-h-screen antialiased">
         <ThemeAwareFavicon />
-        {children}
+        <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
   )

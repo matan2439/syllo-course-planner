@@ -16,7 +16,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { z } from 'zod';
 import { committedBoardView } from './committed_board_view';
-import { resolveOwner } from './session_owner';
+import { resolveRequestOwner } from './auth_session';
 import {
   academicStatusDigest,
   ensurePlannerStorageReady,
@@ -214,7 +214,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
 async function handle(req: VercelRequest, res: VercelResponse): Promise<void> {
   // The session is resolved for every method: a GET is how a fresh page learns
   // whether this browser already owns a committed board.
-  const owner = resolveOwner(req as unknown as { headers?: Record<string, string | string[] | undefined> }, res);
+  const owner = await resolveRequestOwner(req as unknown as { headers?: Record<string, string | string[] | undefined> }, res);
   await ensurePlannerStorageReady();
 
   if (req.method === 'GET') {

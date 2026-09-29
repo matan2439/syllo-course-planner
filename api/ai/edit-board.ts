@@ -14,7 +14,7 @@ import {
   type ManualAddFailureCode, type ManualRemoveFailureCode,
 } from './manual_board_edit_service';
 import { committedBoardView } from './committed_board_view';
-import { resolveOwner } from './session_owner';
+import { resolveRequestOwner } from './auth_session';
 
 type FailureCode = ManualAddFailureCode | ManualRemoveFailureCode
   | 'INVALID_REQUEST' | 'METHOD_NOT_ALLOWED' | 'ACADEMIC_CONTEXT_NOT_FOUND'
@@ -65,7 +65,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     if (!parsed.success) { reject(res, 'INVALID_REQUEST'); return; }
     await ensurePlannerStorageReady();
     const request = parsed.data;
-    const owner = resolveOwner(req as any, res);
+    const owner = await resolveRequestOwner(req as any, res);
     const repo = getBoardRepository();
     const currentBoard = await repo.load(owner.ownerId, request.program_id);
     const context = await getAcademicContextStore().load(owner.ownerId, request.program_id);

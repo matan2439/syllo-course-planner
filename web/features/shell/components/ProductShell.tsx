@@ -4,6 +4,7 @@ import { getProgram, programQuery } from '../../../lib/programs'
 import BrandLogo from './BrandLogo'
 import ShaderGradientBackground from './ShaderGradientBackground'
 import ThemeToggle from './ThemeToggle'
+import AccountButton from '../../auth/AccountButton'
 
 /**
  * Shared product frame for planner-facing Next pages: gradient background,
@@ -68,6 +69,7 @@ export default function ProductShell({
             {programId && <span id="shell-progress-slot" className="contents" />}
             {progress}
             <ThemeToggle />
+            <AccountButton />
           </nav>
         </header>
 

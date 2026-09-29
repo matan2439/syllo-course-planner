@@ -29,9 +29,8 @@
  * layer rather than the only one.
  *
  * This is deliberately NOT authentication. It identifies a browser, not a
- * person. Upgrading to authenticated ownership means adding a nullable user id
- * beside the owner id and preferring it when present — no change to the
- * repository boundary.
+ * person. Authenticated ownership lives in `auth_session.ts#resolveRequestOwner`,
+ * which prefers a verified Supabase user and falls back to this cookie.
  */
 import { randomBytes } from 'crypto';
 
@@ -120,20 +119,34 @@ export function resolveOwner(
   res: OwnerResponseLike,
   options: ResolveOwnerOptions = {},
 ): ResolvedOwner {
-  const rawCookie = req.headers?.cookie;
-  const header = Array.isArray(rawCookie) ? rawCookie.join('; ') : rawCookie;
-  const existing = readCookie(header, SESSION_COOKIE);
-  if (isWellFormedOwnerId(existing)) return { ownerId: existing, issued: false };
+  const existing = readAnonymousOwner(req);
+  if (existing) return { ownerId: existing, issued: false };
 
   const ownerId = (options.generateId ?? generateOwnerId)();
   const secure = options.secure ?? process.env.AI_DEV_MODE !== 'true';
-  const cookie = serializeSessionCookie(ownerId, { secure });
+  appendSetCookie(res, serializeSessionCookie(ownerId, { secure }));
 
+  return { ownerId, issued: true };
+}
+
+/** The anonymous owner id this request carries, if any (read-only; never issues one). */
+export function readAnonymousOwner(req: OwnerRequestLike): string | undefined {
+  const rawCookie = req.headers?.cookie;
+  const header = Array.isArray(rawCookie) ? rawCookie.join('; ') : rawCookie;
+  const existing = readCookie(header, SESSION_COOKIE);
+  return isWellFormedOwnerId(existing) ? existing : undefined;
+}
+
+/** Expire the anonymous owner cookie (once its records were adopted by an account). */
+export function clearSessionCookie(res: OwnerResponseLike): void {
+  appendSetCookie(res, `${SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`);
+}
+
+/** Append (never assign) so no other layer's cookie on the same response is clobbered. */
+export function appendSetCookie(res: OwnerResponseLike, cookie: string): void {
   const prior = res.getHeader?.('Set-Cookie');
   const merged = prior === undefined
     ? [cookie]
     : (Array.isArray(prior) ? [...prior.map(String), cookie] : [String(prior), cookie]);
   res.setHeader('Set-Cookie', merged);
-
-  return { ownerId, issued: true };
 }

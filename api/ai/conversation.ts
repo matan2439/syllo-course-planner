@@ -40,7 +40,7 @@ import {
   preferenceDigest,
   academicStatusDigest,
 } from './apply_runtime';
-import { resolveOwner } from './session_owner';
+import { resolveRequestOwner } from './auth_session';
 import type { CommittedBoard } from './board_repository';
 import type { AcademicContextRecord } from './academic_context_store';
 import type { AcademicContextStore } from './academic_context_store';
@@ -220,7 +220,7 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
     const writeLine = (line: unknown) => res.write(`${JSON.stringify(line)}\n`);
     let out: Pick<VercelResponse, 'status' | 'json'> = res;
     try {
-      const owner = resolveOwner(req as unknown as { headers?: Record<string, string | string[] | undefined> }, res);
+      const owner = await resolveRequestOwner(req as unknown as { headers?: Record<string, string | string[] | undefined> }, res);
       const board = await loadBoard(owner.ownerId, parsed.data.program_id);
       const currentBoardVersion = board?.version ?? null;
       if ((parsed.data.board_version ?? null) !== currentBoardVersion) {
