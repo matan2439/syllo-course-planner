@@ -49,7 +49,7 @@ jobs:
         run: npm ci
 
       - name: Run API tests
-        run: npx jest --testPathPattern=tests/api --no-coverage
+        run: npm test -- --no-coverage
 
       - name: Type-check API
         run: npm run typecheck

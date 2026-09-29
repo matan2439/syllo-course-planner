@@ -8,12 +8,14 @@ import { LAST_PROGRAM_KEY } from '../shell/last-program'
 
 const USER = { id: '11111111-1111-4111-8111-111111111111', email: 'student@tau.ac.il' }
 const baseProfile = (over: Partial<Profile> = {}): Profile => ({
-  id: USER.id, email: USER.email, role: 'user', program_id: null, current_degree_year: null,
+  id: USER.id, email: USER.email, role: 'user', billing_exempt: false, program_id: null, current_degree_year: null,
   created_at: '2026-09-29T00:00:00Z', updated_at: '2026-09-29T00:00:00Z', ...over,
 })
 
 /** A fake Supabase: cookie session + a `profiles` table that only ever serves the queried id (RLS stand-in). */
-function fakeSupabase({ session = null as null | { user: typeof USER }, profile = null as Profile | null } = {}) {
+function fakeSupabase({
+  session = null as null | { user: typeof USER }, profile = null as Profile | null, balance = null as number | null,
+} = {}) {
   let listener: (event: string, s: unknown) => void = () => {}
   const db = { profile }
   const updates: Array<Record<string, unknown>> = []
@@ -38,14 +40,16 @@ function fakeSupabase({ session = null as null | { user: typeof USER }, profile 
       db.profile = null
       return { error: null }
     }),
-    from: jest.fn(() => {
+    from: jest.fn((table: string) => {
       let id: string | undefined
       let patch: Record<string, unknown> = {}
       const q = {
         select: () => q,
         eq: (_column: string, value: string) => { id = value; return q },
         update: (p: Record<string, unknown>) => { patch = p; return q },
-        maybeSingle: async () => ({ data: db.profile?.id === id ? db.profile : null, error: null }),
+        maybeSingle: async () => table === 'credit_accounts'
+          ? { data: id === USER.id && balance != null ? { balance } : null, error: null }
+          : { data: db.profile?.id === id ? db.profile : null, error: null },
         single: async () => {
           updates.push(patch)
           db.profile = { ...db.profile!, ...patch } as Profile
@@ -153,6 +157,19 @@ describe('signed in', () => {
     renderApp(client)
     fireEvent.click(await screen.findByRole('button', { name: 'החשבון שלי' }))
     expect(await screen.findByText('מפתח')).toBeInTheDocument()
+  })
+
+  test('shows the Syllo Credits balance; exempt accounts show no charge', async () => {
+    const { client } = fakeSupabase({ session: { user: USER }, profile: baseProfile(), balance: 42 })
+    const { unmount } = renderApp(client)
+    fireEvent.click(await screen.findByRole('button', { name: 'החשבון שלי' }))
+    await waitFor(() => expect(screen.getByTestId('credit-balance')).toHaveTextContent('קרדיטים של Syllo: 42'))
+    unmount()
+
+    const exempt = fakeSupabase({ session: { user: USER }, profile: baseProfile({ role: 'developer', billing_exempt: true }), balance: 0 })
+    renderApp(exempt.client)
+    fireEvent.click(await screen.findByRole('button', { name: 'החשבון שלי' }))
+    await waitFor(() => expect(screen.getByTestId('credit-balance')).toHaveTextContent('ללא חיוב'))
   })
 
   test('sign-out returns to the signed-out UI and keeps the device cache', async () => {

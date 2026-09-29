@@ -10,7 +10,7 @@
     "agent:course-smoke": "tsx scripts/course_copilot_smoke.ts",
     "refresh:grades": "tsx scripts/refresh_grade_snapshots.ts",
     "typecheck": "tsc --noEmit",
-    "test": "jest --testPathPattern=tests/api",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --testPathPattern=tests/api",
     "build:board": "python3 scripts/course_planner_pipeline.py --program mechanical_engineering --year 2027 --build",
     "audit:board": "python3 scripts/course_planner_pipeline.py --program mechanical_engineering --year 2027 --audit",
     "sync:board": "python3 scripts/course_planner_pipeline.py --program mechanical_engineering --year 2027 --audit --sync",
@@ -33,6 +33,7 @@
   },
   "devDependencies": {
     "@babel/preset-env": "^7.29.7",
+    "@electric-sql/pglite": "^0.5.8",
     "@types/jest": "^29.5.12",
     "@types/node": "^20.14.0",
     "@vercel/node": "^4.0.0",
