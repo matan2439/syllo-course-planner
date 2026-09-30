@@ -56,6 +56,9 @@ beforeAll(async () => {
   await pg.exec(migration('auth/001_profiles.sql'));
   await pg.exec(creditsSql);
   await pg.exec(creditsSql); // idempotent re-apply
+  // The lot-aware ledger (002) must keep every behaviour asserted here.
+  await pg.exec(migration('billing/002_credit_lots.sql'));
+  await pg.exec(migration('billing/002_credit_lots.sql'));
   sql = { unsafe: async (q, p) => (await pg.query<Record<string, unknown>>(q, p as unknown[])).rows };
 }, 60_000);
 

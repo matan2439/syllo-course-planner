@@ -22,6 +22,7 @@ import conversationHandler from '../api/ai/conversation'
 import coursePlannerHandler from '../api/ai/course-planner'
 import scheduleGroupsHandler from '../api/ai/schedule-groups'
 import courseInsightsHandler from '../api/ai/course-insights'
+import billingHandler from '../api/billing'
 import { loadLocalBoardJson } from '../api/ai/board_loader'
 
 // Local secrets (OPENAI_API_KEY, DATABASE_URL…) from the git-ignored .env.local;
@@ -67,11 +68,13 @@ const server = createServer(async (req, res) => {
       r.status(200).json(board)
       return
     }
-    const handler = ROUTES[path]
+    const handler = ROUTES[path] ?? (path.startsWith('/api/billing/') ? (billingHandler as Handler) : undefined)
     if (handler) {
       const chunks: Buffer[] = []
       for await (const c of req) chunks.push(c as Buffer)
       const raw = Buffer.concat(chunks).toString('utf8')
+      // Billing webhooks verify the exact signed bytes.
+      ;(req as unknown as { rawBody: string }).rawBody = raw
       ;(req as unknown as { body: unknown }).body = raw ? JSON.parse(raw) : {}
       ;(req as unknown as { query: unknown }).query = Object.fromEntries(new URL(req.url ?? '/', 'http://localhost').searchParams)
       await handler(req as never, r as never)

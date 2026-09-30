@@ -3,6 +3,7 @@
  * tools. The run ends when the agent asks the student something (ask_student),
  * submits a validated proposal (submit_proposal), or answers in plain text.
  */
+import { usageFromAgentRun, type OperationUsage } from '../credits';
 import {
   Agent,
   MaxTurnsExceededError,
@@ -38,6 +39,8 @@ export type PlannerAgentResult =
       events: ConversationEvent[];
       draftPlan: ReturnType<PlannerWorker['getPlan']>;
       validation: ReturnType<PlannerWorker['validateCandidate']>;
+      /** Provider token usage of the run (metering evidence). */
+      usage?: OperationUsage;
     }
   | {
       outcome: 'conversation';
@@ -187,6 +190,7 @@ export async function runPlannerAgent(input: PlannerAgentInput, deps: PlannerAge
         events,
         draftPlan: session.worker.getPlan(),
         validation: session.worker.validateCandidate(),
+        usage: usageFromAgentRun(result.state.usage),
       };
     }
 

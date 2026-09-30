@@ -4,6 +4,7 @@
  * implementations, read-only tools only — streaming its text. It never edits a
  * plan; planning belongs to the planning co-pilot.
  */
+import { usageFromAgentRun, type OperationUsage } from '../credits';
 import { assistant, user, system, type AgentInputItem, type Model } from '@openai/agents';
 import { loadLocalBoardJson } from '../board_loader';
 import { PlanningSession } from './session';
@@ -32,6 +33,8 @@ export interface CourseAdvisorStream {
   textStream: ReadableStream<string>;
   /** Resolves when the run finished (rejects if it failed). */
   completed: Promise<void>;
+  /** Token usage so far (complete once `completed` resolved). */
+  usage: () => OperationUsage;
 }
 
 export function courseAdvisorInputItems(input: CourseAdvisorInput): AgentInputItem[] {
@@ -71,5 +74,6 @@ export async function streamCourseAdvisor(
     { stream: true, context: session, maxTurns: 10 },
   );
   // The SDK's shim types its web stream separately from lib.dom's; same object at runtime.
-  return { textStream: result.toTextStream() as unknown as ReadableStream<string>, completed: result.completed };
+  return { textStream: result.toTextStream() as unknown as ReadableStream<string>, completed: result.completed,
+    usage: () => usageFromAgentRun(result.state.usage) };
 }

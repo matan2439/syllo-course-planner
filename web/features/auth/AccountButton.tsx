@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useState, type FormEvent } from 'react'
 import { useAuth } from './AuthProvider'
+import BuyCredits from '../billing/BuyCredits'
 
 const CHIP =
   'rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs font-semibold text-[var(--text)] shadow-sm transition-colors hover:border-[var(--purple)]/50 hover:text-[var(--purple)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--purple)]'
@@ -103,6 +104,7 @@ export default function AccountButton() {
                   </div>
                 </div>
               )}
+              {!auth.profile?.billing_exempt && <BuyCredits onBalanceChanged={auth.refreshCreditBalance} />}
               <p className="text-xs text-[var(--text-muted)]">הפרופיל והתוכנית שלך נשמרים בחשבון.</p>
               <button type="button" className={SECONDARY + ' w-full'} onClick={() => { void auth.signOut(); setOpen(false) }}>
                 התנתקות
