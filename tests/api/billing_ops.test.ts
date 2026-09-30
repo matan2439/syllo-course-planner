@@ -116,6 +116,21 @@ describe('scheduled reconciliation', () => {
     expect(await openAlerts('chargeback')).toEqual(expect.arrayContaining([expect.objectContaining({ payment_id: Number(b.paymentId) })]));
   });
 
+  test('a refund the webhook already applied is not reported as repaired (pending and approved)', async () => {
+    const user = await db.newUser();
+    const a = await purchased(user);
+    const adj = (status: string) => ({ id: 'adj_seen_rf', action: 'refund', type: 'full', status, transaction_id: a.txn, currency_code: 'ILS', totals: { total: '5000' }, updated_at: new Date().toISOString() });
+    for (const status of ['pending_approval', 'approved']) {
+      await webhook({ event_id: `evt_seen_${status}`, event_type: status === 'approved' ? 'adjustment.updated' : 'adjustment.created', occurred_at: new Date().toISOString(), data: adj(status) });
+      paddle.get(a.txn)!.adjustments = [adj(status)];
+      const res = await runCron();
+      const run = await db.one<any>('SELECT findings FROM billing_reconciliation_runs WHERE id = $1', [res.body.run_id]);
+      expect(run.findings.filter((f: any) => f.subject === 'adjustment:adj_seen_rf')).toEqual([]);
+    }
+    expect(await getCreditBalance(db.sql, user)).toBe(0);
+    expect(await db.one<any>("SELECT COUNT(*)::int AS n FROM credit_transactions WHERE kind = 'refund' AND user_id = $1", [user])).toEqual({ n: 1 });
+  });
+
   test('stale pending checkout expires; stale AI reservation is released', async () => {
     const user = await db.newUser();
     const c = await checkout(user);

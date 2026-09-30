@@ -192,7 +192,8 @@ async function handleAdjustment(tx: CreditsSql, ctx: ProcessContext, event: Padd
         details: { adjustment_id: d.id, reason: `conflicting statuses ${existing.status} / ${d.status}` } });
       return 'manual_review';
     }
-    if (d.status === existing.status && !['pending', 'awaiting_purchase'].includes(existing.accounting_state)) return 'processed';
+    // Already accounted for (webhook vs reconciliation): 'duplicate', so nothing reports it as repaired.
+    if (d.status === existing.status && !['pending', 'awaiting_purchase'].includes(existing.accounting_state)) return 'duplicate';
     await tx.unsafe(
       `UPDATE public.payment_adjustments SET status = $2, type = $3, amount = $4, currency = $5,
               occurred_at = GREATEST(occurred_at, $6::timestamptz), accounting_state = 'pending', updated_at = now()
@@ -221,7 +222,7 @@ async function handleAdjustment(tx: CreditsSql, ctx: ProcessContext, event: Padd
 
 async function applyAdjustment(tx: CreditsSql, pay: Row, adj: Row, eventId: string): Promise<ProcessStatus> {
   const decisionKey = `adj:${adj.paddle_adjustment_id}:${adj.status}`;
-  if (await one(tx, 'SELECT 1 FROM public.billing_policy_decisions WHERE decision_key = $1', [decisionKey])) return 'processed';
+  if (await one(tx, 'SELECT 1 FROM public.billing_policy_decisions WHERE decision_key = $1', [decisionKey])) return 'duplicate';
 
   // Lock order = AI metering's: account row first, then the lot.
   await tx.unsafe('SELECT 1 FROM public.credit_accounts WHERE user_id = $1 FOR UPDATE', [pay.user_id]);
