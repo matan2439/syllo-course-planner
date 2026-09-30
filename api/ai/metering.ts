@@ -48,7 +48,13 @@ let shared: BillingSql | null | undefined;
 export function billingSql(): BillingSql | null {
   if (shared === undefined) {
     const url = databaseUrl();
-    shared = url ? (postgres(url, { ...PG_OPTS, max: 3 }) as unknown as BillingSql) : null;
+    try {
+      shared = url ? (postgres(url, { ...PG_OPTS, max: 3 }) as unknown as BillingSql) : null;
+    } catch (err) {
+      // A malformed DATABASE_URL is "not configured": callers fail closed (503), never 500.
+      console.error('[billing] DATABASE_URL is not a valid connection string:', (err as Error).message);
+      shared = null;
+    }
   }
   return shared;
 }
