@@ -114,7 +114,10 @@ export default function AccountButton() {
                 </div>
               )}
               {!auth.profile?.billing_exempt && (
-                <button type="button" className={PRIMARY + ' w-full'} onClick={() => { setOpen(false); openBuyCredits() }}>קניית קרדיטים</button>
+                <>
+                  <button type="button" className={PRIMARY + ' w-full'} onClick={() => { setOpen(false); openBuyCredits() }}>קניית קרדיטים</button>
+                  <Link href="/refund-policy" className="block text-center text-xs text-[var(--text-muted)] underline hover:text-[var(--purple)]">מדיניות החזרים ובקשת החזר</Link>
+                </>
               )}
               <p className="text-xs text-[var(--text-muted)]">הפרופיל והתוכנית שלך נשמרים בחשבון.</p>
               <button type="button" className={SECONDARY + ' w-full'} onClick={() => { void auth.signOut(); setOpen(false) }}>

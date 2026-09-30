@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { BUY_CREDITS_EVENT } from './ai_access'
@@ -12,6 +13,7 @@ interface Purchase {
   status: string
   completed_at: string | null
   credits: { purchased: number; consumed: number; in_use: number; unused: number; revoked: number }
+  refund_request: { case_status: string; requested_at: string } | null
 }
 
 type Phase =
@@ -33,6 +35,11 @@ const POLL_LIMIT = 45 // ~90s; after that the purchase is still processed server
 const STATUS_HE: Record<string, string> = {
   completed: 'הושלמה', partially_refunded: 'הוחזרה חלקית', refunded: 'הוחזרה', disputed: 'במחלוקת', chargeback: 'במחלוקת',
 }
+
+const REFUND_CASE_HE: Record<string, string> = {
+  open: 'בקשת החזר התקבלה', in_progress: 'בקשת החזר בטיפול', awaiting_customer: 'בקשת החזר ממתינה לתשובתך', resolved: 'בקשת החזר טופלה',
+}
+const REFUND_REASON_MAX = 2000
 
 async function getJson(url: string, init?: RequestInit) {
   const res = await fetch(url, { credentials: 'same-origin', ...init })
@@ -184,16 +191,83 @@ export default function BuyCredits({ onBalanceChanged, trigger = true }: {
         <div data-testid="purchase-history" className="space-y-1 border-t border-[var(--border)] pt-2">
           <p className="text-xs font-semibold text-[var(--text)]">הרכישות שלי</p>
           {purchases.map((p) => (
-            <p key={p.payment_id} className="text-[11px] text-[var(--text-muted)]">
-              {p.credits.purchased} נרכשו · {p.credits.consumed} נוצלו · {p.credits.unused} זמינים{p.credits.revoked ? ` · ${p.credits.revoked} בוטלו` : ''}
-              {STATUS_HE[p.status] && p.status !== 'completed' ? ` · ${STATUS_HE[p.status]}` : ''}
-            </p>
+            <div key={p.payment_id} className="space-y-1">
+              <p className="text-[11px] text-[var(--text-muted)]">
+                {p.credits.purchased} נרכשו · {p.credits.consumed} נוצלו · {p.credits.unused} זמינים{p.credits.revoked ? ` · ${p.credits.revoked} בוטלו` : ''}
+                {STATUS_HE[p.status] && p.status !== 'completed' ? ` · ${STATUS_HE[p.status]}` : ''}
+              </p>
+              <RefundRequest purchase={p} onSent={(refund) => setPurchases((all) => all.map((x) => (x.payment_id === p.payment_id ? { ...x, refund_request: refund } : x)))} />
+            </div>
           ))}
         </div>
       )}
+      <Link href="/refund-policy" className="block text-center text-[11px] text-[var(--text-muted)] underline hover:text-[var(--purple)]">מדיניות החזרים</Link>
     </div>
     </div>,
     document.body,
+  )
+}
+
+/**
+ * "בקשת החזר" for one purchase. Sends a request to Syllo staff (an admin case) —
+ * nothing is refunded here; a refund is issued in Paddle after review.
+ */
+function RefundRequest({ purchase, onSent }: { purchase: Purchase; onSent(refund: NonNullable<Purchase['refund_request']>): void }) {
+  const [open, setOpen] = useState(false)
+  const [reason, setReason] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [message, setMessage] = useState<string | null>(null)
+  if (purchase.status === 'refunded' || purchase.status === 'chargeback') return null
+  const pending = purchase.refund_request && purchase.refund_request.case_status !== 'resolved'
+
+  const send = async () => {
+    setBusy(true)
+    setMessage(null)
+    try {
+      const { ok, body } = await getJson('/api/billing/refund-request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ payment_id: purchase.payment_id, reason: reason.trim() }),
+      })
+      if (ok) {
+        setOpen(false)
+        setReason('')
+        setMessage('הבקשה נשלחה. נחזור אליך באימייל של החשבון.')
+        onSent({ case_status: body.case_status ?? 'open', requested_at: new Date().toISOString() })
+      } else {
+        setMessage(body.code === 'TOO_MANY_REQUESTS' ? 'כבר נשלחו כמה בקשות על רכישה זו. נחזור אליך בהקדם.'
+          : body.code === 'ALREADY_REFUNDED' ? 'הרכישה הזו כבר הוחזרה.'
+            : 'לא ניתן לשלוח את הבקשה כרגע. נסו שוב.')
+      }
+    } catch {
+      setMessage('לא ניתן לשלוח את הבקשה כרגע. נסו שוב.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="text-[11px]">
+      {purchase.refund_request && <p role="status" className="text-[var(--text)]">{REFUND_CASE_HE[purchase.refund_request.case_status] ?? REFUND_CASE_HE.open}</p>}
+      {!pending && !open && (
+        <button type="button" className="font-semibold text-[var(--purple)] underline" onClick={() => { setOpen(true); setMessage(null) }}>בקשת החזר</button>
+      )}
+      {open && (
+        <form className="space-y-1" onSubmit={(e) => { e.preventDefault(); void send() }}>
+          <label className="block space-y-1">
+            <span className="text-[var(--text)]">למה את/ה מבקש/ת החזר?</span>
+            <textarea className="w-full rounded-lg border border-[var(--border)] bg-transparent p-2 text-xs text-[var(--text)]" rows={3}
+              required minLength={3} maxLength={REFUND_REASON_MAX} value={reason} onChange={(e) => setReason(e.target.value)} />
+          </label>
+          <p className="text-[var(--text-muted)]">הבקשה נבדקת ידנית. הקרדיטים נשארים בחשבון עד שהחזר מאושר.</p>
+          <div className="flex gap-2">
+            <button type="submit" className="rounded-lg bg-[var(--purple-strong)] px-3 py-1 font-semibold text-white disabled:opacity-60" disabled={busy || reason.trim().length < 3}>שליחת בקשה</button>
+            <button type="button" className="rounded-lg px-3 py-1 text-[var(--text-muted)]" disabled={busy} onClick={() => setOpen(false)}>ביטול</button>
+          </div>
+        </form>
+      )}
+      {message && <p role="status" className="text-[var(--text-muted)]">{message}</p>}
+    </div>
   )
 }
 
