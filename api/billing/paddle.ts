@@ -30,6 +30,17 @@ export function paddleConfig(env: NodeJS.ProcessEnv = process.env): PaddleConfig
   // Paddle API keys are prefixed per environment; a mismatch is a misconfiguration, not a warning.
   const expected = environment === 'sandbox' ? 'pdl_sdbx_' : 'pdl_live_';
   if (!apiKey.startsWith(expected)) throw new PaddleConfigError(`PADDLE_API_KEY is not a ${environment} key`);
+  // Preview and Production share one database: sandbox billing on a production
+  // deployment (or live billing anywhere else) would mint real credits from fake payments.
+  if ((env.VERCEL_ENV === 'production') !== (environment === 'production')) {
+    throw new PaddleConfigError(`PADDLE_ENV=${environment} is not allowed on VERCEL_ENV=${env.VERCEL_ENV ?? 'unset'}`);
+  }
+  const clientEnv = (env.NEXT_PUBLIC_PADDLE_ENV ?? '').trim();
+  if (clientEnv && clientEnv !== environment) throw new PaddleConfigError('NEXT_PUBLIC_PADDLE_ENV does not match PADDLE_ENV');
+  const clientToken = (env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN ?? '').trim();
+  if (clientToken && !clientToken.startsWith(environment === 'sandbox' ? 'test_' : 'live_')) {
+    throw new PaddleConfigError(`NEXT_PUBLIC_PADDLE_CLIENT_TOKEN is not a ${environment} token`);
+  }
   return {
     environment,
     apiKey,

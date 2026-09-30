@@ -31,10 +31,27 @@ describe('environment separation', () => {
   test('the API key must belong to PADDLE_ENV', () => {
     const base = { PADDLE_WEBHOOK_SECRET: 'x' };
     expect(paddleConfig({ ...base, PADDLE_ENV: 'sandbox', PADDLE_API_KEY: 'pdl_sdbx_apikey_1' }).apiBase).toBe('https://sandbox-api.paddle.com');
-    expect(paddleConfig({ ...base, PADDLE_ENV: 'production', PADDLE_API_KEY: 'pdl_live_apikey_1' }).apiBase).toBe('https://api.paddle.com');
-    expect(() => paddleConfig({ ...base, PADDLE_ENV: 'production', PADDLE_API_KEY: 'pdl_sdbx_apikey_1' })).toThrow(/not a production key/);
+    expect(paddleConfig({ ...base, VERCEL_ENV: 'production', PADDLE_ENV: 'production', PADDLE_API_KEY: 'pdl_live_apikey_1' }).apiBase).toBe('https://api.paddle.com');
+    expect(() => paddleConfig({ ...base, VERCEL_ENV: 'production', PADDLE_ENV: 'production', PADDLE_API_KEY: 'pdl_sdbx_apikey_1' })).toThrow(/not a production key/);
     expect(() => paddleConfig({ ...base, PADDLE_ENV: 'sandbox', PADDLE_API_KEY: 'pdl_live_apikey_1' })).toThrow(/not a sandbox key/);
     expect(() => paddleConfig({ ...base, PADDLE_API_KEY: 'pdl_sdbx_apikey_1' })).toThrow(/PADDLE_ENV/);
+  });
+
+  test('mixed sandbox/production configuration fails closed', () => {
+    const base = { PADDLE_WEBHOOK_SECRET: 'whsec' } as NodeJS.ProcessEnv;
+    const sandbox = { ...base, PADDLE_ENV: 'sandbox', PADDLE_API_KEY: 'pdl_sdbx_apikey_1' } as NodeJS.ProcessEnv;
+    const live = { ...base, PADDLE_ENV: 'production', PADDLE_API_KEY: 'pdl_live_apikey_1' } as NodeJS.ProcessEnv;
+    // Sandbox on a production deployment would grant real credits for fake payments.
+    expect(() => paddleConfig({ ...sandbox, VERCEL_ENV: 'production' })).toThrow(/not allowed on VERCEL_ENV=production/);
+    // Live billing only on the production deployment.
+    expect(() => paddleConfig({ ...live, VERCEL_ENV: 'preview' })).toThrow(/not allowed on VERCEL_ENV=preview/);
+    expect(() => paddleConfig(live)).toThrow(/VERCEL_ENV=unset/);
+    expect(paddleConfig({ ...sandbox, VERCEL_ENV: 'preview' }).environment).toBe('sandbox');
+    // Client-side config must agree with the server.
+    expect(() => paddleConfig({ ...sandbox, NEXT_PUBLIC_PADDLE_ENV: 'production' })).toThrow(/NEXT_PUBLIC_PADDLE_ENV/);
+    expect(() => paddleConfig({ ...sandbox, NEXT_PUBLIC_PADDLE_CLIENT_TOKEN: 'live_abc' })).toThrow(/not a sandbox token/);
+    expect(() => paddleConfig({ ...live, VERCEL_ENV: 'production', NEXT_PUBLIC_PADDLE_CLIENT_TOKEN: 'test_abc' })).toThrow(/not a production token/);
+    expect(paddleConfig({ ...live, VERCEL_ENV: 'production', NEXT_PUBLIC_PADDLE_ENV: 'production', NEXT_PUBLIC_PADDLE_CLIENT_TOKEN: 'live_abc' }).environment).toBe('production');
   });
 
   test('catalog: price id → package → credits, only for this deployment\'s prices', () => {

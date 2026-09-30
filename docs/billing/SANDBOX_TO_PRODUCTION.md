@@ -79,6 +79,8 @@ Then repeat steps 1–4 in the **live** Paddle dashboard:
 - set them in the Vercel **Production** scope with `PADDLE_ENV=production` and `NEXT_PUBLIC_PADDLE_ENV=production`;
 - the server refuses a sandbox key under `PADDLE_ENV=production`.
 
-Keep the Preview scope on sandbox forever.
+Billing fails closed (503 `BILLING_NOT_CONFIGURED`) on a mixed configuration: `PADDLE_ENV=production` only on `VERCEL_ENV=production` and vice versa, `NEXT_PUBLIC_PADDLE_ENV` must equal `PADDLE_ENV`, and the client token must be `test_` (sandbox) / `live_` (production).
+
+**Shared database rule.** Preview and Production use the same Supabase project, and credit lots carry no environment. A sandbox purchase on Preview would therefore grant credits spendable in Production. Before Production billing goes live, remove every `PADDLE_*` / `NEXT_PUBLIC_PADDLE_*` variable from the Preview scope. Sandbox testing needs a Preview that points at a separate database.
 
 The Vercel Cron (`/api/billing/reconcile`, daily 03:17 UTC) runs on production deployments only. Check `/admin/billing` after the first live purchase.
