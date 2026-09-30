@@ -123,6 +123,7 @@ export default function AcademicAgentConversation({
   onShowProposal,
   currentDegreeYear = null,
   onCurrentDegreeYearChange,
+  onAcademicContextMissing,
 }: {
   programId: string
   sessionToken: string
@@ -153,6 +154,8 @@ export default function AcademicAgentConversation({
   currentDegreeYear?: DegreeYear | null
   /** Answering the co-pilot's degree-year question updates the profile (and may switch boards). */
   onCurrentDegreeYearChange?: (year: DegreeYear) => void
+  /** 409 ACADEMIC_CONTEXT_MISSING (e.g. the owner changed): the parent reloads the planning context. */
+  onAcademicContextMissing?: () => void
 }) {
   const aiAccess = useAiAccess()
   const { refreshCreditBalance } = useAuth()
@@ -275,6 +278,7 @@ export default function AcademicAgentConversation({
       if (caught instanceof ConversationContextConflictError) {
         setError(caught.messageHe)
         setContextConflict(true)
+        if (caught.code === 'ACADEMIC_CONTEXT_MISSING') onAcademicContextMissing?.()
       } else if (caught instanceof ConversationRefusedError) {
         setError(`${caught.messageHe} הלוח הנוכחי לא השתנה.`)
       } else {

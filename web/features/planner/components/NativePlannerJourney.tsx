@@ -85,6 +85,7 @@ export default function NativePlannerJourney({
   onCurrentDegreeYearChange,
   activeDrag,
   onDragStateChange,
+  onAcademicContextMissing,
 }: {
   programId: string
   getBoardFn?: (programId: string) => Promise<BoardModel>
@@ -115,6 +116,8 @@ export default function NativePlannerJourney({
   onCurrentDegreeYearChange?: (year: DegreeYear) => void
   activeDrag?: PlannerDragPayload | null
   onDragStateChange?: (drag: PlannerDragPayload | null) => void
+  /** The server has no academic context for the current owner: the parent re-reads everything. */
+  onAcademicContextMissing?: () => void
 }) {
   // ── the board ─────────────────────────────────────────────────────────────
   const { boardPhase, current, setCurrent, boardVersion, setBoardVersion } = useCommittedBoard({
@@ -408,6 +411,7 @@ export default function NativePlannerJourney({
           localContextVersion={statusVersion + preferenceVersion}
           currentDegreeYear={currentDegreeYear}
           onCurrentDegreeYearChange={onCurrentDegreeYearChange}
+          onAcademicContextMissing={onAcademicContextMissing}
           courseScopes={[
             { id: 'early-years', label: 'קורסי שנים א׳–ב׳', courseIds: earlyYearCoursesFor(programId).map((course) => course.courseId) },
             { id: 'board', label: 'הקורסים בלוח הנוכחי', courseIds: [...new Set(current.semesters.flatMap((semester) => semester.courses.map((course) => course.courseId)))] },

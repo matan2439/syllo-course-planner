@@ -67,7 +67,18 @@ export default function UnifiedPlannerWorkspace({
     } catch { /* storage unavailable: no card, no memory */ }
   }, [programId, setupKey])
   // Signed in: the program is part of the account profile too (resumes on any device).
-  const { profile, updateProfile } = useAuth()
+  const { profile, updateProfile, user, loading: authLoading } = useAuth()
+  // The planner's board, planning context, and co-pilot digests all belong to one owner
+  // (the server resolves auth:<uid> from the cookie). A sign-in, sign-out, or account switch
+  // on an open page — or a server that no longer has this owner's context — remounts the
+  // journey so everything is re-read for the owner the server now sees. The first session
+  // restore does not count: the cookie was already sent with the first reads.
+  const ownerId = authLoading ? undefined : (user?.id ?? null)
+  const [owner, setOwner] = useState({ id: ownerId, epoch: 0 })
+  if (ownerId !== undefined && ownerId !== owner.id) {
+    setOwner({ id: ownerId, epoch: owner.id === undefined ? owner.epoch : owner.epoch + 1 })
+  }
+  const reloadForOwner = () => setOwner((current) => ({ ...current, epoch: current.epoch + 1 }))
   const accountProgramId = profile ? profile.program_id : undefined
   useEffect(() => {
     if (accountProgramId !== undefined && accountProgramId !== programId) void updateProfile({ program_id: programId })
@@ -213,8 +224,9 @@ export default function UnifiedPlannerWorkspace({
             </p>
           )}
           <NativePlannerJourney
-            key={boardId}
+            key={`${boardId}:${owner.epoch}`}
             programId={boardId}
+            onAcademicContextMissing={reloadForOwner}
             initializePlanningContext
             manualAddIntent={manualAddIntent}
             onManualAddSettled={() => setManualAddIntent(null)}
