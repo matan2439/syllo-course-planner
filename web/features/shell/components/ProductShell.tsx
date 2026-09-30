@@ -5,6 +5,7 @@ import BrandLogo from './BrandLogo'
 import ShaderGradientBackground from './ShaderGradientBackground'
 import ThemeToggle from './ThemeToggle'
 import AccountButton from '../../auth/AccountButton'
+import CreditsChip from '../../billing/CreditsChip'
 
 /**
  * Shared product frame for planner-facing Next pages: gradient background,
@@ -67,6 +68,7 @@ export default function ProductShell({
             )}
             {/* The planner portals its live requirements badge here (see CurrentPlanSection). */}
             {programId && <span id="shell-progress-slot" className="contents" />}
+            {programId && <CreditsChip />}
             {progress}
             <ThemeToggle />
             <AccountButton />

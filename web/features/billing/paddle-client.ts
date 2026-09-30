@@ -12,7 +12,7 @@ interface PaddleGlobal {
   Initialize(options: { token: string; eventCallback?: (event: PaddleEventData) => void }): void
   Checkout: { open(options: { transactionId: string; settings?: Record<string, unknown> }): void }
   PricePreview(request: { items: Array<{ priceId: string; quantity: number }> }): Promise<{
-    data: { details: { lineItems: Array<{ price: { id: string }; formattedTotals: { total: string } }> } }
+    data: { details: { lineItems: Array<{ price: { id: string }; product?: { name?: string }; formattedTotals: { total: string } }> } }
   }>
 }
 

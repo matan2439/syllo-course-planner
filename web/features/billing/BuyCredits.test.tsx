@@ -9,7 +9,7 @@ function installPaddle() {
     Environment: { set: jest.fn() },
     Initialize: jest.fn((o: { eventCallback: (e: unknown) => void }) => { callback = o.eventCallback }),
     Checkout: { open: jest.fn() },
-    PricePreview: jest.fn(async () => ({ data: { details: { lineItems: [{ price: { id: 'pri_small' }, formattedTotals: { total: '₪19.90' } }] } } })),
+    PricePreview: jest.fn(async () => ({ data: { details: { lineItems: [{ price: { id: 'pri_small' }, product: { name: 'Syllo Credits Small' }, formattedTotals: { total: '$5.00' } }] } } })),
   }
   window.Paddle = paddle as never
   return { paddle, emit: (e: unknown) => callback(e) }
@@ -46,8 +46,10 @@ test('purchase flow: disclosure required, server-created checkout, balance only 
   render(<BuyCredits onBalanceChanged={onBalanceChanged} />)
   fireEvent.click(screen.getByRole('button', { name: 'קניית קרדיטים' }))
 
-  const buy = await screen.findByRole('button', { name: /חבילה קטנה · 50 קרדיטים/ })
-  await waitFor(() => expect(buy).toHaveTextContent('₪19.90'))
+  const buy = await screen.findByRole('button', { name: /50 AI credits/ })
+  // Name and localized price both come from Paddle, not from Syllo code.
+  await waitFor(() => expect(buy).toHaveTextContent('Syllo Credits Small'))
+  expect(buy).toHaveTextContent('$5.00')
   expect(screen.getByTestId('purchase-disclosure')).toBeInTheDocument()
   expect(screen.getByTestId('purchase-history')).toHaveTextContent('50 נרכשו · 12 נוצלו · 38 זמינים')
   expect(buy).toBeDisabled() // disclosure not accepted yet
@@ -62,12 +64,12 @@ test('purchase flow: disclosure required, server-created checkout, balance only 
 
   jest.useFakeTimers()
   act(() => emit({ name: 'checkout.completed', data: { transaction_id: 'txn_1' } }))
-  expect(screen.getByRole('status')).toHaveTextContent('מאמתים מול Paddle')
+  expect(screen.getByTestId('purchase-progress')).toHaveTextContent('אימות מאובטח של התשלום')
   expect(onBalanceChanged).not.toHaveBeenCalled() // no optimistic balance
   await act(async () => { jest.advanceTimersByTime(2_000) })
   expect(onBalanceChanged).not.toHaveBeenCalled()
   await act(async () => { jest.advanceTimersByTime(2_000) })
   await act(async () => {})
   expect(onBalanceChanged).toHaveBeenCalledTimes(1)
-  expect(screen.getByRole('status')).toHaveTextContent('50 קרדיטים נוספו לחשבון')
+  expect(screen.getByTestId('purchase-success')).toHaveTextContent('+50 קרדיטים')
 })

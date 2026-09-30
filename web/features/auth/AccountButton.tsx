@@ -1,9 +1,10 @@
 'use client'
 
 import Link from 'next/link'
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { useAuth } from './AuthProvider'
 import BuyCredits from '../billing/BuyCredits'
+import { OPEN_ACCOUNT_EVENT, openBuyCredits } from '../billing/ai_access'
 
 const CHIP =
   'rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs font-semibold text-[var(--text)] shadow-sm transition-colors hover:border-[var(--purple)]/50 hover:text-[var(--purple)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--purple)]'
@@ -26,6 +27,14 @@ export default function AccountButton() {
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [confirmSentTo, setConfirmSentTo] = useState<string | null>(null)
+
+  // AI panels ask the account menu to open (sign in to use paid AI).
+  useEffect(() => {
+    const onOpen = () => setOpen(true)
+    window.addEventListener(OPEN_ACCOUNT_EVENT, onOpen)
+    return () => window.removeEventListener(OPEN_ACCOUNT_EVENT, onOpen)
+  }, [])
 
   if (!auth.enabled || auth.loading) return null
 
@@ -47,7 +56,7 @@ export default function AccountButton() {
     const { error, needsConfirmation } = await auth.signUp(email, password)
     setBusy(false)
     if (error) setMessage(error)
-    else if (needsConfirmation) setMessage('שלחנו אליך מייל לאישור החשבון.')
+    else if (needsConfirmation) setConfirmSentTo(email)
     else setOpen(false)
   }
 
@@ -77,7 +86,7 @@ export default function AccountButton() {
         <div
           role="dialog"
           aria-label={user ? 'החשבון שלי' : 'התחברות לחשבון'}
-          className="absolute end-0 top-full z-50 mt-2 w-72 max-w-[calc(100vw-2rem)] rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 text-sm shadow-[var(--shadow-premium)]"
+          className="absolute end-0 top-full z-50 mt-2 w-72 max-w-[calc(100vw-2rem)] rounded-2xl border border-[var(--border)] bg-[var(--surface-panel)] p-4 text-sm shadow-[var(--shadow-premium)]"
         >
           {user ? (
             <div className="space-y-3">
@@ -104,7 +113,9 @@ export default function AccountButton() {
                   </div>
                 </div>
               )}
-              {!auth.profile?.billing_exempt && <BuyCredits onBalanceChanged={auth.refreshCreditBalance} />}
+              {!auth.profile?.billing_exempt && (
+                <button type="button" className={PRIMARY + ' w-full'} onClick={() => { setOpen(false); openBuyCredits() }}>קניית קרדיטים</button>
+              )}
               <p className="text-xs text-[var(--text-muted)]">הפרופיל והתוכנית שלך נשמרים בחשבון.</p>
               <button type="button" className={SECONDARY + ' w-full'} onClick={() => { void auth.signOut(); setOpen(false) }}>
                 התנתקות
@@ -126,6 +137,18 @@ export default function AccountButton() {
                 </button>
               )}
               {message && <p role="status" className="text-xs text-[var(--text-muted)]">{message}</p>}
+            </div>
+          ) : confirmSentTo ? (
+            <div data-testid="confirm-email-sent" className="space-y-3">
+              <p className="text-base font-bold text-[var(--text)]">בדקו את תיבת הדואר ✉️</p>
+              <p className="text-sm text-[var(--text)]">
+                שלחנו קישור לאישור החשבון אל <bdi className="font-semibold" dir="ltr">{confirmSentTo}</bdi>.
+                לחצו על הקישור במייל, ואז חזרו לכאן והתחברו.
+              </p>
+              <p className="text-xs text-[var(--text-muted)]">לא הגיע תוך כמה דקות? בדקו גם בספאם. אין צורך להירשם שוב.</p>
+              <button type="button" className={PRIMARY + ' w-full'} onClick={() => { setConfirmSentTo(null); setMessage(null) }}>
+                אישרתי — להתחברות
+              </button>
             </div>
           ) : (
             <form className="space-y-3" onSubmit={signIn}>
@@ -151,6 +174,8 @@ export default function AccountButton() {
           )}
         </div>
       )}
+      {/* The purchase dialog lives outside the popover: closing the menu never kills a checkout. */}
+      {user && !auth.profile?.billing_exempt && <BuyCredits onBalanceChanged={auth.refreshCreditBalance} trigger={false} />}
     </div>
   )
 }

@@ -56,7 +56,7 @@ export async function applyCreditTransaction(
     throw new TypeError('credits: delta must be a non-zero integer');
   }
   const rows = await sql.unsafe(
-    'SELECT status, balance, transaction_id FROM public.apply_credit_transaction($1, $2, $3, $4, $5::jsonb)',
+    'SELECT status, balance, transaction_id FROM public.apply_credit_transaction($1, $2, $3, $4, $5::text::jsonb)',
     [input.userId, input.delta, input.kind, input.reference ?? null, JSON.stringify(input.metadata ?? {})],
   );
   const row = rows[0];
@@ -137,7 +137,7 @@ export async function finalizeCredits(
   sql: CreditsSql, operationId: string, usage: OperationUsage = {},
 ): Promise<{ status: 'applied' | 'replayed' | 'released'; balance: number }> {
   const rows = await sql.unsafe(
-    'SELECT status, balance FROM public.finalize_ai_credits($1, $2::jsonb)',
+    'SELECT status, balance FROM public.finalize_ai_credits($1, $2::text::jsonb)',
     [operationId, JSON.stringify(usage)],
   );
   return { status: rows[0].status as 'applied' | 'replayed' | 'released', balance: Number(rows[0].balance) };

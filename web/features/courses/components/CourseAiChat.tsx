@@ -1,6 +1,8 @@
 'use client'
 
 import { useState } from 'react'
+import { useAuth } from '../../auth/AuthProvider'
+import { AiAccessNotice, AiPaywall, useAiAccess } from '../../billing/ai_access'
 import type { CourseDetailsVM } from '../../../lib/course-details'
 import { getAiSessionToken } from '../../../lib/ai-session-token'
 
@@ -63,7 +65,7 @@ export async function streamAskCourse(request: CourseAskRequest, onChunk: (chunk
     let messageHe = `שגיאה ${response.status}`
     try {
       const body = await response.json()
-      if (body.code === 'QUOTA_EXCEEDED') messageHe = 'ניצלת את מכסת שאלות ה-AI החינמית.'
+      if (typeof body.message_he === 'string' && body.message_he.trim()) messageHe = body.message_he
       else if (typeof body.error === 'string') messageHe = body.error
     } catch {
       // keep the generic status message
@@ -94,6 +96,9 @@ export default function CourseAiChat({
   getStudentContext?: () => StudentContext | undefined
   askFn?: typeof streamAskCourse
 }) {
+  const aiAccess = useAiAccess()
+  const { refreshCreditBalance } = useAuth()
+  const locked = aiAccess !== 'ok'
   const [draft, setDraft] = useState('')
   const [turns, setTurns] = useState<ChatTurn[]>([])
   const [answer, setAnswer] = useState('')
@@ -102,7 +107,7 @@ export default function CourseAiChat({
 
   const ask = async (text: string) => {
     const question = text.trim()
-    if (!question || pending) return
+    if (!question || pending || locked) return
     const history = turns
     setTurns([...history, { role: 'user', content: question }])
     setDraft('')
@@ -124,6 +129,7 @@ export default function CourseAiChat({
     } finally {
       setAnswer('')
       setPending(false)
+      refreshCreditBalance()
     }
   }
 
@@ -131,6 +137,7 @@ export default function CourseAiChat({
   const chips = (suggestions ?? []).filter((chip) => !askedAlready.has(chip))
 
   return (
+    <AiPaywall access={aiAccess}>
     <div className="flex flex-col gap-3 border-t border-[var(--border)] pt-4">
       <h3 className="text-xs font-semibold">שאלו את העוזר האקדמי על {course.name}</h3>
 
@@ -160,7 +167,7 @@ export default function CourseAiChat({
             <button
               key={prompt}
               type="button"
-              disabled={pending}
+              disabled={pending || locked}
               onClick={() => void ask(prompt)}
               className="rounded-full border border-[var(--border)] px-2.5 py-1 text-start text-[11px] text-[var(--text-muted)] transition-colors duration-150 hover:text-[var(--purple)] disabled:cursor-not-allowed disabled:opacity-50"
             >
@@ -170,6 +177,7 @@ export default function CourseAiChat({
         </div>
       )}
 
+      <AiAccessNotice access={aiAccess} />
       <form
         onSubmit={(event) => { event.preventDefault(); void ask(draft) }}
         className="flex flex-col gap-2"
@@ -184,12 +192,12 @@ export default function CourseAiChat({
             if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); void ask(draft) }
           }}
           placeholder={turns.length ? 'שאלת המשך…' : 'שאל שאלה על הקורס…'}
-          disabled={pending}
+          disabled={pending || locked}
           className="w-full resize-y rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--purple)]"
         />
         <button
           type="submit"
-          disabled={pending || !draft.trim()}
+          disabled={pending || locked || !draft.trim()}
           className="self-end rounded-full bg-[var(--purple-strong)] px-4 py-1.5 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
         >
           שלח ›
@@ -198,5 +206,6 @@ export default function CourseAiChat({
 
       {error && <p role="alert" className="text-xs text-red-700 dark:text-red-300">{error}</p>}
     </div>
+    </AiPaywall>
   )
 }

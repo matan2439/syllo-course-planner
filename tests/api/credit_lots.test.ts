@@ -5,11 +5,11 @@
 import {
   applyCreditTransaction, finalizeCredits, getCreditBalance, lotSummary, releaseCredits, reserveCredits,
 } from '../../api/ai/credits';
-import { createBillingDb, type BillingDb } from './helpers/billing_db';
+import { ALL_BILLING, createBillingDb, type BillingDb } from './helpers/billing_db';
 
 let db: BillingDb;
 beforeAll(async () => {
-  db = await createBillingDb(['billing/001_credits.sql', 'billing/002_credit_lots.sql']);
+  db = await createBillingDb(ALL_BILLING);
 }, 60_000);
 afterAll(async () => { await db?.pg.close(); });
 
@@ -74,9 +74,13 @@ test('partial and full usage of a purchase: original / consumed / unused', async
   await expectHealthy();
 });
 
-test('free-quota and exempt operations are recorded as evidence without charging', async () => {
+test('zero-credit (free) operations are staff-only; exempt ones are evidence without charging', async () => {
   const user = await db.newUser();
-  expect((await reserveCredits(db.sql, { userId: user, operationId: 'op_free', credits: 0, endpoint: 'conversation' })).status).toBe('applied');
+  await expect(reserveCredits(db.sql, { userId: user, operationId: 'op_free_customer', credits: 0, endpoint: 'conversation' }))
+    .rejects.toThrow(/not available to customers/);
+  const staff = await db.newUser();
+  await db.pg.query("UPDATE profiles SET role = 'developer' WHERE id = $1", [staff]);
+  expect((await reserveCredits(db.sql, { userId: staff, operationId: 'op_free', credits: 0, endpoint: 'conversation' })).status).toBe('applied');
   await finalizeCredits(db.sql, 'op_free', { model: 'gpt-x', input_tokens: 10 });
   const dev = await db.newUser();
   await db.pg.query('UPDATE profiles SET billing_exempt = true WHERE id = $1', [dev]);
@@ -88,6 +92,68 @@ test('free-quota and exempt operations are recorded as evidence without charging
     { operation_id: 'op_free', funding: 'free_quota', credits: 0, state: 'delivered', model: 'gpt-x' },
   ]);
   expect(await getCreditBalance(db.sql, user)).toBe(0);
+});
+
+describe('customer credit policy: internal/dev credits are staff-only (billing/005)', () => {
+  test('a normal user with internal + purchased lots consumes only purchased credits', async () => {
+    const user = await db.newUser();
+    await grant(user, 10, 'admin_adjustment');         // internal lot (e.g. legacy/dev grant)
+    await grant(user, 3, 'purchase', 'pur_policy_a');
+    expect(await spend(user, 3, 'op_policy_1')).toBe('applied');
+    const [internal, purchased] = await lotsOf(user);
+    expect([internal.sourceClass, internal.consumed, internal.unused]).toEqual(['internal', 0, 10]);
+    expect([purchased.consumed, purchased.unused]).toEqual([3, 0]);
+    // The 10 internal credits are not spendable: no hidden quota.
+    expect(await spend(user, 1, 'op_policy_2')).toBe('insufficient');
+    expect((await applyCreditTransaction(db.sql, { userId: user, delta: -1, kind: 'ai_usage', reference: 'op_policy_direct' })).status)
+      .toBe('insufficient');
+    await expectHealthy();
+  });
+
+  test('purchased credits are spent FIFO across purchases', async () => {
+    const user = await db.newUser();
+    await grant(user, 2, 'purchase', 'pur_policy_old');
+    await grant(user, 5, 'purchase', 'pur_policy_new');
+    expect(await spend(user, 3, 'op_policy_fifo')).toBe('applied');
+    const [older, newer] = await lotsOf(user);
+    expect([older.consumed, newer.consumed]).toEqual([2, 1]);
+    await expectHealthy();
+  });
+
+  test('a normal user holding only internal credits is refused', async () => {
+    const user = await db.newUser();
+    await grant(user, 50, 'admin_adjustment');
+    expect(await spend(user, 1, 'op_policy_internal_only')).toBe('insufficient');
+  });
+
+  test('a developer keeps dev access: internal credits are spendable', async () => {
+    const dev = await db.newUser();
+    await db.pg.query("UPDATE profiles SET role = 'developer' WHERE id = $1", [dev]);
+    await grant(dev, 5, 'admin_adjustment');
+    await grant(dev, 5, 'purchase', 'pur_policy_dev');
+    expect(await spend(dev, 6, 'op_policy_dev')).toBe('applied');
+    const [internal, purchased] = await lotsOf(dev);
+    expect([internal.consumed, purchased.consumed]).toEqual([5, 1]);   // dev lots first for staff
+    await expectHealthy();
+  });
+
+  test("one user's internal credits never affect another user", async () => {
+    const dev = await db.newUser();
+    await db.pg.query("UPDATE profiles SET role = 'developer' WHERE id = $1", [dev]);
+    await grant(dev, 100, 'admin_adjustment');
+    const customer = await db.newUser();
+    expect(await spend(customer, 1, 'op_policy_cross')).toBe('insufficient');
+    const [devLot] = await lotsOf(dev);
+    expect(devLot.unused).toBe(100);
+  });
+
+  test('refunds may still revoke from any lot (revocation is not spending)', async () => {
+    const user = await db.newUser();
+    await grant(user, 4, 'admin_adjustment');
+    expect((await applyCreditTransaction(db.sql, { userId: user, delta: -4, kind: 'admin_adjustment', reference: 'rev_policy' })).status)
+      .toBe('applied');
+    await expectHealthy();
+  });
 });
 
 test('reservation holds credits: two simultaneous calls cannot spend the last credit', async () => {

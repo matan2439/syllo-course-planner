@@ -23,6 +23,12 @@ const SUPABASE_STUB = `
   GRANT USAGE ON SCHEMA auth, public TO anon, authenticated;
 `;
 
+/** The whole billing stack, in apply order (what a deployed database has). */
+export const ALL_BILLING = [
+  'billing/001_credits.sql', 'billing/002_credit_lots.sql', 'billing/003_payments.sql',
+  'billing/004_billing_ops.sql', 'billing/005_billing_closeout.sql',
+];
+
 export interface BillingDb {
   pg: PGlite;
   sql: BillingSql;

@@ -7,6 +7,7 @@ import { Badge } from '../../../components/ui'
 import CourseAiChat, { type StudentContext } from './CourseAiChat'
 import CourseGradesSection from './CourseGradesSection'
 import { useCourseInsights, type CourseInsightsFetch } from '../hooks/use-course-insights'
+import { CLOSE_PANELS_EVENT } from '../../billing/ai_access'
 
 const SEMESTER_LABELS: Record<string, string> = {
   A: 'סמ׳ א׳',
@@ -51,6 +52,13 @@ export default function CourseDetailsPanel({
       if (trigger instanceof HTMLElement && trigger.isConnected) trigger.focus()
     }
   }, [course])
+
+  // Sign-in / buy-credits buttons (e.g. in this panel's AI chat) close it to reveal their UI.
+  useEffect(() => {
+    if (!course) return
+    window.addEventListener(CLOSE_PANELS_EVENT, onClose)
+    return () => window.removeEventListener(CLOSE_PANELS_EVENT, onClose)
+  }, [course, onClose])
 
   if (!course || typeof document === 'undefined') return null
 

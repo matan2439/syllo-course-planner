@@ -4,7 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { getBrowserSupabase } from './supabase-client'
 import {
-  fetchCreditBalance, fetchProfile, readLocalProfile, reconcileProfile, saveProfile, writeLocalProfile,
+  fetchCreditBalance, fetchHasPurchased, fetchProfile, readLocalProfile, reconcileProfile, saveProfile, writeLocalProfile,
   type Profile, type ProfilePatch,
 } from './profile-repository'
 
@@ -21,6 +21,8 @@ export interface AuthState {
   profile: Profile | null
   /** Syllo Credits balance of the signed-in account; null when unknown. */
   creditBalance: number | null
+  /** Ever completed a purchase; null when unknown (not loaded, or signed out). */
+  hasPurchased: boolean | null
   /** Re-reads the balance (it can change on the server at any time). */
   refreshCreditBalance(): void
   signIn(email: string, password: string): AuthResult
@@ -34,7 +36,7 @@ export interface AuthState {
 }
 
 const signedOut: AuthState = {
-  enabled: false, loading: false, user: null, profile: null, creditBalance: null,
+  enabled: false, loading: false, user: null, profile: null, creditBalance: null, hasPurchased: null,
   signIn: async () => null,
   signUp: async () => ({ error: null, needsConfirmation: false }),
   signInWithGoogle: async () => null,
@@ -47,9 +49,13 @@ const signedOut: AuthState = {
 const AuthContext = createContext<AuthState>(signedOut)
 export const useAuth = () => useContext(AuthContext)
 
-function hebrewAuthError(error: { message?: string } | null | undefined): string | null {
+function hebrewAuthError(error: { message?: string; code?: string } | null | undefined): string | null {
   if (!error) return null
   const message = error.message ?? ''
+  if (error.code === 'over_email_send_rate_limit' || /only request this after|rate limit/i.test(message)) {
+    return 'כבר שלחנו מייל אישור לכתובת הזו. אשרו את החשבון דרך הקישור במייל (בדקו גם בספאם) ואז התחברו. שליחה חוזרת אפשרית בעוד כדקה.'
+  }
+  if (error.code === 'email_not_confirmed') return 'יש לאשר את כתובת האימייל (בדקו את תיבת הדואר).'
   if (/invalid login credentials/i.test(message)) return 'אימייל או סיסמה שגויים.'
   if (/email not confirmed/i.test(message)) return 'יש לאשר את כתובת האימייל (בדקו את תיבת הדואר).'
   if (/already registered/i.test(message)) return 'כתובת האימייל כבר רשומה. נסו להתחבר.'
@@ -66,6 +72,7 @@ export function AuthProvider({ children, client = getBrowserSupabase() }: {
   const [loading, setLoading] = useState(client != null)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [creditBalance, setCreditBalance] = useState<number | null>(null)
+  const [hasPurchased, setHasPurchased] = useState<boolean | null>(null)
 
   // Session restoration (cookie) + live sign-in/out events.
   useEffect(() => {
@@ -87,9 +94,11 @@ export function AuthProvider({ children, client = getBrowserSupabase() }: {
   useEffect(() => {
     setProfile(null)
     setCreditBalance(null)
+    setHasPurchased(null)
     if (!client || !userId) return
     let live = true
     fetchCreditBalance(client, userId).then((balance) => live && setCreditBalance(balance), () => {})
+    fetchHasPurchased(client).then((bought) => live && setHasPurchased(bought), () => {})
     ;(async () => {
       const server = await fetchProfile(client, userId)
       if (!server || !live) return
@@ -104,6 +113,7 @@ export function AuthProvider({ children, client = getBrowserSupabase() }: {
   const refreshCreditBalance = useCallback(() => {
     if (!client || !userId) return
     fetchCreditBalance(client, userId).then(setCreditBalance, () => {})
+    fetchHasPurchased(client).then(setHasPurchased, () => {})
   }, [client, userId])
 
   const updateProfile = useCallback(async (patch: ProfilePatch) => {
@@ -119,7 +129,7 @@ export function AuthProvider({ children, client = getBrowserSupabase() }: {
   const value = useMemo<AuthState>(() => {
     if (!client) return signedOut
     return {
-      enabled: true, loading, user, profile, creditBalance, refreshCreditBalance, updateProfile,
+      enabled: true, loading, user, profile, creditBalance, hasPurchased, refreshCreditBalance, updateProfile,
       signIn: async (email, password) =>
         hebrewAuthError((await client.auth.signInWithPassword({ email, password })).error),
       signUp: async (email, password) => {
@@ -140,7 +150,7 @@ export function AuthProvider({ children, client = getBrowserSupabase() }: {
         return null
       },
     }
-  }, [client, loading, user, profile, creditBalance, refreshCreditBalance, updateProfile])
+  }, [client, loading, user, profile, creditBalance, hasPurchased, refreshCreditBalance, updateProfile])
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

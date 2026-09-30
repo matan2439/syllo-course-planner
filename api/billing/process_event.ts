@@ -47,7 +47,7 @@ export async function processPaddleEvent(ctx: ProcessContext, event: PaddleEvent
   const isAdjustment = event.event_type.startsWith('adjustment.');
   await ctx.sql.unsafe(
     `INSERT INTO public.paddle_events (event_id, environment, event_type, occurred_at, source, transaction_id, adjustment_id, payload)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb) ON CONFLICT (event_id) DO NOTHING`,
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8::text::jsonb) ON CONFLICT (event_id) DO NOTHING`,
     [event.event_id, ctx.environment, event.event_type, event.occurred_at, ctx.source,
      isAdjustment ? data.transaction_id ?? null : data.id ?? null, isAdjustment ? data.id ?? null : null,
      JSON.stringify(minimizeEntity(event.event_type, data))],
@@ -77,6 +77,9 @@ export async function processPaddleEvent(ctx: ProcessContext, event: PaddleEvent
 }
 
 async function dispatch(tx: CreditsSql, ctx: ProcessContext, event: PaddleEvent): Promise<ProcessStatus> {
+  // Webhook-simulator events (signed, but demo data) are stored as evidence of
+  // delivery and never touch money or credits.
+  if (event.event_id.startsWith('ntfsimevt_')) return 'ignored';
   if (event.event_type.startsWith('transaction.')) return handleTransaction(tx, ctx, event);
   if (event.event_type === 'adjustment.created' || event.event_type === 'adjustment.updated') return handleAdjustment(tx, ctx, event);
   return 'ignored';
@@ -87,7 +90,7 @@ export async function raiseAlert(tx: CreditsSql, alert: {
 }): Promise<void> {
   await tx.unsafe(
     `INSERT INTO public.billing_alerts (severity, code, dedupe_key, payment_id, user_id, details)
-     VALUES ($1, $2, $3, $4, $5, $6::jsonb) ON CONFLICT (dedupe_key) DO NOTHING`,
+     VALUES ($1, $2, $3, $4, $5, $6::text::jsonb) ON CONFLICT (dedupe_key) DO NOTHING`,
     [alert.severity, alert.code, alert.dedupeKey, alert.paymentId ?? null, alert.userId ?? null, JSON.stringify(alert.details ?? {})],
   );
 }
@@ -144,14 +147,14 @@ async function completePurchase(tx: CreditsSql, ctx: ProcessContext, pay: Row, e
 
   await tx.unsafe(
     `UPDATE public.payments SET checkout_state = 'completed', completed_at = COALESCE(completed_at, $2::timestamptz),
-            amount_total = $3, currency = $4, totals = $5::jsonb, paddle_customer_id = COALESCE($6, paddle_customer_id), updated_at = now()
+            amount_total = $3, currency = $4, totals = $5::text::jsonb, paddle_customer_id = COALESCE($6, paddle_customer_id), updated_at = now()
       WHERE id = $1`,
     [pay.id, event.occurred_at, amount, totals.currency_code, JSON.stringify(totals), d.customer_id ?? null],
   );
   if (pay.lot_id == null) {
     // Credits are usable the moment this commits — no waiting period, no lock.
     const grant = await one(tx,
-      'SELECT status, transaction_id FROM public.apply_credit_transaction($1, $2, $3, $4, $5::jsonb)',
+      'SELECT status, transaction_id FROM public.apply_credit_transaction($1, $2, $3, $4, $5::text::jsonb)',
       [pay.user_id, pay.credits_purchased, 'purchase', `paddle:${ctx.environment}:${d.id}`,
        JSON.stringify({ payment_id: String(pay.id), package_id: pay.package_id, paddle_transaction_id: d.id })]);
     const lot = await one(tx, 'SELECT id FROM public.credit_lots WHERE grant_transaction_id = $1', [grant!.transaction_id]);
@@ -189,7 +192,8 @@ async function handleAdjustment(tx: CreditsSql, ctx: ProcessContext, event: Padd
         details: { adjustment_id: d.id, reason: `conflicting statuses ${existing.status} / ${d.status}` } });
       return 'manual_review';
     }
-    if (d.status === existing.status && !['pending', 'awaiting_purchase'].includes(existing.accounting_state)) return 'processed';
+    // Already accounted for (webhook vs reconciliation): 'duplicate', so nothing reports it as repaired.
+    if (d.status === existing.status && !['pending', 'awaiting_purchase'].includes(existing.accounting_state)) return 'duplicate';
     await tx.unsafe(
       `UPDATE public.payment_adjustments SET status = $2, type = $3, amount = $4, currency = $5,
               occurred_at = GREATEST(occurred_at, $6::timestamptz), accounting_state = 'pending', updated_at = now()
@@ -218,7 +222,7 @@ async function handleAdjustment(tx: CreditsSql, ctx: ProcessContext, event: Padd
 
 async function applyAdjustment(tx: CreditsSql, pay: Row, adj: Row, eventId: string): Promise<ProcessStatus> {
   const decisionKey = `adj:${adj.paddle_adjustment_id}:${adj.status}`;
-  if (await one(tx, 'SELECT 1 FROM public.billing_policy_decisions WHERE decision_key = $1', [decisionKey])) return 'processed';
+  if (await one(tx, 'SELECT 1 FROM public.billing_policy_decisions WHERE decision_key = $1', [decisionKey])) return 'duplicate';
 
   // Lock order = AI metering's: account row first, then the lot.
   await tx.unsafe('SELECT 1 FROM public.credit_accounts WHERE user_id = $1 FOR UPDATE', [pay.user_id]);
@@ -258,7 +262,7 @@ async function applyAdjustment(tx: CreditsSql, pay: Row, adj: Row, eventId: stri
   for (const action of outcome.actions) {
     switch (action.type) {
       case 'REVOKE_UNUSED_ENTITLEMENT': {
-        const r = await one(tx, 'SELECT * FROM public.revoke_lot_credits($1, $2, $3, $4, $5, $6::jsonb)', [
+        const r = await one(tx, 'SELECT * FROM public.revoke_lot_credits($1, $2, $3, $4, $5, $6::text::jsonb)', [
           lot!.id, action.credits, action.kind, decisionKey, action.close,
           JSON.stringify({ payment_id: String(pay.id), adjustment_id: adj.paddle_adjustment_id, policy_version: POLICY_VERSION }),
         ]);
@@ -300,7 +304,7 @@ async function applyAdjustment(tx: CreditsSql, pay: Row, adj: Row, eventId: stri
     [pay.id]);
   await tx.unsafe(
     `INSERT INTO public.billing_policy_decisions (decision_key, policy_version, payment_id, adjustment_id, event_id, facts, decision, actions, result)
-     VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7, $8::jsonb, $9::jsonb)`,
+     VALUES ($1, $2, $3, $4, $5, $6::text::jsonb, $7, $8::text::jsonb, $9::text::jsonb)`,
     [decisionKey, outcome.policyVersion, pay.id, adj.paddle_adjustment_id, eventId, JSON.stringify(facts), outcome.decision,
      JSON.stringify({ actions: outcome.actions, reasons: outcome.reasons, analysis: outcome.analysis }), JSON.stringify(result)]);
   return accountingState === 'manual_review' ? 'manual_review' : 'processed';

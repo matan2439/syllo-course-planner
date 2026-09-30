@@ -7,10 +7,6 @@
       "use": "@vercel/next"
     },
     {
-      "src": "api/ai/generate-plan.ts",
-      "use": "@vercel/node"
-    },
-    {
       "src": "api/ai/course-planner.ts",
       "use": "@vercel/node",
       "config": {
@@ -20,10 +16,6 @@
           "data/grades/snapshots/**"
         ]
       }
-    },
-    {
-      "src": "api/ai/planner-run.ts",
-      "use": "@vercel/node"
     },
     {
       "src": "api/ai/apply-plan.ts",
@@ -86,16 +78,8 @@
       "destination": "/api/board.ts"
     },
     {
-      "source": "/api/ai/generate-plan",
-      "destination": "/api/ai/generate-plan.ts"
-    },
-    {
       "source": "/api/ai/course-planner",
       "destination": "/api/ai/course-planner.ts"
-    },
-    {
-      "source": "/api/ai/planner-run",
-      "destination": "/api/ai/planner-run.ts"
     },
     {
       "source": "/api/ai/apply-plan",
@@ -132,6 +116,12 @@
     {
       "source": "/:path*",
       "destination": "/web/:path*"
+    }
+  ],
+  "crons": [
+    {
+      "path": "/api/billing/reconcile",
+      "schedule": "17 3 * * *"
     }
   ],
   "headers": [

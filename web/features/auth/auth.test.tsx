@@ -97,6 +97,31 @@ describe('signed out', () => {
     expect(raw.from).not.toHaveBeenCalled()
   })
 
+  test('sign-up that needs confirmation replaces the form with a clear "check your email" panel', async () => {
+    const { client } = fakeSupabase()
+    renderApp(client)
+    fireEvent.click(await screen.findByRole('button', { name: 'התחברות' }))
+    fireEvent.change(screen.getByLabelText('אימייל'), { target: { value: 'new@tau.ac.il' } })
+    fireEvent.change(screen.getByLabelText('סיסמה'), { target: { value: 'secret-123' } })
+    fireEvent.click(screen.getByRole('button', { name: 'הרשמה' }))
+    const panel = await screen.findByTestId('confirm-email-sent')
+    expect(panel).toHaveTextContent('new@tau.ac.il')
+    expect(panel).toHaveTextContent('אין צורך להירשם שוב')
+    fireEvent.click(screen.getByRole('button', { name: /להתחברות/ }))
+    expect(screen.getByLabelText('אימייל')).toBeInTheDocument()
+  })
+
+  test('a repeated sign-up (email rate limit) explains the pending confirmation instead of a generic failure', async () => {
+    const { client, raw } = fakeSupabase()
+    raw.auth.signUp.mockResolvedValueOnce({ data: { session: null }, error: { message: 'For security purposes, you can only request this after 37 seconds.', code: 'over_email_send_rate_limit' } } as never)
+    renderApp(client)
+    fireEvent.click(await screen.findByRole('button', { name: 'התחברות' }))
+    fireEvent.change(screen.getByLabelText('אימייל'), { target: { value: 'new@tau.ac.il' } })
+    fireEvent.change(screen.getByLabelText('סיסמה'), { target: { value: 'secret-123' } })
+    fireEvent.click(screen.getByRole('button', { name: 'הרשמה' }))
+    expect(await screen.findByRole('status')).toHaveTextContent('כבר שלחנו מייל אישור')
+  })
+
   test('wrong password shows a Hebrew error; correct password signs in', async () => {
     const { client } = fakeSupabase({ profile: baseProfile() })
     renderApp(client)

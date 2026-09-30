@@ -1,6 +1,8 @@
 'use client'
 
 import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useAuth } from '../../auth/AuthProvider'
+import { AiAccessNotice, AiPaywall, useAiAccess } from '../../billing/ai_access'
 import {
   ConversationContextConflictError,
   ConversationRefusedError,
@@ -152,6 +154,8 @@ export default function AcademicAgentConversation({
   /** Answering the co-pilot's degree-year question updates the profile (and may switch boards). */
   onCurrentDegreeYearChange?: (year: DegreeYear) => void
 }) {
+  const aiAccess = useAiAccess()
+  const { refreshCreditBalance } = useAuth()
   const [transcript, setTranscript] = useState<ConversationTurn[]>([])
   const [draft, setDraft] = useState('')
   const [lastResponse, setLastResponse] = useState<ConversationResponse | null>(null)
@@ -279,6 +283,7 @@ export default function AcademicAgentConversation({
     } finally {
       setPending(false)
       setLive(null)
+      refreshCreditBalance()
     }
   }
 
@@ -300,11 +305,12 @@ export default function AcademicAgentConversation({
   const readiness = responseCurrent && lastResponse && lastResponse.outcome !== 'assistant_unavailable'
     ? lastResponse.academic_decision
     : undefined
-  const blocked = !conversationReady || pending || contextConflict
+  const blocked = !conversationReady || pending || contextConflict || aiAccess !== 'ok'
   const currentStep = live ? [...live.steps].reverse().find((step) => step.status === 'started') : undefined
   const doneSteps = live ? live.steps.filter((step) => step.status !== 'started').length : 0
 
   return (
+    <AiPaywall access={aiAccess}>
     <div dir="rtl" data-testid="academic-agent-conversation" className="flex h-full flex-col">
       <Card className="flex min-h-[32rem] flex-1 flex-col overflow-hidden p-0">
       <header className="flex items-center justify-between gap-2 border-b border-[var(--border)] px-4 py-3">
@@ -508,7 +514,8 @@ export default function AcademicAgentConversation({
         <div ref={logEndRef} />
       </div>
 
-      <form onSubmit={(event) => { event.preventDefault(); void submit(draft) }} className="border-t border-[var(--border)] p-3">
+      <form onSubmit={(event) => { event.preventDefault(); void submit(draft) }} className="space-y-2 border-t border-[var(--border)] p-3">
+        <AiAccessNotice access={aiAccess} />
         <label htmlFor="academic-agent-message" className="sr-only">הודעה לעוזר האקדמי</label>
         <div className="flex items-end gap-2 rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 focus-within:border-[var(--purple)]/60">
           <textarea
@@ -553,5 +560,6 @@ export default function AcademicAgentConversation({
       </form>
       </Card>
     </div>
+    </AiPaywall>
   )
 }
