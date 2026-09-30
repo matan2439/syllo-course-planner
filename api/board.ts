@@ -16,6 +16,7 @@
  *   503  DATABASE_URL not configured, or DB connection failed
  */
 
+import { databaseUrl } from './db_env';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import postgres from 'postgres';
 import { loadLocalBoardJson } from './ai/board_loader';
@@ -168,7 +169,7 @@ async function _handle(req: VercelRequest, res: VercelResponse): Promise<void> {
     return;
   }
 
-  const dbUrl = process.env.DATABASE_URL ?? '';
+  const dbUrl = databaseUrl();
 
   // DB OUTAGE fallback: a missing DATABASE_URL or a failed DB connection (e.g.
   // the Supabase pooler returning ENOTFOUND when the free-tier project is

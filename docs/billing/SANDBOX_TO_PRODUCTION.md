@@ -81,6 +81,15 @@ Then repeat steps 1–4 in the **live** Paddle dashboard:
 
 Billing fails closed (503 `BILLING_NOT_CONFIGURED`) on a mixed configuration: `PADDLE_ENV=production` only on `VERCEL_ENV=production` and vice versa, `NEXT_PUBLIC_PADDLE_ENV` must equal `PADDLE_ENV`, and the client token must be `test_` (sandbox) / `live_` (production).
 
-**Shared database rule.** Preview and Production use the same Supabase project, and credit lots carry no environment. A sandbox purchase on Preview would therefore grant credits spendable in Production. Before Production billing goes live, remove every `PADDLE_*` / `NEXT_PUBLIC_PADDLE_*` variable from the Preview scope. Sandbox testing needs a Preview that points at a separate database.
+**Separate databases.** Credit lots carry no environment, so isolation is by database:
+
+| Vercel scope | Supabase project (DB + Auth) | Paddle |
+|---|---|---|
+| Production | `lxwtycowmqosuyfumcbo` | Live (`PADDLE_ENV=production`) |
+| Preview | `syllo-preview` (separate project) | Sandbox (`PADDLE_ENV=sandbox`) |
+
+`DATABASE_URL`, `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` each have one Production entry and one Preview entry. Never scope one of them to both. `api/db_env.ts` enforces this and fails closed: only `VERCEL_ENV=production` may use the production project ref, and production may use nothing else. A refused or missing URL counts as "not configured" (billing 503, metering unavailable, auth off), never as a fallback. Together with the Paddle guard above, Preview keeps its Sandbox billing enabled for development.
+
+Preview schema: apply alembic up to the production revision (`alembic upgrade <rev> --sql`), then `scripts/migrations/auth/*`, `planner/001`, `billing/001…005`. Use test accounts only; never copy production data.
 
 The Vercel Cron (`/api/billing/reconcile`, daily 03:17 UTC) runs on production deployments only. Check `/admin/billing` after the first live purchase.

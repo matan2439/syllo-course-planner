@@ -22,6 +22,7 @@ import { waitUntil } from '@vercel/functions';
 import { verifiedUserId } from './auth_session';
 import { finalizeCredits, releaseCredits, reserveCredits, type BillingSql, type CreditsSql, type OperationUsage } from './credits';
 import { PG_OPTS } from './_quota';
+import { databaseUrl } from '../db_env';
 import type { OwnerRequestLike, OwnerResponseLike } from './session_owner';
 import { CREDITS_PER_REPLY } from '../../shared/billing/pricing';
 
@@ -46,8 +47,14 @@ let shared: BillingSql | null | undefined;
 /** A small shared pool for billing calls; null when no DATABASE_URL (local dev). */
 export function billingSql(): BillingSql | null {
   if (shared === undefined) {
-    const url = (process.env.DATABASE_URL ?? '').trim();
-    shared = url ? (postgres(url, { ...PG_OPTS, max: 3 }) as unknown as BillingSql) : null;
+    const url = databaseUrl();
+    try {
+      shared = url ? (postgres(url, { ...PG_OPTS, max: 3 }) as unknown as BillingSql) : null;
+    } catch (err) {
+      // A malformed DATABASE_URL is "not configured": callers fail closed (503), never 500.
+      console.error('[billing] DATABASE_URL is not a valid connection string:', (err as Error).message);
+      shared = null;
+    }
   }
   return shared;
 }

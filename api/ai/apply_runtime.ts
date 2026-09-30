@@ -17,6 +17,7 @@
  */
 import { createHash } from 'crypto';
 import postgres from 'postgres';
+import { isolatedUrl } from '../db_env';
 import {
   InMemoryBoardRepository,
   type BoardRepository,
@@ -90,9 +91,9 @@ export function installPostgresPlannerStateFactoryForTests(
 }
 
 function plannerDatabaseUrl(env: NodeJS.ProcessEnv = process.env): string | null {
-  const dedicatedUrl = (env[PLANNER_DATABASE_URL_ENV] ?? '').trim();
+  const dedicatedUrl = isolatedUrl(env[PLANNER_DATABASE_URL_ENV], PLANNER_DATABASE_URL_ENV, env);
   if (dedicatedUrl) return dedicatedUrl;
-  const sharedUrl = (env[SHARED_DATABASE_URL_ENV] ?? '').trim();
+  const sharedUrl = isolatedUrl(env[SHARED_DATABASE_URL_ENV], SHARED_DATABASE_URL_ENV, env);
   return sharedUrl || null;
 }
 

@@ -12,6 +12,7 @@
  */
 import { createServerClient, parseCookieHeader, serializeCookieHeader } from '@supabase/ssr';
 import { adoptAnonymousPlannerState } from './apply_runtime';
+import { isolatedUrl } from '../db_env';
 import {
   appendSetCookie,
   clearSessionCookie,
@@ -28,7 +29,7 @@ export interface SupabaseAuthConfig {
 }
 
 export function supabaseAuthConfig(env: NodeJS.ProcessEnv = process.env): SupabaseAuthConfig | null {
-  const url = (env.NEXT_PUBLIC_SUPABASE_URL ?? '').trim();
+  const url = isolatedUrl(env.NEXT_PUBLIC_SUPABASE_URL, 'NEXT_PUBLIC_SUPABASE_URL', env);
   const anonKey = (env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '').trim();
   return url && anonKey ? { url, anonKey } : null;
 }
