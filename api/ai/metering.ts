@@ -22,6 +22,7 @@ import { waitUntil } from '@vercel/functions';
 import { verifiedUserId } from './auth_session';
 import { finalizeCredits, releaseCredits, reserveCredits, type BillingSql, type CreditsSql, type OperationUsage } from './credits';
 import { PG_OPTS } from './_quota';
+import { databaseUrl } from '../db_env';
 import type { OwnerRequestLike, OwnerResponseLike } from './session_owner';
 import { CREDITS_PER_REPLY } from '../../shared/billing/pricing';
 
@@ -46,7 +47,7 @@ let shared: BillingSql | null | undefined;
 /** A small shared pool for billing calls; null when no DATABASE_URL (local dev). */
 export function billingSql(): BillingSql | null {
   if (shared === undefined) {
-    const url = (process.env.DATABASE_URL ?? '').trim();
+    const url = databaseUrl();
     shared = url ? (postgres(url, { ...PG_OPTS, max: 3 }) as unknown as BillingSql) : null;
   }
   return shared;

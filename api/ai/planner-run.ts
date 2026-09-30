@@ -26,6 +26,7 @@ import {
 } from './course-planner';
 import type { ConstraintModel, PlanState } from './planner_types';
 import { placedCourseIds } from './planner_types';
+import { databaseUrl } from '../db_env';
 
 const requestSchema = z.object({
   program_id: z.string().min(1, 'program_id is required'),
@@ -94,7 +95,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   }
   const body = parsed.data;
 
-  const dbUrl = (process.env.DATABASE_URL ?? '').trim();
+  const dbUrl = databaseUrl();
   const persist = !!dbUrl;
 
   // Persistence/quota use the DB; without it, only proceed under an explicit dev

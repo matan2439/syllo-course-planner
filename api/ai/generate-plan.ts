@@ -125,6 +125,7 @@ import { buildSyllabusSnapshot } from './syllabus_snapshot';
 import { loadEnrichedProfileCache, lookupProfile } from './course_profile_cache';
 import { preferencesWithPlannerPolicy } from './planner_policy_context';
 import { GATEWAY_ASSESSMENT_TYPES, gatewayAssessmentMismatchIds } from './gateway_assessment';
+import { databaseUrl } from '../db_env';
 
 export const preferencesSchema = z.object({
   max_weekly_hours:        z.number().nullish(),
@@ -1463,7 +1464,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     }
   }
 
-  const dbUrl = (process.env.DATABASE_URL ?? '').trim();
+  const dbUrl = databaseUrl();
 
   // Quota gate — unchanged behavior: required unless an explicit dev bypass.
   if (!isBypassQuota()) {

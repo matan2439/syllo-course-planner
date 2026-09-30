@@ -5,6 +5,7 @@ import { validatePlanState } from './planner_validate';
 import { getAcademicContextStore } from './apply_runtime';
 import { storedDistributionPolicy } from './planner_policy_context';
 import { TauProgramProvider } from './program_provider';
+import { databaseUrl } from '../db_env';
 
 export async function validateAuthoritativeCandidate(input: {
   ownerId: string;
@@ -15,7 +16,7 @@ export async function validateAuthoritativeCandidate(input: {
   const context = await getAcademicContextStore().load(input.ownerId, input.programId);
   const boardJson = await new TauProgramProvider().loadBoard(
     input.programId,
-    (process.env.DATABASE_URL ?? '').trim() || undefined,
+    databaseUrl() || undefined,
   );
   if (!context || !boardJson) {
     return { valid: false, constraintFingerprint: 'cf_unavailable' };
