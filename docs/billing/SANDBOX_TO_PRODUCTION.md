@@ -12,7 +12,7 @@
    - Add the site domain (Preview/Production URL) as an approved domain.
    - Set a default payment link, e.g. `https://<domain>/` (Paddle requires one).
 3. **Developer tools → Authentication:**
-   - Create a server API key (`pdl_sdbx_apikey_…`) with transactions read/write and adjustments read.
+   - Create a server API key (`pdl_sdbx_apikey_…`) with transactions read/write and adjustments read/write (write is needed for admin-issued partial refunds, `POST /adjustments`; without it every refund returns `PADDLE_KEY_PERMISSION`).
    - Create a client-side token (`test_…`).
 4. **Developer tools → Notifications:** add a destination `https://<preview-domain>/api/billing/webhook` subscribed to:
    - `transaction.completed`

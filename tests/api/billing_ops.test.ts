@@ -31,7 +31,7 @@ const api: PaddleApi = {
   listAdjustments: async (id) => paddle.get(id)?.adjustments ?? [],
   createPartialRefund: async (input) => {
     refundCalls.push(input);
-    if (refundRejects) throw new PaddleApiError('paddle /adjustments: 400 transaction_adjustment_pending', 400);
+    if (refundRejects) throw new PaddleApiError(`paddle /adjustments: ${refundRejects} error`, refundRejects);
     // Like Paddle: a live refund starts pending_approval.
     const adj = { id: `adj_admin_${++n}`, action: 'refund', type: 'partial', status: 'pending_approval', transaction_id: input.transactionId,
       currency_code: 'ILS', totals: { total: String(input.amount) }, updated_at: new Date().toISOString() };
@@ -40,7 +40,7 @@ const api: PaddleApi = {
   },
 };
 const refundCalls: Array<Parameters<PaddleApi['createPartialRefund']>[0]> = [];
-let refundRejects = false;
+let refundRejects: number | false = false;
 
 const handler = createBillingHandler({ sql: () => db.sql, verifyUser: async () => currentUser, config: () => CONFIG, api: () => api, env: ENV });
 
@@ -341,10 +341,12 @@ describe('admin partial refund (proportional suggestion → Paddle POST /adjustm
   test('a Paddle refusal is audited and nothing else changes', async () => {
     const user = await db.newUser();
     const c = await purchased(user);
-    refundRejects = true;
+    refundRejects = 403;  // key without adjustment.write
+    expect((await refund(c.paymentId, { amount: 5000, reason: 'nothing used' })).body.code).toBe('PADDLE_KEY_PERMISSION');
+    refundRejects = 400;
     const res = await refund(c.paymentId, { amount: 5000, reason: 'nothing used' });
     expect([res.statusCode, res.body.code]).toEqual([502, 'PADDLE_REJECTED']);
-    expect(await db.one<any>("SELECT details FROM billing_admin_actions WHERE action = 'issue_partial_refund_failed' AND target = $1", [`payment:${c.paymentId}`]))
+    expect(await db.one<any>("SELECT details FROM billing_admin_actions WHERE action = 'issue_partial_refund_failed' AND target = $1 ORDER BY id DESC LIMIT 1", [`payment:${c.paymentId}`]))
       .toMatchObject({ details: { amount: 5000, error: expect.stringContaining('400') } });
     expect(await getCreditBalance(db.sql, user)).toBe(50);
   });

@@ -319,7 +319,8 @@ export async function handleAdmin(route: string, req: VercelRequest, res: Vercel
       // The attempt is part of the money trail even when it fails. A timeout may still have
       // created the adjustment: reconciliation and the webhook pick it up either way.
       await audit(sql, ctx, 'issue_partial_refund_failed', target, reason, { ...details, error: err instanceof Error ? err.message : String(err) });
-      fail(res, 502, err instanceof PaddleApiError ? 'PADDLE_REJECTED' : 'PADDLE_UNREACHABLE');
+      // 403: the API key lacks adjustment.write (docs/billing/SANDBOX_TO_PRODUCTION.md step 3).
+      fail(res, 502, !(err instanceof PaddleApiError) ? 'PADDLE_UNREACHABLE' : err.status === 403 ? 'PADDLE_KEY_PERMISSION' : 'PADDLE_REJECTED');
     }
     return;
   }
