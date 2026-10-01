@@ -182,6 +182,15 @@ describe('signed in', () => {
     renderApp(client)
     fireEvent.click(await screen.findByRole('button', { name: 'החשבון שלי' }))
     expect(await screen.findByText('מפתח')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'ניהול חיובים' })).toHaveAttribute('href', '/admin/billing')
+  })
+
+  test('the billing console link is for developers only', async () => {
+    const { client } = fakeSupabase({ session: { user: USER }, profile: baseProfile() })
+    renderApp(client)
+    fireEvent.click(await screen.findByRole('button', { name: 'החשבון שלי' }))
+    await screen.findByRole('button', { name: 'התנתקות' })
+    expect(screen.queryByRole('link', { name: 'ניהול חיובים' })).not.toBeInTheDocument()
   })
 
   test('shows the Syllo Credits balance; exempt accounts show no charge', async () => {
