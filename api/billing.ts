@@ -8,6 +8,7 @@
  *   POST /api/billing/webhook    Paddle only: signature-verified events
  *   GET  /api/billing/status     signed-in: one of MY checkouts (after Paddle.js reports success)
  *   GET  /api/billing/me         signed-in: my balance and per-purchase consumed / unused
+ *   POST /api/billing/refund-request  signed-in: ask for a refund of MY purchase → an admin case (never a Paddle refund)
  *   GET  /api/billing/reconcile  Vercel Cron only (Authorization: Bearer CRON_SECRET)
  *   *    /api/billing/admin/*    developers only (see billing/admin.ts)
  *
@@ -38,6 +39,8 @@ export interface BillingDeps {
 }
 
 type Json = Record<string, unknown>;
+const REFUND_REASON_MAX = 2000;
+const REFUND_REQUESTS_PER_PAYMENT = 5;
 const fail = (res: VercelResponse, status: number, code: string, extra: Json = {}) => res.status(status).json({ ok: false, code, ...extra });
 
 /** The exact bytes Paddle signed. @vercel/node buffers the body and replays the stream. */
@@ -155,8 +158,11 @@ export function createBillingHandler(deps: BillingDeps = {}) {
   async function me(res: VercelResponse, userId: string, sql: BillingSql) {
     const lots = await lotSummary(sql, userId);
     const payments = await sql.unsafe(
-      `SELECT id, package_id, credits_purchased, status, currency, amount_total, refunded_amount, completed_at, lot_id
-         FROM public.payments WHERE user_id = $1 AND checkout_state = 'completed' ORDER BY completed_at DESC`, [userId]);
+      `SELECT p.id, p.package_id, p.credits_purchased, p.status, p.currency, p.amount_total, p.refunded_amount, p.completed_at, p.lot_id,
+              a.case_status AS refund_case_status, a.created_at AS refund_requested_at
+         FROM public.payments p
+         LEFT JOIN public.billing_alerts a ON a.dedupe_key = 'refund_request:' || p.id
+        WHERE p.user_id = $1 AND p.checkout_state = 'completed' ORDER BY p.completed_at DESC`, [userId]);
     const byLot = new Map(lots.map((l) => [l.lotId, l]));
     return res.status(200).json({
       ok: true,
@@ -169,9 +175,61 @@ export function createBillingHandler(deps: BillingDeps = {}) {
           refunded_amount: Number(p.refunded_amount),
           credits: { purchased: Number(p.credits_purchased), consumed: lot?.consumed ?? 0, in_use: lot?.reserved ?? 0,
             unused: lot?.unused ?? 0, revoked: lot?.revoked ?? 0 },
+          refund_request: p.refund_case_status == null ? null : { case_status: p.refund_case_status, requested_at: p.refund_requested_at },
         };
       }),
     });
+  }
+
+  /**
+   * A customer asks for a refund of one of THEIR completed purchases. This only
+   * opens (or re-opens) the admin case for that payment — the money is decided and
+   * refunded by staff in Paddle, and credits follow Paddle's adjustment webhook.
+   */
+  async function refundRequest(req: VercelRequest, res: VercelResponse, userId: string, sql: BillingSql) {
+    if (!String(req.headers['content-type'] ?? '').includes('application/json')) return fail(res, 415, 'JSON_REQUIRED');
+    const body = (req.body ?? {}) as Json;
+    const paymentId = String(body.payment_id ?? '');
+    const reason = typeof body.reason === 'string' ? body.reason.trim() : '';
+    if (!/^\d{1,18}$/.test(paymentId)) return fail(res, 400, 'INVALID_PAYMENT');
+    if (reason.length < 3 || reason.length > REFUND_REASON_MAX) return fail(res, 400, 'REASON_REQUIRED', { max: REFUND_REASON_MAX });
+    // Own, completed payments only; anything else is indistinguishable from "not found".
+    const [pay] = await sql.unsafe(
+      `SELECT id, status, lot_id FROM public.payments WHERE id = $1 AND user_id = $2 AND checkout_state = 'completed'`, [paymentId, userId]);
+    if (!pay) return fail(res, 404, 'NOT_FOUND');
+    if (pay.status === 'refunded' || pay.status === 'chargeback') return fail(res, 409, 'ALREADY_REFUNDED');
+    const lot = pay.lot_id == null ? undefined : (await lotSummary(sql, userId)).find((l) => l.lotId === String(pay.lot_id));
+    const [profile] = await sql.unsafe('SELECT email FROM public.profiles WHERE id = $1', [userId]);
+    const requestedAt = new Date().toISOString();
+    const details = { source: 'customer', requested_at: requestedAt, payment_status: pay.status,
+      // What was used when the customer asked — the live figures keep moving.
+      credits_at_request: lot ? { consumed: lot.consumed, in_use: lot.reserved, unused: lot.unused, revoked: lot.revoked } : null };
+    const note = JSON.stringify([{ at: requestedAt, by: 'customer', text: reason }]);
+    // One case per payment. A repeat request updates it (and re-opens a resolved
+    // one); capped so a single customer cannot grow a case without bound.
+    const [row] = await sql.unsafe(
+      `INSERT INTO public.billing_alerts (severity, code, dedupe_key, payment_id, user_id, details, reason, customer_email, notes)
+       VALUES ('review', 'refund_request', $1, $2, $3, jsonb_set($4::text::jsonb, '{request_count}', '1'), $5, $6, $7::text::jsonb)
+       ON CONFLICT (dedupe_key) DO UPDATE SET
+         details = EXCLUDED.details || jsonb_build_object('request_count', COALESCE((billing_alerts.details->>'request_count')::int, 1) + 1),
+         reason = EXCLUDED.reason,
+         customer_email = COALESCE(EXCLUDED.customer_email, billing_alerts.customer_email),
+         -- Re-opening keeps the earlier resolution in the case history.
+         notes = billing_alerts.notes
+           || CASE WHEN billing_alerts.status = 'resolved' THEN jsonb_build_array(jsonb_build_object('at', billing_alerts.resolved_at,
+                'by', billing_alerts.resolved_by::text, 'text', 'resolved: ' || COALESCE(billing_alerts.resolution_note, ''))) ELSE '[]'::jsonb END
+           || EXCLUDED.notes,
+         -- The customer answered (or asked again): back in staff's court.
+         case_status = CASE WHEN billing_alerts.status = 'resolved' OR billing_alerts.case_status = 'awaiting_customer' THEN 'open'
+                            ELSE billing_alerts.case_status END,
+         -- A saved reply answered the previous request; regenerate from the updated case.
+         draft_reply = NULL, draft_template_version = NULL,
+         status = 'open', resolved_at = NULL, resolved_by = NULL, resolution_note = NULL
+       WHERE COALESCE((billing_alerts.details->>'request_count')::int, 1) < $8
+       RETURNING id, case_status`,
+      [`refund_request:${pay.id}`, pay.id, userId, JSON.stringify(details), reason, profile?.email ?? null, note, REFUND_REQUESTS_PER_PAYMENT]);
+    if (!row) return fail(res, 429, 'TOO_MANY_REQUESTS');
+    return res.status(200).json({ ok: true, case_id: String(row.id), case_status: row.case_status });
   }
 
   /** Vercel Cron → scheduled reconciliation. No public trigger: the secret is required. */
@@ -216,7 +274,7 @@ export function createBillingHandler(deps: BillingDeps = {}) {
       }
       if (route === 'reconcile' && req.method === 'GET') { await cron(req, res); return; }
       if (route.startsWith('admin/')) { await admin(route.slice('admin/'.length), req, res); return; }
-      const routes: Record<string, string> = { checkout: 'POST', status: 'GET', me: 'GET' };
+      const routes: Record<string, string> = { checkout: 'POST', status: 'GET', me: 'GET', 'refund-request': 'POST' };
       if (routes[route] !== req.method) { fail(res, 404, 'NOT_FOUND'); return; }
       const userId = await verifyUser(req, res);
       if (!userId) { fail(res, 401, 'SIGN_IN_REQUIRED'); return; }
@@ -224,6 +282,7 @@ export function createBillingHandler(deps: BillingDeps = {}) {
       if (!sql) { fail(res, 503, 'DATABASE_UNAVAILABLE'); return; }
       if (route === 'checkout') await checkout(req, res, userId, sql);
       else if (route === 'status') await status(req, res, userId, sql);
+      else if (route === 'refund-request') await refundRequest(req, res, userId, sql);
       else await me(res, userId, sql);
     } catch (error) {
       if (error instanceof PaddleConfigError) { fail(res, 503, 'BILLING_NOT_CONFIGURED'); return; }

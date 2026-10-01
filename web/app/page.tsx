@@ -46,7 +46,7 @@ export default function Home() {
         </main>
 
         <footer className="px-6 py-5 text-center text-xs text-[var(--text-muted)] opacity-70">
-          אוניברסיטת תל אביב · <Link href="/privacy" className="underline hover:text-[var(--purple)]">מדיניות פרטיות</Link>
+          אוניברסיטת תל אביב · <Link href="/privacy" className="underline hover:text-[var(--purple)]">מדיניות פרטיות</Link> · <Link href="/refund-policy" className="underline hover:text-[var(--purple)]">מדיניות החזרים</Link>
         </footer>
       </div>
     </>

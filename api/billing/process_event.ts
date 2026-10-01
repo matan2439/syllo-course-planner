@@ -302,6 +302,16 @@ async function applyAdjustment(tx: CreditsSql, pay: Row, adj: Row, eventId: stri
         WHERE payment_id = $1 AND action = 'refund' AND status = 'approved' AND accounting_state = 'applied')
       WHERE id = $1`,
     [pay.id]);
+  if (adj.action === 'refund' && adj.status === 'approved' && accountingState === 'applied') {
+    // The customer's refund request is answered: Paddle approved a refund and the ledger
+    // followed. Anything that needed manual review leaves the case open for staff.
+    await tx.unsafe(
+      `UPDATE public.billing_alerts SET status = 'resolved', case_status = 'resolved', resolved_at = now(),
+              resolution_note = $2
+        WHERE dedupe_key = $1 AND status = 'open'`,
+      [`refund_request:${pay.id}`,
+       `auto: Paddle refund ${adj.paddle_adjustment_id} approved (${adj.type ?? '-'} ${adj.amount ?? '-'} ${adj.currency ?? ''})`.trim()]);
+  }
   await tx.unsafe(
     `INSERT INTO public.billing_policy_decisions (decision_key, policy_version, payment_id, adjustment_id, event_id, facts, decision, actions, result)
      VALUES ($1, $2, $3, $4, $5, $6::text::jsonb, $7, $8::text::jsonb, $9::text::jsonb)`,

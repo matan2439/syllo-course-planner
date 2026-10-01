@@ -162,7 +162,10 @@ export async function handleAdmin(route: string, req: VercelRequest, res: Vercel
 
   if (req.method === 'GET' && route === 'alerts') {
     const rows = await q(sql, 
-      `SELECT * FROM public.billing_alerts WHERE status = $1 ORDER BY CASE severity WHEN 'critical' THEN 0 ELSE 1 END, id DESC LIMIT 200`,
+      // A customer's latest refund request (details.requested_at) re-queues a reopened case at the front.
+      `SELECT * FROM public.billing_alerts WHERE status = $1
+        ORDER BY CASE severity WHEN 'critical' THEN 0 ELSE 1 END, COALESCE((details->>'requested_at')::timestamptz, created_at) DESC, id DESC
+        LIMIT 200`,
       [req.query?.status === 'resolved' ? 'resolved' : 'open']);
     res.status(200).json({ ok: true, alerts: rows });
     return;
