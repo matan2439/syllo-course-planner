@@ -17,6 +17,7 @@ export const STALE_MESSAGE_HE: Record<StaleReason, string> = {
   status: 'סטטוס הקורסים שהשלמת השתנה מאז הבנייה — יש לבנות מחדש לפני החלה.',
   preferences: 'ההעדפות שלך השתנו מאז הבנייה — יש לבנות מחדש לפני החלה.',
   manual: 'הלוח השתנה בעריכה ידנית — יש לבנות מחדש לפני החלה.',
+  board: 'הלוח עודכן ממקום אחר מאז ההצעה — יש לבנות מחדש לפני החלה.',
 }
 
 export const MARKER_LABEL: Record<DraftCourseVM['marker'], string | null> = {

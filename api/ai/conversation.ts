@@ -207,17 +207,11 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
     };
     try {
       const owner = await resolveRequestOwner(req as unknown as { headers?: Record<string, string | string[] | undefined> }, res);
+      // The co-pilot always reads the LIVE committed board: board edits mid-conversation are
+      // context, not a conflict. Safety lives at apply time — every proposal records the
+      // version it was built on (baseBoardVersion) and apply-plan rejects it if the board moved.
       const board = await loadBoard(owner.ownerId, parsed.data.program_id);
       const currentBoardVersion = board?.version ?? null;
-      if ((parsed.data.board_version ?? null) !== currentBoardVersion) {
-        res.status(409).json({
-          ok: false,
-          code: 'BOARD_VERSION_CONFLICT',
-          message_he: 'הלוח השתנה מאז תחילת השיחה.',
-          currentBoardVersion,
-        });
-        return;
-      }
       const academicContext = await loadAcademicContext(owner.ownerId, parsed.data.program_id);
       if (!academicContext || academicContext.digest !== parsed.data.academic_status_digest) {
         res.status(409).json({

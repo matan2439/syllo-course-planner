@@ -73,6 +73,7 @@ Go live only after the **production gate**:
   - replace the placeholders in `shared/billing/legal_versions.ts` and bump the version ids;
   - set `IMMEDIATE_SERVICE_CONSENT_VERSION` if counsel requires explicit consent;
   - set `LEGAL_POLICY` only for rules counsel approved.
+- **Auth email:** every item in section 4 is done and the launch status there reads YES.
 
 Then repeat steps 1–4 in the **live** Paddle dashboard:
 - `pdl_live_apikey_…`, a live client token, and a live notification destination pointing at the production domain;
@@ -93,3 +94,36 @@ Billing fails closed (503 `BILLING_NOT_CONFIGURED`) on a mixed configuration: `P
 Preview schema: apply alembic up to the production revision (`alembic upgrade <rev> --sql`), then `scripts/migrations/auth/*`, `planner/001`, `billing/001…005`. Use test accounts only; never copy production data.
 
 The Vercel Cron (`/api/billing/reconcile`, daily 03:17 UTC) runs on production deployments only. Check `/admin/billing` after the first live purchase.
+
+## 4. Auth email delivery (required for Production launch)
+Production signup, email verification and password reset must not rely on Supabase's built-in development SMTP (it is rate-limited and not meant for real users).
+
+**Architecture:** Supabase Auth → Resend custom SMTP → a Syllo-owned verified sending domain/subdomain. Paddle sends payment receipts and billing emails itself as Merchant of Record, so Syllo SMTP must not duplicate Paddle receipts.
+
+**Cost:** stay at zero fixed monthly cost while usage is low. Use the Resend free tier unless a concrete technical reason makes it unsuitable.
+
+Before Production launch:
+1. Verify a Syllo-owned sending domain/subdomain in Resend.
+2. Configure the SPF and DKIM DNS records.
+3. Set the Resend SMTP credentials in the Supabase **Production** project: Authentication → Emails → SMTP Settings.
+4. Sender: `Syllo <no-reply@mail.<syllo-domain>>` (or similar).
+5. SMTP credentials live only in Supabase; never in frontend code or `NEXT_PUBLIC_*` variables.
+6. Set an appropriate Supabase auth email rate limit once custom SMTP is on.
+7. Brand and verify the templates: signup confirmation, password reset, email-change confirmation (where applicable).
+8. Disable email link tracking if the provider enables it; rewritten links break Supabase auth links.
+9. Test with fresh Gmail, Outlook and another mailbox where practical.
+10. Check delivery speed and Spam/Junk placement.
+11. Add CAPTCHA/abuse protection to the signup and password-reset flows.
+12. Preview (`syllo-preview`) keeps its own development email setup; Production SMTP credentials are never used in Preview.
+
+Future enhancement: Google Sign-In through Supabase Auth to reduce email-confirmation friction.
+
+**Launch status**
+
+| Item | Status |
+|---|---|
+| PRODUCTION SMTP CONFIGURED | NO |
+| SENDING DOMAIN VERIFIED | NO |
+| AUTH EMAILS TESTED | NO |
+| CAPTCHA ENABLED | NO |
+| GOOGLE SIGN-IN | OPTIONAL / NOT REQUIRED FOR INITIAL LAUNCH |

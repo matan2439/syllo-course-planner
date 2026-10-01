@@ -55,29 +55,45 @@ test('missing model fails closed with typed assistant unavailability', async () 
   expect(conversationResponseSchema.safeParse(res.body).success).toBe(true)
 })
 
-test('configured conversation fails closed when the authoritative board version is stale', async () => {
+test('a board edited mid-conversation is read live, and the proposal is pinned to the live version', async () => {
+  const preferences = { max_weekly_hours: 22, disallowed_course_ids: [] }
+  const putProposal = jest.fn(async (record: any) => record)
+  const runAgent = jest.fn(async () => ({
+    outcome: 'proposal',
+    messageHe: 'הכנתי חלופה חוקית.',
+    events: [{ type: 'assistant_message', text_he: 'הכנתי חלופה חוקית.' }],
+    draftPlan: { semesters: { semester_a: ['COURSE-1'] } },
+    validation: { valid: true },
+  } as any))
   const handler = createConversationHandler({
     resolveModel: () => ({ model: {} as any, name: 'test-model' } as any),
+    // The student moved a course since the conversation started: server is at bv_2.
     loadBoard: async () => ({
-      ownerId: 'server-owner',
-      programId: validBody.program_id,
-      version: 'bv_2',
-      semesters: [],
-      updatedAt: 1,
+      ownerId: 'server-owner', programId: validBody.program_id, version: 'bv_2',
+      semesters: [{ semesterId: 'semester_a', courseIds: ['COURSE-LIVE'] }], updatedAt: 1,
+    } as any),
+    loadAcademicContext: async () => ({
+      ownerId: 'server-owner', programId: validBody.program_id,
+      digest: validBody.academic_status_digest,
+      personalStatus: { completed: [], completed_knowledge: { status: 'known', provenance: 'explicit_user' } },
+      planContext: {}, preferences, updatedAt: 1,
     }),
+    loadProgramBoard: () => ({ semesters: [], metadata: {} }),
+    runAgent,
+    putProposal,
   })
   const res = response()
   await handler({
-    method: 'POST',
-    headers: { cookie: `syllo_owner=${'x'.repeat(43)}` },
-    body: { ...validBody, board_version: 'bv_1' },
+    method: 'POST', headers: { cookie: `syllo_owner=${'x'.repeat(43)}` },
+    body: { ...validBody, board_version: 'bv_1', preference_digest: preferenceDigest(preferences) },
   } as any, res)
 
-  expect(res.statusCode).toBe(409)
-  expect(res.body).toEqual(expect.objectContaining({
-    code: 'BOARD_VERSION_CONFLICT',
-    currentBoardVersion: 'bv_2',
-  }))
+  expect(res.statusCode).toBe(200)
+  expect(res.body).toEqual(expect.objectContaining({ outcome: 'proposal' }))
+  // The agent planned against the live board, not the client's stale view.
+  expect(JSON.stringify((runAgent.mock.calls as any)[0][0])).toContain('COURSE-LIVE')
+  // Apply-plan compares against bv_2, so a later edit still invalidates this proposal.
+  expect(putProposal.mock.calls[0][0]).toEqual(expect.objectContaining({ baseBoardVersion: 'bv_2' }))
 })
 
 test('configured conversation rejects a stale academic status digest', async () => {
@@ -739,6 +755,6 @@ test('metering: every delivered reply consumes its credit; failures, conflicts a
   expect(await run('stoppedEarly')).toEqual({ status: 200, calls: ['open', 'release:no_reply'] })
   expect(await run('unavailable')).toEqual({ status: 503, calls: ['open', 'release:no_reply'] })
   expect(await run('throws')).toEqual({ status: 500, calls: ['open', 'release:no_reply'] })
-  // A stale board is refused before the model runs: nothing charged.
-  expect(await run('chat', { ...body, board_version: 'stale-version' })).toEqual({ status: 409, calls: ['open', 'release:no_reply'] })
+  // A stale context is refused before the model runs: nothing charged. (A newer board is not a conflict.)
+  expect(await run('chat', { ...body, academic_status_digest: 'as_stale' })).toEqual({ status: 409, calls: ['open', 'release:no_reply'] })
 })

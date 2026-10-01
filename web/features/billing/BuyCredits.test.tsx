@@ -73,3 +73,65 @@ test('purchase flow: disclosure required, server-created checkout, balance only 
   expect(onBalanceChanged).toHaveBeenCalledTimes(1)
   expect(screen.getByTestId('purchase-success')).toHaveTextContent('+50 קרדיטים')
 })
+
+test('refund request per purchase: sends payment id + reason only, then shows the case status', async () => {
+  installPaddle()
+  const calls = mockApi([])
+  const fetchMock = global.fetch as jest.Mock
+  const base = fetchMock.getMockImplementation()!
+  fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
+    if (url === '/api/billing/refund-request') {
+      calls.push({ url, body: JSON.parse(String(init!.body)) })
+      return { ok: true, json: async () => ({ ok: true, case_id: '7', case_status: 'open' }) } as Response
+    }
+    return base(url, init)
+  })
+  render(<BuyCredits onBalanceChanged={() => {}} />)
+  fireEvent.click(screen.getByRole('button', { name: 'קניית קרדיטים' }))
+  await screen.findByTestId('purchase-history')
+  expect(screen.getByRole('link', { name: 'מדיניות החזרים' })).toHaveAttribute('href', '/refund-policy')
+
+  fireEvent.click(screen.getByRole('button', { name: 'בקשת החזר' }))
+  const send = screen.getByRole('button', { name: 'שליחת בקשה' })
+  expect(send).toBeDisabled() // a reason is required
+  fireEvent.change(screen.getByRole('textbox'), { target: { value: '  לא השתמשתי  ' } })
+  fireEvent.click(send)
+
+  await screen.findByText('בקשת החזר התקבלה')
+  expect(screen.getByText(/הבקשה נשלחה/)).toBeInTheDocument()
+  // Nothing about amounts, credits or users — the server decides what the case contains.
+  expect(calls.find((c) => c.url === '/api/billing/refund-request')!.body).toEqual({ payment_id: '1', reason: 'לא השתמשתי' })
+  expect(screen.queryByRole('button', { name: 'בקשת החזר' })).not.toBeInTheDocument() // one open request per purchase
+})
+
+test('no refund button for a purchase that is already refunded', async () => {
+  installPaddle()
+  mockApi([])
+  const fetchMock = global.fetch as jest.Mock
+  const base = fetchMock.getMockImplementation()!
+  fetchMock.mockImplementation(async (url: string, init?: RequestInit) => url.startsWith('/api/billing/me')
+    ? ({ ok: true, json: async () => ({ ok: true, purchases: [{ payment_id: '1', status: 'refunded', completed_at: null, refund_request: null,
+      credits: { purchased: 50, consumed: 0, in_use: 0, unused: 0, revoked: 50 } }] }) } as Response)
+    : base(url, init))
+  render(<BuyCredits onBalanceChanged={() => {}} />)
+  fireEvent.click(screen.getByRole('button', { name: 'קניית קרדיטים' }))
+  expect(await screen.findByTestId('purchase-history')).toHaveTextContent('הוחזרה')
+  expect(screen.queryByRole('button', { name: 'בקשת החזר' })).not.toBeInTheDocument()
+})
+
+test('a case awaiting the customer keeps a way to answer', async () => {
+  installPaddle()
+  mockApi([])
+  const fetchMock = global.fetch as jest.Mock
+  const base = fetchMock.getMockImplementation()!
+  fetchMock.mockImplementation(async (url: string, init?: RequestInit) => url.startsWith('/api/billing/me')
+    ? ({ ok: true, json: async () => ({ ok: true, purchases: [{ payment_id: '1', status: 'completed', completed_at: null,
+      refund_request: { case_status: 'awaiting_customer', requested_at: '2026-10-01T00:00:00Z' },
+      credits: { purchased: 50, consumed: 0, in_use: 0, unused: 50, revoked: 0 } }] }) } as Response)
+    : base(url, init))
+  render(<BuyCredits onBalanceChanged={() => {}} />)
+  fireEvent.click(screen.getByRole('button', { name: 'קניית קרדיטים' }))
+  expect(await screen.findByText('בקשת החזר ממתינה לתשובתך')).toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: 'הוספת פרטים לבקשה' }))
+  expect(screen.getByRole('textbox')).toBeInTheDocument()
+})

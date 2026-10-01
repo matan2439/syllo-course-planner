@@ -40,3 +40,36 @@ export interface AcceptedTerms {
   immediate_service_consent: string | null
   accepted_at: string
 }
+
+/**
+ * REQUIRES LEGAL REVIEW — the customer-facing refund policy page (/refund-policy),
+ * version LEGAL_VERSIONS.refundPolicy. Describes the PROCESS only; which refunds
+ * are granted is decided by counsel-approved policy (api/billing/refund_policy.ts
+ * LEGAL_POLICY is 'unreviewed', so every request is reviewed manually).
+ */
+export const REFUND_POLICY_HE: ReadonlyArray<{ title: string; items: readonly string[] }> = [
+  {
+    title: 'איך מבקשים החזר',
+    items: [
+      'מחוברים? פתחו את תפריט החשבון ← "קניית קרדיטים". תחת "הרכישות שלי" יש ליד כל רכישה כפתור "בקשת החזר".',
+      'כתבו בקצרה למה אתם מבקשים החזר. הבקשה מגיעה לצוות Syllo, שבודק אותה ידנית וחוזר אליכם באימייל של החשבון.',
+      'אפשר לראות את מצב הבקשה באותו מקום. בקשה נוספת על אותה רכישה מעדכנת את הבקשה הקיימת.',
+    ],
+  },
+  {
+    title: 'מי מבצע את ההחזר',
+    items: [
+      'התשלום מעובד על ידי Paddle, המשווק הרשמי (Merchant of Record). החזר שאושר מבוצע דרך Paddle לאמצעי התשלום המקורי, ו-Paddle שולחת אישור זיכוי (credit note).',
+      'העברת הכסף לאמצעי התשלום עשויה להימשך כמה ימים, בהתאם לחברת האשראי או לאמצעי התשלום.',
+      'זכויות ביטול והחזר כפופות לתנאי Paddle ולדין החל.',
+    ],
+  },
+  {
+    title: 'מה קורה לקרדיטים',
+    items: [
+      'שליחת בקשה לא משנה את היתרה: הקרדיטים נשארים זמינים עד שהחזר מאושר בפועל.',
+      'לאחר החזר, קרדיטים שטרם נוצלו מהרכישה שהוחזרה מבוטלים בחשבון.',
+      'קרדיטים שנוצלו משקפים שירות שכבר סופק; ההחלטה על החזר בגינם נבחנת בכל בקשה לגופה.',
+    ],
+  },
+]

@@ -85,6 +85,7 @@ export default function NativePlannerJourney({
   onCurrentDegreeYearChange,
   activeDrag,
   onDragStateChange,
+  onAcademicContextMissing,
 }: {
   programId: string
   getBoardFn?: (programId: string) => Promise<BoardModel>
@@ -115,9 +116,11 @@ export default function NativePlannerJourney({
   onCurrentDegreeYearChange?: (year: DegreeYear) => void
   activeDrag?: PlannerDragPayload | null
   onDragStateChange?: (drag: PlannerDragPayload | null) => void
+  /** The server has no academic context for the current owner: the parent re-reads everything. */
+  onAcademicContextMissing?: () => void
 }) {
   // ── the board ─────────────────────────────────────────────────────────────
-  const { boardPhase, current, setCurrent, boardVersion, setBoardVersion } = useCommittedBoard({
+  const { boardPhase, current, setCurrent, boardVersion, setBoardVersion, resyncCommittedBoard } = useCommittedBoard({
     programId, getBoardFn, committedBoardFn, onCommittedCourseIdsChange, onSemestersChange,
   })
   const { rejectedDrop, justPlaced, showRejectedDrop, showJustPlaced } = useDropHighlights()
@@ -215,7 +218,7 @@ export default function NativePlannerJourney({
     genPhase, proposal, selectedAlternativeId, setSelectedAlternativeId, applyPhase, applyError,
     staleReason, stale, clearProposal, acceptConversationProposal, canApply, apply,
   } = usePlanProposal({
-    programId, current, setCurrent, boardVersion, setBoardVersion, applyFn,
+    programId, current, setCurrent, boardVersion, setBoardVersion, resyncBoard: resyncCommittedBoard, applyFn,
     statusVersion, preferenceVersion, manualRevision, convProfileVersion,
     applyAcademicStatus, setMessages,
   })
@@ -408,6 +411,7 @@ export default function NativePlannerJourney({
           localContextVersion={statusVersion + preferenceVersion}
           currentDegreeYear={currentDegreeYear}
           onCurrentDegreeYearChange={onCurrentDegreeYearChange}
+          onAcademicContextMissing={onAcademicContextMissing}
           courseScopes={[
             { id: 'early-years', label: 'קורסי שנים א׳–ב׳', courseIds: earlyYearCoursesFor(programId).map((course) => course.courseId) },
             { id: 'board', label: 'הקורסים בלוח הנוכחי', courseIds: [...new Set(current.semesters.flatMap((semester) => semester.courses.map((course) => course.courseId)))] },
