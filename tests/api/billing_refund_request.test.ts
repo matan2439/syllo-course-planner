@@ -121,3 +121,27 @@ test('only my own completed payment, a real reason, JSON, signed in', async () =
   expect((await request(owner, { payment_id: paymentId, reason: 'again' })).body.code).toBe('ALREADY_REFUNDED');
   expect(await cases(paymentId)).toHaveLength(0);
 });
+
+test('an approved Paddle refund auto-resolves the open request; a pending one does not', async () => {
+  const user = await db.newUser();
+  const paymentId = await purchased(user);
+  const { paddle_transaction_id: txn } = await db.one<any>('SELECT paddle_transaction_id FROM payments WHERE id = $1', [paymentId]);
+  const adjustment = (status: string) => {
+    const raw = JSON.stringify({ event_id: `evt_rr_${++n}`, event_type: status === 'approved' ? 'adjustment.updated' : 'adjustment.created',
+      occurred_at: new Date().toISOString(),
+      data: { id: 'adj_rr_auto', action: 'refund', type: 'full', status, transaction_id: txn, currency_code: 'USD', totals: { total: '500', currency_code: 'USD' } } });
+    return call('webhook', { method: 'POST', raw, headers: { 'paddle-signature': signPaddleBody(raw, SECRET) } });
+  };
+  expect((await request(user, { payment_id: paymentId, reason: 'please refund' })).statusCode).toBe(200);
+
+  await adjustment('pending_approval'); // staff asked Paddle; nothing is decided yet
+  expect((await cases(paymentId))[0]).toMatchObject({ status: 'open', case_status: 'open' });
+
+  expect((await adjustment('approved')).statusCode).toBe(200);
+  const [c] = await cases(paymentId);
+  expect(c).toMatchObject({ status: 'resolved', case_status: 'resolved', resolved_by: null,
+    resolution_note: expect.stringContaining('adj_rr_auto approved') });
+  expect(c.resolved_at).not.toBeNull();
+  const me = await as(user, () => call('me'));
+  expect(me.body.purchases[0]).toMatchObject({ status: 'refunded', refund_request: { case_status: 'resolved' } });
+});
