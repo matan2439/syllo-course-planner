@@ -21,6 +21,7 @@ const api: PaddleApi = {
   createTransaction: async () => { paddleCalls.push('createTransaction'); return { id: `txn_rr${String(++n).padStart(6, '0')}`, status: 'ready' }; },
   getTransaction: async () => { paddleCalls.push('getTransaction'); throw new Error('unexpected'); },
   listAdjustments: async () => { paddleCalls.push('listAdjustments'); return []; },
+  createPartialRefund: async () => { paddleCalls.push('createPartialRefund'); throw new Error('unexpected'); },
 };
 const handler = createBillingHandler({ sql: () => db.sql, verifyUser: async () => currentUser, config: () => CONFIG, api: () => api, env: ENV });
 
