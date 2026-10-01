@@ -16,7 +16,7 @@ import type { ChatMsg, GenPhase } from '../types'
  * inputs a proposal was built from, so any later change marks it stale.
  */
 export function usePlanProposal({
-  programId, current, setCurrent, boardVersion, setBoardVersion, applyFn,
+  programId, current, setCurrent, boardVersion, setBoardVersion, resyncBoard, applyFn,
   statusVersion, preferenceVersion, manualRevision, convProfileVersion,
   applyAcademicStatus, setMessages,
 }: {
@@ -25,6 +25,8 @@ export function usePlanProposal({
   setCurrent: Dispatch<SetStateAction<BoardModel | null>>
   boardVersion: string | null
   setBoardVersion: Dispatch<SetStateAction<string | null>>
+  /** Re-reads the committed board from the server (see useCommittedBoard). */
+  resyncBoard: () => Promise<void>
   /** The authoritative server Apply. Injected so tests need no backend. */
   applyFn: (req: Parameters<typeof applyPlan>[1]) => Promise<ApplyPlanResult>
   statusVersion: number
@@ -55,11 +57,18 @@ export function usePlanProposal({
    * same work. Cleared on success and whenever the proposal changes.
    */
   const applyKeyRef = useRef<string | null>(null)
+  /**
+   * The server plans on the LIVE board, which may be newer than this tab's copy
+   * (an edit from another tab or device). While the tab catches up, Apply waits:
+   * it would otherwise send the old version and be refused.
+   */
+  const [boardSyncing, setBoardSyncing] = useState(false)
 
   // WHY the proposal is stale (see computeStaleReason) — the note names the real cause.
   const staleReason = computeStaleReason({
     genPhase, capturedRev, current, capturedStatusVersion, statusVersion, capturedPreferenceVersion,
     preferenceVersion, proposal, convProfileVersion, capturedManualRevision, manualRevision,
+    boardVersion, boardSyncing,
   })
   const stale = staleReason !== null
 
@@ -83,10 +92,14 @@ export function usePlanProposal({
     setGenPhase('done')
     setApplyError(null)
     applyKeyRef.current = null
-  }, [current, manualRevision, preferenceVersion, statusVersion])
+    if (incoming.base_board_version !== boardVersion) {
+      setBoardSyncing(true)
+      void resyncBoard().finally(() => setBoardSyncing(false))
+    }
+  }, [current, manualRevision, preferenceVersion, statusVersion, boardVersion, resyncBoard])
 
   // The proposal must match the CURRENT conversation profile version — an edit after it was made stales it.
-  const canApply = !!proposal && isProposalApplyable(proposal, stale, { currentProfileVersion: convProfileVersion })
+  const canApply = !!proposal && !boardSyncing && isProposalApplyable(proposal, stale, { currentProfileVersion: convProfileVersion })
 
   /**
    * Apply is a SERVER action.

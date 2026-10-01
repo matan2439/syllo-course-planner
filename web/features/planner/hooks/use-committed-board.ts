@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { BoardModel, GeneratedPlanModel } from '../../../../shared/planner/model'
 import type { CommittedBoardState } from '../../../../shared/planner/api-client'
 import { applyCommittedBoard } from '../../../lib/planner/apply-plan'
@@ -28,6 +28,8 @@ export function useCommittedBoard({
    * Apply rather than a missing field.
    */
   const [boardVersion, setBoardVersion] = useState<string | null>(null)
+  /** The catalog from the last load, so a resync re-reads only the committed board. */
+  const catalogRef = useRef<BoardModel | null>(null)
 
   useEffect(() => {
     let live = true
@@ -44,6 +46,7 @@ export function useCommittedBoard({
     Promise.all([getBoardFn(programId), committed]).then(
       ([catalog, saved]) => {
         if (!live) return
+        catalogRef.current = catalog
         setCurrent(saved ? applyCommittedBoard(saved, catalog) : catalog)
         setBoardVersion(saved?.version ?? null)
         setBoardPhase('ready')
@@ -52,6 +55,23 @@ export function useCommittedBoard({
     )
     return () => { live = false }
   }, [programId, getBoardFn, committedBoardFn])
+
+  /**
+   * Re-read the committed board after the server reported a newer version than
+   * this tab holds (an edit from another tab or device). The board is replaced
+   * with the server's copy; a failed read leaves the current view untouched.
+   */
+  const resyncCommittedBoard = useCallback(async () => {
+    const catalog = catalogRef.current
+    if (!catalog) return
+    try {
+      const saved = await committedBoardFn(programId)
+      setCurrent(saved ? applyCommittedBoard(saved, catalog) : catalog)
+      setBoardVersion(saved?.version ?? null)
+    } catch (e) {
+      console.error('[NativePlannerJourney] committed board resync failed:', e)
+    }
+  }, [programId, committedBoardFn])
 
   useEffect(() => {
     if (!current) return
@@ -67,5 +87,5 @@ export function useCommittedBoard({
     })))
   }, [current, onSemestersChange])
 
-  return { boardPhase, current, setCurrent, boardVersion, setBoardVersion }
+  return { boardPhase, current, setCurrent, boardVersion, setBoardVersion, resyncCommittedBoard }
 }

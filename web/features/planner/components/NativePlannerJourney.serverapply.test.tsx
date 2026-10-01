@@ -46,13 +46,16 @@ const alt = (candidateId: string, semesters: typeof PLAN_REC, recommended: boole
   label_he: labelHe, differences_he: [], workload: { peak_hours: 4, total_hours: 8, active_periods: 2 },
 })
 
-/** The agent's proposal: two alternatives, echoing whatever the board looks like when asked. */
-function conversationProposal(): ConversationResponse {
+/**
+ * The agent's proposal: two alternatives, planned on the board version it is given —
+ * the server pins each proposal to the live board it read.
+ */
+function conversationProposal(baseBoardVersion: string | null = null): ConversationResponse {
   return {
     outcome: 'proposal', message_he: 'הכנתי חלופות.', events: [],
     proposal: {
       proposal_id: PROPOSAL_ID, candidate_ids: [REC, OTHER], recommended_candidate_id: REC,
-      base_board_version: null, profile_version: 1, academic_status_digest: 'as_test',
+      base_board_version: baseBoardVersion, profile_version: 1, academic_status_digest: 'as_test',
       expires_at: Date.now() + 3_600_000,
       alternatives: [alt(REC, PLAN_REC, true, 'המומלצת'), alt(OTHER, PLAN_OTHER, false, 'החלופה השנייה')],
     },
@@ -89,7 +92,7 @@ async function renderReady(over: {
       editBoardFn={over.editBoardFn}
       establishPlanningContextFn={over.establishPlanningContextFn}
       planningContextFn={over.planningContextFn ?? (async () => null)}
-      sendConversationFn={over.sendConversationFn ?? (async () => conversationProposal())}
+      sendConversationFn={over.sendConversationFn ?? (async (req: { board_version: string | null }) => conversationProposal(req.board_version))}
     />,
   )
   await waitFor(() => expect(screen.getByText('קורס בסיס X')).toBeInTheDocument())
@@ -201,7 +204,7 @@ describe('S5 — Apply goes to the server, and only the server commits', () => {
   })
 
   test('manual add commits the server board, asks the agent no more than needed, and stales the visible proposal', async () => {
-    const sendConversationFn = jest.fn(async (_request: { board_version: string | null }) => conversationProposal())
+    const sendConversationFn = jest.fn(async (request: { board_version: string | null }) => conversationProposal(request.board_version))
     const editBoardFn = jest.fn(async (_request: any): Promise<ManualBoardEditResult> => ({
       ok: true as const, replayed: false, operationId: 'edit_test',
       board: { programId: 'mechanical_engineering_2027', version: 'bv_1', semesters: [
@@ -434,6 +437,39 @@ describe('S5 — refresh reads the server’s board back', () => {
     fireEvent.click(applyBtn())
     await waitFor(() => expect(server.calls).toHaveLength(1))
     expect(server.calls[0].expected_board_version).toBe('bv_7')
+  })
+
+  test('a tab behind the server catches up to the board the proposal was planned on', async () => {
+    // Another tab moved the board to bv_2; this tab still holds bv_1. The server
+    // plans on the live board, so the tab must adopt it before Apply.
+    const committedBoardFn = jest.fn()
+      .mockResolvedValueOnce({ programId: 'mechanical_engineering_2027', version: 'bv_1', semesters: PLAN_OTHER })
+      .mockResolvedValue({ programId: 'mechanical_engineering_2027', version: 'bv_2', semesters: PLAN_REC })
+    const inner = createServerApplyStub({ proposalId: PROPOSAL_ID, candidates: [{ candidateId: REC, semesters: PLAN_REC }] })
+    const sent: Array<{ expected_board_version: string | null }> = []
+    const server = {
+      ...inner,
+      applyFn: async (req: any) => { sent.push(req); return { ok: false, code: 'X', messageHe: 'נדחה.' } },
+    } as unknown as Stub
+    await renderReady({ stub: server, committedBoardFn, sendConversationFn: async () => conversationProposal('bv_2') })
+    await build()
+
+    await waitFor(() => expect(committedBoardFn).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect(applyBtn()).not.toBeDisabled())
+    fireEvent.click(applyBtn())
+    await waitFor(() => expect(sent).toHaveLength(1))
+    expect(sent[0].expected_board_version).toBe('bv_2')
+  })
+
+  test('a proposal whose board moved on again is stale, not a guaranteed conflict', async () => {
+    const committedBoardFn = jest.fn()
+      .mockResolvedValueOnce({ programId: 'mechanical_engineering_2027', version: 'bv_1', semesters: PLAN_OTHER })
+      .mockResolvedValue({ programId: 'mechanical_engineering_2027', version: 'bv_3', semesters: PLAN_OTHER })
+    await renderReady({ committedBoardFn, sendConversationFn: async () => conversationProposal('bv_2') })
+    await build()
+
+    await waitFor(() => expect(screen.getByText(/הלוח עודכן ממקום אחר/)).toBeInTheDocument())
+    expect(applyBtn()).toBeDisabled()
   })
 
   test('a session with NO committed board falls back to the catalog honestly', async () => {

@@ -17,6 +17,8 @@ const fresh = (over: Partial<StaleInputs> = {}): StaleInputs => ({
   convProfileVersion: undefined,
   capturedManualRevision: 1,
   manualRevision: 1,
+  boardVersion: 'bv_1',
+  boardSyncing: false,
   ...over,
 })
 
@@ -36,6 +38,13 @@ describe('computeStaleReason', () => {
   it('treats an advanced typed-profile version as a preference change', () => {
     const proposal = { profileVersion: 1 } as GeneratedPlanModel
     expect(computeStaleReason(fresh({ proposal, convProfileVersion: 2 }))).toBe('preferences')
+  })
+
+  it('flags a proposal planned on a board this tab no longer holds, but not while it catches up', () => {
+    const planned = (base: string | null) => ({ proposal: { baseBoardVersion: base } }) as GeneratedPlanModel
+    expect(computeStaleReason(fresh({ proposal: planned('bv_1') }))).toBeNull()
+    expect(computeStaleReason(fresh({ proposal: planned('bv_2') }))).toBe('board')
+    expect(computeStaleReason(fresh({ proposal: planned('bv_2'), boardSyncing: true }))).toBeNull()
   })
 
   it('reports the catalog first when several things changed', () => {
