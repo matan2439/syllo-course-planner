@@ -11,8 +11,9 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import type { BillingSql } from '../ai/credits';
 import { buildEvidence, evidenceText, type EvidencePackage } from './evidence';
 import { DRAFT_TEMPLATE_VERSION, draftReply } from './case_draft';
-import type { PaddleApi, PaddleEnvironment } from './paddle';
+import { PaddleApiError, type PaddleApi, type PaddleEnvironment } from './paddle';
 import { reconcile } from './reconcile';
+import { adminRefundAllowed, LEGAL_POLICY, proportionalRefund } from './refund_policy';
 
 export interface AdminContext {
   sql: BillingSql;
@@ -20,6 +21,8 @@ export interface AdminContext {
   environment: PaddleEnvironment | null;
   api: (() => PaddleApi) | null;
   env?: NodeJS.ProcessEnv;
+  /** Injectable for tests only; production always uses the checked-in LEGAL_POLICY. */
+  legal?: { status: string };
 }
 
 const q = async (sql: BillingSql, text: string, params: unknown[] = []) => (await sql.unsafe(text, params)) as Array<Record<string, any>>;
@@ -70,6 +73,31 @@ export async function overview(sql: BillingSql) {
     open_alerts: { review: open.review ?? 0, critical: open.critical ?? 0 },
     invariant_violations: Number(violations.n),
     last_reconciliation: lastRun ?? null,
+  };
+}
+
+/** The proportional partial-refund suggestion for one payment, and whether it may be issued here. */
+export async function refundSuggestion(sql: BillingSql, paymentId: string, ctx: Pick<AdminContext, 'environment' | 'legal'>) {
+  const [p] = await q(sql,
+    `SELECT p.environment, p.checkout_state, p.status, p.dispute_state, p.paddle_transaction_id, p.currency, p.amount_total, p.refunded_amount,
+            l.credits_granted, l.credits_granted - l.credits_consumed - l.credits_reserved - l.credits_revoked AS unused
+       FROM public.payments p LEFT JOIN public.credit_lots l ON l.id = p.lot_id WHERE p.id = $1`, [paymentId]);
+  if (!p) return null;
+  const amount = proportionalRefund({
+    amountTotal: p.amount_total == null ? null : Number(p.amount_total), refundedAmount: Number(p.refunded_amount),
+    granted: Number(p.credits_granted ?? 0), unused: Number(p.unused ?? 0),
+  });
+  const blocked =
+    !adminRefundAllowed(ctx.environment, ctx.legal ?? LEGAL_POLICY) ? 'REFUND_POLICY_NOT_APPROVED'
+    : p.environment !== ctx.environment ? 'WRONG_ENVIRONMENT'
+    : p.checkout_state !== 'completed' || !p.paddle_transaction_id ? 'PAYMENT_NOT_COMPLETED'
+    : p.dispute_state !== 'none' ? 'PAYMENT_DISPUTED'
+    : amount <= 0 ? 'NOTHING_TO_REFUND'
+    : null;
+  return {
+    amount, currency: p.currency as string | null, amount_total: p.amount_total == null ? null : Number(p.amount_total),
+    refunded_amount: Number(p.refunded_amount), granted: Number(p.credits_granted ?? 0), unused: Number(p.unused ?? 0),
+    transaction_id: p.paddle_transaction_id as string | null, blocked,
   };
 }
 
@@ -124,7 +152,10 @@ export async function handleAdmin(route: string, req: VercelRequest, res: Vercel
         `SELECT pr.payment_risk_state, ri.* FROM public.profiles pr LEFT JOIN public.account_risk_indicators ri ON ri.user_id = pr.id WHERE pr.id = $1`,
         [evidence.purchase.syllo_user_id])
       : [];
-    res.status(200).json({ ok: true, evidence, timeline: timeline(evidence, new Date(pay.created_at).toISOString()), alerts, risk: risk ?? null });
+    res.status(200).json({
+      ok: true, evidence, timeline: timeline(evidence, new Date(pay.created_at).toISOString()), alerts, risk: risk ?? null,
+      refund_suggestion: await refundSuggestion(sql, id, ctx),
+    });
     return;
   }
 
@@ -254,6 +285,46 @@ export async function handleAdmin(route: string, req: VercelRequest, res: Vercel
     if (r.status !== 'applied') { fail(res, 409, r.status === 'insufficient' ? 'INSUFFICIENT_CREDITS' : 'NOT_APPLIED'); return; }
     await audit(sql, ctx, 'credit_adjustment', `user:${body.user_id}`, reason, { delta, reference });
     res.status(200).json({ ok: true, balance: Number(r.balance) });
+    return;
+  }
+
+  if (route === 'refunds/partial') {
+    // Syllo asks Paddle for the money; credits are revoked only when Paddle's
+    // adjustment webhook arrives (process_event), never from here.
+    if (!ctx.environment || !ctx.api) { fail(res, 503, 'BILLING_NOT_CONFIGURED'); return; }
+    if (!/^\d+$/.test(id)) { fail(res, 404, 'NOT_FOUND'); return; }
+    const s = await refundSuggestion(sql, id, ctx);
+    if (!s) { fail(res, 404, 'NOT_FOUND'); return; }
+    if (s.blocked) { fail(res, s.blocked === 'REFUND_POLICY_NOT_APPROVED' ? 403 : 409, s.blocked); return; }
+    // The admin confirms the exact figure they saw; anything that moved since is re-reviewed.
+    if (Number(body.amount) !== s.amount) { fail(res, 409, 'SUGGESTION_CHANGED'); return; }
+    const api = ctx.api();
+    const txnId = s.transaction_id!;
+    const target = `payment:${id}`;
+    const details: Record<string, unknown> = { transaction_id: txnId, amount: s.amount, currency: s.currency, amount_total: s.amount_total, unused: s.unused, granted: s.granted };
+    try {
+      // Paddle rejects a second refund while one is pending; also refuse while an approved
+      // refund has not reached our ledger yet, or the suggestion would double-count it.
+      const adjustments = await api.listAdjustments(txnId);
+      if (adjustments.some((a) => a.action === 'refund' && a.status === 'pending_approval')) { fail(res, 409, 'REFUND_PENDING'); return; }
+      const approved = adjustments.filter((a) => a.action === 'refund' && a.status === 'approved')
+        .reduce((sum, a) => sum + Number(a.totals?.total ?? 0), 0);
+      if (approved !== s.refunded_amount) { fail(res, 409, 'REFUND_NOT_YET_RECORDED'); return; }
+      const txn = await api.getTransaction(txnId);
+      const lines: Array<Record<string, any>> = txn.details?.line_items ?? [];
+      // Credit packages are one line item; anything else is outside this action.
+      if (txn.status !== 'completed' || lines.length !== 1 || !(Number(lines[0].totals?.total) >= s.amount)) { fail(res, 409, 'TRANSACTION_SHAPE_UNSUPPORTED'); return; }
+      const adj = await api.createPartialRefund({ transactionId: txnId, itemId: lines[0].id, amount: s.amount, reason });
+      Object.assign(details, { adjustment_id: adj.id, adjustment_status: adj.status, adjustment_total: adj.totals?.total ?? null });
+      await audit(sql, ctx, 'issue_partial_refund', target, reason, details);
+      res.status(200).json({ ok: true, adjustment_id: adj.id, status: adj.status, amount: s.amount, currency: s.currency });
+    } catch (err) {
+      // The attempt is part of the money trail even when it fails. A timeout may still have
+      // created the adjustment: reconciliation and the webhook pick it up either way.
+      await audit(sql, ctx, 'issue_partial_refund_failed', target, reason, { ...details, error: err instanceof Error ? err.message : String(err) });
+      // 403: the API key lacks adjustment.write (docs/billing/SANDBOX_TO_PRODUCTION.md step 3).
+      fail(res, 502, !(err instanceof PaddleApiError) ? 'PADDLE_UNREACHABLE' : err.status === 403 ? 'PADDLE_KEY_PERMISSION' : 'PADDLE_REJECTED');
+    }
     return;
   }
 

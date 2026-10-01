@@ -101,6 +101,24 @@ export function consumptionAnalysis(lot: AdjustmentFacts['lot'], amountTotal: nu
 
 const round4 = (n: number) => Math.round(n * 10_000) / 10_000;
 
+/**
+ * Proportional refund for an admin-issued partial refund: amount_total × unused / granted,
+ * in Paddle minor units (the currency's lowest denomination, so integer rounding is
+ * the currency rule for 2- and 0-decimal currencies alike). Floored so the webhook's
+ * ceil(granted × refunded / total) revocation never exceeds the unused credits, and
+ * capped by what is still unrefunded. Reserved (in-flight) credits are not unused.
+ */
+export function proportionalRefund(input: { amountTotal: number | null; refundedAmount: number; granted: number; unused: number }): number {
+  const { amountTotal, refundedAmount, granted, unused } = input;
+  if (amountTotal == null || amountTotal <= 0 || granted <= 0 || unused <= 0) return 0;
+  return Math.max(0, Math.min(Math.floor((amountTotal * unused) / granted), amountTotal - refundedAmount));
+}
+
+/** Admin-issued refunds: sandbox always; production only under an approved legal policy. Fails closed. */
+export function adminRefundAllowed(environment: string | null, legal: { status: string } = LEGAL_POLICY): boolean {
+  return environment === 'sandbox' || (environment === 'production' && legal.status === 'approved');
+}
+
 const manual = (reason: string, analysis: ConsumptionAnalysis): PolicyOutcome => ({
   policyVersion: POLICY_VERSION,
   decision: 'MANUAL_REVIEW_REQUIRED',

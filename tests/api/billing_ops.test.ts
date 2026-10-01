@@ -4,8 +4,10 @@
  */
 import { createBillingHandler } from '../../api/billing';
 import { finalizeCredits, getCreditBalance, reserveCredits } from '../../api/ai/credits';
-import { signPaddleBody, type PaddleApi, type PaddleConfig } from '../../api/billing/paddle';
+import { PaddleApiError, signPaddleBody, type PaddleApi, type PaddleConfig } from '../../api/billing/paddle';
 import { LEGAL_VERSIONS } from '../../shared/billing/legal_versions';
+import { handleAdmin } from '../../api/billing/admin';
+import { adminRefundAllowed, LEGAL_POLICY, proportionalRefund } from '../../api/billing/refund_policy';
 import { ALL_BILLING, createBillingDb, type BillingDb } from './helpers/billing_db';
 
 const SECRET = 'pdl_ntfset_ops_secret';
@@ -27,7 +29,18 @@ const api: PaddleApi = {
   },
   getTransaction: async (id) => { if (paddleDown) throw new Error('paddle 503'); return paddle.get(id)!.txn; },
   listAdjustments: async (id) => paddle.get(id)?.adjustments ?? [],
+  createPartialRefund: async (input) => {
+    refundCalls.push(input);
+    if (refundRejects) throw new PaddleApiError(`paddle /adjustments: ${refundRejects} error`, refundRejects);
+    // Like Paddle: a live refund starts pending_approval.
+    const adj = { id: `adj_admin_${++n}`, action: 'refund', type: 'partial', status: 'pending_approval', transaction_id: input.transactionId,
+      currency_code: 'ILS', totals: { total: String(input.amount) }, updated_at: new Date().toISOString() };
+    paddle.get(input.transactionId)!.adjustments.push(adj);
+    return adj;
+  },
 };
+const refundCalls: Array<Parameters<PaddleApi['createPartialRefund']>[0]> = [];
+let refundRejects: number | false = false;
 
 const handler = createBillingHandler({ sql: () => db.sql, verifyUser: async () => currentUser, config: () => CONFIG, api: () => api, env: ENV });
 
@@ -55,7 +68,7 @@ async function checkout(userId: string) {
 function paddleCompletes(txn: string, userId: string, paymentId: string) {
   paddle.get(txn)!.txn = {
     id: txn, status: 'completed', customer_id: 'ctm_ops', custom_data: { syllo_user_id: userId, syllo_payment_id: paymentId },
-    items: [{ price: { id: PRICE }, quantity: 1 }], details: { totals: { grand_total: '5000', currency_code: 'ILS' } },
+    items: [{ price: { id: PRICE }, quantity: 1 }], details: { totals: { grand_total: '5000', currency_code: 'ILS' }, line_items: [{ id: `txnitm_${txn}`, totals: { total: '5000' } }] },
     updated_at: new Date().toISOString(),
   };
 }
@@ -79,7 +92,7 @@ beforeAll(async () => {
   await db.pg.query("UPDATE profiles SET role = 'developer' WHERE id = $1", [admin]);
 }, 60_000);
 afterAll(async () => { await db?.pg.close(); });
-beforeEach(() => { paddleDown = false; jest.spyOn(console, 'error').mockImplementation(() => {}); jest.spyOn(console, 'warn').mockImplementation(() => {}); });
+beforeEach(() => { paddleDown = false; refundRejects = false; refundCalls.length = 0; jest.spyOn(console, 'error').mockImplementation(() => {}); jest.spyOn(console, 'warn').mockImplementation(() => {}); });
 afterEach(() => jest.restoreAllMocks());
 
 describe('scheduled reconciliation', () => {
@@ -265,5 +278,95 @@ describe('admin console', () => {
     const res = await as(admin, () => call('admin/reconcile', { method: 'POST', body: { reason: 'after incident' } }));
     expect(res.body).toMatchObject({ ok: true, status: expect.any(String) });
     expect(await db.one<any>("SELECT trigger, actor_id FROM billing_reconciliation_runs ORDER BY id DESC LIMIT 1")).toEqual({ trigger: 'admin', actor_id: admin });
+  });
+});
+
+describe('admin partial refund (proportional suggestion → Paddle POST /adjustments)', () => {
+  const refund = (id: string, body: Record<string, unknown>) => as(admin, () => call('admin/refunds/partial', { method: 'POST', body: { id, ...body } }));
+  const suggestion = async (id: string) => (await as(admin, () => call('admin/payment', { query: { id } }))).body.refund_suggestion;
+  async function consumedTwo(user: string, tag: string) {
+    for (const op of [`op_${tag}_1`, `op_${tag}_2`]) {
+      await reserveCredits(db.sql, { userId: user, operationId: op, credits: 1, endpoint: 'conversation' });
+      await finalizeCredits(db.sql, op, {});
+    }
+  }
+
+  test('proportionalRefund: minor units, floored, capped by what is unrefunded', () => {
+    expect(proportionalRefund({ amountTotal: 500, refundedAmount: 0, granted: 50, unused: 48 })).toBe(480);      // $5 × 48/50 = $4.80
+    expect(proportionalRefund({ amountTotal: 1000, refundedAmount: 0, granted: 3, unused: 1 })).toBe(333);       // never rounds up
+    expect(proportionalRefund({ amountTotal: 700, refundedAmount: 0, granted: 50, unused: 25 })).toBe(350);      // JPY: ¥700 is already the lowest unit
+    expect(proportionalRefund({ amountTotal: 5000, refundedAmount: 4900, granted: 50, unused: 48 })).toBe(100);
+    expect(proportionalRefund({ amountTotal: null, refundedAmount: 0, granted: 50, unused: 48 })).toBe(0);
+    expect(adminRefundAllowed('sandbox', { status: 'unreviewed' })).toBe(true);
+    expect(adminRefundAllowed('production', { status: 'unreviewed' })).toBe(false);
+    expect(adminRefundAllowed('production', { status: 'approved' })).toBe(true);
+    expect(adminRefundAllowed(null, { status: 'approved' })).toBe(false);
+  });
+
+  test('sandbox: suggests amount × unused / granted, issues it, and leaves the ledger to the webhook', async () => {
+    const user = await db.newUser();
+    const c = await purchased(user);
+    await consumedTwo(user, 'pr');
+    expect(await suggestion(c.paymentId)).toMatchObject({ amount: 4800, currency: 'ILS', granted: 50, unused: 48, blocked: null });
+
+    expect((await refund(c.paymentId, { amount: 4800 })).body.code).toBe('REASON_REQUIRED');
+    expect((await refund(c.paymentId, { amount: 5000, reason: 'customer asked' })).body.code).toBe('SUGGESTION_CHANGED');
+    expect(refundCalls).toEqual([]);
+
+    const ok = await refund(c.paymentId, { amount: 4800, reason: 'customer asked, 2 credits used' });
+    expect(ok.body).toMatchObject({ ok: true, status: 'pending_approval', amount: 4800, currency: 'ILS' });
+    expect(refundCalls).toEqual([{ transactionId: c.txn, itemId: `txnitm_${c.txn}`, amount: 4800, reason: 'customer asked, 2 credits used' }]);
+    expect(await db.one<any>("SELECT actor_id, target, details FROM billing_admin_actions WHERE action = 'issue_partial_refund' AND target = $1", [`payment:${c.paymentId}`]))
+      .toMatchObject({ actor_id: admin, details: { transaction_id: c.txn, amount: 4800, adjustment_id: ok.body.adjustment_id, adjustment_status: 'pending_approval' } });
+    // No ledger write from the admin action.
+    expect(await getCreditBalance(db.sql, user)).toBe(48);
+    expect(await db.one<any>("SELECT COUNT(*)::int AS n FROM credit_transactions WHERE kind = 'refund' AND user_id = $1", [user])).toEqual({ n: 0 });
+
+    // Paddle holds one pending refund: a second click is refused before calling Paddle.
+    expect((await refund(c.paymentId, { amount: 4800, reason: 'double click' })).body.code).toBe('REFUND_PENDING');
+    // Approved in Paddle but not yet delivered to us: still refused (would double-count).
+    const adj = paddle.get(c.txn)!.adjustments[0];
+    adj.status = 'approved';
+    expect((await refund(c.paymentId, { amount: 4800, reason: 'double click' })).body.code).toBe('REFUND_NOT_YET_RECORDED');
+    expect(refundCalls).toHaveLength(1);
+
+    // The webhook is what revokes the unused credits.
+    await webhook({ event_id: `evt_ops_${++n}`, event_type: 'adjustment.updated', occurred_at: new Date().toISOString(), data: adj });
+    expect(await getCreditBalance(db.sql, user)).toBe(0);
+    expect(await db.one<any>('SELECT status, refunded_amount FROM payments WHERE id = $1', [c.paymentId])).toEqual({ status: 'partially_refunded', refunded_amount: 4800 });
+    expect(await suggestion(c.paymentId)).toMatchObject({ amount: 0, blocked: 'NOTHING_TO_REFUND' });
+    expect((await refund(c.paymentId, { amount: 0, reason: 'again' })).body.code).toBe('NOTHING_TO_REFUND');
+  });
+
+  test('a Paddle refusal is audited and nothing else changes', async () => {
+    const user = await db.newUser();
+    const c = await purchased(user);
+    refundRejects = 403;  // key without adjustment.write
+    expect((await refund(c.paymentId, { amount: 5000, reason: 'nothing used' })).body.code).toBe('PADDLE_KEY_PERMISSION');
+    refundRejects = 400;
+    const res = await refund(c.paymentId, { amount: 5000, reason: 'nothing used' });
+    expect([res.statusCode, res.body.code]).toEqual([502, 'PADDLE_REJECTED']);
+    expect(await db.one<any>("SELECT details FROM billing_admin_actions WHERE action = 'issue_partial_refund_failed' AND target = $1 ORDER BY id DESC LIMIT 1", [`payment:${c.paymentId}`]))
+      .toMatchObject({ details: { amount: 5000, error: expect.stringContaining('400') } });
+    expect(await getCreditBalance(db.sql, user)).toBe(50);
+  });
+
+  test('production fails closed unless LEGAL_POLICY is approved', async () => {
+    const user = await db.newUser();
+    const c = await purchased(user);
+    const prodApi = { ...api, createPartialRefund: jest.fn() };
+    const run = async (ctx: Partial<Parameters<typeof handleAdmin>[3]>) => {
+      const res = response();
+      await handleAdmin('refunds/partial', { method: 'POST', query: {}, body: { id: c.paymentId, amount: 5000, reason: 'prod attempt' } } as any, res,
+        { sql: db.sql, actorId: admin, environment: 'production', api: () => prodApi, ...ctx });
+      return res;
+    };
+    expect(LEGAL_POLICY.status).toBe('unreviewed');
+    const denied = await run({});
+    expect([denied.statusCode, denied.body.code]).toEqual([403, 'REFUND_POLICY_NOT_APPROVED']);
+    // An approved policy passes the gate; this sandbox payment is then refused for the environment mismatch.
+    expect((await run({ legal: { status: 'approved' } })).body.code).toBe('WRONG_ENVIRONMENT');
+    expect(prodApi.createPartialRefund).not.toHaveBeenCalled();
+    expect((await run({ environment: null, api: null })).body.code).toBe('BILLING_NOT_CONFIGURED');
   });
 });
