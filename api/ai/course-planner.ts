@@ -219,15 +219,6 @@ export function isBypassQuota(): boolean {
   return isDevMode() && process.env.AI_DEV_BYPASS_QUOTA === 'true';
 }
 
-/**
- * Legacy anonymous-quota override, read ONLY by the dev-only endpoints
- * generate-plan / planner-run (no production route, see vercel.json).
- * It never bypasses Syllo Credits metering (metering.ts).
- */
-export function isTestModeBypass(): boolean {
-  return process.env.AI_TEST_MODE === 'true';
-}
-
 // ── Response helpers ──────────────────────────────────────────────────────────
 
 export function sendError(

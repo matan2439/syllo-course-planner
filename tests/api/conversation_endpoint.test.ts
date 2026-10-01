@@ -703,7 +703,7 @@ describe('a long agent run still fits the wire (many tool calls)', () => {
   })
 })
 
-test('metering: every delivered reply consumes its credit; failures, conflicts and early stops release it', async () => {
+test('metering: every delivered reply (partial text included) consumes its credit; failures, conflicts and silent early stops release it', async () => {
   const preferences = { max_weekly_hours: 22, disallowed_course_ids: [] }
   const calls: string[] = []
   const openMeter = jest.fn(async () => {
@@ -723,8 +723,13 @@ test('metering: every delivered reply consumes its credit; failures, conflicts a
     chat: () => ({ outcome: 'conversation', messageHe: 'תשובה', events: [], usage: { input_tokens: 12 } }),
     ask: () => ({ outcome: 'conversation', nextAction: 'ask', messageHe: 'שאלה?', events: [], usage: { input_tokens: 7 } }),
     stoppedEarly: () => ({ outcome: 'conversation', messageHe: 'עצרתי', events: [] }),
+    stoppedEarlyPartial: () => ({ outcome: 'conversation', messageHe: 'חלק מהתשובה\n\nעצרתי', events: [], usage: { input_tokens: 40 } }),
     unavailable: () => ({ outcome: 'assistant_unavailable', messageHe: 'x', events: [] }),
     throws: () => { throw new Error('boom') },
+  }
+  const streamedThen: Record<string, (deps: any) => any> = {
+    // The student watched text stream in, then the provider failed: the text was delivered.
+    streamThenUnavailable: (deps) => { deps.onTextDelta?.('חלק מהתשובה'); return agents.unavailable() },
   }
   const make = (kind: string) => createConversationHandler({
     resolveModel: () => ({ model: {} as any, name: 'test-model' }),
@@ -736,16 +741,18 @@ test('metering: every delivered reply consumes its credit; failures, conflicts a
       planContext: {}, preferences, updatedAt: 1,
     }),
     loadProgramBoard: () => ({ semesters: [], metadata: {} }),
-    runAgent: async () => agents[kind](),
+    runAgent: async (_input: any, deps: any) => (streamedThen[kind] ? streamedThen[kind](deps) : agents[kind]()),
     putProposal: async (record: any) => record,
   })
   const body = { ...validBody, preference_digest: preferenceDigest(preferences) }
   const headers = { cookie: `syllo_owner=${'x'.repeat(43)}` }
-  const run = async (kind: string, requestBody: any = body) => {
+  const run = async (kind: string, requestBody: any = body, extraHeaders: Record<string, string> = {}) => {
     calls.length = 0
     const res = response()
+    res.write = () => true
+    res.end = () => {}
     jest.spyOn(console, 'error').mockImplementation(() => {})
-    await make(kind)({ method: 'POST', headers, body: requestBody } as any, res)
+    await make(kind)({ method: 'POST', headers: { ...headers, ...extraHeaders }, body: requestBody } as any, res)
     return { status: res.statusCode, calls: [...calls] }
   }
 
@@ -753,6 +760,10 @@ test('metering: every delivered reply consumes its credit; failures, conflicts a
   expect(await run('chat')).toEqual({ status: 200, calls: ['open', 'deliver:12'] })
   expect(await run('ask')).toEqual({ status: 200, calls: ['open', 'deliver:7'] })
   expect(await run('stoppedEarly')).toEqual({ status: 200, calls: ['open', 'release:no_reply'] })
+  // Partial text the student received is service delivered, early stop or not.
+  expect(await run('stoppedEarlyPartial')).toEqual({ status: 200, calls: ['open', 'deliver:40'] })
+  const streamed = await run('streamThenUnavailable', body, { accept: 'application/x-ndjson' })
+  expect(streamed.calls).toEqual(['open', 'deliver:-'])
   expect(await run('unavailable')).toEqual({ status: 503, calls: ['open', 'release:no_reply'] })
   expect(await run('throws')).toEqual({ status: 500, calls: ['open', 'release:no_reply'] })
   // A stale context is refused before the model runs: nothing charged. (A newer board is not a conflict.)
