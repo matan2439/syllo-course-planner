@@ -219,7 +219,11 @@ export function createBillingHandler(deps: BillingDeps = {}) {
            || CASE WHEN billing_alerts.status = 'resolved' THEN jsonb_build_array(jsonb_build_object('at', billing_alerts.resolved_at,
                 'by', billing_alerts.resolved_by::text, 'text', 'resolved: ' || COALESCE(billing_alerts.resolution_note, ''))) ELSE '[]'::jsonb END
            || EXCLUDED.notes,
-         case_status = CASE WHEN billing_alerts.status = 'resolved' THEN 'open' ELSE billing_alerts.case_status END,
+         -- The customer answered (or asked again): back in staff's court.
+         case_status = CASE WHEN billing_alerts.status = 'resolved' OR billing_alerts.case_status = 'awaiting_customer' THEN 'open'
+                            ELSE billing_alerts.case_status END,
+         -- A saved reply answered the previous request; regenerate from the updated case.
+         draft_reply = NULL, draft_template_version = NULL,
          status = 'open', resolved_at = NULL, resolved_by = NULL, resolution_note = NULL
        WHERE COALESCE((billing_alerts.details->>'request_count')::int, 1) < $8
        RETURNING id, case_status`,

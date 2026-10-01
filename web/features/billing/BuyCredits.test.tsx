@@ -118,3 +118,20 @@ test('no refund button for a purchase that is already refunded', async () => {
   expect(await screen.findByTestId('purchase-history')).toHaveTextContent('הוחזרה')
   expect(screen.queryByRole('button', { name: 'בקשת החזר' })).not.toBeInTheDocument()
 })
+
+test('a case awaiting the customer keeps a way to answer', async () => {
+  installPaddle()
+  mockApi([])
+  const fetchMock = global.fetch as jest.Mock
+  const base = fetchMock.getMockImplementation()!
+  fetchMock.mockImplementation(async (url: string, init?: RequestInit) => url.startsWith('/api/billing/me')
+    ? ({ ok: true, json: async () => ({ ok: true, purchases: [{ payment_id: '1', status: 'completed', completed_at: null,
+      refund_request: { case_status: 'awaiting_customer', requested_at: '2026-10-01T00:00:00Z' },
+      credits: { purchased: 50, consumed: 0, in_use: 0, unused: 50, revoked: 0 } }] }) } as Response)
+    : base(url, init))
+  render(<BuyCredits onBalanceChanged={() => {}} />)
+  fireEvent.click(screen.getByRole('button', { name: 'קניית קרדיטים' }))
+  expect(await screen.findByText('בקשת החזר ממתינה לתשובתך')).toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: 'הוספת פרטים לבקשה' }))
+  expect(screen.getByRole('textbox')).toBeInTheDocument()
+})

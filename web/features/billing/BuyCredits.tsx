@@ -218,7 +218,10 @@ function RefundRequest({ purchase, onSent }: { purchase: Purchase; onSent(refund
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   if (purchase.status === 'refunded' || purchase.status === 'chargeback') return null
-  const pending = purchase.refund_request && purchase.refund_request.case_status !== 'resolved'
+  const caseStatus = purchase.refund_request?.case_status
+  // Staff asked the customer for more: the same form appends their answer to the case.
+  const replying = caseStatus === 'awaiting_customer'
+  const pending = caseStatus != null && caseStatus !== 'resolved' && !replying
 
   const send = async () => {
     setBusy(true)
@@ -250,12 +253,12 @@ function RefundRequest({ purchase, onSent }: { purchase: Purchase; onSent(refund
     <div className="text-[11px]">
       {purchase.refund_request && <p role="status" className="text-[var(--text)]">{REFUND_CASE_HE[purchase.refund_request.case_status] ?? REFUND_CASE_HE.open}</p>}
       {!pending && !open && (
-        <button type="button" className="font-semibold text-[var(--purple)] underline" onClick={() => { setOpen(true); setMessage(null) }}>בקשת החזר</button>
+        <button type="button" className="font-semibold text-[var(--purple)] underline" onClick={() => { setOpen(true); setMessage(null) }}>{replying ? 'הוספת פרטים לבקשה' : 'בקשת החזר'}</button>
       )}
       {open && (
         <form className="space-y-1" onSubmit={(e) => { e.preventDefault(); void send() }}>
           <label className="block space-y-1">
-            <span className="text-[var(--text)]">למה את/ה מבקש/ת החזר?</span>
+            <span className="text-[var(--text)]">{replying ? 'מה תרצה/י להוסיף לבקשה?' : 'למה את/ה מבקש/ת החזר?'}</span>
             <textarea className="w-full rounded-lg border border-[var(--border)] bg-transparent p-2 text-xs text-[var(--text)]" rows={3}
               required minLength={3} maxLength={REFUND_REASON_MAX} value={reason} onChange={(e) => setReason(e.target.value)} />
           </label>

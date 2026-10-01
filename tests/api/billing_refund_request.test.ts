@@ -145,3 +145,23 @@ test('an approved Paddle refund auto-resolves the open request; a pending one do
   const me = await as(user, () => call('me'));
   expect(me.body.purchases[0]).toMatchObject({ status: 'refunded', refund_request: { case_status: 'resolved' } });
 });
+
+test('a customer reply moves awaiting_customer back to open, drops the stale saved draft, and re-queues the case first', async () => {
+  const user = await db.newUser();
+  const paymentId = await purchased(user);
+  expect((await request(user, { payment_id: paymentId, reason: 'first ask' })).statusCode).toBe(200);
+  const key = `refund_request:${paymentId}`;
+  await db.pg.query("UPDATE billing_alerts SET case_status = 'awaiting_customer', draft_reply = 'old reply', draft_template_version = 'v' WHERE dedupe_key = $1", [key]);
+  // A newer review alert that would otherwise sort ahead of this case.
+  await db.pg.query("INSERT INTO billing_alerts (severity, code, dedupe_key) VALUES ('review', 'other_case', $1)", [`other:${paymentId}`]);
+
+  expect((await request(user, { payment_id: paymentId, reason: 'here are the details' })).body.case_status).toBe('open');
+  const [c] = await cases(paymentId);
+  expect(c).toMatchObject({ case_status: 'open', draft_reply: null, draft_template_version: null, reason: 'here are the details' });
+
+  const admin = await db.newUser();
+  await db.pg.query("UPDATE profiles SET role = 'developer' WHERE id = $1", [admin]);
+  const queue = await as(admin, () => call('admin/alerts'));
+  const reviews = queue.body.alerts.filter((a: any) => a.severity === 'review');
+  expect(reviews[0].dedupe_key).toBe(key);
+});
