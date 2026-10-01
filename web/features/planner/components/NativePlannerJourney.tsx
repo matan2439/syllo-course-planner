@@ -120,7 +120,7 @@ export default function NativePlannerJourney({
   onAcademicContextMissing?: () => void
 }) {
   // ── the board ─────────────────────────────────────────────────────────────
-  const { boardPhase, current, setCurrent, boardVersion, setBoardVersion } = useCommittedBoard({
+  const { boardPhase, current, setCurrent, boardVersion, setBoardVersion, resyncCommittedBoard } = useCommittedBoard({
     programId, getBoardFn, committedBoardFn, onCommittedCourseIdsChange, onSemestersChange,
   })
   const { rejectedDrop, justPlaced, showRejectedDrop, showJustPlaced } = useDropHighlights()
@@ -218,7 +218,7 @@ export default function NativePlannerJourney({
     genPhase, proposal, selectedAlternativeId, setSelectedAlternativeId, applyPhase, applyError,
     staleReason, stale, clearProposal, acceptConversationProposal, canApply, apply,
   } = usePlanProposal({
-    programId, current, setCurrent, boardVersion, setBoardVersion, applyFn,
+    programId, current, setCurrent, boardVersion, setBoardVersion, resyncBoard: resyncCommittedBoard, applyFn,
     statusVersion, preferenceVersion, manualRevision, convProfileVersion,
     applyAcademicStatus, setMessages,
   })

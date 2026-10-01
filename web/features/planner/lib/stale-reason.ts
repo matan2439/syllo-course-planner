@@ -14,6 +14,9 @@ export interface StaleInputs {
   convProfileVersion: number | undefined
   capturedManualRevision: number | null
   manualRevision: number
+  /** This tab's committed board version, and whether it is still catching up to the server's. */
+  boardVersion: string | null
+  boardSyncing: boolean
 }
 
 // WHY the proposal is stale, not merely THAT it is — the note must name the
@@ -23,6 +26,7 @@ export interface StaleInputs {
 export function computeStaleReason({
   genPhase, capturedRev, current, capturedStatusVersion, statusVersion, capturedPreferenceVersion,
   preferenceVersion, proposal, convProfileVersion, capturedManualRevision, manualRevision,
+  boardVersion, boardSyncing,
 }: StaleInputs): StaleReason | null {
   return (
     genPhase !== 'done'
@@ -44,6 +48,11 @@ export function computeStaleReason({
             ? 'preferences'
             : capturedManualRevision != null && capturedManualRevision !== manualRevision
               ? 'manual'
+            // The server planned on a board this tab no longer holds (another tab
+            // or device edited it, even after a resync). Apply would be refused.
+            : !boardSyncing && proposal?.proposal != null &&
+              proposal.proposal.baseBoardVersion !== boardVersion
+              ? 'board'
             : null
   )
 }
