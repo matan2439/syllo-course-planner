@@ -119,6 +119,10 @@ export default function AccountButton() {
                   <Link href="/refund-policy" className="block text-center text-xs text-[var(--text-muted)] underline hover:text-[var(--purple)]">מדיניות החזרים ובקשת החזר</Link>
                 </>
               )}
+              {/* Navigation only: the console's API re-checks role = 'developer' server-side. */}
+              {auth.profile?.role === 'developer' && (
+                <Link href="/admin/billing" className={SECONDARY + ' block w-full text-center'} onClick={() => setOpen(false)}>ניהול חיובים</Link>
+              )}
               <p className="text-xs text-[var(--text-muted)]">הפרופיל והתוכנית שלך נשמרים בחשבון.</p>
               <button type="button" className={SECONDARY + ' w-full'} onClick={() => { void auth.signOut(); setOpen(false) }}>
                 התנתקות
