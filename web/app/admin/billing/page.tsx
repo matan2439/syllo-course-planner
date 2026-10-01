@@ -35,7 +35,51 @@ function Stat({ label, value }: { label: string; value: unknown }) {
   )
 }
 
-const askReason = (question: string) => window.prompt(question)?.trim() || null
+/**
+ * Every admin mutation needs a reason (the server rejects < 3 characters). Asked in
+ * the page, not with window.prompt: embedded browsers may block prompt/confirm,
+ * which made actions silently do nothing. Resolves null when cancelled.
+ */
+const REASON_EVENT = 'syllo:admin-reason'
+const REASON_MIN = 3
+type ReasonRequest = { question: string; resolve(reason: string | null): void }
+const askReason = (question: string) =>
+  new Promise<string | null>((resolve) => window.dispatchEvent(new CustomEvent<ReasonRequest>(REASON_EVENT, { detail: { question, resolve } })))
+
+/** Mounted once at the page root; answers askReason(). */
+function ReasonDialog() {
+  const [request, setRequest] = useState<ReasonRequest | null>(null)
+  const [text, setText] = useState('')
+  useEffect(() => {
+    const onAsk = (ev: Event) => {
+      const next = (ev as CustomEvent<ReasonRequest>).detail
+      setRequest((current) => { current?.resolve(null); return next }) // a newer question cancels an unanswered one
+      setText('')
+    }
+    window.addEventListener(REASON_EVENT, onAsk)
+    return () => window.removeEventListener(REASON_EVENT, onAsk)
+  }, [])
+  if (!request) return null
+  const done = (reason: string | null) => { request.resolve(reason); setRequest(null) }
+  const reason = text.trim()
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4">
+      <form role="dialog" aria-modal="true" aria-label={request.question} className={CARD + ' w-full max-w-md space-y-2 text-sm'}
+        onSubmit={(ev) => { ev.preventDefault(); if (reason.length >= REASON_MIN) done(reason) }}>
+        <label className="block space-y-1">
+          <span className="font-semibold">{request.question}</span>
+          <textarea autoFocus aria-label="סיבה" className="h-20 w-full rounded border border-[var(--border)] bg-[var(--surface)] p-2 text-xs"
+            value={text} onChange={(ev) => setText(ev.target.value)} onKeyDown={(ev) => { if (ev.key === 'Escape') done(null) }} />
+        </label>
+        {reason.length < REASON_MIN && <p className="text-xs text-[var(--text-muted)]">נדרשת סיבה של {REASON_MIN} תווים לפחות.</p>}
+        <div className="flex gap-2">
+          <button type="submit" className={BTN} disabled={reason.length < REASON_MIN}>אישור</button>
+          <button type="button" className={BTN} onClick={() => done(null)}>ביטול</button>
+        </div>
+      </form>
+    </div>
+  )
+}
 
 function PaymentDetail({ id, onClose, onChanged }: { id: string; onClose(): void; onChanged(): void }) {
   const [detail, setDetail] = useState<Json | null>(null)
@@ -99,9 +143,10 @@ function PaymentDetail({ id, onClose, onChanged }: { id: string; onClose(): void
             className="rounded border border-[var(--border)] bg-[var(--surface)] px-1"
             value={detail.risk?.payment_risk_state ?? 'normal'}
             onChange={async (ev) => {
-              const reason = askReason('סיבה לשינוי מצב הסיכון:')
+              const state = ev.target.value
+              const reason = await askReason('סיבה לשינוי מצב הסיכון:')
               if (!reason) return
-              await post('risk-state', { user_id: e.purchase.syllo_user_id, state: ev.target.value, reason }).catch(() => undefined)
+              await post('risk-state', { user_id: e.purchase.syllo_user_id, state, reason }).catch(() => undefined)
               onChanged()
               setDetail(await api(`payment?id=${encodeURIComponent(id)}`))
             }}
@@ -121,8 +166,8 @@ function PaymentDetail({ id, onClose, onChanged }: { id: string; onClose(): void
 function RefundSuggestion({ id, s, onDone }: { id: string; s: Json; onDone(): void }) {
   const [msg, setMsg] = useState<string | null>(null)
   const issue = async () => {
-    if (!window.confirm(`להחזיר ${s.amount} ${s.currency} (יחידות מינימליות) דרך Paddle? הפעולה שולחת החזר כספי אמיתי ללקוח.`)) return
-    const reason = askReason('סיבת ההחזר (תוצג ב-Paddle):')
+    // Confirming = giving the reason: no separate window.confirm (also blockable).
+    const reason = await askReason(`להחזיר ${s.amount} ${s.currency} (יחידות מינימליות) דרך Paddle? הפעולה שולחת החזר כספי אמיתי ללקוח. סיבת ההחזר (תוצג ב-Paddle):`)
     if (!reason) return
     try {
       const r = await post('refunds/partial', { id, amount: s.amount, reason })
@@ -179,7 +224,7 @@ function CaseDetail({ id, onClose, onChanged, onOpenPayment }: { id: string; onC
         <label className="flex items-center gap-1">
           מצב:
           <select aria-label="מצב התיק" className="rounded border border-[var(--border)] bg-[var(--surface)] px-1" value={c.case_status}
-            onChange={(ev) => { const reason = askReason('סיבה לשינוי מצב התיק:'); if (reason) void change(() => post('cases/status', { id, case_status: ev.target.value, reason })) }}>
+            onChange={async (ev) => { const next = ev.target.value; const reason = await askReason('סיבה לשינוי מצב התיק:'); if (reason) void change(() => post('cases/status', { id, case_status: next, reason })) }}>
             {CASE_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
         </label>
@@ -203,7 +248,7 @@ function CaseDetail({ id, onClose, onChanged, onOpenPayment }: { id: string; onC
       <div className="space-y-1 text-xs">
         <p className="font-semibold">הערות פנימיות</p>
         <ul className="space-y-0.5" dir="ltr">{c.notes.map((n: Json, i: number) => <li key={i}><span className="font-mono text-[var(--text-muted)]">{n.at}</span> {n.text}</li>)}</ul>
-        <button type="button" className={BTN} onClick={() => { const note = askReason('הערה פנימית:'); if (note) void change(() => post('cases/note', { id, reason: note })) }}>הוספת הערה</button>
+        <button type="button" className={BTN} onClick={async () => { const note = await askReason('הערה פנימית:'); if (note) void change(() => post('cases/note', { id, reason: note })) }}>הוספת הערה</button>
       </div>
       {detail.actions.length > 0 && (
         <ul className="space-y-0.5 text-xs" dir="ltr">
@@ -243,12 +288,12 @@ export default function BillingAdminPage() {
   useEffect(() => { void load() }, [load])
 
   const act = async (fn: () => Promise<unknown>) => { setBusy(true); try { await fn(); await load() } catch { setError('הפעולה נכשלה.') } finally { setBusy(false) } }
-  const resolve = (id: string) => {
-    const reason = window.prompt('סיבה לסגירת ההתראה:')
+  const resolve = async (id: string) => {
+    const reason = await askReason('סיבה לסגירת ההתראה:')
     if (reason) void act(() => post('alerts/resolve', { id, reason }))
   }
-  const runReconcile = () => {
-    const reason = window.prompt('סיבה להרצת התאמה ידנית:')
+  const runReconcile = async () => {
+    const reason = await askReason('סיבה להרצת התאמה ידנית:')
     if (reason) void act(() => post('reconcile', { reason }))
   }
 
@@ -257,6 +302,7 @@ export default function BillingAdminPage() {
   const health = HEALTH[overview.health] ?? HEALTH.critical
   return (
     <main className="mx-auto max-w-6xl space-y-4 p-4 text-[var(--text)]">
+      <ReasonDialog />
       <h1 className="text-xl font-bold">תשלומים והחזרים — מסוף ניהול</h1>
       <div data-testid="health" className={`rounded-xl px-4 py-2 text-sm font-bold text-white ${health.tone}`}>{health.label}</div>
       {error && <p role="status" className="text-xs">{error}</p>}
@@ -289,7 +335,7 @@ export default function BillingAdminPage() {
           <div className="flex gap-2">
             <button type="button" className={BTN} disabled={caseView === 'open'} onClick={() => setCaseView('open')}>פתוחים</button>
             <button type="button" className={BTN} disabled={caseView === 'resolved'} onClick={() => setCaseView('resolved')}>סגורים</button>
-            <button type="button" className={BTN} disabled={busy} onClick={runReconcile}>הרצת התאמה עכשיו</button>
+            <button type="button" className={BTN} disabled={busy} onClick={() => void runReconcile()}>הרצת התאמה עכשיו</button>
           </div>
         </div>
         {alerts.length === 0 ? <p className="text-xs text-[var(--text-muted)]">{caseView === 'open' ? 'אין התראות פתוחות.' : 'אין תיקים סגורים.'}</p> : (
@@ -301,7 +347,7 @@ export default function BillingAdminPage() {
                 <span className="rounded border border-[var(--border)] px-1">{a.case_status}</span>
                 {a.payment_id && <button type="button" className="underline" onClick={() => setSelected(String(a.payment_id))}>payment #{a.payment_id}</button>}
                 <span className="text-[var(--text-muted)]">{JSON.stringify(a.details)}</span>
-                {a.status === 'open' && <button type="button" className={BTN} disabled={busy} onClick={() => resolve(String(a.id))}>סגירה</button>}
+                {a.status === 'open' && <button type="button" className={BTN} disabled={busy} onClick={() => void resolve(String(a.id))}>סגירה</button>}
               </li>
             ))}
           </ul>
