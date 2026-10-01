@@ -136,6 +136,8 @@ export interface PaddleApi {
   createTransaction(input: { priceId: string; customData: Record<string, string> }): Promise<{ id: string; status: string }>;
   getTransaction(id: string): Promise<Record<string, any>>;
   listAdjustments(transactionId: string): Promise<Array<Record<string, any>>>;
+  /** POST /adjustments — partial refund of one line item; amount is tax-inclusive (tax_mode internal). */
+  createPartialRefund(input: { transactionId: string; itemId: string; amount: number; reason: string }): Promise<Record<string, any>>;
 }
 
 export class PaddleApiError extends Error {
@@ -161,5 +163,9 @@ export function paddleApi(config: PaddleConfig, fetchImpl: typeof fetch = fetch)
     },
     getTransaction: (id) => call(`/transactions/${encodeURIComponent(id)}`),
     listAdjustments: async (transactionId) => (await call(`/adjustments?transaction_id=${encodeURIComponent(transactionId)}&per_page=50`)) ?? [],
+    createPartialRefund: ({ transactionId, itemId, amount, reason }) => call('/adjustments', {
+      method: 'POST',
+      body: { action: 'refund', type: 'partial', transaction_id: transactionId, reason, items: [{ item_id: itemId, type: 'partial', amount: String(amount) }] },
+    }),
   };
 }

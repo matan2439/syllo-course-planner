@@ -88,6 +88,9 @@ function PaymentDetail({ id, onClose, onChanged }: { id: string; onClose(): void
         </div>
       )}
       {detail.alerts.length > 0 && <p className="text-xs">התראות: {detail.alerts.map((a: Json) => `${a.code} (${a.status})`).join(', ')}</p>}
+      {detail.refund_suggestion && (
+        <RefundSuggestion id={id} s={detail.refund_suggestion} onDone={async () => { onChanged(); setDetail(await api(`payment?id=${encodeURIComponent(id)}`)) }} />
+      )}
       {e.purchase.syllo_user_id && (
         <label className="flex items-center gap-2 text-xs">
           מצב סיכון לחשבון (משפיע רק על רכישות חדשות):
@@ -111,7 +114,38 @@ function PaymentDetail({ id, onClose, onChanged }: { id: string; onClose(): void
   )
 }
 
-const CASE_STATUSES = ['open', 'in_progress', 'awaiting_customer', 'resolved'] as const
+/**
+ * Proportional partial refund: amount_total × unused / granted. Issuing it asks Paddle
+ * for the money only; credits are revoked when Paddle's adjustment webhook arrives.
+ */
+function RefundSuggestion({ id, s, onDone }: { id: string; s: Json; onDone(): void }) {
+  const [msg, setMsg] = useState<string | null>(null)
+  const issue = async () => {
+    if (!window.confirm(`להחזיר ${s.amount} ${s.currency} (יחידות מינימליות) דרך Paddle? הפעולה שולחת החזר כספי אמיתי ללקוח.`)) return
+    const reason = askReason('סיבת ההחזר (תוצג ב-Paddle):')
+    if (!reason) return
+    try {
+      const r = await post('refunds/partial', { id, amount: s.amount, reason })
+      setMsg(`נוצר ${r.adjustment_id} (${r.status}). הקרדיטים יבוטלו כשהאישור יגיע מ-Paddle.`)
+    } catch (err) {
+      setMsg(`נכשל: ${(err as Error).message}`)
+    }
+    onDone()
+  }
+  return (
+    <div className="space-y-1 text-xs" data-testid="refund-suggestion">
+      <p dir="ltr" className="font-mono">
+        Proportional refund: {s.amount_total ?? '—'} × {s.unused}/{s.granted}{s.refunded_amount ? ` (already refunded ${s.refunded_amount})` : ''} = <b>{s.amount} {s.currency ?? ''}</b> (minor)
+      </p>
+      <button type="button" className={BTN} disabled={!!s.blocked} title={s.blocked ?? undefined} onClick={() => void issue()}>
+        החזר חלקי{s.blocked ? ` — ${s.blocked}` : ''}
+      </button>
+      {msg && <p>{msg}</p>}
+    </div>
+  )
+}
+
+const CASE_STATUSES =['open', 'in_progress', 'awaiting_customer', 'resolved'] as const
 
 /** One case (a billing_alerts row): facts, suggested reply, notes, status, history. Nothing is sent from here. */
 function CaseDetail({ id, onClose, onChanged, onOpenPayment }: { id: string; onClose(): void; onChanged(): void; onOpenPayment(id: string): void }) {

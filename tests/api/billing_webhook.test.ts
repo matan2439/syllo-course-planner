@@ -25,7 +25,7 @@ const handler = (overrides: Partial<Parameters<typeof createBillingHandler>[0]> 
   sql: () => db.sql,
   verifyUser: async () => currentUser,
   config: () => CONFIG,
-  api: () => ({ createTransaction, getTransaction: jest.fn(), listAdjustments: jest.fn() }),
+  api: () => ({ createTransaction, getTransaction: jest.fn(), listAdjustments: jest.fn(), createPartialRefund: jest.fn() }),
   env: ENV,
   ...overrides,
 });
