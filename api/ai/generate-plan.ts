@@ -63,7 +63,7 @@ import {
 } from './planner_goals';
 import { enumerateActions, isExcluded, addCourseActionsFor, isMovable, legalSemestersFor } from './planner_actions';
 import { checkAndEnsureSession, incrementCreditsUsed, logUsageEvent } from './_quota';
-import { resolveModel, isDevMode, isBypassQuota, isTestModeBypass, sendError } from './course-planner';
+import { resolveModel, isDevMode, isBypassQuota, sendError } from './course-planner';
 import { getSemesterLoad, getLegalSemesters, type CourseLegalityInfo } from './completion_analysis';
 import { HARD_LOAD_CAP, ABSOLUTE_MAX_REASONABLE } from './load_constants';
 import type { SearchCapability } from './planner_capabilities';
@@ -213,7 +213,6 @@ async function runQuotaCheck(session_token: string, dbUrl: string, res: VercelRe
     return false;
   }
   if (!quota.allowed) {
-    if (isTestModeBypass()) { res.setHeader('X-AI-Quota-Bypass', 'true'); return true; }
     sendError(res, 429, 'מכסת שאלות ה-AI החינמית נוצלה.', 'QUOTA_EXCEEDED', {
       credits_used: quota.credits_used, free_limit: quota.free_limit, credits_paid: quota.credits_paid, remaining: 0,
     });

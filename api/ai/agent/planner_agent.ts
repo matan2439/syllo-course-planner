@@ -140,12 +140,17 @@ export async function runPlannerAgent(input: PlannerAgentInput, deps: PlannerAge
   const runner = createAgentRunner();
   let streamed = '';
   const deadline = AbortSignal.timeout(deps.deadlineMs ?? AGENT_DEADLINE_MS);
+  let runUsage = (): OperationUsage => ({});
   // Out of steps or time is not an outage: keep what was said and let the student narrow it.
+  // Partial text the student receives is delivered service and is charged; the bare note is free.
   const stoppedEarly = (): PlannerAgentResult => {
     const note = 'עצרתי לפני שסיימתי — הבקשה דרשה יותר מדי בדיקות. נסו לצמצם אותה (למשל סמסטר אחד או כמה קורסים מסוימים). הלוח שלך לא השתנה.';
     const messageHe = streamed.trim() ? `${streamed.trim()}\n\n${note}` : note;
     const events = [...session.events, { type: 'assistant_message' as const, text_he: messageHe.slice(0, 4_000) }];
-    return { outcome: 'conversation', messageHe, events };
+    return {
+      outcome: 'conversation', messageHe, events,
+      ...(streamed.trim() ? { usage: runUsage() } : {}),
+    };
   };
   try {
     const result = await runner.run(
@@ -153,6 +158,7 @@ export async function runPlannerAgent(input: PlannerAgentInput, deps: PlannerAge
       toInputItems(input.transcript, input.preferenceProfile),
       { context: session, maxTurns: MAX_TURNS, stream: true, signal: deadline },
     );
+    runUsage = () => usageFromAgentRun(result.state.usage);
     for await (const event of result) {
       if (event.type === 'raw_model_stream_event' && event.data.type === 'output_text_delta') {
         streamed += event.data.delta;

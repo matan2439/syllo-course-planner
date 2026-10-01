@@ -681,11 +681,12 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
       console.error('[ai/conversation] unexpected error');
       out.status(500).json({ ok: false, code: 'INTERNAL_ERROR', message_he: 'אירעה שגיאה פנימית.' });
     } finally {
-      // A reply the student received is service delivered; conflicts, failures,
-      // early stops and empty runs return the reserved credit.
-      // A reply was already charged in reply(); streamed text the student saw is charged here.
+      // A reply the student received is service delivered; conflicts, failures
+      // and empty runs where the student saw nothing return the reserved credit.
+      // A reply was already charged in reply(); streamed text the student saw is
+      // charged here, even when the run then failed (no usage to record).
       if (billable && replied) { /* charged */ }
-      else if (billable && streamedText) await meter.deliver(billable);
+      else if (streamedText) await meter.deliver(billable ?? undefined);
       else await meter.release(billable ? 'reply_not_sent' : 'no_reply');
     }
   };
