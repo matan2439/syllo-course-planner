@@ -104,7 +104,7 @@ test('the transcript reaches the model as separate messages, and a plain answer 
       { role: 'user', text: 'אני רוצה לתכנן את התואר' },
     ],
     session: await newSession(),
-  }, { model, onTextDelta: (text) => deltas.push(text) })
+  }, { model, onTextDelta: (text) => { deltas.push(text) } })
 
   expect(deltas.join('')).toBe('בשמחה, ספר לי קודם מה חשוב לך.')
   expect(Array.isArray(model.requests[0].input) && model.requests[0].input).toHaveLength(3)

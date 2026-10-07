@@ -43,7 +43,7 @@ test('one credit per delivered reply; a released reply costs nothing', async () 
   await delivered.deliver(); // idempotent
   const failed = await admitted(user);
   await failed.release('no_reply');
-  await failed.deliver(); // no effect after release
+  await expect(failed.deliver()).rejects.toThrow(/released before delivery/);
   expect(await getCreditBalance(db.sql, user)).toBe(1);
   const ops = await db.rows<any>(
     'SELECT funding, credits, state, model, provider, output_tokens, cached_tokens, pricing_version, release_reason FROM ai_operations WHERE user_id = $1 ORDER BY reserved_at',
@@ -55,6 +55,28 @@ test('one credit per delivered reply; a released reply costs nothing', async () 
   expect(ops.find((o) => o.state === 'released')).toMatchObject({ release_reason: 'no_reply', pricing_version: METERING_VERSION });
 });
 
+test('a finalization error propagates and the reservation can be released', async () => {
+  const user = await db.newUser();
+  await applyCreditTransaction(db.sql, { userId: user, delta: 1, kind: 'purchase', reference: 'm_finalize_fail' });
+  let failFinalize = true;
+  const sql = { unsafe: async (query: string, params?: unknown[]) => {
+    if (failFinalize && query.includes('finalize_ai_credits')) throw new Error('billing unavailable');
+    return db.sql.unsafe(query, params);
+  } } as typeof db.sql;
+  const op = await openMeteredOperation(req, res as never, { endpoint: 'conversation', model: 'gpt-test' }, {
+    sql: () => sql, verifyUser: async () => user, deployed: () => true,
+  });
+  if ('refused' in op) throw new Error(`refused: ${op.refused}`);
+  const errorLog = jest.spyOn(console, 'error').mockImplementation(() => {});
+  await expect(op.deliver()).rejects.toThrow('billing unavailable');
+  failFinalize = false;
+  await op.release('finalize_failed');
+  errorLog.mockRestore();
+  expect(await getCreditBalance(db.sql, user)).toBe(1);
+  expect((await db.rows<any>('SELECT state, release_reason FROM ai_operations WHERE user_id = $1', [user]))[0])
+    .toMatchObject({ state: 'released', release_reason: 'finalize_failed' });
+});
+
 test('delivery links the operation to the purchased lot it consumed', async () => {
   const user = await db.newUser();
   await applyCreditTransaction(db.sql, { userId: user, delta: 1, kind: 'purchase', reference: 'm_link' });
@@ -64,6 +86,17 @@ test('delivery links the operation to the purchased lot it consumed', async () =
     `SELECT l.source_class, ol.amount FROM ai_operation_lots ol JOIN ai_operations o USING (operation_id)
        JOIN credit_lots l ON l.id = ol.lot_id WHERE o.user_id = $1`, [user]);
   expect(link).toEqual({ source_class: 'purchased', amount: 1 });
+});
+
+test('a charged stream can attach provider usage after delivery for admin evidence', async () => {
+  const user = await db.newUser();
+  await applyCreditTransaction(db.sql, { userId: user, delta: 1, kind: 'purchase', reference: 'm_stream_usage' });
+  const op = await admitted(user);
+  await op.deliver();
+  await op.recordUsage?.({ input_tokens: 30, output_tokens: 10, cached_tokens: 4 });
+  const [row] = await db.rows<any>(
+    'SELECT state, input_tokens, output_tokens, cached_tokens FROM ai_operations WHERE user_id = $1', [user]);
+  expect(row).toMatchObject({ state: 'delivered', input_tokens: 30, output_tokens: 10, cached_tokens: 4 });
 });
 
 test("a customer's internal (dev) credits never fund AI", async () => {

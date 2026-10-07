@@ -7,7 +7,7 @@
 4. `scripts/migrations/billing/005_billing_closeout.sql` (customer credit policy, cost evidence, case fields)
 
 ## 1. Paddle Sandbox (sandbox-vendors.paddle.com)
-1. **Catalog:** create one product "Syllo Credits" and one one-time price per package: `credits_small`, `credits_medium`, `credits_large`. The credit amounts are in `api/billing/catalog.ts` and are placeholders marked *REQUIRES PRODUCT DECISION*. Set the price in Paddle; Syllo never stores prices.
+1. **Catalog:** retain the three one-time Sandbox packages below for Preview tests. The credit amounts and price bindings are in `api/billing/catalog.ts`; Paddle owns the monetary prices.
 2. **Checkout settings:**
    - Add the site domain (Preview/Production URL) as an approved domain.
    - Set a default payment link, e.g. `https://<domain>/` (Paddle requires one).
@@ -37,7 +37,7 @@
    Never put a secret in a `NEXT_PUBLIC_` variable.
 6. **Protected Preview?** Vercel Deployment Protection blocks Paddle's webhook. Either use a protection-bypass for automation or an unprotected branch alias.
 
-### Sandbox catalog (created 2026-09-29, SANDBOX placeholders — not final pricing)
+### Sandbox catalog (created 2026-09-29; retained in Preview for testing)
 | Package (`catalog.ts`) | Credits | Paddle product | Paddle price (one-time, qty 1) | Env var |
 |---|---|---|---|---|
 | `credits_small` | 50 | `pro_01m3qasa6wbj8qvm4wdsqztn1s` Syllo Credits Small | `pri_01m3qasab7exbpj6dv3k70tjn9` USD 5.00 | `PADDLE_PRICE_CREDITS_SMALL` |
@@ -54,7 +54,7 @@ Use Paddle's test cards (sandbox only). Check each result in `/admin/billing` (d
 | 1 | Buy `credits_small` | The status poll turns to credited; balance +N; the purchase shows `completed`; a lot is linked |
 | 2 | **Raw-body check:** the webhook returns 200 (not 401) | Confirms `@vercel/node` replays the exact signed bytes |
 | 3 | Resend the same event from Paddle's notification log | `duplicate`; balance unchanged |
-| 4 | Use AI past the free quota | 1 credit per delivered proposal or answer; `ai_operations` rows show tokens |
+| 4 | Use AI after purchase | 1 credit per delivered proposal or answer; `ai_operations` rows record available provider usage |
 | 5 | Full refund (dashboard or `POST /adjustments`) of an **unused** package | Balance −N; lot `revoked`; purchase `refunded` |
 | 6 | Buy, consume some credits, then refund in full | Unused revoked, consumed kept; `consumed_before_refund`; review alert |
 | 7 | Buy, consume all, then refund | Refund recorded, 0 revoked, no negative balance; review alert |
@@ -67,7 +67,7 @@ For local testing without Paddle, see `scripts/paddle_fixture_webhook.ts` (signe
 
 ## 3. Production
 Go live only after the **production gate**:
-- **Technical:** every sandbox check above passes.
+- **Technical:** every sandbox check above passes; the committed catalog binding and metering changes pass API tests, typecheck and build, then are deployed and verified in Preview.
 - **Paddle:** account and Syllo product approved, the AI-credit model approved, production prices configured, refund behaviour confirmed (`PADDLE_QUESTIONS.md`).
 - **Legal:** Israeli consumer-law review complete; Refund Policy, immediate-service disclosure, proportional-service treatment, Terms and Privacy approved (`ISRAEL_LEGAL_REVIEW_CHECKLIST.md`). Then:
   - replace the placeholders in `shared/billing/legal_versions.ts` and bump the version ids;
@@ -79,6 +79,8 @@ Then repeat steps 1–4 in the **live** Paddle dashboard:
 - `pdl_live_apikey_…`, a live client token, and a live notification destination pointing at the production domain;
 - set them in the Vercel **Production** scope with `PADDLE_ENV=production` and `NEXT_PUBLIC_PADDLE_ENV=production`;
 - the server refuses a sandbox key under `PADDLE_ENV=production`.
+
+The approved Production catalog binding is version 2: `credits_small` = 10 replies, `credits_medium` = 15 replies, and `credits_large` = 20 replies. Set the corresponding approved Live price IDs in the three `PADDLE_PRICE_CREDITS_*` Production variables. The server checks each exact price ID and disables billing if a binding is missing, swapped, or mixed with Sandbox. Preview intentionally retains the Sandbox version 1 catalog (50/150/400 credits) and Sandbox credentials for ongoing tests.
 
 Billing fails closed (503 `BILLING_NOT_CONFIGURED`) on a mixed configuration: `PADDLE_ENV=production` only on `VERCEL_ENV=production` and vice versa, `NEXT_PUBLIC_PADDLE_ENV` must equal `PADDLE_ENV`, and the client token must be `test_` (sandbox) / `live_` (production).
 
@@ -93,7 +95,9 @@ Billing fails closed (503 `BILLING_NOT_CONFIGURED`) on a mixed configuration: `P
 
 Preview schema: apply alembic up to the production revision (`alembic upgrade <rev> --sql`), then `scripts/migrations/auth/*`, `planner/001`, `billing/001…005`. Use test accounts only; never copy production data.
 
-The Vercel Cron (`/api/billing/reconcile`, daily 03:17 UTC) runs on production deployments only. Check `/admin/billing` after the first live purchase.
+The single Vercel Cron (`/api/billing/reconcile`, daily 03:17 UTC) runs on production deployments only. Set `CRON_SECRET` in Production so Vercel sends the protected route its bearer token; without it the route returns 401 and missed grant/refund repair does not run. Check `/admin/billing` after the first live purchase.
+
+**Current launch gates (2026-10-07):** commit and verify the approved catalog binding plus AI stream settlement fix; deploy to Preview and repeat the targeted metering, purchase, refund, and reconciliation checks; configure and verify Production environment values (including `CRON_SECRET` and Live Paddle credentials), apply and verify Production database migrations, complete Paddle Live and Legal/VAT review, finish Production SMTP/Auth, and confirm Pricing. Keep Preview on its separate Sandbox database and Paddle configuration.
 
 ## 4. Auth email delivery (required for Production launch)
 Production signup, email verification and password reset must not rely on Supabase's built-in development SMTP (it is rate-limited and not meant for real users).

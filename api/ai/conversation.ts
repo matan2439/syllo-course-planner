@@ -189,20 +189,25 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
       return;
     }
 
-    // NDJSON streaming (opt-in via Accept): once the agent starts, tool events and
-    // reply text are written live, and the usual JSON body arrives as the final
+    // NDJSON streaming (opt-in via Accept): tool events are buffered until the
+    // first reply text is charged, and the usual JSON body arrives as the final
     // {"type":"result","status","body"} line. Earlier errors stay plain JSON.
     const streaming = String(req.headers?.accept ?? '').includes('application/x-ndjson');
     const writeLine = (line: unknown) => res.write(`${JSON.stringify(line)}\n`);
+    const pendingEvents: unknown[] = [];
     let out: Pick<VercelResponse, 'status' | 'json'> = res;
     // Charged only when a real agent reply reached the student (answered, or streamed).
     let billable: OperationUsage | null = null;
     let replied = false;
     let streamedText = false;
+    let meteringFailed = false;
     // A reply is charged BEFORE it is written: the student never holds an unbilled answer.
     const reply = async (body: unknown) => {
+      if (billable && !streamedText) {
+        try { await meter.deliver(billable); }
+        catch (error) { meteringFailed = true; throw error; }
+      }
       replied = true;
-      if (billable) await meter.deliver(billable);
       out.status(200).json(body);
     };
     try {
@@ -328,7 +333,10 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
         res.setHeader('Content-Type', 'application/x-ndjson; charset=utf-8');
         res.status(200);
         out = ndjsonResult(res);
-        session.onEvent = (event) => writeLine({ type: 'event', event });
+        session.onEvent = (event) => {
+          if (streamedText) writeLine({ type: 'event', event });
+          else pendingEvents.push(event);
+        };
       }
       const agent = await runAgent(
         {
@@ -341,7 +349,16 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
         },
         {
           model: modelConfig.model,
-          ...(streaming ? { onTextDelta: (text: string) => { streamedText = true; writeLine({ type: 'text_delta', text }); } } : {}),
+          ...(streaming ? { onTextDelta: async (text: string) => {
+            if (!streamedText) {
+              try { await meter.deliver(); }
+              catch (error) { meteringFailed = true; throw error; }
+              streamedText = true;
+              for (const event of pendingEvents) writeLine({ type: 'event', event });
+              pendingEvents.length = 0;
+            }
+            writeLine({ type: 'text_delta', text });
+          } } : {}),
         },
       );
 
@@ -350,6 +367,9 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
         return;
       }
       billable = agent.usage ?? null;
+      if (streamedText && billable && meter.recordUsage) await meter.recordUsage(billable).catch((error) => {
+        console.error('[ai/conversation] usage recording failed:', error instanceof Error ? error.message : String(error));
+      });
 
       // Preferences the agent recorded are persisted, so apply-time validation
       // (and the next turn) builds the same constraint model.
@@ -679,15 +699,11 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
         return;
       }
       console.error('[ai/conversation] unexpected error');
-      out.status(500).json({ ok: false, code: 'INTERNAL_ERROR', message_he: 'אירעה שגיאה פנימית.' });
+      if (meteringFailed) out.status(503).json({ ok: false, code: 'BILLING_UNAVAILABLE', message_he: 'לא ניתן לאמת קרדיטים כרגע. נא לנסות שוב.' });
+      else out.status(500).json({ ok: false, code: 'INTERNAL_ERROR', message_he: 'אירעה שגיאה פנימית.' });
     } finally {
-      // A reply the student received is service delivered; conflicts, failures
-      // and empty runs where the student saw nothing return the reserved credit.
-      // A reply was already charged in reply(); streamed text the student saw is
-      // charged here, even when the run then failed (no usage to record).
-      if (billable && replied) { /* charged */ }
-      else if (streamedText) await meter.deliver(billable ?? undefined);
-      else await meter.release(billable ? 'reply_not_sent' : 'no_reply');
+      // A reply was charged before it was written; empty and failed runs release.
+      if (!streamedText && (!replied || !billable)) await meter.release(billable ? 'reply_not_sent' : 'no_reply');
     }
   };
 }
