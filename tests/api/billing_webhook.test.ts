@@ -5,15 +5,15 @@
  */
 import { createBillingHandler } from '../../api/billing';
 import { finalizeCredits, getCreditBalance, lotSummary, releaseCredits, reserveCredits, applyCreditTransaction } from '../../api/ai/credits';
-import { signPaddleBody, type PaddleConfig } from '../../api/billing/paddle';
+import { paddleConfig, signPaddleBody, type PaddleConfig } from '../../api/billing/paddle';
 import { processPaddleEvent } from '../../api/billing/process_event';
 import { LEGAL_VERSIONS } from '../../shared/billing/legal_versions';
 import { ALL_BILLING, createBillingDb, type BillingDb } from './helpers/billing_db';
 
 const SECRET = 'pdl_ntfset_test_secret';
-const PRICE_SMALL = 'pri_sandboxsmall0001';
-const PRICE_MEDIUM = 'pri_sandboxmedium001';
-const ENV = { PADDLE_PRICE_CREDITS_SMALL: PRICE_SMALL, PADDLE_PRICE_CREDITS_MEDIUM: PRICE_MEDIUM } as NodeJS.ProcessEnv;
+const PRICE_SMALL = 'pri_01m3qasab7exbpj6dv3k70tjn9';
+const PRICE_MEDIUM = 'pri_01m3qasant31p8d69jr7r90ky5';
+const ENV = { PADDLE_ENV: 'sandbox', VERCEL_ENV: 'preview', PADDLE_PRICE_CREDITS_SMALL: PRICE_SMALL, PADDLE_PRICE_CREDITS_MEDIUM: PRICE_MEDIUM } as NodeJS.ProcessEnv;
 const CONFIG: PaddleConfig = { environment: 'sandbox', apiKey: 'pdl_sdbx_apikey_test', webhookSecret: SECRET, apiBase: 'http://paddle.invalid' };
 
 let db: BillingDb;
@@ -122,6 +122,33 @@ async function expectHealthy() {
 }
 
 describe('purchase', () => {
+  test.each([
+    ['credits_small', 'pri_01m4bf9ge86dj44by7a603nm50', 10, '699'],
+    ['credits_medium', 'pri_01m4bf9gy11s5cft1m7r28ahcf', 15, '999'],
+    ['credits_large', 'pri_01m4bf9hagtt179xqzrqcee1wq', 20, '1299'],
+  ])('Live checkout and signed completion grant the approved %s v2 entitlement once', async (packageId, price, credits, amount) => {
+    const env = { PADDLE_ENV: 'production', VERCEL_ENV: 'production', PADDLE_API_KEY: 'pdl_live_fixture', PADDLE_WEBHOOK_SECRET: SECRET,
+      PADDLE_PRICE_CREDITS_SMALL: 'pri_01m4bf9ge86dj44by7a603nm50',
+      PADDLE_PRICE_CREDITS_MEDIUM: 'pri_01m4bf9gy11s5cft1m7r28ahcf',
+      PADDLE_PRICE_CREDITS_LARGE: 'pri_01m4bf9hagtt179xqzrqcee1wq' };
+    const liveHandler = handler({ env, config: () => paddleConfig(env) });
+    const userId = await db.newUser();
+    currentUser = userId;
+    const opened = await call('checkout', { method: 'POST', body: { package_id: packageId, disclosure_version: LEGAL_VERSIONS.purchaseDisclosure, accepted: true } }, liveHandler);
+    currentUser = null;
+    expect(opened.statusCode).toBe(200);
+    const { transaction_id: txn, payment_id: paymentId } = opened.body;
+    expect(await payment(paymentId)).toMatchObject({ environment: 'production', package_id: packageId, package_version: 2, credits_purchased: credits, paddle_price_id: price });
+    const event = txnEvent({ txn, paymentId, userId, price: String(price), amount: String(amount) });
+    event.data.currency_code = 'USD';
+    event.data.details.totals.currency_code = 'USD';
+    expect((await deliver(event, liveHandler)).body.status).toBe('processed');
+    expect((await deliver(event, liveHandler)).body.status).toBe('duplicate');
+    expect(await getCreditBalance(db.sql, userId)).toBe(credits);
+    expect(await lotOf(paymentId)).toMatchObject({ granted: credits, unused: credits });
+    await expectHealthy();
+  });
+
   test('completed purchase grants the package credits immediately, once, linked end to end', async () => {
     const user = await db.newUser();
     const { txn, paymentId } = await purchase(user);

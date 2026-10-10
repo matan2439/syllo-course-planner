@@ -8,6 +8,7 @@
  * prefix must match PADDLE_ENV or billing refuses to run.
  */
 import { createHmac, timingSafeEqual } from 'crypto';
+import { catalogConfigurationProblem } from './catalog';
 
 export type PaddleEnvironment = 'sandbox' | 'production';
 
@@ -30,8 +31,8 @@ export function paddleConfig(env: NodeJS.ProcessEnv = process.env): PaddleConfig
   // Paddle API keys are prefixed per environment; a mismatch is a misconfiguration, not a warning.
   const expected = environment === 'sandbox' ? 'pdl_sdbx_' : 'pdl_live_';
   if (!apiKey.startsWith(expected)) throw new PaddleConfigError(`PADDLE_API_KEY is not a ${environment} key`);
-  // Preview and Production share one database: sandbox billing on a production
-  // deployment (or live billing anywhere else) would mint real credits from fake payments.
+  // Sandbox billing on a production deployment (or live billing anywhere else)
+  // would grant credits in the wrong deployment.
   if ((env.VERCEL_ENV === 'production') !== (environment === 'production')) {
     throw new PaddleConfigError(`PADDLE_ENV=${environment} is not allowed on VERCEL_ENV=${env.VERCEL_ENV ?? 'unset'}`);
   }
@@ -41,6 +42,8 @@ export function paddleConfig(env: NodeJS.ProcessEnv = process.env): PaddleConfig
   if (clientToken && !clientToken.startsWith(environment === 'sandbox' ? 'test_' : 'live_')) {
     throw new PaddleConfigError(`NEXT_PUBLIC_PADDLE_CLIENT_TOKEN is not a ${environment} token`);
   }
+  const catalogProblem = catalogConfigurationProblem(env);
+  if (catalogProblem) throw new PaddleConfigError(catalogProblem);
   return {
     environment,
     apiKey,

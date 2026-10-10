@@ -67,7 +67,7 @@ export interface PlannerAgentDeps {
   /** Model name (OpenAI) or a custom SDK Model — tests inject a scripted one. */
   model?: string | Model;
   /** Receives the assistant's text as the model streams it. */
-  onTextDelta?: (text: string) => void;
+  onTextDelta?: (text: string) => void | Promise<void>;
   /** Wall-clock budget for the agent run; tests shorten it. */
   deadlineMs?: number;
 }
@@ -162,7 +162,7 @@ export async function runPlannerAgent(input: PlannerAgentInput, deps: PlannerAge
     for await (const event of result) {
       if (event.type === 'raw_model_stream_event' && event.data.type === 'output_text_delta') {
         streamed += event.data.delta;
-        deps.onTextDelta?.(event.data.delta);
+        await deps.onTextDelta?.(event.data.delta);
       }
     }
     await result.completed;
