@@ -68,6 +68,10 @@ export function createBillingHandler(deps: BillingDeps = {}) {
   const verifyUser = deps.verifyUser ?? ((req: VercelRequest, res: VercelResponse) => verifiedUserId(req, res));
   const getConfig = deps.config ?? (() => paddleConfig(deps.env));
   const getApi = deps.api ?? ((config: PaddleConfig) => paddleApi(config));
+  // Live credentials may be staged before legal review and webhook activation.
+  // Keep sales closed by default; webhook, refunds and reconciliation stay available.
+  const salesOpen = (environment: string) => environment !== 'production'
+    || (deps.env ?? process.env).BILLING_LAUNCH_ENABLED === 'true';
 
   async function webhook(req: VercelRequest, res: VercelResponse) {
     let config: PaddleConfig;
@@ -106,6 +110,7 @@ export function createBillingHandler(deps: BillingDeps = {}) {
     if (!String(req.headers['content-type'] ?? '').includes('application/json')) return fail(res, 415, 'JSON_REQUIRED');
     let config: PaddleConfig;
     try { config = getConfig(); } catch { return fail(res, 503, 'BILLING_NOT_CONFIGURED'); }
+    if (!salesOpen(config.environment)) return fail(res, 503, 'BILLING_LAUNCH_PENDING');
     const body = (req.body ?? {}) as Json;
     const pkg = packageById(body.package_id, deps.env);
     if (!pkg) return fail(res, 400, 'UNKNOWN_PACKAGE');
@@ -268,7 +273,7 @@ export function createBillingHandler(deps: BillingDeps = {}) {
       if (route === 'packages' && req.method === 'GET') {
         let environment: string | null = null;
         try { environment = getConfig().environment; } catch { /* not configured: empty list */ }
-        const packages = environment ? creditCatalog(deps.env).filter((p) => p.active) : [];
+        const packages = environment && salesOpen(environment) ? creditCatalog(deps.env).filter((p) => p.active) : [];
         res.status(200).json({ ok: true, environment, packages: packages.map((p) => ({ id: p.id, name_he: p.nameHe, credits: p.credits, paddle_price_id: p.paddlePriceId })) });
         return;
       }
