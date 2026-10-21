@@ -124,6 +124,9 @@ Before Production launch:
 5. SMTP credentials live only in Supabase; never in frontend code or `NEXT_PUBLIC_*` variables.
 6. Set an appropriate Supabase auth email rate limit once custom SMTP is on.
 7. Brand and verify the templates: signup confirmation, password reset, email-change confirmation (where applicable).
+   Set Supabase Auth Site URL to the Production domain and add the exact Production
+   origin with its allowed paths to Redirect URLs. Include `/reset-password` so
+   password recovery links return to the app. Keep Preview redirects separate.
 8. Disable email link tracking if the provider enables it; rewritten links break Supabase auth links.
 9. Test with fresh Gmail, Outlook and another mailbox where practical.
 10. Check delivery speed and Spam/Junk placement.

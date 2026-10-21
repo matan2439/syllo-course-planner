@@ -27,6 +27,7 @@ export interface AuthState {
   refreshCreditBalance(): void
   signIn(email: string, password: string): AuthResult
   signUp(email: string, password: string): Promise<{ error: string | null; needsConfirmation: boolean }>
+  requestPasswordReset(email: string): AuthResult
   signInWithGoogle(): AuthResult
   signOut(): Promise<void>
   /** Permanently deletes the signed-in account and its planner data, then signs out. */
@@ -39,6 +40,7 @@ const signedOut: AuthState = {
   enabled: false, loading: false, user: null, profile: null, creditBalance: null, hasPurchased: null,
   signIn: async () => null,
   signUp: async () => ({ error: null, needsConfirmation: false }),
+  requestPasswordReset: async () => null,
   signInWithGoogle: async () => null,
   signOut: async () => {},
   deleteAccount: async () => null,
@@ -137,6 +139,16 @@ export function AuthProvider({ children, client = getBrowserSupabase() }: {
           email, password, options: { emailRedirectTo: window.location.origin + window.location.pathname },
         })
         return { error: hebrewAuthError(error), needsConfirmation: !error && !data.session }
+      },
+      requestPasswordReset: async (email) => {
+        const { error } = await client.auth.resetPasswordForEmail(email, {
+          redirectTo: window.location.origin + '/reset-password',
+        })
+        if (!error) return null
+        if (error.code === 'over_email_send_rate_limit' || /only request this after|rate limit/i.test(error.message)) {
+          return 'אפשר לבקש קישור חדש בעוד כדקה. בדקו אם הקישור הקודם כבר הגיע, גם בתיקיית הספאם.'
+        }
+        return 'שליחת קישור האיפוס נכשלה. נסו שוב מאוחר יותר.'
       },
       signInWithGoogle: async () =>
         hebrewAuthError((await client.auth.signInWithOAuth({

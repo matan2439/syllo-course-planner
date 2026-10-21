@@ -59,6 +59,13 @@ export default function AccountButton() {
     else if (needsConfirmation) setConfirmSentTo(email)
     else setOpen(false)
   }
+  const requestPasswordReset = async () => {
+    setBusy(true)
+    setMessage(null)
+    const error = await auth.requestPasswordReset(email)
+    setBusy(false)
+    setMessage(error ?? 'אם קיים חשבון לכתובת הזו, נשלח אליה קישור לאיפוס הסיסמה. בדקו גם בתיקיית הספאם.')
+  }
 
   const user = auth.user
   return (
@@ -172,6 +179,8 @@ export default function AccountButton() {
                 <button type="submit" className={PRIMARY} disabled={busy}>התחברות</button>
                 <button type="button" className={SECONDARY} disabled={busy || !email || password.length < 6} onClick={() => void signUp()}>הרשמה</button>
               </div>
+              <button type="button" className="w-full text-xs text-[var(--text-muted)] underline hover:text-[var(--purple)] disabled:opacity-60"
+                disabled={busy || !email} onClick={() => void requestPasswordReset()}>שכחתי סיסמה</button>
               <button type="button" className={SECONDARY + ' w-full'} disabled={busy} onClick={() => void run(auth.signInWithGoogle)}>
                 המשך עם Google
               </button>
