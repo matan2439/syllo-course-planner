@@ -66,6 +66,8 @@ Use Paddle's test cards (sandbox only). Check each result in `/admin/billing` (d
 For local testing without Paddle, see `scripts/paddle_fixture_webhook.ts` (signed fixtures against `npm run dev:api`).
 
 ## 3. Production
+
+Production checkout remains closed by default. After every technical, Paddle, legal, and auth-email launch gate below is complete, set `BILLING_LAUNCH_ENABLED=true` in Vercel Production and deploy the reviewed release. Until then, `/api/billing/packages` returns no purchasable packages and `/api/billing/checkout` returns `BILLING_LAUNCH_PENDING`; webhooks, refunds, and reconciliation remain available. Never set this flag in Preview.
 Go live only after the **production gate**:
 - **Technical:** every sandbox check above passes; the committed catalog binding and metering changes pass API tests, typecheck and build, then are deployed and verified in Preview.
 - **Paddle:** account and Syllo product approved, the AI-credit model approved, production prices configured, refund behaviour confirmed (`PADDLE_QUESTIONS.md`).
