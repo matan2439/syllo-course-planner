@@ -127,7 +127,7 @@ describe('purchase', () => {
     ['credits_medium', 'pri_01m4bf9gy11s5cft1m7r28ahcf', 15, '999'],
     ['credits_large', 'pri_01m4bf9hagtt179xqzrqcee1wq', 20, '1299'],
   ])('Live checkout and signed completion grant the approved %s v2 entitlement once', async (packageId, price, credits, amount) => {
-    const env = { PADDLE_ENV: 'production', VERCEL_ENV: 'production', PADDLE_API_KEY: 'pdl_live_fixture', PADDLE_WEBHOOK_SECRET: SECRET,
+    const env = { PADDLE_ENV: 'production', VERCEL_ENV: 'production', BILLING_LAUNCH_ENABLED: 'true', PADDLE_API_KEY: 'pdl_live_fixture', PADDLE_WEBHOOK_SECRET: SECRET,
       PADDLE_PRICE_CREDITS_SMALL: 'pri_01m4bf9ge86dj44by7a603nm50',
       PADDLE_PRICE_CREDITS_MEDIUM: 'pri_01m4bf9gy11s5cft1m7r28ahcf',
       PADDLE_PRICE_CREDITS_LARGE: 'pri_01m4bf9hagtt179xqzrqcee1wq' };
