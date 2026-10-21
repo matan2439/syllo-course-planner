@@ -77,6 +77,14 @@ Go live only after the **production gate**:
   - set `LEGAL_POLICY` only for rules counsel approved.
 - **Auth email:** every item in section 4 is done and the launch status there reads YES.
 
+Production checkout has two independent safeguards: `BILLING_LAUNCH_ENABLED=true`
+in the Production environment and reviewed legal artifacts checked into the deployed
+code. The legal check requires `LEGAL_POLICY.status = 'approved'`, a real policy
+version, and four non-DRAFT version IDs in `shared/billing/legal_versions.ts`.
+Setting the environment flag while the legal placeholders remain does not open
+packages or checkout. Verify both conditions on the final deployed commit before
+changing the flag.
+
 Then repeat steps 1–4 in the **live** Paddle dashboard:
 - `pdl_live_apikey_…`, a live client token, and a live notification destination pointing at the production domain;
 - set them in the Vercel **Production** scope with `PADDLE_ENV=production` and `NEXT_PUBLIC_PADDLE_ENV=production`;

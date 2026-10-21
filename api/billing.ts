@@ -28,6 +28,7 @@ import {
 import { handleAdmin, isAdmin } from './billing/admin';
 import { processPaddleEvent, raiseAlert } from './billing/process_event';
 import { reconcile } from './billing/reconcile';
+import { legalReadyForLiveSales } from './billing/launch_gate';
 import { IMMEDIATE_SERVICE_CONSENT_VERSION, LEGAL_VERSIONS, type AcceptedTerms } from '../shared/billing/legal_versions';
 
 export interface BillingDeps {
@@ -36,6 +37,8 @@ export interface BillingDeps {
   config?: () => PaddleConfig;
   api?: (config: PaddleConfig) => PaddleApi;
   env?: NodeJS.ProcessEnv;
+  /** Injectable for tests; production uses the checked-in legal policy and version IDs. */
+  legalReady?: () => boolean;
 }
 
 type Json = Record<string, unknown>;
@@ -71,7 +74,8 @@ export function createBillingHandler(deps: BillingDeps = {}) {
   // Live credentials may be staged before legal review and webhook activation.
   // Keep sales closed by default; webhook, refunds and reconciliation stay available.
   const salesOpen = (environment: string) => environment !== 'production'
-    || (deps.env ?? process.env).BILLING_LAUNCH_ENABLED === 'true';
+    || ((deps.env ?? process.env).BILLING_LAUNCH_ENABLED === 'true'
+      && (deps.legalReady ?? legalReadyForLiveSales)());
 
   async function webhook(req: VercelRequest, res: VercelResponse) {
     let config: PaddleConfig;
