@@ -81,6 +81,7 @@ class DegreeSpec(_Strict):
     group_minimums: dict[str, int]
     general_requirement: Optional[dict] = None
     double_counting: Literal["forbidden", "allowed_listed"] = "forbidden"
+    allowed_double_counted: list[str] = []
     ui: dict
     legacy: dict
     coverage: dict[str, CoverageEntry] = {}

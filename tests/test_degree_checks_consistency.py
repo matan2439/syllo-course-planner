@@ -15,7 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def _spec(*, mandatory=(), categories=(), group_minimums=None, general=None, total=20,
-          double_counting="forbidden") -> DegreeSpec:
+          double_counting="forbidden", allowed=()) -> DegreeSpec:
     return DegreeSpec.model_validate({
         "program_id": "p", "institution": "tau", "source_year": 2027, "total_required_credits": total,
         "mandatory_courses": [
@@ -25,7 +25,7 @@ def _spec(*, mandatory=(), categories=(), group_minimums=None, general=None, tot
             {"category_id": cid, "name_he": cid, "course_ids": ids, **kw} for cid, ids, kw in categories
         ],
         "group_minimums": group_minimums or {}, "general_requirement": general,
-        "double_counting": double_counting, "ui": {}, "legacy": {},
+        "double_counting": double_counting, "allowed_double_counted": list(allowed), "ui": {}, "legacy": {},
     })
 
 
@@ -71,11 +71,28 @@ def test_double_counting_flags_course_in_two_categories():
 def test_double_counting_flags_mandatory_in_category_and_respects_allowed_listed():
     kwargs = dict(mandatory=[("A-1", "A")], categories=[("x", ["A-1"], {})])
     assert not check_double_counting(_spec(**kwargs)).passed
-    assert check_double_counting(_spec(**kwargs, double_counting="allowed_listed")).passed
+    assert check_double_counting(_spec(**kwargs, double_counting="allowed_listed", allowed=["A-1"])).passed
     assert check_double_counting(_spec(categories=[("x", ["C-1"], {}), ("y", ["C-2"], {})])).passed
 
 
+def test_double_counting_unlisted_duplicate_fails_under_allowed_listed():
+    cats = [("x", ["C-1", "C-2"], {}), ("y", ["C-1", "C-2"], {})]
+    result = check_double_counting(_spec(categories=cats, double_counting="allowed_listed", allowed=["C-1"]))
+    assert not result.passed
+    assert len(result.problems) == 1 and "C-2" in result.problems[0]
+
+
+def test_double_counting_allow_list_with_forbidden_fails():
+    result = check_double_counting(_spec(categories=[("x", ["C-1"], {})], allowed=["C-1"]))
+    assert not result.passed and "allow-list set but double_counting is forbidden" in result.problems
+
+
 # ---------------------------------------------------------------- mandatory offered
+
+
+def test_mandatory_offered_warns_when_offered_without_semesters():
+    result = check_mandatory_offered(_spec(mandatory=[("A-1", "A")]), {"A-1": _fact(semesters=())})
+    assert result.passed and "warn:" in result.problems[0]
 
 
 def test_mandatory_offered_passes_and_warns_on_missing_facts():
@@ -133,6 +150,25 @@ def test_totals_general_requirement_counts_when_credits_known():
     assert not result.passed and "general 4" in result.problems[0]
 
 
+def test_totals_extra_credits_never_override_facts():
+    spec = _spec(total=8, mandatory=[("A-1", "A")])
+    assert not check_totals(spec, {"A-1": _fact(12)}, {"A-1": 1.0}).passed  # 12 from facts, not 1
+    assert check_totals(spec, {"A-1": _fact(8)}, {"A-1": 99.0}).passed
+
+
+def test_totals_fail_when_category_min_exceeds_listed_courses():
+    spec = _spec(total=50, categories=[("c", ["C-1"], {"min_courses": 2})])
+    result = check_totals(spec, {"C-1": _fact(4)})
+    assert not result.passed and any("needs 2 courses but lists 1" in p for p in result.problems)
+
+
+def test_totals_fail_when_group_minimum_cannot_be_met():
+    spec = _spec(total=50, categories=[("c", ["C-1"], {"min_courses": 1, "group": "core"})],
+                 group_minimums={"core": 3})
+    result = check_totals(spec, {"C-1": _fact(4)})
+    assert not result.passed and "group core needs 2 more courses but only 0 remain" in result.problems
+
+
 def test_totals_missing_credits_fails():
     assert not check_totals(_spec(mandatory=[("A-1", "A")]), {}).passed
 
@@ -170,3 +206,15 @@ def test_me_spec_passes_all():
     ]
     failed = {r.name: r.problems for r in results if not r.passed}
     assert not failed, failed
+
+    # Pin the warnings so Task 7 can tighten this once facts cover Y1/Y2 and the general requirement.
+    no_facts = {m.course_id for m in spec.mandatory_courses if m.course_id not in facts}
+    assert len(no_facts) == 23
+    by_name = {r.name: set(r.problems) for r in results}
+    assert by_name["courses_known"] == (
+        {f"warn: offering unknown for {c}" for c in no_facts}
+        | {"warn: general requirement: 88 course(s) have no credits"}
+    )
+    assert by_name["mandatory_offered"] == {f"warn: no offering data for mandatory {c}" for c in no_facts}
+    assert by_name["totals"] == {"warn: general requirement credits unknown (3 courses); excluded from totals"}
+    assert not by_name["double_counting"] and not by_name["plannable"]

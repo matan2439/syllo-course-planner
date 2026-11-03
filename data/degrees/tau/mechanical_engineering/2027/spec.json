@@ -420,6 +420,7 @@
     ]
   },
   "double_counting": "forbidden",
+  "allowed_double_counted": [],
   "ui": {
     "other_category_label": "קורסים באישור מיוחד",
     "sidebar_order": [

@@ -70,8 +70,11 @@ def check_courses_known(
 
 
 def check_double_counting(spec: DegreeSpec) -> CheckResult:
-    if spec.double_counting == "allowed_listed":
-        return _result("double_counting", [])
+    allowed = set(spec.allowed_double_counted)
+    problems: list[str] = []
+    if spec.double_counting == "forbidden" and allowed:
+        problems.append("allow-list set but double_counting is forbidden")
+        allowed = set()
     homes: dict[str, list[str]] = {}
     for m in spec.mandatory_courses:
         homes.setdefault(m.course_id, []).append("mandatory")
@@ -81,10 +84,10 @@ def check_double_counting(spec: DegreeSpec) -> CheckResult:
     gen = spec.general_requirement or {}
     for cid in gen.get("course_ids", []):
         homes.setdefault(cid, []).append(gen.get("category_id", "general_requirement"))
-    problems = [
+    problems += [
         f"{cid} counted in several places: {', '.join(sorted(where))}"
         for cid, where in homes.items()
-        if len(where) > 1
+        if len(where) > 1 and cid not in allowed
     ]
     return _result("double_counting", problems)
 
@@ -100,6 +103,8 @@ def check_mandatory_offered(spec: DegreeSpec, facts: dict) -> CheckResult:
             problems.append(f"mandatory {m.course_id} is not offered")
             continue
         semesters = offering.get("offered_semesters") or []
+        if not semesters:
+            problems.append(f"{WARN} mandatory {m.course_id} is offered but lists no semesters")
         if m.semester != "either" and semesters and m.semester not in semesters:
             problems.append(
                 f"mandatory {m.course_id} placed in semester {m.semester} "
