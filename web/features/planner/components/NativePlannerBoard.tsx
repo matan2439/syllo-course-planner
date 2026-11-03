@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import SemesterColumn from './SemesterColumn'
 import SemesterColumnHeader from './SemesterColumnHeader'
 import AnnualCourseBand from './AnnualCourseBand'
@@ -22,7 +23,7 @@ import { semesterLabel } from '../../locale/semester-label'
  * as everything else, instead of a separately-styled block elsewhere on the
  * page. A year-pair with no annual course simply has no row 2.
  */
-export default function NativePlannerBoard({ board, onRemoveCourse, onAddCourse, onMoveCourse, onSelectCourse, mutationPending = false, activeDrag, rejectedSemesterId, rejectedDropKey, justPlacedSemesterId, justPlacedKey, onDragStateChange, readOnly = false, editableCourseIds, onAddSemester, removableSemesterIds, onRemoveSemester }: {
+export default function NativePlannerBoard({ board, onRemoveCourse, onAddCourse, onMoveCourse, onSelectCourse, mutationPending = false, activeDrag, rejectedSemesterId, rejectedDropKey, justPlacedSemesterId, justPlacedKey, onDragStateChange, readOnly = false, editableCourseIds, onAddSemester, removableSemesterIds, onRemoveSemester, chrome = true, companion }: {
   board: BoardVM
   onRemoveCourse?: (courseId: string) => void
   onAddCourse?: (courseId: string, semesterId: string) => void
@@ -48,6 +49,10 @@ export default function NativePlannerBoard({ board, onRemoveCourse, onAddCourse,
   /** Empty semesters the student added; only these offer removal. */
   removableSemesterIds?: ReadonlySet<string>
   onRemoveSemester?: (semesterId: string) => void
+  /** false: only the year-pair columns, for embedding in another board's row (a read-only companion). */
+  chrome?: boolean
+  /** Another window's columns shown in the same scrolling row, before or after this board's own. */
+  companion?: { placement: 'before' | 'after'; node: ReactNode }
 }) {
   const { t, locale } = useLocale()
   if (board.semesters.length === 0) {
@@ -59,26 +64,7 @@ export default function NativePlannerBoard({ board, onRemoveCourse, onAddCourse,
     pairs.push({ start: i, semesters: board.semesters.slice(i, i + 2) })
   }
 
-  return (
-    <div className="flex flex-col gap-2">
-    {/* Above the columns: below them it sat under every course, out of sight. */}
-    {!readOnly && onAddSemester && (
-      <button
-        type="button"
-        onClick={onAddSemester}
-        disabled={mutationPending}
-        className="flex flex-wrap items-center gap-x-2 self-start rounded-lg border-2 border-dashed border-[var(--border)] px-3 py-1.5 text-sm font-semibold text-[var(--text)] hover:border-[var(--purple)] hover:bg-[var(--surface-panel)] disabled:opacity-50"
-      >
-        <span>+ {t('הוספת סמסטר', 'Add semester')}</span>
-        <span className="text-xs font-normal text-[var(--text-muted)]">{t('מאריכים את התואר? הוסיפו סמסטר אחרי האחרון', 'Extending your degree? Add one after the last semester')}</span>
-      </button>
-    )}
-    <div className="overflow-x-auto rounded-xl border border-[var(--border)] bg-[var(--surface)]">
-    <div
-      role="list"
-      aria-label={t('לוח סמסטרים', 'Semester board')}
-      className="flex min-w-full items-start"
-    >
+  const columns = <>
       {pairs.map((pair) => {
         const band = bandByStartIndex.get(pair.start)
         return (
@@ -143,6 +129,34 @@ export default function NativePlannerBoard({ board, onRemoveCourse, onAddCourse,
           </div>
         )
       })}
+  </>
+  if (!chrome) return columns
+
+  return (
+    <div className="flex flex-col gap-2">
+    <div className="overflow-x-auto rounded-xl border border-[var(--border)] bg-[var(--surface)]">
+    <div
+      role="list"
+      aria-label={t('לוח סמסטרים', 'Semester board')}
+      className="flex min-w-full items-start"
+    >
+      {companion?.placement === 'before' && companion.node}
+      {columns}
+      {!readOnly && onAddSemester && (
+        <div className="flex shrink-0 items-start border-s border-[var(--border)] p-2">
+          <button
+            type="button"
+            onClick={onAddSemester}
+            disabled={mutationPending}
+            aria-label={t('הוספת סמסטר', 'Add semester')}
+            title={t('הוספת סמסטר אחרי האחרון — למי שמאריך את התואר', 'Add a semester after the last one — for longer degrees')}
+            className="grid h-9 w-9 place-items-center rounded-lg border-2 border-dashed border-[var(--border)] text-lg font-bold text-[var(--text-muted)] hover:border-[var(--purple)] hover:text-[var(--text)] disabled:opacity-50"
+          >
+            +
+          </button>
+        </div>
+      )}
+      {companion?.placement === 'after' && companion.node}
     </div>
     </div>
     <CategoryLegend />

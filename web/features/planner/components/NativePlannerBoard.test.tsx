@@ -640,3 +640,16 @@ test('a board without added semesters shows no semester controls', () => {
   expect(screen.queryByRole('button', { name: /הוספת סמסטר/ })).toBeNull()
   expect(screen.queryByRole('button', { name: /^הסרת / })).toBeNull()
 })
+
+test('whole-degree view: the companion and the + tile share the scrolling row, in degree order', () => {
+  render(<NativePlannerBoard board={vmFromPayload(BOARD)} onAddSemester={() => undefined}
+    companion={{ placement: 'before', node: <div data-testid="earlier-years" /> }} />)
+  const row = screen.getByRole('list', { name: 'לוח סמסטרים' })
+  const earlier = screen.getByTestId('earlier-years')
+  const add = screen.getByRole('button', { name: /הוספת סמסטר/ })
+  expect(row).toContainElement(earlier)
+  expect(row).toContainElement(add)
+  // earlier years → this board's columns → the + tile after the latest semester
+  expect(row.firstElementChild).toBe(earlier)
+  expect(row.lastElementChild).toContainElement(add)
+})

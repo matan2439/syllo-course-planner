@@ -15,7 +15,7 @@
  * profilePortalTarget) while their state stays here. Transport is injected so the journey is fully
  * testable without a backend; browser defaults hit the real routes.
  */
-import { useCallback, useEffect, useRef, useState, type ReactElement, type RefObject } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactElement, type ReactNode, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
 import type { BoardModel, GeneratedPlanModel } from '../../../../shared/planner/model'
 import {
@@ -91,6 +91,7 @@ export default function NativePlannerJourney({
   onAcademicContextMissing,
   onBoardSnapshot,
   onPrepareRestore,
+  companion,
 }: {
   programId: string
   getBoardFn?: (programId: string) => Promise<BoardModel>
@@ -125,6 +126,8 @@ export default function NativePlannerJourney({
   onAcademicContextMissing?: () => void
   onBoardSnapshot?: (snapshot: BoardSnapshot) => void
   onPrepareRestore?: (prepare: (() => Promise<void>) | null) => void
+  /** Another window's read-only columns shown beside this board ("whole degree" view). */
+  companion?: { placement: 'before' | 'after'; node: ReactNode }
 }) {
   const { t } = useLocale()
   // ── the board ─────────────────────────────────────────────────────────────
@@ -386,6 +389,7 @@ export default function NativePlannerJourney({
             .filter((semester) => semester.courses.length === 0 && !catalogSemesterIds.includes(semester.semesterId))
             .map((semester) => semester.semesterId))}
           onRemoveSemester={(semesterId) => void commitSemesterChange('remove_semester', semesterId)}
+          companion={companion}
           completedCredit={academicStatus.confirmed ? Object.fromEntries(completedCourseIdsOf(academicStatus).flatMap((id) => {
             // Same credit rule as the profile panel and the server: Years 1–2 table, else catalog hours.
             const hours = earlyYearHoursById(programId)[id] ?? catalogHoursById[id]

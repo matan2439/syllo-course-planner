@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { fromHalfHours, type BoardModel, type GeneratedPlanModel } from '../../../../shared/planner/model'
 import { boardModelToVM } from '../../../lib/planner/board-vm'
@@ -35,7 +35,7 @@ export default function CurrentPlanSection({
   current, previewBoard, diffMarkers, alternatives, selectedAlternativeId, onSelectAlternative, stale,
   commitManualRemove, commitManualAdd, commitManualMove, selectBoardCourse, manualEditPhase,
   activeDrag, rejectedDrop, justPlaced, onDragStateChange, completedCredit, completedCategoryCounts = {},
-  onAddSemester, removableSemesterIds, onRemoveSemester,
+  onAddSemester, removableSemesterIds, onRemoveSemester, companion,
 }: {
   current: BoardModel
   /** The proposal (or selected alternative) applied to the current board, or null when none is being previewed. */
@@ -62,6 +62,8 @@ export default function CurrentPlanSection({
   onAddSemester?: () => void
   removableSemesterIds?: ReadonlySet<string>
   onRemoveSemester?: (semesterId: string) => void
+  /** Another window's read-only columns in the same scrolling row ("whole degree" view). */
+  companion?: { placement: 'before' | 'after'; node: ReactNode }
 }) {
   const { t } = useLocale()
   // The progress badge lives in the shell's top bar when the page provides the slot; inline otherwise.
@@ -126,6 +128,7 @@ export default function CurrentPlanSection({
         onAddSemester={previewBoard ? undefined : onAddSemester}
         removableSemesterIds={removableSemesterIds}
         onRemoveSemester={previewBoard ? undefined : onRemoveSemester}
+        companion={companion}
       />
     </section>
 

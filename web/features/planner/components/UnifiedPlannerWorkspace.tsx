@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { RepositoryVM } from '../../../lib/repository'
 import NativePlannerJourney, { type ManualAddIntent } from './NativePlannerJourney'
+import CompanionWindowBoard from './CompanionWindowBoard'
 import { CLOSE_PANELS_EVENT } from '../../billing/ai_access'
 import { AccountPanel, OPEN_PROFILE_EVENT } from '../../auth/AccountButton'
 import ProfileIdentityCard from '../../auth/ProfileIdentityCard'
@@ -42,6 +43,13 @@ const MAIN_TAB_EN: Record<MainTab, string> = { board: 'Semester board', schedule
 
 const DEFAULT_SEMESTER_DESTINATIONS: readonly SemesterDestination[] = semesterWindowSlots()
 
+type YearsView = SemesterWindow | 'all'
+const YEARS_VIEWS: ReadonlyArray<{ id: YearsView; he: string; en: string }> = [
+  { id: 'early', he: 'א׳–ב׳', en: 'Years 1–2' },
+  { id: 'late', he: 'ג׳ ואילך', en: 'Years 3+' },
+  { id: 'all', he: 'כל התואר', en: 'Whole degree' },
+]
+
 /** The board a two-year window plans over, with its course repository and columns. */
 export type WindowBoard = { boardId: string; repo: RepositoryVM; semesterDestinations: readonly SemesterDestination[] }
 
@@ -65,7 +73,26 @@ export default function UnifiedPlannerWorkspace({
   const { t, dir, locale } = useLocale()
   // Profile fact → derived window → the board it plans over and the weekly schedule's four tabs.
   const [currentDegreeYear, setCurrentDegreeYear] = useCurrentDegreeYear()
-  const semesterWindow = semesterWindowForDegreeYear(currentDegreeYear)
+  // Which years the board shows: one two-year window (editable), or the whole degree, where the
+  // other window's board joins the row read-only. Unset = follow the profile's degree year.
+  const yearsViewKey = `syllo_years_view_${programId}`
+  const [yearsView, setYearsView] = useState<YearsView | null>(null)
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(yearsViewKey)
+      setYearsView(saved === 'early' || saved === 'late' || saved === 'all' ? saved : null)
+    } catch { /* storage unavailable: follow the profile year */ }
+  }, [yearsViewKey])
+  const chooseYearsView = (view: YearsView) => {
+    setYearsView(view)
+    try { localStorage.setItem(yearsViewKey, view) } catch { /* best effort */ }
+  }
+  const hasBothWindows = !!windowBoards.early && !!windowBoards.late
+  const semesterWindow: SemesterWindow = hasBothWindows && (yearsView === 'early' || yearsView === 'late')
+    ? yearsView : semesterWindowForDegreeYear(currentDegreeYear)
+  const companionWindow: SemesterWindow = semesterWindow === 'early' ? 'late' : 'early'
+  const companionBoardId = hasBothWindows && yearsView === 'all' ? windowBoards[companionWindow]!.boardId : null
+  const companionPlacement = companionWindow === 'early' ? 'before' as const : 'after' as const
   // The board's columns as the journey reports them, including semesters the student added past the window.
   const [semesterCourses, setSemesterCourses] = useState<Array<{ semesterId: string; courseIds: string[] }>>([])
   const boardSemesterIds = useMemo(() => semesterCourses.map((s) => s.semesterId), [semesterCourses])
@@ -313,8 +340,37 @@ export default function UnifiedPlannerWorkspace({
               {t('גררו קורס מהמאגר אל עמודת סמסטר כדי להוסיף אותו ללוח. לחלופין, השתמשו ב״הוסף לסמסטר״.', 'Drag a course from the catalog to a semester, or use “Add to semester”.')}
             </p>
           )}
+          {hasBothWindows && (
+            <div role="group" aria-label={t('שנים מוצגות', 'Years shown')} className="mb-3 flex flex-wrap items-center gap-1.5 text-xs">
+              <span className="font-semibold text-[var(--text-muted)]">{t('שנים מוצגות:', 'Years shown:')}</span>
+              {YEARS_VIEWS.map((view) => {
+                const active = (yearsView === 'all' ? 'all' : semesterWindow) === view.id
+                return (
+                  <button
+                    key={view.id}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() => chooseYearsView(view.id)}
+                    className={`rounded-full border px-3 py-1 font-semibold ${active ? 'border-[var(--purple)] bg-[var(--purple)] text-white' : 'border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text)]'}`}
+                  >
+                    {t(view.he, view.en)}
+                  </button>
+                )
+              })}
+              {companionBoardId && (
+                <span className="text-[var(--text-muted)]">
+                  {companionWindow === 'early'
+                    ? t('שנים א׳–ב׳ לצפייה בלבד', 'Years 1–2 are view only')
+                    : t('שנים ג׳ ואילך לצפייה בלבד', 'Years 3+ are view only')}
+                </span>
+              )}
+            </div>
+          )}
           <NativePlannerJourney
             key={`${boardId}:${owner.epoch}`}
+            companion={companionBoardId
+              ? { placement: companionPlacement, node: <CompanionWindowBoard key={`${companionBoardId}:${owner.epoch}`} boardId={companionBoardId} placement={companionPlacement} /> }
+              : undefined}
             programId={boardId}
             onAcademicContextMissing={reloadForOwner}
             initializePlanningContext
