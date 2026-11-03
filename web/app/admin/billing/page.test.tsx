@@ -77,3 +77,38 @@ test('the purchases filter asks the server for refunds and disputes', async () =
   fireEvent.change(await screen.findByRole('combobox', { name: 'סינון רכישות' }), { target: { value: 'chargeback' } })
   await waitFor(() => expect((global.fetch as jest.Mock).mock.calls.map((c) => c[0])).toContain('/api/billing/admin/payments?status=chargeback'))
 })
+
+describe('reasons are asked in the page, never with window.prompt (embedded browsers may block it)', () => {
+  const posts = () => (global.fetch as jest.Mock).mock.calls.filter(([, init]) => init?.method === 'POST').map(([url, init]) => [url, JSON.parse(init.body)])
+  let prompt: jest.SpyInstance
+  beforeEach(() => { prompt = jest.spyOn(window, 'prompt').mockImplementation(() => { throw new Error('window.prompt must not be used') }) })
+  afterEach(() => prompt.mockRestore())
+
+  test('closing a case asks for a reason in a dialog and sends it', async () => {
+    mockFetch()
+    render(<BillingAdminPage />)
+    await screen.findByText(/#1 refund_after_consumption/)
+    fireEvent.click(screen.getByRole('button', { name: 'סגירה' }))
+    const dialog = await screen.findByRole('dialog', { name: 'סיבה לסגירת ההתראה:' })
+    const ok = screen.getByRole('button', { name: 'אישור' })
+    expect(ok).toBeDisabled() // the server rejects reasons under 3 characters
+    expect(dialog).toHaveTextContent('נדרשת סיבה של 3 תווים לפחות')
+    fireEvent.change(screen.getByRole('textbox', { name: 'סיבה' }), { target: { value: '  sandbox test artifact  ' } })
+    fireEvent.click(ok)
+    await waitFor(() => expect(posts()).toEqual([['/api/billing/admin/alerts/resolve', { id: '1', reason: 'sandbox test artifact' }]]))
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(prompt).not.toHaveBeenCalled()
+  })
+
+  test('cancel sends nothing', async () => {
+    mockFetch()
+    render(<BillingAdminPage />)
+    fireEvent.click(await screen.findByRole('button', { name: 'הרצת התאמה עכשיו' }))
+    await screen.findByRole('dialog', { name: 'סיבה להרצת התאמה ידנית:' })
+    fireEvent.change(screen.getByRole('textbox', { name: 'סיבה' }), { target: { value: 'not today' } })
+    fireEvent.click(screen.getByRole('button', { name: 'ביטול' }))
+    expect(screen.queryByRole('dialog')).toBeNull()
+    await new Promise((r) => setTimeout(r, 0))
+    expect(posts()).toEqual([])
+  })
+})

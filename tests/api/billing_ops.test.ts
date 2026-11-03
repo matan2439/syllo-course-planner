@@ -216,6 +216,10 @@ describe('admin console', () => {
     expect(JSON.stringify(json.body)).not.toMatch(/prompt|message_he|text_he|content/i);
     const text = await as(admin, () => call('admin/evidence', { query: { id: c.paymentId, format: 'text' } }));
     expect(text.body).toMatch(/SERVICE DELIVERY EVIDENCE[\s\S]*op_ev_1[\s\S]*FULL_REFUND_ACCOUNTING/);
+    // A non-numeric id never reaches the query or the download filename.
+    for (const route of ['admin/payment', 'admin/evidence']) {
+      expect((await as(admin, () => call(route, { query: { id: '1"; x=.exe' } }))).statusCode).toBe(404);
+    }
   });
 
   test('mutations need a reason, go through the ledger, and are audited', async () => {

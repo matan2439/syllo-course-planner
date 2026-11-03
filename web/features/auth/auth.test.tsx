@@ -32,6 +32,7 @@ function fakeSupabase({
         return { error: null }
       }),
       signUp: jest.fn(async () => ({ data: { session: null }, error: null })),
+      resetPasswordForEmail: jest.fn(async () => ({ error: null })),
       signInWithOAuth: jest.fn(async () => ({ error: null })),
       signOut: jest.fn(async () => { listener('SIGNED_OUT', null); return { error: null } }),
     },
@@ -122,6 +123,30 @@ describe('signed out', () => {
     expect(await screen.findByRole('status')).toHaveTextContent('כבר שלחנו מייל אישור')
   })
 
+  test('password reset sends a link to the app and gives account-neutral feedback', async () => {
+    const { client, raw } = fakeSupabase()
+    renderApp(client)
+    fireEvent.click(await screen.findByRole('button', { name: 'התחברות' }))
+    fireEvent.change(screen.getByLabelText('אימייל'), { target: { value: USER.email } })
+    fireEvent.click(screen.getByRole('button', { name: 'שכחתי סיסמה' }))
+    await waitFor(() => expect(raw.auth.resetPasswordForEmail).toHaveBeenCalledWith(USER.email, {
+      redirectTo: window.location.origin + '/reset-password',
+    }))
+    expect(await screen.findByRole('status')).toHaveTextContent('אם קיים חשבון')
+  })
+
+  test('password reset rate limit gives reset-specific guidance', async () => {
+    const { client, raw } = fakeSupabase()
+    raw.auth.resetPasswordForEmail.mockResolvedValueOnce({
+      error: { message: 'For security purposes, you can only request this after 37 seconds.', code: 'over_email_send_rate_limit' },
+    } as never)
+    renderApp(client)
+    fireEvent.click(await screen.findByRole('button', { name: 'התחברות' }))
+    fireEvent.change(screen.getByLabelText('אימייל'), { target: { value: USER.email } })
+    fireEvent.click(screen.getByRole('button', { name: 'שכחתי סיסמה' }))
+    expect(await screen.findByRole('status')).toHaveTextContent('אפשר לבקש קישור חדש')
+  })
+
   test('wrong password shows a Hebrew error; correct password signs in', async () => {
     const { client } = fakeSupabase({ profile: baseProfile() })
     renderApp(client)
@@ -182,6 +207,15 @@ describe('signed in', () => {
     renderApp(client)
     fireEvent.click(await screen.findByRole('button', { name: 'החשבון שלי' }))
     expect(await screen.findByText('מפתח')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'ניהול חיובים' })).toHaveAttribute('href', '/admin/billing')
+  })
+
+  test('the billing console link is for developers only', async () => {
+    const { client } = fakeSupabase({ session: { user: USER }, profile: baseProfile() })
+    renderApp(client)
+    fireEvent.click(await screen.findByRole('button', { name: 'החשבון שלי' }))
+    await screen.findByRole('button', { name: 'התנתקות' })
+    expect(screen.queryByRole('link', { name: 'ניהול חיובים' })).not.toBeInTheDocument()
   })
 
   test('shows the Syllo Credits balance; exempt accounts show no charge', async () => {

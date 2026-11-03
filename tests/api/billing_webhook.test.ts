@@ -131,7 +131,7 @@ describe('purchase', () => {
       PADDLE_PRICE_CREDITS_SMALL: 'pri_01m4bf9ge86dj44by7a603nm50',
       PADDLE_PRICE_CREDITS_MEDIUM: 'pri_01m4bf9gy11s5cft1m7r28ahcf',
       PADDLE_PRICE_CREDITS_LARGE: 'pri_01m4bf9hagtt179xqzrqcee1wq' };
-    const liveHandler = handler({ env, config: () => paddleConfig(env) });
+    const liveHandler = handler({ env, config: () => paddleConfig(env), legalReady: () => true });
     const userId = await db.newUser();
     currentUser = userId;
     const opened = await call('checkout', { method: 'POST', body: { package_id: packageId, disclosure_version: LEGAL_VERSIONS.purchaseDisclosure, accepted: true } }, liveHandler);

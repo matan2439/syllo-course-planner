@@ -66,6 +66,8 @@ Use Paddle's test cards (sandbox only). Check each result in `/admin/billing` (d
 For local testing without Paddle, see `scripts/paddle_fixture_webhook.ts` (signed fixtures against `npm run dev:api`).
 
 ## 3. Production
+
+Production checkout remains closed by default. After every technical, Paddle, legal, and auth-email launch gate below is complete, set `BILLING_LAUNCH_ENABLED=true` in Vercel Production and deploy the reviewed release. Until then, `/api/billing/packages` returns no purchasable packages and `/api/billing/checkout` returns `BILLING_LAUNCH_PENDING`; webhooks, refunds, and reconciliation remain available. Never set this flag in Preview.
 Go live only after the **production gate**:
 - **Technical:** every sandbox check above passes; the committed catalog binding and metering changes pass API tests, typecheck and build, then are deployed and verified in Preview.
 - **Paddle:** account and Syllo product approved, the AI-credit model approved, production prices configured, refund behaviour confirmed (`PADDLE_QUESTIONS.md`).
@@ -74,6 +76,14 @@ Go live only after the **production gate**:
   - set `IMMEDIATE_SERVICE_CONSENT_VERSION` if counsel requires explicit consent;
   - set `LEGAL_POLICY` only for rules counsel approved.
 - **Auth email:** every item in section 4 is done and the launch status there reads YES.
+
+Production checkout has two independent safeguards: `BILLING_LAUNCH_ENABLED=true`
+in the Production environment and reviewed legal artifacts checked into the deployed
+code. The legal check requires `LEGAL_POLICY.status = 'approved'`, a real policy
+version, and four non-DRAFT version IDs in `shared/billing/legal_versions.ts`.
+Setting the environment flag while the legal placeholders remain does not open
+packages or checkout. Verify both conditions on the final deployed commit before
+changing the flag.
 
 Then repeat steps 1–4 in the **live** Paddle dashboard:
 - `pdl_live_apikey_…`, a live client token, and a live notification destination pointing at the production domain;
@@ -97,7 +107,7 @@ Preview schema: apply alembic up to the production revision (`alembic upgrade <r
 
 The single Vercel Cron (`/api/billing/reconcile`, daily 03:17 UTC) runs on production deployments only. Set `CRON_SECRET` in Production so Vercel sends the protected route its bearer token; without it the route returns 401 and missed grant/refund repair does not run. Check `/admin/billing` after the first live purchase.
 
-**Current launch gates (2026-10-07):** commit and verify the approved catalog binding plus AI stream settlement fix; deploy to Preview and repeat the targeted metering, purchase, refund, and reconciliation checks; configure and verify Production environment values (including `CRON_SECRET` and Live Paddle credentials), apply and verify Production database migrations, complete Paddle Live and Legal/VAT review, finish Production SMTP/Auth, and confirm Pricing. Keep Preview on its separate Sandbox database and Paddle configuration.
+**Current launch gates (2026-10-10):** the catalog binding and AI stream settlement fix are merged into `main` and deployed to Preview. The Preview-scoped `DATABASE_URL` was corrected to the separate `syllo-preview` project and a fresh Preview deployment was verified: the Sandbox package route returns 50/150/400 credits, a valid nonexistent board ID returns 404 after a database query, and runtime logs no longer report a database-isolation refusal. Preview has no open critical billing alerts, review cases, or reserved AI operations. Repeat the targeted authenticated metering, purchase, refund, and reconciliation checks against this deployment before approving a Production billing launch. A separate Production redeploy occurred on 2026-10-10; it does not clear the billing launch gates. Do not weaken the isolation guard or copy Production data into Preview. Remaining external gates are Production environment values (including `CRON_SECRET` and Live Paddle credentials), Production database migrations, Paddle Live, Legal/VAT, Production SMTP/Auth, and Pricing. Retain the separate Sandbox Preview configuration for ongoing testing.
 
 ## 4. Auth email delivery (required for Production launch)
 Production signup, email verification and password reset must not rely on Supabase's built-in development SMTP (it is rate-limited and not meant for real users).
@@ -114,6 +124,9 @@ Before Production launch:
 5. SMTP credentials live only in Supabase; never in frontend code or `NEXT_PUBLIC_*` variables.
 6. Set an appropriate Supabase auth email rate limit once custom SMTP is on.
 7. Brand and verify the templates: signup confirmation, password reset, email-change confirmation (where applicable).
+   Set Supabase Auth Site URL to the Production domain and add the exact Production
+   origin with its allowed paths to Redirect URLs. Include `/reset-password` so
+   password recovery links return to the app. Keep Preview redirects separate.
 8. Disable email link tracking if the provider enables it; rewritten links break Supabase auth links.
 9. Test with fresh Gmail, Outlook and another mailbox where practical.
 10. Check delivery speed and Spam/Junk placement.

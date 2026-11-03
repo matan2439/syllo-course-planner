@@ -23,6 +23,7 @@ const AUTH_ERRORS_EN: Record<string, string> = {
   'הסיסמה חייבת להכיל לפחות 6 תווים.': 'Your password must contain at least 6 characters.',
   'מחיקת החשבון נכשלה. נסו שוב.': 'Could not delete the account. Try again.',
   'כבר שלחנו מייל אישור לכתובת הזו. אשרו את החשבון דרך הקישור במייל (בדקו גם בספאם) ואז התחברו. שליחה חוזרת אפשרית בעוד כדקה.': 'We already sent a confirmation email. Open its link (check spam too), then sign in. You can request another email in about a minute.',
+  'אם קיים חשבון לכתובת הזו, נשלח אליה קישור לאיפוס הסיסמה. בדקו גם בתיקיית הספאם.': 'If an account exists for this email, we sent it a password reset link. Check spam too.',
 }
 
 /**
@@ -69,6 +70,13 @@ export default function AccountButton() {
     if (error) setMessage(error)
     else if (needsConfirmation) setConfirmSentTo(email)
     else setOpen(false)
+  }
+  const requestPasswordReset = async () => {
+    setBusy(true)
+    setMessage(null)
+    const error = await auth.requestPasswordReset(email)
+    setBusy(false)
+    setMessage(error ?? 'אם קיים חשבון לכתובת הזו, נשלח אליה קישור לאיפוס הסיסמה. בדקו גם בתיקיית הספאם.')
   }
 
   const user = auth.user
@@ -133,6 +141,10 @@ export default function AccountButton() {
                   <Link href="/refund-policy" className="block text-center text-xs text-[var(--text-muted)] underline hover:text-[var(--purple)]">{t('מדיניות החזרים ובקשת החזר', 'Refund policy and requests')}</Link>
                 </>
               )}
+              {/* Navigation only: the console's API re-checks role = 'developer' server-side. */}
+              {auth.profile?.role === 'developer' && (
+                <Link href="/admin/billing" className={SECONDARY + ' block w-full text-center'} onClick={() => setOpen(false)}>{t('ניהול חיובים', 'Billing console')}</Link>
+              )}
               <p className="text-xs text-[var(--text-muted)]">{t('הפרופיל והתוכנית שלך נשמרים בחשבון.', 'Your profile and plan are saved to your account.')}</p>
               <button type="button" className={SECONDARY + ' w-full'} onClick={() => { void auth.signOut(); setOpen(false) }}>
                 {t('התנתקות', 'Sign out')}
@@ -182,6 +194,8 @@ export default function AccountButton() {
                 <button type="submit" className={PRIMARY} disabled={busy}>{t('התחברות', 'Sign in')}</button>
                 <button type="button" className={SECONDARY} disabled={busy || !email || password.length < 6} onClick={() => void signUp()}>{t('הרשמה', 'Sign up')}</button>
               </div>
+              <button type="button" className="w-full text-xs text-[var(--text-muted)] underline hover:text-[var(--purple)] disabled:opacity-60"
+                disabled={busy || !email} onClick={() => void requestPasswordReset()}>{t('שכחתי סיסמה', 'Forgot password')}</button>
               <button type="button" className={SECONDARY + ' w-full'} disabled={busy} onClick={() => void run(auth.signInWithGoogle)}>
                 {t('המשך עם Google', 'Continue with Google')}
               </button>

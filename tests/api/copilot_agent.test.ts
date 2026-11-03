@@ -208,6 +208,18 @@ test('running out of turns is a conversation reply, not an unavailable assistant
   expect(result.events).toEqual(expect.arrayContaining([
     { type: 'tool_status', tool: 'get_student_context', status: 'completed' },
   ]))
+  // Only the "stopped early" note reached the student: nothing billable.
+  expect((result as { usage?: unknown }).usage).toBeUndefined()
+})
+
+test('running out of turns after streaming text carries usage, so the partial answer is charged', async () => {
+  const model = new FakeAgentModel(Array.from({ length: 40 }, () => [{ text: 'בודק. ' }, { tool: 'get_student_context' }]))
+  const result = await runPlannerAgent({ transcript, session: await newSession() }, { model })
+
+  expect(result.outcome).toBe('conversation')
+  expect(result.messageHe).toContain('בודק.')
+  expect(result.messageHe).toContain('עצרתי לפני שסיימתי')
+  expect((result as { usage?: unknown }).usage).toBeDefined()
 })
 
 test('get_course_grades and get_course_syllabus answer from the insights provider', async () => {

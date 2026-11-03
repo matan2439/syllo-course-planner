@@ -136,7 +136,7 @@ export async function handleAdmin(route: string, req: VercelRequest, res: Vercel
   }
 
   if (req.method === 'GET' && (route === 'payment' || route === 'evidence')) {
-    const evidence = await buildEvidence(sql, id);
+    const evidence = /^\d+$/.test(id) ? await buildEvidence(sql, id) : null;
     if (!evidence) { fail(res, 404, 'NOT_FOUND'); return; }
     if (route === 'evidence') {
       const text = req.query?.format === 'text';

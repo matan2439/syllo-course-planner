@@ -22,7 +22,7 @@ import { PlannerWorker } from './planner_worker';
 import { createRun, markRunFinal, type PlannerRunStatus } from './_planner_runs';
 import { checkAndEnsureSession, incrementCreditsUsed, logUsageEvent } from './_quota';
 import {
-  resolveModel, isDevMode, isBypassQuota, isTestModeBypass, sendError,
+  resolveModel, isDevMode, isBypassQuota, sendError,
 } from './course-planner';
 import type { ConstraintModel, PlanState } from './planner_types';
 import { placedCourseIds } from './planner_types';
@@ -114,7 +114,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       sendError(res, 503, 'לא ניתן לבדוק מכסת AI — בעיה זמנית במסד הנתונים.', 'DB_ERROR');
       return;
     }
-    if (!quota.allowed && !isTestModeBypass()) {
+    if (!quota.allowed) {
       sendError(res, 429, 'מכסת שאלות ה-AI החינמית נוצלה.', 'QUOTA_EXCEEDED', { remaining: 0 });
       return;
     }
