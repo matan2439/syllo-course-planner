@@ -86,7 +86,7 @@ def semesters_from_groups(group_semesters: list[str | None]) -> list[str]:
     return sorted(out)
 
 
-def read_ims(course_id: str, year: int, offline: bool) -> dict:
+def read_ims(course_id: str, year: int, offline: bool, live: bool = False) -> dict:
     """Offering facts for one course from the IMS course-search page."""
     d = digits(course_id)
     url = build_course_search_url(d, year)
@@ -94,8 +94,8 @@ def read_ims(course_id: str, year: int, offline: bool) -> dict:
     if offline and not cache.exists():
         return {"status": "unknown", "url": url, "reason": "not cached"}
     try:
-        was_cached = cache.exists()
-        html = fetch_url(url, cache)
+        was_cached = cache.exists() and not live
+        html = fetch_url(url, cache, force_refresh=live)
         if not was_cached:
             time.sleep(0.5)  # be polite to IMS
     except RuntimeError as exc:
@@ -117,12 +117,12 @@ def read_ims(course_id: str, year: int, offline: bool) -> dict:
     }
 
 
-def read_program(year: int, offline: bool) -> dict[str, dict]:
+def read_program(year: int, offline: bool, live: bool = False) -> dict[str, dict]:
     """course_id -> {weekly_hours, credits, teaching_format} from ydtochnit."""
     cache = ROOT / "data" / "raw_html" / f"tau_program_{PROGRAM_TCID}_{year}.json"
     if offline and not cache.exists():
         return {}
-    body = fetch_program_data(PROGRAM_TCID, str(year), cache_path=cache)
+    body = fetch_program_data(PROGRAM_TCID, str(year), cache_path=cache, force_refresh=live)
     if isinstance(body, str):
         body = json.loads(body)
 
@@ -158,12 +158,12 @@ def timetable_semesters(kurs: dict) -> list[str]:
     return sorted(out)
 
 
-def read_timetable(year: int, offline: bool) -> dict[str, list[str]]:
+def read_timetable(year: int, offline: bool, live: bool = False) -> dict[str, list[str]]:
     """course_id -> offered semesters from the program's official timetable."""
     cache = ROOT / "data" / "raw_html" / f"tau_schedule_{PROGRAM_TCID}_{year}.json"
     if offline and not cache.exists():
         return {}
-    body = fetch_schedule_data(PROGRAM_TCID, str(year), cache_path=cache)
+    body = fetch_schedule_data(PROGRAM_TCID, str(year), cache_path=cache, force_refresh=live)
     if isinstance(body, str):
         body = json.loads(body)
 
@@ -216,14 +216,14 @@ def board_courses(board: dict):
         yield "pool", c
 
 
-def official_facts(course_ids: list[str], year: int, offline: bool) -> dict[str, dict]:
-    program = read_program(year, offline)
-    timetable = read_timetable(year, offline)
+def official_facts(course_ids: list[str], year: int, offline: bool, live: bool = False) -> dict[str, dict]:
+    program = read_program(year, offline, live)
+    timetable = read_timetable(year, offline, live)
     print(f"[timetable] {len(timetable)} program courses with groups in {year}")
     facts: dict[str, dict] = {}
     for i, cid in enumerate(sorted(course_ids), 1):
         print(f"[{i}/{len(course_ids)}] {cid}", flush=True)
-        ims = read_ims(cid, year, offline)
+        ims = read_ims(cid, year, offline, live)
         facts[cid] = {"ims": ims, "program": program.get(cid), "timetable": timetable.get(cid),
                       "offering": resolve_offering(ims, timetable.get(cid), year)}
     return facts
@@ -434,11 +434,14 @@ def main() -> int:
     ap.add_argument("--apply", action="store_true", help="patch the board JSON files in place")
     ap.add_argument("--syllabi", action="store_true", help="with --apply: rebuild stale syllabus summaries")
     ap.add_argument("--offline", action="store_true", help="use cached sources only")
+    ap.add_argument("--live", action="store_true", help="re-download every source, ignoring the cache")
     args = ap.parse_args()
+    if args.live and args.offline:
+        ap.error("--live and --offline are mutually exclusive")
 
     boards = {p: json.loads(p.read_text(encoding="utf-8")) for p in BOARDS if p.exists()}
     ids = {c["course_id"] for b in boards.values() for _, c in board_courses(b)}
-    facts = official_facts(sorted(ids), args.year, args.offline)
+    facts = official_facts(sorted(ids), args.year, args.offline, args.live)
 
     OFFICIAL_DIR.mkdir(parents=True, exist_ok=True)
     (OFFICIAL_DIR / f"tau_course_facts_{args.year}.json").write_text(
