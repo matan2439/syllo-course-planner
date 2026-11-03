@@ -7,7 +7,9 @@ import pytest
 
 from app.degrees import evidence as ev
 from app.degrees.adapters import tau
-from app.degrees.evidence import EvidenceItem, collect_evidence, text_id
+from datetime import datetime, timezone
+
+from app.degrees.evidence import EvidenceFetchError, EvidenceItem, collect_evidence, text_id
 from app.degrees.registry import get_program
 
 FIX = Path(__file__).parent / "fixtures"
@@ -42,11 +44,13 @@ def env(tmp_path, monkeypatch):
     raw.mkdir()
     shutil.copy(PROGRAM_FIXTURE, raw / "tau_program_8715_2026.json")
     shutil.copy(SCHEDULE_FIXTURE, raw / "tau_schedule_8715_2026.json")
-    state = {"program": _body(PROGRAM_FIXTURE), "calls": []}
+    state = {"program": _body(PROGRAM_FIXTURE), "calls": [], "empty": False, "ims": None, "ims_cache": False}
     monkeypatch.setattr(tau, "RAW_DIR", raw)
 
     def fake_program(tcid, shana, safa="1", cache_path=None, force_refresh=False):
         state["calls"].append(("program", force_refresh))
+        if state["empty"] and force_refresh:
+            return []
         return copy.deepcopy(state["program"])
 
     def fake_schedule(tcid, shana, safa="1", cache_path=None, force_refresh=False):
@@ -55,12 +59,17 @@ def env(tmp_path, monkeypatch):
 
     monkeypatch.setattr(tau, "fetch_program_data", fake_program)
     monkeypatch.setattr(tau, "fetch_schedule_data", fake_schedule)
-    monkeypatch.setattr(tau, "_ims_cache_path", lambda cid, year: tmp_path / f"no_ims_{cid}.html")
-    monkeypatch.setattr(
-        tau, "_read_ims",
-        lambda cid, year, offline, live: {"status": "offered", "url": f"https://ims/{cid}",
-                                          "offered_semesters": ["A"], "name_he": "קורס"},
-    )
+    ims_dir = tmp_path / "ims"
+    ims_dir.mkdir()
+    state["ims_dir"] = ims_dir
+    monkeypatch.setattr(tau, "_ims_cache_path", lambda cid, year: ims_dir / f"{cid}.html")
+
+    def fake_ims(cid, year, offline, live):
+        if state["ims"]:
+            return dict(state["ims"], url=f"https://ims/{cid}")
+        return {"status": "offered", "url": f"https://ims/{cid}", "offered_semesters": ["A"], "name_he": "קורס"}
+
+    monkeypatch.setattr(tau, "_read_ims", fake_ims)
     return state
 
 
@@ -115,12 +124,19 @@ def test_cancelled_course_still_emitted(program, env):
     assert cancelled[0].course_id
 
 
+def _fresh(i, start):
+    """Freshness predicate: downloaded in this run."""
+    return (not i.from_cache) and i.fetched_at >= start
+
+
 def test_live_sets_from_cache_false(program, env):
+    start = datetime.now(timezone.utc)
     cached = collect_evidence(program, live=False, offline=False)
     assert cached and all(i.from_cache for i in cached if not i.id.startswith("tau:ims:"))
     assert all(f is False for _, f in env["calls"])
     live = collect_evidence(program, live=True, offline=False)
     assert live and all(i.from_cache is False for i in live)
+    assert all(_fresh(i, start) for i in live)
     assert ("program", True) in env["calls"] and ("schedule", True) in env["calls"]
 
 
@@ -134,10 +150,92 @@ def test_kinds_and_course_facts(program, env):
     assert all(i.fetched_at.tzinfo is not None for i in items)
 
 
-def test_offline_without_cache_is_empty(program, env, tmp_path, monkeypatch):
+def test_offline_without_cache_raises(program, env, tmp_path, monkeypatch):
     monkeypatch.setattr(tau, "RAW_DIR", tmp_path / "empty")
-    assert tau.tochniot_evidence(program, False, True) == []
-    assert tau.timetable_evidence(program, False, True) == []
+    with pytest.raises(EvidenceFetchError):
+        tau.tochniot_evidence(program, False, True)
+    with pytest.raises(EvidenceFetchError):
+        tau.timetable_evidence(program, False, True)
+
+
+def test_live_empty_fetch_raises(program, env):
+    env["empty"] = True
+    with pytest.raises(EvidenceFetchError):
+        tau.tochniot_evidence(program, True, False)
+    # ims must not fall back to the stale cached program when live
+    with pytest.raises(EvidenceFetchError):
+        tau.ims_evidence(program, True, False)
+
+
+def test_ims_live_refetches_program_course_list(program, env):
+    tau.ims_evidence(program, True, False)
+    assert ("program", True) in env["calls"]
+
+
+def test_ims_offline_no_cache_is_not_fresh(program, env):
+    start = datetime.now(timezone.utc)
+    env["ims"] = {"status": "unknown", "reason": "not cached"}
+    items = tau.ims_evidence(program, False, True)
+    assert items
+    for i in items:
+        assert i.from_cache is True and i.fetched_at < start and not _fresh(i, start)
+        assert i.data["not_fetched"] is True
+
+
+def test_ims_live_fetch_failure_is_not_fresh(program, env):
+    start = datetime.now(timezone.utc)
+    env["ims"] = {"status": "unknown", "reason": "fetch failed: x"}
+    items = tau.ims_evidence(program, True, False)
+    assert items and all(not _fresh(i, start) and i.data["not_fetched"] for i in items)
+
+
+def test_ims_live_failure_with_old_cache_uses_mtime(program, env):
+    env["ims"] = {"status": "unknown", "reason": "fetch failed: x"}
+    first = sorted(i.course_id for i in tau.tochniot_evidence(program, False, False) if i.course_id)[0]
+    (env["ims_dir"] / f"{first}.html").write_text("x")
+    start = datetime.now(timezone.utc)
+    item = next(i for i in tau.ims_evidence(program, True, False) if i.course_id == first)
+    assert item.from_cache is True and "not_fetched" not in item.data
+    assert item.fetched_at <= datetime.now(timezone.utc)
+
+
+def test_ims_live_success_is_fresh(program, env):
+    start = datetime.now(timezone.utc)
+    assert all(_fresh(i, start) for i in tau.ims_evidence(program, True, False))
+
+
+def _first_kurs(env):
+    node = env["program"][0]["rama"][0]
+    while not node.get("kurs"):
+        node = node["rama"][0]
+    return node, node["kurs"][0]
+
+
+def test_course_note_emits_rule_text_and_rewording_changes_only_it(program, env):
+    _, k = _first_kurs(env)
+    k["hearakurs"] = "choose one of courses 3 or 4"
+    k["idkunkurs"] = "<p>course replaced by 0509.1510</p>"
+    before = tau.tochniot_evidence(program, False, False)
+    notes = [i for i in before if i.kind == "rule_text" and ":kurs:" in i.id]
+    assert {i.id.split(":")[-2] for i in notes} == {"hearakurs", "idkunkurs"}
+    assert all(i.course_id for i in notes)
+    k["hearakurs"] = "choose one of courses 3, 4 or 5"
+    after = tau.tochniot_evidence(program, False, False)
+    b, a = {i.id for i in before}, {i.id for i in after}
+    assert len(b - a) == 1 and len(a - b) == 1
+    assert ":hearakurs:" in next(iter(a - b))
+
+
+def test_course_listing_data_and_section_mishkal(program, env):
+    node, k = _first_kurs(env)
+    k["hidekurs"] = "1"
+    node["mishkal"] = "SECTIONCREDITS"
+    items = tau.tochniot_evidence(program, False, False)
+    listing = next(i for i in items if i.kind == "course_listing" and i.course_id == tau._refresh().dashed(k["kursshow"]))
+    for f in ("hidekurs", "ofenhoraa1", "shaot1"):
+        assert f in listing.data
+    sec = next(i for i in items if i.id.endswith(f":rama:{node['ramaid']}") and i.kind == "section")
+    assert "SECTIONCREDITS" in sec.raw_text
 
 
 def test_string_encoded_lists_parse(program, env):

@@ -5,7 +5,7 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-from app.degrees.evidence import EvidenceItem, strip_html, text_id
+from app.degrees.evidence import EvidenceFetchError, EvidenceItem, strip_html, text_id
 from app.degrees.registry import ProgramEntry
 from app.scraping.tau_program_scraper import fetch_program_data, fetch_schedule_data
 
@@ -15,7 +15,14 @@ GRAPHQL_URL = "https://tochniot.tau.ac.il/graphql"
 SCHEDULE_URL = "https://www.tau.ac.il/study-program?safa=1&shana={shana}&tab=schedule&tcid={tcid}"
 
 BODY_TEXT_FIELDS = ("teurtochnit", "teurtoar", "teurshaot", "disclaimerletoar")
-KURS_DATA_FIELDS = ("mishkal", "shaotuni", "drishotkedem", "drishotmakbilot", "shiyuch", "misgeret")
+KURS_DATA_FIELDS = (
+    "mishkal", "shaotuni", "drishotkedem", "drishotmakbilot", "shiyuch", "misgeret", "hidekurs",
+    "ofenhoraa1", "ofenhoraa2", "ofenhoraa3", "shaot1", "shaot2", "shaot3",
+)
+# free-text course fields (notes and dated updates); matched by key prefix
+KURS_NOTE_PREFIXES = ("hearakurs", "idkunkurs")
+NOT_FETCHED_REASONS = ("not cached", "fetch failed")
+EPOCH = datetime.min.replace(tzinfo=timezone.utc)
 
 
 def _refresh():
@@ -81,9 +88,11 @@ def tochniot_evidence(program: ProgramEntry, live: bool, offline: bool) -> list[
     tcid, shana = program.source_ids["tcid"], str(program.source_year)
     cache = RAW_DIR / f"tau_program_{tcid}_{shana}.json"
     if offline and not live and not cache.exists():
-        return []
+        raise EvidenceFetchError("tau_tochniot", GRAPHQL_URL, "offline and not cached")
     from_cache, fetched_at = _provenance(cache, live)
     bodies = _bodies(fetch_program_data(tcid, shana, cache_path=cache, force_refresh=live))
+    if not bodies:
+        raise EvidenceFetchError("tau_tochniot", GRAPHQL_URL, "empty program body")
     dashed = _refresh().dashed
     T = f"tau:{tcid}:{shana}"
     items: list[EvidenceItem] = []
@@ -98,7 +107,8 @@ def tochniot_evidence(program: ProgramEntry, live: bool, offline: bool) -> list[
             title = (r.get("teurrama") or "").strip()
             rpath = path + [title]
             shaot = (r.get("shaot") or "").strip()
-            add(f"{T}:rama:{rid}", "section", rpath, " ".join(p for p in (title, shaot) if p),
+            mishkal = (r.get("mishkal") or "").strip()
+            add(f"{T}:rama:{rid}", "section", rpath, " ".join(p for p in (title, shaot, mishkal) if p),
                 data={k: r.get(k) for k in ("shaot", "mishkal") if r.get(k)})
             hesber = r.get("hesber") or ""
             if strip_html(hesber):
@@ -108,6 +118,10 @@ def tochniot_evidence(program: ProgramEntry, live: bool, offline: bool) -> list[
                 add(f"{T}:rama:{rid}:kurs:{show}", "course_listing", rpath, (k.get("teurkurs") or "").strip(),
                     course_id=dashed(show), cancelled=(k.get("mevutal") or "0") == "1",
                     data={f: k.get(f) for f in KURS_DATA_FIELDS})
+                for field, value in k.items():
+                    if field.startswith(KURS_NOTE_PREFIXES) and isinstance(value, str) and strip_html(value):
+                        add(f"{T}:rama:{rid}:kurs:{show}:{field}:{text_id(value)}", "rule_text", rpath, value,
+                            course_id=dashed(show))
             walk(r, rpath)
 
     for b in bodies:
@@ -129,10 +143,13 @@ def tochniot_evidence(program: ProgramEntry, live: bool, offline: bool) -> list[
 def timetable_evidence(program: ProgramEntry, live: bool, offline: bool) -> list[EvidenceItem]:
     tcid, shana = program.source_ids["tcid"], str(program.source_year)
     cache = RAW_DIR / f"tau_schedule_{tcid}_{shana}.json"
+    url = SCHEDULE_URL.format(shana=shana, tcid=tcid)
     if offline and not live and not cache.exists():
-        return []
+        raise EvidenceFetchError("tau_timetable", url, "offline and not cached")
     from_cache, fetched_at = _provenance(cache, live)
     bodies = _bodies(fetch_schedule_data(tcid, shana, cache_path=cache, force_refresh=live))
+    if not bodies:
+        raise EvidenceFetchError("tau_timetable", url, "empty schedule body")
     r = _refresh()
     T = f"tau:{tcid}:{shana}"
     found: dict[str, dict] = {}
@@ -148,7 +165,6 @@ def timetable_evidence(program: ProgramEntry, live: bool, offline: bool) -> list
 
     for b in bodies:
         walk(b, [])
-    url = SCHEDULE_URL.format(shana=shana, tcid=tcid)
     return [
         EvidenceItem(id=f"{T}:timetable:{cid}", source_url=url, fetched_at=fetched_at, from_cache=from_cache,
                      kind="course_fact", path=rec["path"], raw_text=rec["name"], course_id=cid,
@@ -159,14 +175,25 @@ def timetable_evidence(program: ProgramEntry, live: bool, offline: bool) -> list
 
 def ims_evidence(program: ProgramEntry, live: bool, offline: bool) -> list[EvidenceItem]:
     shana = program.source_year
-    # course list comes from the tochniot pass; it is cached by now, so never re-download it here
-    course_ids = sorted({i.course_id for i in tochniot_evidence(program, False, offline) if i.course_id})
+    # live: the course list must come from a fresh program download, never a stale cache
+    course_ids = sorted({i.course_id for i in tochniot_evidence(program, live, offline) if i.course_id})
     items = []
     for cid in course_ids:
-        from_cache, fetched_at = _provenance(_ims_cache_path(cid, shana), live)
+        cache = _ims_cache_path(cid, shana)
+        cached_at = _mtime(cache)
         ims = _read_ims(cid, shana, offline, live)
+        failed = ims.get("status") == "unknown" and str(ims.get("reason", "")).startswith(NOT_FETCHED_REASONS)
+        data = dict(ims)
+        if not live and cached_at:
+            from_cache, fetched_at = True, cached_at
+        elif failed:  # nothing was downloaded this run: must not look fresh
+            from_cache, fetched_at = True, cached_at or EPOCH
+            if not cached_at:
+                data["not_fetched"] = True
+        else:
+            from_cache, fetched_at = False, datetime.now(timezone.utc)
         items.append(EvidenceItem(
             id=f"tau:ims:{shana}:{cid}", source_url=ims.get("url", ""), fetched_at=fetched_at,
             from_cache=from_cache, kind="course_fact", path=[], raw_text=ims.get("name_he") or "",
-            course_id=cid, data=ims))
+            course_id=cid, data=data))
     return items

@@ -37,6 +37,14 @@ def text_id(text: str) -> str:
     return hashlib.sha1(strip_html(text).encode("utf-8")).hexdigest()[:12]
 
 
+class EvidenceFetchError(RuntimeError):
+    """A source returned nothing usable (failed live fetch, or offline with no cache)."""
+
+    def __init__(self, source: str, url: str, detail: str = ""):
+        super().__init__(f"no evidence fetched from {source} ({url}){': ' + detail if detail else ''}")
+        self.source, self.url = source, url
+
+
 # adapter name -> (program, live, offline) -> items; filled by app.degrees.adapters
 ADAPTERS: dict[str, Callable[[ProgramEntry, bool, bool], list[EvidenceItem]]] = {}
 
