@@ -1,13 +1,9 @@
 import { z } from 'zod';
 
 /**
- * A student's personal note about a course or one of its lecturers.
- *
- * Today every note is private (visibility 'private'), stored in the student's own workspace
- * document and validated with it on the server. The shape is the one a community layer would
- * need later — a subject (course or lecturer), a kind, and timestamps — so notes can be
- * promoted into a moderated, aggregated store by adding 'community' to `visibility` and a
- * moderation record keyed by note id, without migrating existing notes.
+ * A student's note about a course or one of its lecturers, stored in their own workspace document.
+ * 'community' notes are also published, anonymously, to a shared store other students read
+ * (publish/withdraw actions on the student-workspace endpoint; signed-in authors only).
  */
 export const COURSE_NOTE_KINDS = ['experience', 'tip', 'update'] as const;
 export const courseNoteSchema = z.object({
@@ -17,7 +13,7 @@ export const courseNoteSchema = z.object({
   lecturer: z.string().trim().min(1).max(80).optional(),
   kind: z.enum(COURSE_NOTE_KINDS),
   body: z.string().trim().min(1).max(1000),
-  visibility: z.literal('private'),
+  visibility: z.enum(['private', 'community']),
   createdAt: z.number().int().nonnegative(),
   updatedAt: z.number().int().nonnegative(),
 }).strict();
@@ -27,3 +23,27 @@ export const MAX_COURSE_NOTES = 100;
 
 export const notesForCourse = (notes: readonly CourseNote[], courseId: string): CourseNote[] =>
   notes.filter((note) => note.courseId === courseId).sort((a, b) => b.updatedAt - a.updatedAt);
+
+/** What other students see: no author, no owner key — only an opaque id to report by. */
+export interface CommunityCourseNote {
+  id: string
+  courseId: string
+  kind: CourseNote['kind']
+  lecturer?: string
+  body: string
+  updatedAt: number
+  mine: boolean
+  reported: boolean
+}
+/** A hidden note as a developer reviews it. */
+export interface HiddenCommunityNote { id: string; courseId: string; kind: CourseNote['kind']; lecturer?: string; body: string; reports: number; hiddenAt: number }
+/** Reports from distinct signed-in students that hide a note until a developer reviews it. */
+export const COMMUNITY_NOTE_HIDE_AFTER_REPORTS = 3;
+export const publishNoteSchema = z.object({
+  action: z.literal('publish_note'), note: courseNoteSchema.omit({ visibility: true, createdAt: true, updatedAt: true }),
+}).strict();
+export const withdrawNoteSchema = z.object({ action: z.literal('withdraw_note'), note_id: courseNoteSchema.shape.id }).strict();
+export const reportNoteSchema = z.object({ action: z.literal('report_note'), public_id: z.string().uuid() }).strict();
+export const moderateNoteSchema = z.object({
+  action: z.literal('moderate_note'), public_id: z.string().uuid(), decision: z.enum(['restore', 'remove']),
+}).strict();

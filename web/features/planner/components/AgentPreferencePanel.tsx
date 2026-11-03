@@ -25,7 +25,7 @@ export default function AgentPreferencePanel({
   maxHours, setMaxHours, priorHours, setPriorHours, gatewayCategory = null, completedCategoryCounts = {},
   setCompletedCategoryCounts = () => undefined, wantIds, setWantIds, excludeIds, setExcludeIds, gatewayAssessments = [], setGatewayAssessments = () => undefined,
   exclusionsNoneConfirmed, setExclusionsNoneConfirmed, updatePreferenceVersion, onProfileChange, proposal, stale, alwaysOpen = false,
-  currentDegreeYear = null, onCurrentDegreeYearChange, part = 'all',
+  currentDegreeYear = null, onCurrentDegreeYearChange, degreeYears = DEGREE_YEARS, part = 'all',
 }: {
   programId: string
   pickerCourses: PickerCourse[]
@@ -58,6 +58,8 @@ export default function AgentPreferencePanel({
   /** The student's current year in the degree; it decides which years the weekly schedule shows. */
   currentDegreeYear?: DegreeYear | null
   onCurrentDegreeYearChange?: (year: DegreeYear) => void
+  /** The year buttons offered; later years appear once the board has semesters in them. */
+  degreeYears?: readonly DegreeYear[]
   /** 'studies' = facts about the student (profile); 'planning' = answers the assistant asked for (assistant panel). */
   part?: 'all' | 'studies' | 'planning'
 }) {
@@ -80,8 +82,8 @@ export default function AgentPreferencePanel({
               <div className="flex flex-col gap-1.5 text-xs">
                 <span id="current-degree-year-label">{t('השנה שלי בתואר', 'My degree year')}</span>
                 <div role="radiogroup" aria-labelledby="current-degree-year-label"
-                  className="grid grid-cols-4 gap-1 rounded-xl border border-[var(--border)] p-1">
-                  {DEGREE_YEARS.map((year) => {
+                  className="grid gap-1 rounded-xl border border-[var(--border)] p-1" style={{ gridTemplateColumns: `repeat(${degreeYears.length}, minmax(0, 1fr))` }}>
+                  {degreeYears.map((year) => {
                     const checked = currentDegreeYear === year
                     return (
                       <button key={year} type="button" role="radio" aria-checked={checked}

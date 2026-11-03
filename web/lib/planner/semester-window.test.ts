@@ -1,5 +1,5 @@
 import {
-  DEFAULT_SEMESTER_WINDOW, DEGREE_YEARS, nextSemesterId, resolveSelectedSemester, semesterWindowForDegreeYear, semesterWindowSlots,
+  DEFAULT_SEMESTER_WINDOW, DEGREE_YEARS, degreeYearsForBoard, nextSemesterId, resolveSelectedSemester, semesterWindowForDegreeYear, semesterWindowSlots,
   scheduleSlotsForBoard, windowBoardIdFor, withAddedSemesters,
 } from './semester-window'
 import { programIdOfBoard } from '../../../shared/planner/window_board'
@@ -115,4 +115,10 @@ test('a shorter degree drops the window slots its board lacks, and can still gro
 test('a board that does not plan the window never extends it', () => {
   const early = semesterWindowSlots('early')
   expect(withAddedSemesters(early, ['year_3_semester_a', 'year_5_semester_a'])).toEqual(early)
+})
+
+test('years 5–6 are offered only once the board has a semester there, or one is chosen', () => {
+  expect(degreeYearsForBoard(['year_3_semester_a', 'year_4_semester_b'])).toEqual([1, 2, 3, 4])
+  expect(degreeYearsForBoard(['year_4_semester_b', 'year_5_semester_a'])).toEqual([1, 2, 3, 4, 5])
+  expect(degreeYearsForBoard([], 6)).toEqual([1, 2, 3, 4, 6])
 })

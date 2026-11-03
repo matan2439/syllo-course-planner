@@ -7,6 +7,11 @@ import { busyTimeSchema, manualExamSchema, calendarRangeSchema } from './student
 
 const identifier = z.string().trim().min(1).max(128).regex(/^[\w:-]+$/);
 export const programIdSchema = z.string().min(1).max(128).regex(/^[A-Za-z0-9_-]+$/);
+export const completedStudiesSchema = z.object({
+  priorHours: z.number().min(0).max(400).nullable(),
+  categoryCounts: z.record(identifier, z.number().int().min(0).max(50)).refine((v) => Object.keys(v).length <= 40),
+}).strict();
+export type CompletedStudies = z.infer<typeof completedStudiesSchema>;
 export const weeklyScheduleSchema = z.object({
   termMapping: z.record(identifier, z.object({ year: z.number().int().min(2000).max(2200), semester: z.union([z.literal(1), z.literal(2)]) }).strict()).refine((v) => Object.keys(v).length <= 40),
   selections: z.record(z.string().max(200), z.array(identifier).max(20)).refine((v) => Object.keys(v).length <= 600),
@@ -37,6 +42,8 @@ export const programWorkspaceSchema = z.object({
   courseSearches: z.array(savedCourseSearchSchema).max(15).refine((rows) => new Set(rows.map((row) => row.id)).size === rows.length, 'Duplicate saved search').optional(),
   /** Private course/lecturer notes (see course-notes.ts for the community-ready shape). */
   courseNotes: z.array(courseNoteSchema).max(MAX_COURSE_NOTES).refine((rows) => new Set(rows.map((row) => row.id)).size === rows.length, 'Duplicate note').optional(),
+  /** Profile facts not tied to named courses: hours done outside the list, unnamed courses per category (e.g. שער רוח). */
+  completedStudies: completedStudiesSchema.optional(),
 }).strict().refine((value) => new Set(value.plans.map((p) => p.id)).size === value.plans.length, 'Duplicate plan id');
 export type ProgramWorkspace = z.infer<typeof programWorkspaceSchema>;
 export const preferencesSchema = z.object({ locale: z.enum(['he', 'en']) }).strict();

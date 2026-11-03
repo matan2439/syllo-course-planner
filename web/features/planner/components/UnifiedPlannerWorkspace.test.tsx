@@ -144,15 +144,6 @@ describe('UnifiedPlannerWorkspace', () => {
     expect(container.querySelector('.planner-board-region')).toBeVisible()
   })
 
-  test('explains that the visible board accepts a repository drag while courses are open', () => {
-    renderWorkspace()
-
-    fireEvent.click(screen.getByRole('button', { name: 'פתח כלי תכנון' }))
-
-    expect(screen.getByRole('status')).toHaveTextContent('גררו קורס מהמאגר אל עמודת סמסטר')
-    expect(screen.getByRole('status')).toHaveTextContent('לחלופין, השתמשו ב״הוסף לסמסטר״')
-  })
-
   test('passes through a floating rail while a drag is heading for the board', () => {
     const { container } = renderWorkspace()
     fireEvent.click(screen.getByRole('button', { name: 'פתח כלי תכנון' }))
@@ -367,7 +358,7 @@ describe('UnifiedPlannerWorkspace — first visit and phones', () => {
   test('"סמנו קורסים שהשלמתי" opens the profile and "לא עכשיו" just dismisses', () => {
     const { unmount } = renderWorkspace()
     fireEvent.click(screen.getByRole('button', { name: 'סמנו קורסים שהשלמתי' }))
-    expect(screen.getByRole('region', { name: 'הפרופיל שלי' })).not.toHaveAttribute('hidden')
+    expect(screen.getByRole('dialog', { name: 'הפרופיל שלי' })).not.toHaveAttribute('hidden')
     unmount()
 
     localStorage.clear()
@@ -391,9 +382,18 @@ describe('UnifiedPlannerWorkspace — first visit and phones', () => {
     expect(workbench).toHaveAttribute('data-rail-open', 'false')
     expect(document.getElementById('workspace-panel-bidding')).not.toHaveAttribute('hidden')
     expect(tab('בידינג')).toHaveAttribute('aria-current', 'page')
-    // The profile has one entry point: the header button's event opens the rail's profile panel.
+    // The profile has one entry point: the header button's event opens a popover, never the rail.
     act(() => { window.dispatchEvent(new CustomEvent(OPEN_PROFILE_EVENT, { cancelable: true })) })
-    expect(workbench).toHaveAttribute('data-rail-tab', 'profile')
+    expect(screen.getByRole('dialog', { name: 'הפרופיל שלי' })).toBeVisible()
+    expect(workbench).toHaveAttribute('data-rail-open', 'false')
+    // The tools toggle reopens the last rail tab (courses), never the profile, and closes the popover.
+    fireEvent.click(screen.getByRole('button', { name: 'פתח כלי תכנון' }))
+    expect(workbench).toHaveAttribute('data-rail-tab', 'courses')
+    expect(screen.queryByRole('dialog', { name: 'הפרופיל שלי' })).toBeNull()
+    // The header button toggles the popover.
+    act(() => { window.dispatchEvent(new CustomEvent(OPEN_PROFILE_EVENT, { cancelable: true })) })
+    act(() => { window.dispatchEvent(new CustomEvent(OPEN_PROFILE_EVENT, { cancelable: true })) })
+    expect(screen.queryByRole('dialog', { name: 'הפרופיל שלי' })).toBeNull()
     fireEvent.click(tab('מערכת'))
     expect(workbench).toHaveAttribute('data-rail-open', 'false')
     expect(document.getElementById('workspace-panel-weekly')).not.toHaveAttribute('hidden')

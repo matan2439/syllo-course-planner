@@ -191,13 +191,47 @@ test('the header opens the profile with the student facts; planning answers live
   await screen.findByText('תכן מכני (1)')
 
   act(() => { window.dispatchEvent(new CustomEvent(OPEN_PROFILE_EVENT, { cancelable: true })) })
-  const profile = screen.getByRole('region', { name: 'הפרופיל שלי' })
+  const profile = screen.getByRole('dialog', { name: 'הפרופיל שלי' })
   expect(within(profile).getByRole('textbox', { name: 'שעות שהושלמו' })).toBeVisible()
   expect(within(profile).queryByRole('textbox', { name: 'מגבלת שעות שבועיות' })).toBeNull()
   expect(screen.queryByRole('tab', { name: 'הפרופיל שלי' })).toBeNull()
 
+  fireEvent.click(screen.getByRole('button', { name: 'פתח כלי תכנון' }))
   fireEvent.click(screen.getByRole('tab', { name: 'עוזר AI' }))
   const context = screen.getByTestId('academic-agent-context')
   expect(within(context).getByText('התשובות ששמרתי לעוזר')).toBeInTheDocument()
   expect(within(context).getByRole('textbox', { name: 'מגבלת שעות שבועיות', hidden: true })).toBeInTheDocument()
+})
+
+test('profile hours outside the list load from the saved workspace and edits are saved back', async () => {
+  const posts: any[] = []
+  const realFetch = global.fetch
+  global.fetch = jest.fn(async (url: any, init?: any) => {
+    if (String(url).startsWith('/api/ai/student-workspace')) {
+      if (init?.method === 'POST') {
+        const body = JSON.parse(init.body)
+        posts.push(body)
+        return { ok: true, json: async () => ({ ok: true, revision: body.expected_revision + 1, data: body.data }) } as any
+      }
+      return { ok: true, json: async () => ({ ok: true, revision: 3, data: { completedStudies: { priorHours: 12, categoryCounts: {} } } }) } as any
+    }
+    return { ok: false, json: async () => ({ ok: false }) } as any
+  }) as any
+  try {
+    jest.useFakeTimers({ doNotFake: ['queueMicrotask', 'nextTick', 'setImmediate'] })
+    render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={emptyRepo} />)
+    await screen.findByText('תכן מכני (1)')
+    act(() => { window.dispatchEvent(new CustomEvent(OPEN_PROFILE_EVENT, { cancelable: true })) })
+    const hours = within(screen.getByRole('dialog', { name: 'הפרופיל שלי' })).getByRole('textbox', { name: 'שעות שהושלמו' })
+    await act(async () => { await Promise.resolve() })
+    expect(hours).toHaveValue('12')
+    // Loading never overwrites the saved value (the first-plan save keeps it intact).
+    expect(posts.every((post) => post.data.completedStudies?.priorHours === 12)).toBe(true)
+    fireEvent.change(hours, { target: { value: '20' } })
+    await act(async () => { jest.advanceTimersByTime(1000); await Promise.resolve() })
+    expect(posts.at(-1).data.completedStudies).toEqual({ priorHours: 20, categoryCounts: {} })
+  } finally {
+    jest.useRealTimers()
+    global.fetch = realFetch
+  }
 })

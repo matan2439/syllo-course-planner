@@ -56,11 +56,12 @@ import {
 } from '../lib/api-defaults'
 import type { ManualAddIntent } from '../types'
 import type { PlannerDragPayload } from '../../../lib/planner/drag-payload'
-import { nextSemesterId, type DegreeYear } from '../../../lib/planner/semester-window'
+import { degreeYearsForBoard, nextSemesterId, type DegreeYear } from '../../../lib/planner/semester-window'
 import { programIdOfBoard } from '../../../../shared/planner/window_board'
 import { getAiSessionToken } from '../../../lib/ai-session-token'
 import type { BoardSnapshot } from '../lib/saved-plans'
 import { useLocale } from '../../locale/LocaleProvider'
+import type { CompletedStudiesStore } from './StudentWorkspaceTools'
 
 export type { ManualAddIntent } from '../types'
 
@@ -84,6 +85,7 @@ export default function NativePlannerJourney({
   agentOpen,
   agentPortalTarget,
   profilePortalTarget,
+  completedStudies = null,
   currentDegreeYear = null,
   onCurrentDegreeYearChange,
   activeDrag,
@@ -117,6 +119,8 @@ export default function NativePlannerJourney({
   agentPortalTarget?: HTMLElement | null
   /** When set, the profile/preferences panel renders into this element (the workspace profile tab), always open. */
   profilePortalTarget?: HTMLElement | null
+  /** Saved "my studies" facts (prior hours, unnamed category courses); loaded once, then autosaved. */
+  completedStudies?: CompletedStudiesStore | null
   /** The student's year in the degree (profile data owned by the workspace). */
   currentDegreeYear?: DegreeYear | null
   onCurrentDegreeYearChange?: (year: DegreeYear) => void
@@ -157,6 +161,24 @@ export default function NativePlannerJourney({
     gatewayAssessments, setGatewayAssessments,
     preferenceVersion, updatePreferenceVersion,
   } = usePlannerInputs()
+  // Seed the profile fields from the saved document once, then save every later edit.
+  const studiesSeeded = useRef<'no' | 'this-render' | 'yes'>('no')
+  useEffect(() => {
+    if (studiesSeeded.current !== 'no' || !completedStudies?.ready) return
+    studiesSeeded.current = 'this-render' // the save effect below still sees pre-seed values in this pass
+    const saved = completedStudies.value
+    if (!saved) return
+    setPriorHours(saved.priorHours === null ? '' : String(saved.priorHours))
+    setCompletedCategoryCounts(saved.categoryCounts)
+  }, [completedStudies, setPriorHours, setCompletedCategoryCounts])
+  useEffect(() => {
+    if (studiesSeeded.current === 'no' || !completedStudies?.ready) return
+    if (studiesSeeded.current === 'this-render') { studiesSeeded.current = 'yes'; return }
+    const hours = Number(priorHours)
+    const next = { priorHours: priorHours.trim() && Number.isFinite(hours) ? Math.min(400, Math.max(0, hours)) : null, categoryCounts: completedCategoryCounts }
+    const saved = completedStudies.value ?? { priorHours: null, categoryCounts: {} }
+    if (JSON.stringify(next) !== JSON.stringify(saved)) completedStudies.save(next)
+  }, [priorHours, completedCategoryCounts, completedStudies])
   const { pickerCourses, catalogHoursById } = useCatalogLookups(current)
 
   // ── the student's academic status and the assistant's preference profile ───
@@ -338,6 +360,7 @@ export default function NativePlannerJourney({
       alwaysOpen={part === 'studies'}
       currentDegreeYear={currentDegreeYear}
       onCurrentDegreeYearChange={onCurrentDegreeYearChange}
+      degreeYears={degreeYearsForBoard(current?.semesters.map((s) => s.semesterId) ?? [], currentDegreeYear)}
     />
   )
 

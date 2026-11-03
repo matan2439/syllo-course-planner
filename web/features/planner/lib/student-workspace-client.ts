@@ -1,4 +1,5 @@
 import { programWorkspaceSchema, weeklyScheduleSchema, type ProgramWorkspace } from '../../../../shared/planner/student-workspace';
+import type { CommunityCourseNote, CourseNote, HiddenCommunityNote } from '../../../../shared/planner/course-notes';
 import type { BiddingDraft, BiddingHistory } from '../../../../shared/planner/bidding';
 import { createEmptyBiddingDraft } from '../../../../shared/planner/bidding';
 import { biddingRoundSnapshotSchema } from '../../../../shared/planner/bidding-rounds';
@@ -30,3 +31,16 @@ export async function shareBiddingResults(programId: string, draft: BiddingDraft
   const payload = consent ? draft : createEmptyBiddingDraft();
   await request(URL, { action: 'share', program_id: programId, draft: payload, consent });
 }
+// Shared (anonymous) course notes.
+export async function fetchCommunityNotes(courseId: string): Promise<CommunityCourseNote[]> {
+  return (await request(`${URL}?scope=community_notes&course_id=${encodeURIComponent(courseId)}`)).notes;
+}
+export const publishCommunityNote = async (note: Pick<CourseNote, 'id' | 'courseId' | 'kind' | 'lecturer' | 'body'>) => {
+  await request(URL, { action: 'publish_note', note: { id: note.id, courseId: note.courseId, kind: note.kind, body: note.body, ...(note.lecturer ? { lecturer: note.lecturer } : {}) } });
+};
+export const withdrawCommunityNote = async (noteId: string) => { await request(URL, { action: 'withdraw_note', note_id: noteId }); };
+export const reportCommunityNote = async (publicId: string) => { await request(URL, { action: 'report_note', public_id: publicId }); };
+export async function fetchHiddenNotes(): Promise<HiddenCommunityNote[]> { return (await request(`${URL}?scope=moderation`)).notes; }
+export const moderateCommunityNote = async (publicId: string, decision: 'restore' | 'remove') => {
+  await request(URL, { action: 'moderate_note', public_id: publicId, decision });
+};

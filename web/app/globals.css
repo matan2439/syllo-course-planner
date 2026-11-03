@@ -215,9 +215,9 @@ body {
 .planner-rail {
   position: fixed;
   z-index: 40;
-  top: 11.5rem;
+  top: 9rem;
   bottom: 1rem;
-  /* Same side as the toggle, which sits at the inline start of .planner-drawer-controls. */
+  /* Opens just under the sticky toolbar. */
   inset-inline-start: 1rem;
   width: min(24rem, calc(100vw - 2rem));
   display: flex;
@@ -258,20 +258,33 @@ body {
   color: var(--purple-strong);
 }
 .planner-rail-tab:focus-visible { outline: 2px solid var(--purple); outline-offset: 2px; }
-.planner-main-tabs { display: flex; gap: .25rem; margin-bottom: .75rem; }
+.planner-toolbar {
+  position: sticky; z-index: 50; top: 4.5rem;
+  display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .75rem;
+  padding: .5rem .75rem; border: 1px solid var(--border); border-radius: 1rem;
+  background: color-mix(in srgb, var(--surface) 94%, transparent); backdrop-filter: blur(14px);
+}
+.planner-toolbar-plans { flex: 0 1 auto; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: .25rem .75rem; }
+/* Segmented view switch. */
+.planner-main-tabs { display: flex; gap: .15rem; padding: .2rem; border: 1px solid var(--border); border-radius: 999px; }
+.planner-main-tabs .planner-rail-tab { white-space: nowrap; }
+.planner-years select {
+  border: 1px solid var(--border); border-radius: 999px; background: var(--surface); color: var(--text);
+  padding: .4rem .8rem; font-size: .82rem; font-weight: 700;
+}
+.planner-years select:focus-visible { outline: 2px solid var(--purple); outline-offset: 2px; }
 .planner-board-canvas[hidden], .planner-weekly-panel[hidden] { display: none; }
 .planner-rail-body { flex: 1; min-height: 0; overflow-y: auto; padding: 1rem; }
 .planner-rail-body[hidden] { display: none; }
+.planner-profile-popover {
+  position: fixed; z-index: 60; width: min(24rem, calc(100vw - 1rem));
+  max-height: calc(100vh - 5rem); overflow-y: auto; padding: 1rem;
+  border: 1px solid var(--border); border-radius: 1rem;
+  background: var(--surface-panel); box-shadow: var(--shadow-premium);
+}
+.planner-profile-popover[hidden] { display: none; }
 /* While a drag is heading for the board, let hit-testing pass through a floating rail. */
 .planner-workbench[data-drag-active="true"] .planner-rail { pointer-events: none; }
-.planner-drawer-controls {
-  position: sticky;
-  z-index: 60;
-  top: 4.5rem;
-  display: flex;
-  justify-content: space-between;
-  pointer-events: none;
-}
 .planner-drawer-toggle {
   display: inline-flex;
   align-items: center;
@@ -279,13 +292,12 @@ body {
   border: 1px solid var(--border);
   border-radius: 999px;
   background: var(--surface);
-  padding: .65rem 1rem;
+  padding: .45rem .9rem;
   color: var(--text);
-  font-size: .875rem;
+  font-size: .82rem;
   font-weight: 700;
-  box-shadow: 0 8px 24px rgb(20 12 52 / 18%);
-  pointer-events: auto;
 }
+.planner-toolbar .planner-drawer-toggle { margin-inline-start: auto; }
 .planner-drawer-toggle:focus-visible { outline: 2px solid var(--purple); outline-offset: 2px; }
 .planner-drawer-close {
   display: inline-flex;
@@ -509,7 +521,7 @@ body {
 
 /* Phones and small tablets: tools are a separate view above the bottom nav. */
 @media (max-width: 1023px) {
-  .planner-drawer-controls { top: 4rem; }
+  .planner-toolbar { top: 4rem; }
   .planner-workbench[data-rail-open="true"] .planner-main { display: none; }
   .planner-rail-header { gap: .3rem; padding: .6rem .65rem; }
   .planner-rail-header [role="tablist"] { flex: 1; min-width: 0; gap: 0; }
@@ -535,8 +547,8 @@ body {
   .planner-bottom-tab { flex: 1; border-radius: .75rem; padding: .55rem .25rem; font-size: .8rem; font-weight: 700; color: var(--text-muted); }
   .planner-bottom-tab[aria-current="page"] { background: color-mix(in srgb, var(--purple) 14%, transparent); color: var(--purple-strong); }
   .planner-bottom-tab:focus-visible { outline: 2px solid var(--purple); outline-offset: 2px; }
-  /* The toolbar and the main tabs are replaced by the bottom bar on phones. */
-  .planner-drawer-controls, .planner-main-tabs { display: none; }
+  /* The bottom bar replaces the view switch and the rail toggle on phones; plan slots and years stay. */
+  .planner-toolbar .planner-main-tabs, .planner-toolbar .planner-drawer-toggle { display: none; }
   .planner-workbench { padding-bottom: 4rem; }
 }
 @keyframes planner-sheet-in {

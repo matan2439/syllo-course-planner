@@ -3,12 +3,12 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import ExamOverview from '../../schedule/components/ExamOverview';
 import { semesterTitleHe } from '../../../lib/planner/board-vm';
-import { programWorkspaceSchema, type ProgramWorkspace, type SavedPlan, type SavedWeeklySchedule } from '../../../../shared/planner/student-workspace';
+import { programWorkspaceSchema, type CompletedStudies, type ProgramWorkspace, type SavedPlan, type SavedWeeklySchedule } from '../../../../shared/planner/student-workspace';
 import { useLocale } from '../../locale/LocaleProvider';
 import BiddingPanel from '../../bidding/BiddingPanel';
 import SavedPlansPanel from './SavedPlansPanel';
 import { captureSavedPlan, type BoardSnapshot } from '../lib/saved-plans';
-import { loadStudentWorkspace, saveStudentWorkspace, restoreStudentPlan, fetchBiddingHistory, shareBiddingResults, WorkspaceError } from '../lib/student-workspace-client';
+import { loadStudentWorkspace, saveStudentWorkspace, restoreStudentPlan, fetchBiddingHistory, shareBiddingResults, publishCommunityNote, withdrawCommunityNote, WorkspaceError } from '../lib/student-workspace-client';
 import { uuidv4 } from '../../../lib/ai-session-token';
 import type { SavedCourseSearch } from '../../../../shared/planner/catalog-searches';
 import { MAX_COURSE_NOTES, type CourseNote } from '../../../../shared/planner/course-notes';
@@ -30,13 +30,17 @@ const matches = (plan: Pick<SavedPlan, 'semesters' | 'weeklySchedule'>, snapshot
   sameBoard(plan, snapshot) && stable(plan.weeklySchedule) === stable(weekly);
 
 /** Mounted per account + board window. It never caches a prior account's plans. */
-export default function StudentWorkspaceTools({ programId, snapshot, weeklySchedule, onRestored, onWeeklyHydrated, prepareRestore, onSearchLibrary, onNotesLibrary, biddingTarget }: {
+/** Saved profile facts for the journey's "my studies" fields; `save` autosaves (debounced). */
+export interface CompletedStudiesStore { value: CompletedStudies | null; ready: boolean; save: (value: CompletedStudies) => void }
+
+export default function StudentWorkspaceTools({ programId, snapshot, weeklySchedule, onRestored, onWeeklyHydrated, prepareRestore, onSearchLibrary, onNotesLibrary, onStudiesStore, biddingTarget }: {
   programId: string; snapshot: BoardSnapshot | null; weeklySchedule: SavedWeeklySchedule;
   onRestored: (weekly: SavedWeeklySchedule) => void;
   onWeeklyHydrated?: (weekly: SavedWeeklySchedule) => void;
   prepareRestore?: () => Promise<void>;
   onSearchLibrary?: (library: CourseSearchLibrary | null) => void;
   onNotesLibrary?: (library: CourseNotesLibrary | null) => void;
+  onStudiesStore?: (store: CompletedStudiesStore | null) => void;
   /** The workspace's bidding tab: the planner renders there (it owns the bidding data here). */
   biddingTarget?: HTMLElement | null;
 }) {
@@ -99,7 +103,7 @@ export default function StudentWorkspaceTools({ programId, snapshot, weeklySched
         if (!live.current) return;
         ref.current.revision = result.revision;
         setFailed(false);
-        if (ref.current.data === payload) setMessage(t('נשמר אוטומטית', 'Saved automatically'));
+        if (ref.current.data === payload) setMessage(''); // saved: no standing label
       } catch (err) { fail(err); throw err; }
       finally { if (live.current && !operating.current) setBusy(false); }
     });
@@ -126,16 +130,32 @@ export default function StudentWorkspaceTools({ programId, snapshot, weeklySched
     const existing = input.id ? current.find((note) => note.id === input.id) : undefined;
     if (!existing && current.length >= MAX_COURSE_NOTES) return;
     const { id: _id, ...fields } = input;
-    const note: CourseNote = { ...fields, id: existing?.id ?? `note_${uuidv4()}`, visibility: 'private', createdAt: existing?.createdAt ?? now, updatedAt: now };
+    const note: CourseNote = { ...fields, id: existing?.id ?? `note_${uuidv4()}`, createdAt: existing?.createdAt ?? now, updatedAt: now };
     mutate({ ...ref.current.data, courseNotes: existing ? current.map((item) => item.id === note.id ? note : item) : [...current, note] });
-  }, [mutate]);
+    // The shared copy follows the private one; the document stays the author's source of truth.
+    const sync = note.visibility === 'community' ? publishCommunityNote(note)
+      : existing?.visibility === 'community' ? withdrawCommunityNote(note.id) : null;
+    sync?.catch(() => { if (live.current) setMessage(t('ההערה נשמרה אצלך, אבל השיתוף לא עודכן. נסו לשמור שוב.', 'The note was saved for you, but sharing was not updated. Try saving again.')); });
+  }, [mutate, t]);
   const removeNote = useCallback((id: string) => {
-    mutate({ ...ref.current.data, courseNotes: (ref.current.data.courseNotes ?? []).filter((note) => note.id !== id) });
-  }, [mutate]);
+    const drop = () => mutate({ ...ref.current.data, courseNotes: (ref.current.data.courseNotes ?? []).filter((note) => note.id !== id) });
+    // A shared note is withdrawn first, so a failure leaves it in place to retry.
+    if ((ref.current.data.courseNotes ?? []).find((note) => note.id === id)?.visibility !== 'community') { drop(); return; }
+    withdrawCommunityNote(id).then(() => { if (live.current) drop(); },
+      () => { if (live.current) setMessage(t('לא הצלחנו להסיר את העותק המשותף. נסו שוב.', 'Could not remove the shared copy. Try again.')); });
+  }, [mutate, t]);
   useEffect(() => {
     onNotesLibrary?.({ notes, ready: loaded && !conflict, save: saveNote, remove: removeNote });
   }, [notes, loaded, conflict, saveNote, removeNote, onNotesLibrary]);
   useEffect(() => () => onNotesLibrary?.(null), [onNotesLibrary]);
+  const studies = data.completedStudies ?? null;
+  const saveStudies = useCallback((completedStudies: CompletedStudies) => {
+    mutate({ ...ref.current.data, completedStudies }, false);
+  }, [mutate]);
+  useEffect(() => {
+    onStudiesStore?.({ value: studies, ready: loaded && !conflict, save: saveStudies });
+  }, [studies, loaded, conflict, saveStudies, onStudiesStore]);
+  useEffect(() => () => onStudiesStore?.(null), [onStudiesStore]);
   const replacePlan = (plan: SavedPlan) => mutate({ ...ref.current.data, plans: ref.current.data.plans.map((p) => p.id === plan.id ? { ...plan, name: plan.name.trim(), updatedAt: Date.now() } : p) });
 
   const restore = useCallback(async (plan: SavedPlan, initial = false, deleteId?: string) => {
@@ -180,7 +200,7 @@ export default function StudentWorkspaceTools({ programId, snapshot, weeklySched
         plans: ref.current.data.plans.filter((plan) => plan.id !== switching.deleteId).map((plan) => switching.initial && plan.id === switching.plan.id && !matches(plan, snapshot, weeklySchedule)
           ? { ...withRounds(captureSavedPlan(plan.id, plan.name, snapshot, weeklySchedule, switching.plan.bidding ?? ref.current.data.bidding), switching.plan.biddingRounds), notes: plan.notes, createdAt: plan.createdAt } : plan) };
       if (stable(next) !== stable(ref.current.data)) mutate(next);
-      else setMessage(t('נשמר אוטומטית', 'Saved automatically'));
+      else setMessage('');
       return;
     }
     if (!initialized.current) {
@@ -243,7 +263,7 @@ export default function StudentWorkspaceTools({ programId, snapshot, weeklySched
     mutate({ ...ref.current.data, bidding: nextDraft, biddingRounds,
       plans: ref.current.data.plans.map((plan) => plan.id === ref.current.data.activePlanId ? { ...plan, bidding: nextDraft, biddingRounds, updatedAt: Date.now() } : plan) });
   };
-  return <div dir={dir} className="min-w-0 space-y-2">
+  return <div dir={dir} className="planner-toolbar-plans">
     <SavedPlansPanel plans={data.plans} activePlanId={data.activePlanId} ready={ready} busy={busy} courseNames={snapshot?.courseNames ?? {}} courseHours={snapshot?.courseHours ?? {}}
       onCreate={create} onChange={replacePlan} onRestore={(plan) => void restore(plan)}
       onDuplicate={(plan) => create(`${plan.name.slice(0, 65)} ${t('(עותק)', '(copy)')}`)}

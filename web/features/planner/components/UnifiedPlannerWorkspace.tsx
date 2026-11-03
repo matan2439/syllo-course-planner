@@ -18,13 +18,13 @@ import { scheduleSlotsForBoard, semesterWindowForDegreeYear, semesterWindowSlots
 import { useCurrentDegreeYear } from '../hooks/use-current-degree-year'
 import { useAuth } from '../../auth/AuthProvider'
 import { useLocale } from '../../locale/LocaleProvider'
-import StudentWorkspaceTools, { type CourseSearchLibrary } from './StudentWorkspaceTools'
+import StudentWorkspaceTools, { type CompletedStudiesStore, type CourseSearchLibrary } from './StudentWorkspaceTools'
 import type { BoardSnapshot } from '../lib/saved-plans'
 import { EMPTY_WEEKLY_SCHEDULE, weeklyScheduleSchema, type SavedWeeklySchedule } from '../../../../shared/planner/student-workspace'
 import type { WeeklyScheduleState } from '../../../lib/planner/schedule-storage'
 import { semesterLabel } from '../../locale/semester-label'
 
-type RailTab = 'courses' | 'agent' | 'profile'
+type RailTab = 'courses' | 'agent'
 type MainTab = 'board' | 'schedule' | 'bidding'
 
 const MAIN_TABS: ReadonlyArray<{ id: MainTab; label: string }> = [
@@ -33,7 +33,7 @@ const MAIN_TABS: ReadonlyArray<{ id: MainTab; label: string }> = [
   { id: 'bidding', label: 'תכנון בידינג' },
 ]
 
-// The profile panel has no rail tab: the header's profile button is its one entry point (OPEN_PROFILE_EVENT).
+// The profile is a popover under the header's profile button (OPEN_PROFILE_EVENT), never a rail tab.
 const TABS: ReadonlyArray<{ id: RailTab; label: string }> = [
   { id: 'courses', label: 'קורסים' },
   { id: 'agent', label: 'עוזר AI' },
@@ -104,6 +104,18 @@ export default function UnifiedPlannerWorkspace({
     () => withAddedSemesters(catalogDestinations, boardSemesterIds), [catalogDestinations, boardSemesterIds])
   // One rail, one open tab. `null` = closed, board only.
   const [railTab, setRailTab] = useState<RailTab | null>(null)
+  // Anchored under the header avatar; null = closed. Kept mounted so the journey's portal survives.
+  const [profileAnchor, setProfileAnchor] = useState<{ top: number; end: number } | null>(null)
+  const profileRef = useRef<HTMLDivElement | null>(null)
+  const profileOpen = useRef(false)
+  profileOpen.current = profileAnchor !== null
+  const openProfile = useCallback(() => {
+    const rect = document.querySelector('[data-tour="profile-button"]')?.getBoundingClientRect()
+    const rtl = document.documentElement.dir !== 'ltr'
+    setProfileAnchor(rect
+      ? { top: rect.bottom + 8, end: Math.max(8, rtl ? rect.left : window.innerWidth - rect.right) }
+      : { top: 64, end: 16 })
+  }, [])
   const [mainTab, setMainTab] = useState<MainTab>('board')
   // First-visit setup card: shown until the student acts on it or dismisses it (remembered per program).
   const setupKey = `syllo_setup_done_${programId}`
@@ -135,6 +147,10 @@ export default function UnifiedPlannerWorkspace({
   const [notesLibrary, setNotesLibrary] = useState<{ scope: string; value: CourseNotesLibrary } | null>(null)
   const onNotesLibrary = useCallback((value: CourseNotesLibrary | null) => {
     setNotesLibrary((old) => value ? { scope: scopeKey, value } : old?.scope === scopeKey ? null : old)
+  }, [scopeKey])
+  const [studiesStore, setStudiesStore] = useState<{ scope: string; value: CompletedStudiesStore } | null>(null)
+  const onStudiesStore = useCallback((value: CompletedStudiesStore | null) => {
+    setStudiesStore((old) => value ? { scope: scopeKey, value } : old?.scope === scopeKey ? null : old)
   }, [scopeKey])
   const restorePreparer = useRef<{ scope: string; prepare: () => Promise<void> } | null>(null)
   const onPrepareRestore = useCallback((prepare: (() => Promise<void>) | null) => {
@@ -170,10 +186,11 @@ export default function UnifiedPlannerWorkspace({
   useEffect(() => {
     if (accountProgramId !== undefined && accountProgramId !== programId) void updateProfile({ program_id: programId })
   }, [accountProgramId, programId, updateProfile])
-  const finishSetup = (tab?: RailTab) => {
+  const finishSetup = (tab?: RailTab | 'profile') => {
     setShowSetup(false)
     try { localStorage.setItem(setupKey, '1') } catch { /* best effort */ }
-    if (tab) setRailTab(tab)
+    if (tab === 'profile') openProfile()
+    else if (tab) setRailTab(tab)
   }
   const [manualAddIntent, setManualAddIntent] = useState<ManualAddIntent | null>(null)
   useEffect(() => setManualAddIntent(null), [boardId]) // a pending add targets the previous board's columns
@@ -213,13 +230,30 @@ export default function UnifiedPlannerWorkspace({
   }
 
   useEffect(() => {
-    const open = (event: Event) => { event.preventDefault(); setRailTab((tab) => tab === 'profile' ? null : 'profile') }
+    const open = (event: Event) => {
+      event.preventDefault()
+      if (profileOpen.current) setProfileAnchor(null)
+      else openProfile()
+    }
     window.addEventListener(OPEN_PROFILE_EVENT, open)
     return () => window.removeEventListener(OPEN_PROFILE_EVENT, open)
-  }, [])
+  }, [openProfile])
 
   useEffect(() => {
-    const close = () => setRailTab(null)
+    if (!profileAnchor) return
+    const onKeyDown = (event: KeyboardEvent) => { if (event.key === 'Escape') { event.preventDefault(); setProfileAnchor(null) } }
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target as Node
+      if (profileRef.current?.contains(target) || document.querySelector('[data-tour="profile-button"]')?.contains(target)) return
+      setProfileAnchor(null)
+    }
+    document.addEventListener('keydown', onKeyDown)
+    document.addEventListener('pointerdown', onPointerDown)
+    return () => { document.removeEventListener('keydown', onKeyDown); document.removeEventListener('pointerdown', onPointerDown) }
+  }, [profileAnchor])
+
+  useEffect(() => {
+    const close = () => { setRailTab(null); setProfileAnchor(null) }
     window.addEventListener(CLOSE_PANELS_EVENT, close)
     return () => window.removeEventListener(CLOSE_PANELS_EVENT, close)
   }, [])
@@ -235,6 +269,7 @@ export default function UnifiedPlannerWorkspace({
   }, [railTab])
 
   useEffect(() => {
+    if (railTab) setProfileAnchor(null) // one floating panel at a time
     if (railTab && !railWasOpen.current) railCloseRef.current?.focus()
     railWasOpen.current = railTab !== null
   }, [railTab])
@@ -259,12 +294,43 @@ export default function UnifiedPlannerWorkspace({
       dir={dir}
       className="flex flex-col gap-5"
     >
-      <div>
-        <h1 className="text-xl font-bold tracking-tight">{t('מרחב התכנון', 'Planning workspace')}</h1>
-      </div>
 
-      {/* One toggle: the rail's own tabs switch between courses, assistant and profile. */}
-      <div className="planner-drawer-controls" data-tour="tools-toggle">
+      <h1 className="sr-only">{t('מרחב התכנון', 'Planning workspace')}</h1>
+      {/* One toolbar: view, plan slot, years and the courses/assistant rail. Everything else lives in its view. */}
+      <div className="planner-toolbar">
+        <div role="tablist" aria-label={t('תצוגת תכנון', 'Planning view')} className="planner-main-tabs" data-tour="main-tabs">
+          {MAIN_TABS.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              role="tab"
+              id={`workspace-main-tab-${tab.id}`}
+              aria-selected={mainTab === tab.id}
+              aria-controls={MAIN_PANEL_ID[tab.id]}
+              onClick={() => setMainTab(tab.id)}
+              className="planner-rail-tab"
+            >
+              {t(tab.label, MAIN_TAB_EN[tab.id])}
+            </button>
+          ))}
+        </div>
+        {!authLoading && <StudentWorkspaceTools key={scopeKey} programId={boardId}
+          snapshot={capturedBoard?.scope === scopeKey ? capturedBoard.value : null}
+          weeklySchedule={capturedWeekly?.scope === scopeKey ? capturedWeekly.value : EMPTY_WEEKLY_SCHEDULE}
+          prepareRestore={async () => {
+            if (restorePreparer.current?.scope !== scopeKey) throw new Error('Planning context is still loading')
+            await restorePreparer.current.prepare()
+          }}
+          onRestored={onPlanRestored} onWeeklyHydrated={onWeeklyHydrated} onSearchLibrary={onSearchLibrary} onNotesLibrary={onNotesLibrary} onStudiesStore={onStudiesStore}
+          biddingTarget={biddingSlot} />}
+        {mainTab === 'board' && hasBothWindows && (
+          <label className="planner-years">
+            <span className="sr-only">{t('שנים מוצגות', 'Years shown')}</span>
+            <select value={yearsView === 'all' ? 'all' : semesterWindow} onChange={(e) => chooseYearsView(e.target.value as YearsView)}>
+              {YEARS_VIEWS.map((view) => <option key={view.id} value={view.id}>{t(view.he, view.en)}</option>)}
+            </select>
+          </label>
+        )}
         <button
           ref={toggleRef}
           type="button"
@@ -272,22 +338,12 @@ export default function UnifiedPlannerWorkspace({
           aria-expanded={railTab !== null}
           aria-label={railTab ? t('סגור כלי תכנון', 'Close planning tools') : t('פתח כלי תכנון', 'Open planning tools')}
           onClick={() => (railTab ? closeRail() : setRailTab(lastTab.current))}
-          className="planner-drawer-toggle"
+          className="planner-drawer-toggle" data-tour="tools-toggle"
         >
           <span aria-hidden="true">☰</span>
           <span>{t('כלי תכנון', 'Planning tools')}</span>
         </button>
       </div>
-
-      {!authLoading && <StudentWorkspaceTools key={scopeKey} programId={boardId}
-        snapshot={capturedBoard?.scope === scopeKey ? capturedBoard.value : null}
-        weeklySchedule={capturedWeekly?.scope === scopeKey ? capturedWeekly.value : EMPTY_WEEKLY_SCHEDULE}
-        prepareRestore={async () => {
-          if (restorePreparer.current?.scope !== scopeKey) throw new Error('Planning context is still loading')
-          await restorePreparer.current.prepare()
-        }}
-        onRestored={onPlanRestored} onWeeklyHydrated={onWeeklyHydrated} onSearchLibrary={onSearchLibrary} onNotesLibrary={onNotesLibrary}
-        biddingTarget={biddingSlot} />}
 
       <div
         className="planner-workbench min-w-0"
@@ -309,22 +365,6 @@ export default function UnifiedPlannerWorkspace({
             </div>
           </section>
         )}
-        <div role="tablist" aria-label={t('תצוגת תכנון', 'Planning view')} className="planner-main-tabs" data-tour="main-tabs">
-          {MAIN_TABS.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              role="tab"
-              id={`workspace-main-tab-${tab.id}`}
-              aria-selected={mainTab === tab.id}
-              aria-controls={MAIN_PANEL_ID[tab.id]}
-              onClick={() => setMainTab(tab.id)}
-              className="planner-rail-tab"
-            >
-              {t(tab.label, MAIN_TAB_EN[tab.id])}
-            </button>
-          ))}
-        </div>
         <div
           id="workspace-panel-journey"
           role="region"
@@ -335,37 +375,6 @@ export default function UnifiedPlannerWorkspace({
           aria-label={t('לוח סמסטרים פעיל', 'Active semester board')}
           className="planner-board-canvas planner-board-canvas-stable min-w-0"
         >
-          {railTab === 'courses' && (
-            <p role="status" aria-live="polite" className="planner-board-drop-hint">
-              {t('גררו קורס מהמאגר אל עמודת סמסטר כדי להוסיף אותו ללוח. לחלופין, השתמשו ב״הוסף לסמסטר״.', 'Drag a course from the catalog to a semester, or use “Add to semester”.')}
-            </p>
-          )}
-          {hasBothWindows && (
-            <div role="group" aria-label={t('שנים מוצגות', 'Years shown')} className="mb-3 flex flex-wrap items-center gap-1.5 text-xs">
-              <span className="font-semibold text-[var(--text-muted)]">{t('שנים מוצגות:', 'Years shown:')}</span>
-              {YEARS_VIEWS.map((view) => {
-                const active = (yearsView === 'all' ? 'all' : semesterWindow) === view.id
-                return (
-                  <button
-                    key={view.id}
-                    type="button"
-                    aria-pressed={active}
-                    onClick={() => chooseYearsView(view.id)}
-                    className={`rounded-full border px-3 py-1 font-semibold ${active ? 'border-[var(--purple)] bg-[var(--purple)] text-white' : 'border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text)]'}`}
-                  >
-                    {t(view.he, view.en)}
-                  </button>
-                )
-              })}
-              {companionBoardId && (
-                <span className="text-[var(--text-muted)]">
-                  {companionWindow === 'early'
-                    ? t('שנים א׳–ב׳ לצפייה בלבד', 'Years 1–2 are view only')
-                    : t('שנים ג׳ ואילך לצפייה בלבד', 'Years 3+ are view only')}
-                </span>
-              )}
-            </div>
-          )}
           <NativePlannerJourney
             key={`${boardId}:${owner.epoch}`}
             companion={companionBoardId
@@ -384,6 +393,7 @@ export default function UnifiedPlannerWorkspace({
             agentOpen={railTab === 'agent'}
             agentPortalTarget={agentSlot}
             profilePortalTarget={profileSlot}
+            completedStudies={studiesStore?.scope === scopeKey ? studiesStore.value : null}
             currentDegreeYear={currentDegreeYear}
             onCurrentDegreeYearChange={setCurrentDegreeYear}
             activeDrag={activeDrag}
@@ -485,21 +495,25 @@ export default function UnifiedPlannerWorkspace({
             ref={setAgentSlot}
             className="planner-rail-body"
           />
-          <div
-            id="workspace-panel-profile"
-            role="region"
-            aria-label={t('הפרופיל שלי', 'My profile')}
-            hidden={railTab !== 'profile'}
-            className="planner-rail-body"
-          >
-            <h2 className="mb-3 text-base font-bold">{t('הפרופיל שלי', 'My profile')}</h2>
-            <ProfileIdentityCard defaultDegree={[getProgram(programId)?.name, getProgram(programId)?.track].filter(Boolean).join(' · ') || undefined} />
-            <section aria-label={t('החשבון שלי', 'My account')} className="mb-5 border-b border-[var(--border)] pb-4 text-sm">
-              <AccountPanel showTour />
-            </section>
-            <div ref={setProfileSlot} />
-          </div>
         </aside>
+      </div>
+
+      {/* Profile popover: under the header avatar, above everything. */}
+      <div
+        id="workspace-panel-profile"
+        ref={profileRef}
+        role="dialog"
+        aria-label={t('הפרופיל שלי', 'My profile')}
+        hidden={!profileAnchor}
+        style={profileAnchor ? { top: profileAnchor.top, insetInlineEnd: profileAnchor.end } : undefined}
+        className="planner-profile-popover"
+      >
+        <h2 className="mb-3 text-base font-bold">{t('הפרופיל שלי', 'My profile')}</h2>
+        <ProfileIdentityCard defaultDegree={[getProgram(programId)?.name, getProgram(programId)?.track].filter(Boolean).join(' · ') || undefined} />
+        <section aria-label={t('החשבון שלי', 'My account')} className="mb-5 border-b border-[var(--border)] pb-4 text-sm">
+          <AccountPanel showTour onDone={() => setProfileAnchor(null)} />
+        </section>
+        <div ref={setProfileSlot} />
       </div>
 
       <SiteTour steps={tourSteps} />

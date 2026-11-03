@@ -117,9 +117,10 @@ export function AccountPanel({ onDone = () => undefined, showTour = false }: { o
           </>
         )}
         {/* Navigation only: the console's API re-checks role = 'developer' server-side. */}
-        {auth.profile?.role === 'developer' && (
+        {auth.profile?.role === 'developer' && (<>
           <Link href="/admin/billing" className={SECONDARY + ' block w-full text-center'} onClick={() => onDone()}>{t('ניהול חיובים', 'Billing console')}</Link>
-        )}
+          <Link href="/admin/notes" className={SECONDARY + ' block w-full text-center'} onClick={() => onDone()}>{t('בדיקת הערות שדווחו', 'Reported notes')}</Link>
+        </>)}
             <button type="button" className={SECONDARY + ' w-full'} onClick={() => { void auth.signOut(); onDone() }}>
           {t('התנתקות', 'Sign out')}
         </button>
