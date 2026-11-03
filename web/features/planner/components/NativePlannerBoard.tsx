@@ -61,6 +61,18 @@ export default function NativePlannerBoard({ board, onRemoveCourse, onAddCourse,
 
   return (
     <div className="flex flex-col gap-2">
+    {/* Above the columns: below them it sat under every course, out of sight. */}
+    {!readOnly && onAddSemester && (
+      <button
+        type="button"
+        onClick={onAddSemester}
+        disabled={mutationPending}
+        className="flex flex-wrap items-center gap-x-2 self-start rounded-lg border-2 border-dashed border-[var(--border)] px-3 py-1.5 text-sm font-semibold text-[var(--text)] hover:border-[var(--purple)] hover:bg-[var(--surface-panel)] disabled:opacity-50"
+      >
+        <span>+ {t('הוספת סמסטר', 'Add semester')}</span>
+        <span className="text-xs font-normal text-[var(--text-muted)]">{t('מאריכים את התואר? הוסיפו סמסטר אחרי האחרון', 'Extending your degree? Add one after the last semester')}</span>
+      </button>
+    )}
     <div className="overflow-x-auto rounded-xl border border-[var(--border)] bg-[var(--surface)]">
     <div
       role="list"
@@ -133,16 +145,6 @@ export default function NativePlannerBoard({ board, onRemoveCourse, onAddCourse,
       })}
     </div>
     </div>
-    {!readOnly && onAddSemester && (
-      <button
-        type="button"
-        onClick={onAddSemester}
-        disabled={mutationPending}
-        className="self-start rounded-lg border border-dashed border-[var(--border)] px-3 py-1.5 text-xs font-semibold text-[var(--text-muted)] hover:text-[var(--text)] disabled:opacity-50"
-      >
-        + {t('הוספת סמסטר', 'Add semester')}
-      </button>
-    )}
     <CategoryLegend />
     </div>
   )
