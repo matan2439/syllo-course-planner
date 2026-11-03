@@ -1637,5 +1637,15 @@
       ]
     }
   },
-  "coverage": {}
+  "coverage": {},
+  "source_conflicts": [
+    {
+      "course_id": "0542-2500",
+      "description": "listed Y2/B in data/config/early_year_courses.json and Y3/A in data/programs/mechanical_engineering_mandatory_2027.json; both current boards place it. mandatory_courses keeps Y3/A.",
+      "sources": [
+        "data/config/early_year_courses.json",
+        "data/programs/mechanical_engineering_mandatory_2027.json"
+      ]
+    }
+  ]
 }

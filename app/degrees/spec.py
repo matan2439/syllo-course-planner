@@ -52,7 +52,25 @@ class NotPlanningRule(_Strict):
 CoverageEntry = Union[MappedTo, NotPlanningRule]
 
 
+class SourceConflict(_Strict):
+    """Official sources disagree about a course; recorded instead of silently resolved."""
+
+    course_id: str
+    description: str
+    sources: list[str]
+
+
 class DegreeSpec(_Strict):
+    """A degree's requirements in the one generic format.
+
+    ``mandatory_courses`` covers every year of the degree. It is currently a mirror kept
+    synchronized with the builder input files (the legacy ``courses_file`` for Y3/Y4 and
+    ``data/config/early_year_courses.json`` for Y1/Y2), enforced by
+    ``tests/test_degree_spec.py::test_mandatory_courses_match_builder_inputs``. A course the
+    two sources place differently appears once here and is listed in ``source_conflicts``.
+    A later task makes the builder inputs generated from the spec.
+    """
+
     program_id: str
     institution: str
     source_year: int
@@ -66,6 +84,7 @@ class DegreeSpec(_Strict):
     ui: dict
     legacy: dict
     coverage: dict[str, CoverageEntry] = {}
+    source_conflicts: list[SourceConflict] = []
 
 
 # ---------------------------------------------------------------- io
@@ -210,9 +229,27 @@ def program_to_spec(program: dict, entry: ProgramEntry) -> DegreeSpec:
 
     # All years: Y3/Y4 from the legacy mandatory file win over a Y1/Y2 duplicate, because
     # that file is what the board builder places today.
+    # A course both sources place differently is kept once (late placement) and recorded.
     late = _late_year_mandatory(program)
-    late_ids = {m.course_id for m in late}
-    mandatory = [m for m in _early_year_mandatory(entry.id) if m.course_id not in late_ids] + late
+    late_by_id = {m.course_id: m for m in late}
+    early = _early_year_mandatory(entry.id)
+    mandatory = [m for m in early if m.course_id not in late_by_id] + late
+    early_src = EARLY_YEAR_INDEX.relative_to(ROOT).as_posix()
+    late_src = (reqs.get("mandatory_courses") or {}).get("courses_file", "")
+    conflicts = []
+    for m in early:
+        other = late_by_id.get(m.course_id)
+        if other is None or (other.year, other.semester) == (m.year, m.semester):
+            continue
+        conflicts.append(SourceConflict(
+            course_id=m.course_id,
+            description=(
+                f"listed Y{m.year}/{m.semester} in {early_src} and Y{other.year}/{other.semester} "
+                f"in {late_src}; both current boards place it. mandatory_courses keeps "
+                f"Y{other.year}/{other.semester}."
+            ),
+            sources=[early_src, late_src],
+        ))
 
     categories = [_category_from_legacy(c, _CORE) for c in reqs.get("core_categories", [])]
     category_keys: dict[str, str] = {}
@@ -250,6 +287,7 @@ def program_to_spec(program: dict, entry: ProgramEntry) -> DegreeSpec:
         ui=program.get("ui", {}),
         legacy=legacy,
         coverage={},
+        source_conflicts=conflicts,
     )
 
 

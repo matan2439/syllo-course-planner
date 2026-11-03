@@ -114,3 +114,60 @@ def test_y3_mandatory_file_wins_over_early_year_duplicate(me_spec):
     # 0542-2500 is Y2B in early_year_courses.json but Y3A in the legacy mandatory file.
     rows = [m for m in me_spec.mandatory_courses if m.course_id == "0542-2500"]
     assert [(m.year, m.semester) for m in rows] == [(3, "A")]
+
+
+EARLY_YEAR_INDEX = ROOT / "data" / "config" / "early_year_courses.json"
+_SEM = {"a": "A", "b": "B"}
+
+
+def _placement(semester_ids: list[str]) -> tuple[int, str]:
+    parts = [s.split("_") for s in semester_ids]  # year_<n>_semester_<a|b>
+    years = {int(p[1]) for p in parts}
+    sems = {_SEM[p[3]] for p in parts}
+    assert len(years) == 1
+    return years.pop(), (sems.pop() if len(sems) == 1 else "either")
+
+
+def test_mandatory_courses_match_builder_inputs(me_spec):
+    program = _enriched()
+    late_file = ROOT / program["requirements"]["mandatory_courses"]["courses_file"]
+    late = {c["course_id"]: _placement(c["allowed_semesters"])
+            for c in json.loads(late_file.read_text(encoding="utf-8"))["courses"]}
+    early = {c["courseId"]: _placement([c["semesterId"]])
+             for c in json.loads(EARLY_YEAR_INDEX.read_text(encoding="utf-8"))[ME_ID]}
+
+    assert {m.course_id for m in me_spec.mandatory_courses} == set(late) | set(early)
+    expected_conflicts = {cid for cid in set(late) & set(early) if late[cid] != early[cid]}
+    assert {c.course_id for c in me_spec.source_conflicts} == expected_conflicts
+    assert expected_conflicts == {"0542-2500"}
+
+
+def test_me_source_conflict_recorded(me_spec):
+    (conflict,) = me_spec.source_conflicts
+    assert conflict.course_id == "0542-2500"
+    assert conflict.sources == [
+        "data/config/early_year_courses.json",
+        "data/programs/mechanical_engineering_mandatory_2027.json",
+    ]
+    assert "Y2/B" in conflict.description and "Y3/A" in conflict.description
+
+
+def test_category_membership_matches_elective_tags(me_spec):
+    program = _enriched()
+    members: dict[str, str] = {}
+    for cat in me_spec.categories:
+        for cid in cat.course_ids:
+            assert cid not in members, f"{cid} in two categories"
+            members[cid] = cat.category_id
+    # other_specialization_electives rows carry no category_id: the list itself is the tag.
+    tagged = {c["course_id"]: c["category_id"] for c in program["elective_courses"]}
+    tagged.update({c["course_id"]: c.get("category_id", "other_specialization")
+                   for c in program["other_specialization_electives"]})
+    assert set(tagged) == set(members)
+    for cid, tag in tagged.items():
+        assert members[cid] == tag, cid
+
+
+def test_legacy_holds_only_remainder(me_spec):
+    assert set(me_spec.legacy["requirements"]) == {"mandatory_courses"}
+    assert not {"requirements", "ui", "total_required_hours", "program_id"} & set(me_spec.legacy["program"])
