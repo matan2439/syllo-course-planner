@@ -1,0 +1,27 @@
+{
+  "_note": "Institution registry. A new institution whose data is published in an existing boardFormat needs only an entry here plus its board/program data. A new boardFormat needs one ProgramProvider in api/ai/program_provider.ts.",
+  "institutions": [
+    {
+      "id": "tau",
+      "nameHe": "אוניברסיטת תל אביב",
+      "nameEn": "Tel Aviv University",
+      "active": true,
+      "programIdPattern": "^[a-z0-9_]+_\\d{4}$",
+      "boardFormat": "syllo_board_v1",
+      "credits": { "unitHe": "ש״ס", "unitEn": "credits" },
+      "semesters": { "perYear": ["a", "b"], "summer": true },
+      "generalRequirement": {
+        "categoryId": "shaar_ruach",
+        "nameHe": "קורסי שער רוח",
+        "creditsPerCourse": 2,
+        "countsTowardTotal": true,
+        "source": "https://humanities.tau.ac.il/shar_ruach/courses"
+      },
+      "sources": {
+        "catalog": "https://tochniot.tau.ac.il",
+        "schedule": "http://www.bid-it.appspot.com/ajax/chosen-courses-info/",
+        "grades": "data/config/grade_sources.json"
+      }
+    }
+  ]
+}

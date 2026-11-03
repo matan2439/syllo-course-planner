@@ -70,8 +70,8 @@ function Profile() {
 }
 
 test('English profile edits degree year, workload and completed-course confirmation', () => {
-  render(<LocaleProvider><Profile /></LocaleProvider>)
-  const profile = screen.getByRole('region', { name: 'My profile' })
+  const { container } = render(<LocaleProvider><Profile /></LocaleProvider>)
+  const profile = container.firstElementChild as HTMLElement
   const year = within(profile).getByRole('radio', { name: 'Year 3' })
   fireEvent.click(year)
   expect(year).toHaveAttribute('aria-checked', 'true')

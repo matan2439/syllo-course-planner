@@ -380,9 +380,7 @@ export default function WeeklyScheduleDrawer({
     <div className="weekly-schedule" dir={dir}>
       <header className="weekly-schedule-header">
         <div>
-          <p className="weekly-schedule-eyebrow">{t('תצוגת מערכת', 'Timetable view')}</p>
           <h2 className="weekly-schedule-title">{t('מערכת שעות שבועית', 'Weekly timetable')}</h2>
-          <p className="weekly-schedule-description">{t('קבוצות יחידות מהלוח נבחרות אוטומטית. בחלופות בוחרים את הקבוצה המתאימה.', 'Groups with a single option are selected automatically. When alternatives are available, choose the group that suits you.')}</p>
         </div>
       </header>
 

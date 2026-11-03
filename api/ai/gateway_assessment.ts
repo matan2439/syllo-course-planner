@@ -3,10 +3,12 @@
  * paper/project. Classified from the official syllabus assessment line (its leading
  * "מטלת סיום" label), falling back to the BIDIT timetable's moed type. Unknown stays null.
  */
+import { getInstitution, DEFAULT_INSTITUTION_ID } from '../../shared/institutions';
+
 export const GATEWAY_ASSESSMENT_TYPES = ['final_exam', 'home_exam', 'paper'] as const;
 export type GatewayAssessmentType = typeof GATEWAY_ASSESSMENT_TYPES[number];
 
-const GATEWAY_CATEGORY_ID = 'shaar_ruach';
+const GATEWAY_CATEGORY_ID = getInstitution(DEFAULT_INSTITUTION_ID)?.generalRequirement?.categoryId ?? 'shaar_ruach';
 
 function classify(text: string): GatewayAssessmentType | null {
   const t = text.trim();

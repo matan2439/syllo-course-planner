@@ -1,7 +1,8 @@
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import * as plannerApi from '../../../../shared/planner/api-client'
 import { boardResponseToModel } from '../../../../shared/planner/adapters'
 import UnifiedPlannerWorkspace from './UnifiedPlannerWorkspace'
+import { OPEN_PROFILE_EVENT } from '../../auth/AccountButton'
 
 // Keep the workspace, rail and conversation real; only server I/O is controlled.
 beforeEach(() => {
@@ -185,20 +186,18 @@ test('the rail is inert and absent from accessible navigation while closed', asy
   expect(toggle).toHaveFocus()
 })
 
-test('the profile tab shows the student inputs open, and the chat no longer nests them', async () => {
+test('the header opens the profile with the student facts; planning answers live with the assistant', async () => {
   render(<UnifiedPlannerWorkspace programId="mechanical_engineering_2027" repo={emptyRepo} />)
   await screen.findByText('תכן מכני (1)')
 
-  fireEvent.click(screen.getByRole('button', { name: 'פתח כלי תכנון' }))
-  fireEvent.click(screen.getByRole('tab', { name: 'הפרופיל שלי' }))
-
+  act(() => { window.dispatchEvent(new CustomEvent(OPEN_PROFILE_EVENT, { cancelable: true })) })
   const profile = screen.getByRole('region', { name: 'הפרופיל שלי' })
-  expect(within(profile).getByRole('textbox', { name: 'מגבלת שעות שבועיות' })).toBeVisible()
   expect(within(profile).getByRole('textbox', { name: 'שעות שהושלמו' })).toBeVisible()
-  expect(screen.queryByText('מה חשוב לעוזר לדעת? (אופציונלי)')).toBeNull()
+  expect(within(profile).queryByRole('textbox', { name: 'מגבלת שעות שבועיות' })).toBeNull()
+  expect(screen.queryByRole('tab', { name: 'הפרופיל שלי' })).toBeNull()
 
   fireEvent.click(screen.getByRole('tab', { name: 'עוזר AI' }))
-  expect(screen.queryByTestId('academic-agent-context')).toBeNull()
-  fireEvent.click(screen.getByRole('tab', { name: 'הפרופיל שלי' }))
-  expect(screen.getByRole('textbox', { name: 'מגבלת שעות שבועיות' })).toBeVisible()
+  const context = screen.getByTestId('academic-agent-context')
+  expect(within(context).getByText('התשובות ששמרתי לעוזר')).toBeInTheDocument()
+  expect(within(context).getByRole('textbox', { name: 'מגבלת שעות שבועיות', hidden: true })).toBeInTheDocument()
 })

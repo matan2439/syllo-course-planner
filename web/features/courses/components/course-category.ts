@@ -1,10 +1,11 @@
+import { getInstitution, DEFAULT_INSTITUTION_ID } from '../../../../shared/institutions'
 /**
  * Visual category accents deliberately mirror the program category ids from
  * the board contract. Unknown categories remain visually neutral rather than
  * being guessed from a course name.
  */
 /** The program's general-studies (שער רוח) requirement category, as the board contract names it. */
-export const GATEWAY_CATEGORY_ID = 'shaar_ruach'
+export const GATEWAY_CATEGORY_ID = getInstitution(DEFAULT_INSTITUTION_ID)?.generalRequirement?.categoryId ?? 'shaar_ruach'
 
 const CATEGORY_ACCENT_CLASS: Readonly<Record<string, string>> = {
   fluids: 'card-cat-fluids',

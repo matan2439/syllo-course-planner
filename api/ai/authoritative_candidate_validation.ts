@@ -4,7 +4,7 @@ import { constraintFingerprint } from './plan_alternatives';
 import { validatePlanState } from './planner_validate';
 import { getAcademicContextStore } from './apply_runtime';
 import { storedDistributionPolicy } from './planner_policy_context';
-import { TauProgramProvider } from './program_provider';
+import { programProviderFor } from './program_provider';
 import { databaseUrl } from '../db_env';
 
 export async function validateAuthoritativeCandidate(input: {
@@ -14,7 +14,7 @@ export async function validateAuthoritativeCandidate(input: {
   semesters: CommittedBoard['semesters'];
 }): Promise<{ valid: boolean; constraintFingerprint: string }> {
   const context = await getAcademicContextStore().load(input.ownerId, input.programId);
-  const boardJson = await new TauProgramProvider().loadBoard(
+  const boardJson = await programProviderFor(input.programId).loadBoard(
     input.programId,
     databaseUrl() || undefined,
   );

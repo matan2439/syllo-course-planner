@@ -25,7 +25,7 @@ export default function AgentPreferencePanel({
   maxHours, setMaxHours, priorHours, setPriorHours, gatewayCategory = null, completedCategoryCounts = {},
   setCompletedCategoryCounts = () => undefined, wantIds, setWantIds, excludeIds, setExcludeIds, gatewayAssessments = [], setGatewayAssessments = () => undefined,
   exclusionsNoneConfirmed, setExclusionsNoneConfirmed, updatePreferenceVersion, onProfileChange, proposal, stale, alwaysOpen = false,
-  currentDegreeYear = null, onCurrentDegreeYearChange,
+  currentDegreeYear = null, onCurrentDegreeYearChange, part = 'all',
 }: {
   programId: string
   pickerCourses: PickerCourse[]
@@ -58,6 +58,8 @@ export default function AgentPreferencePanel({
   /** The student's current year in the degree; it decides which years the weekly schedule shows. */
   currentDegreeYear?: DegreeYear | null
   onCurrentDegreeYearChange?: (year: DegreeYear) => void
+  /** 'studies' = facts about the student (profile); 'planning' = answers the assistant asked for (assistant panel). */
+  part?: 'all' | 'studies' | 'planning'
 }) {
   const { t, dir } = useLocale()
   const input = 'w-24 rounded-lg border border-[var(--border)] bg-transparent px-2.5 py-1.5 text-sm text-[var(--text)]'
@@ -72,7 +74,7 @@ export default function AgentPreferencePanel({
 
   const body = (
         <div className="mt-3 flex flex-col gap-5" dir={dir}>
-          <section aria-label={t('הלימודים שלי', 'My studies')} className="flex flex-col gap-2.5">
+          {part !== 'planning' && <section aria-label={t('הלימודים שלי', 'My studies')} className="flex flex-col gap-2.5">
             <h3 className={heading}>{t('הלימודים שלי', 'My studies')}</h3>
             {onCurrentDegreeYearChange && (
               <div className="flex flex-col gap-1.5 text-xs">
@@ -124,10 +126,11 @@ export default function AgentPreferencePanel({
                   className={input} />
               </label>
             )}
-          </section>
+          </section>}
 
-          <section aria-label={t('העדפות לתכנון', 'Planning preferences')} className="flex flex-col gap-3 border-t border-[var(--border)] pt-4">
-            <h3 className={heading}>{t('העדפות לתכנון', 'Planning preferences')}</h3>
+          {part !== 'studies' && <>
+          <section aria-label={t('העדפות לתכנון', 'Planning preferences')} className={`flex flex-col gap-3 ${part === 'all' ? 'border-t border-[var(--border)] pt-4' : ''}`}>
+            {part === 'all' && <h3 className={heading}>{t('העדפות לתכנון', 'Planning preferences')}</h3>}
             <label className={row}>
               {t('מקסימום ש״ש בסמסטר', 'Maximum weekly hours per semester')}
               <input id="max-weekly-hours-control" name="max-weekly-hours" aria-label={t('מגבלת שעות שבועיות', 'Weekly hours limit')} inputMode="numeric" value={maxHours} placeholder="—"
@@ -183,20 +186,19 @@ export default function AgentPreferencePanel({
               } : {}),
             }}
           />
+          </>}
         </div>
   )
   if (alwaysOpen) {
     return (
-      <section aria-label={t('הפרופיל שלי', 'My profile')} className="flex flex-col gap-3" dir={dir}>
-        <h2 className="text-base font-bold">{t('הפרופיל שלי', 'My profile')}</h2>
-        {body}
-      </section>
+      // The workspace's profile region owns the "My profile" heading and label.
+      <div className="flex flex-col gap-3" dir={dir}>{body}</div>
     )
   }
   return (
     <div className="flex flex-col gap-3" dir={dir}>
       <details>
-        <summary className="cursor-pointer text-sm font-semibold">{t('מה חשוב לעוזר לדעת? (אופציונלי)', 'What should the assistant know? (optional)')}</summary>
+        <summary className="cursor-pointer text-sm font-semibold">{part === 'planning' ? t('התשובות ששמרתי לעוזר', 'My saved answers') : t('מה חשוב לעוזר לדעת? (אופציונלי)', 'What should the assistant know? (optional)')}</summary>
         {body}
       </details>
     </div>

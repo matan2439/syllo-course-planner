@@ -306,8 +306,9 @@ export default function NativePlannerJourney({
     }
   }
 
-  const preferenceContent = (
+  const preferenceContent = (part: 'all' | 'studies' | 'planning') => (
     <AgentPreferencePanel
+      part={part}
       programId={programId}
       pickerCourses={pickerCourses}
       catalogHoursById={catalogHoursById}
@@ -325,7 +326,7 @@ export default function NativePlannerJourney({
       onProfileChange={onProfileChange}
       proposal={proposal}
       stale={stale}
-      alwaysOpen={profilePortalTarget !== undefined}
+      alwaysOpen={part === 'studies'}
       currentDegreeYear={currentDegreeYear}
       onCurrentDegreeYearChange={onCurrentDegreeYearChange}
     />
@@ -406,7 +407,8 @@ export default function NativePlannerJourney({
         )}
       </div>
 
-      {profilePortalTarget && preferenceContent ? createPortal(preferenceContent, profilePortalTarget) : null}
+      {/* Profile = facts about the student; the planning answers live with the assistant that asks for them. */}
+      {profilePortalTarget ? createPortal(preferenceContent('studies'), profilePortalTarget) : null}
 
       {/* ── assistant + preferences + build ───────────────────────────────── */}
       {wrapAgent(<aside
@@ -472,7 +474,7 @@ export default function NativePlannerJourney({
             ...earlyYearCoursesFor(programId).map((course) => [course.courseId, course.nameHe]),
             ...Object.entries(current?.courseCatalog ?? {}).map(([id, course]) => [id, course.nameHe ?? null]),
           ])}
-          preferenceContent={profilePortalTarget === undefined ? preferenceContent : undefined}
+          preferenceContent={preferenceContent(profilePortalTarget === undefined ? 'all' : 'planning')}
         />
 
         <AgentContextStatus messages={messages} academicContextPhase={academicContextPhase} />

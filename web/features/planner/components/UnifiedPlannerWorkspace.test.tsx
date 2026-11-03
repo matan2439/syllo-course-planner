@@ -1,8 +1,9 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import type { RepositoryVM } from '../../../lib/repository'
 import UnifiedPlannerWorkspace from './UnifiedPlannerWorkspace'
+import { OPEN_PROFILE_EVENT } from '../../auth/AccountButton'
 
 // Persistence has its own integration suite; these tests exercise workspace/rail wiring.
 jest.mock('./StudentWorkspaceTools', () => ({ __esModule: true, default: () => null }))
@@ -360,7 +361,7 @@ describe('UnifiedPlannerWorkspace — first visit and phones', () => {
   test('"סמנו קורסים שהשלמתי" opens the profile and "לא עכשיו" just dismisses', () => {
     const { unmount } = renderWorkspace()
     fireEvent.click(screen.getByRole('button', { name: 'סמנו קורסים שהשלמתי' }))
-    expect(screen.getByRole('tab', { name: 'הפרופיל שלי' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('region', { name: 'הפרופיל שלי' })).not.toHaveAttribute('hidden')
     unmount()
 
     localStorage.clear()
@@ -370,7 +371,7 @@ describe('UnifiedPlannerWorkspace — first visit and phones', () => {
     expect(second.container.querySelector('.planner-workbench')).toHaveAttribute('data-rail-open', 'false')
   })
 
-  test('the phone bottom bar reaches all five working views', () => {
+  test('the phone bottom bar reaches the working views and the header event opens the profile', () => {
     const { container } = renderWorkspace()
     const bar = screen.getByRole('navigation', { name: 'ניווט תכנון' })
     const workbench = container.querySelector('.planner-workbench')!
@@ -380,9 +381,13 @@ describe('UnifiedPlannerWorkspace — first visit and phones', () => {
     expect(workbench).toHaveAttribute('data-rail-tab', 'agent')
     fireEvent.click(tab('קורסים'))
     expect(workbench).toHaveAttribute('data-rail-tab', 'courses')
-    fireEvent.click(tab('פרופיל'))
+    fireEvent.click(tab('בידינג'))
+    expect(workbench).toHaveAttribute('data-rail-open', 'false')
+    expect(document.getElementById('workspace-panel-bidding')).not.toHaveAttribute('hidden')
+    expect(tab('בידינג')).toHaveAttribute('aria-current', 'page')
+    // The profile has one entry point: the header button's event opens the rail's profile panel.
+    act(() => { window.dispatchEvent(new CustomEvent(OPEN_PROFILE_EVENT, { cancelable: true })) })
     expect(workbench).toHaveAttribute('data-rail-tab', 'profile')
-    expect(tab('פרופיל')).toHaveAttribute('aria-current', 'page')
     fireEvent.click(tab('מערכת'))
     expect(workbench).toHaveAttribute('data-rail-open', 'false')
     expect(document.getElementById('workspace-panel-weekly')).not.toHaveAttribute('hidden')

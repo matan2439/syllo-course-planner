@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { biddingDraftSchema, createEmptyBiddingDraft } from './bidding';
 import { biddingRoundSnapshotSchema } from './bidding-rounds';
 import { savedCourseSearchSchema } from './catalog-searches';
+import { courseNoteSchema, MAX_COURSE_NOTES } from './course-notes';
 import { busyTimeSchema, manualExamSchema, calendarRangeSchema } from './student-schedule-tools';
 
 const identifier = z.string().trim().min(1).max(128).regex(/^[\w:-]+$/);
@@ -13,6 +14,8 @@ export const weeklyScheduleSchema = z.object({
   busyTimes: z.array(busyTimeSchema).max(50).optional(),
   exams: z.array(manualExamSchema).max(100).optional(),
   calendarRange: calendarRangeSchema.optional(),
+  /** Warn when two exams are fewer than this many days apart. */
+  examGapDays: z.number().int().min(1).max(14).optional(),
 }).strict();
 export type SavedWeeklySchedule = z.infer<typeof weeklyScheduleSchema>;
 export const savedPlanSchema = z.object({
@@ -32,6 +35,8 @@ export const programWorkspaceSchema = z.object({
   bidding: biddingDraftSchema.default(() => createEmptyBiddingDraft()),
   biddingRounds: z.array(biddingRoundSnapshotSchema).max(20).refine((rows) => new Set(rows.map((row) => row.id)).size === rows.length, 'Duplicate round snapshot').optional(),
   courseSearches: z.array(savedCourseSearchSchema).max(15).refine((rows) => new Set(rows.map((row) => row.id)).size === rows.length, 'Duplicate saved search').optional(),
+  /** Private course/lecturer notes (see course-notes.ts for the community-ready shape). */
+  courseNotes: z.array(courseNoteSchema).max(MAX_COURSE_NOTES).refine((rows) => new Set(rows.map((row) => row.id)).size === rows.length, 'Duplicate note').optional(),
 }).strict().refine((value) => new Set(value.plans.map((p) => p.id)).size === value.plans.length, 'Duplicate plan id');
 export type ProgramWorkspace = z.infer<typeof programWorkspaceSchema>;
 export const preferencesSchema = z.object({ locale: z.enum(['he', 'en']) }).strict();

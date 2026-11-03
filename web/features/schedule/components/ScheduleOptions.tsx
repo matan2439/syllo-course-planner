@@ -1,7 +1,8 @@
 'use client'
 import { useState } from 'react'
 import type { WeeklyScheduleState } from '../../../lib/planner/schedule-storage'
-import { busyTimeSchema, manualExamSchema, calendarRangeSchema, busyTimesForSemester, examWarnings } from '../../../../shared/planner/student-schedule-tools'
+import { busyTimeSchema, manualExamSchema, calendarRangeSchema, busyTimesForSemester, DEFAULT_EXAM_GAP_DAYS } from '../../../../shared/planner/student-schedule-tools'
+import ExamOverview from './ExamOverview'
 import { buildScheduleCalendar, type CalendarMeeting } from '../../../lib/planner/schedule-calendar'
 import { useLocale } from '../../locale/LocaleProvider'
 import { weekDayLabel } from '../../locale/schedule-labels'
@@ -21,7 +22,6 @@ export default function ScheduleOptions({ programId, semesterId, state, onChange
   const [exported, setExported] = useState(0)
   const scopedBusy = busyTimesForSemester(state.busyTimes ?? [], semesterId)
   const exams = (state.exams ?? []).filter(item => item.semesterId === semesterId)
-  const warnings = examWarnings(exams, semesterId)
   const courseName = (id: string) => courses.find(c => c.courseId === id)?.name ?? id
   const invalid = () => setError(t('בדקו תאריך תקין ושעת סיום מאוחרת משעת ההתחלה.', 'Check the date and make sure the end time follows the start time.'))
   const setDates = (next: typeof range) => {
@@ -51,9 +51,10 @@ export default function ScheduleOptions({ programId, semesterId, state, onChange
       </section>
       <section className="space-y-2">
         <h3 className="font-semibold">{t('מבחנים — הזנה ידנית', 'Exams — manual dates')}</h3>
-        <p className="text-[var(--text-muted)]">{t('יש לבדוק מול המקור הרשמי. תופיע התרעה על מבחנים באותו יום או במרווח קטן משלושה ימים.', 'Verify dates with the official source. Warnings flag the same day or a gap shorter than three days.')}</p>
+        <p className="text-[var(--text-muted)]">{t('יש לבדוק מול המקור הרשמי.', 'Verify dates with the official source.')}</p>
         {exams.map(item => <div key={item.id} className="flex items-center justify-between gap-2"><span>{courseName(item.courseId)} · {item.kind === 'a' ? t('מועד א׳', 'Sitting A') : item.kind === 'b' ? t('מועד ב׳', 'Sitting B') : t('אחר', 'Other')} · <bdi>{item.date} {item.start}–{item.end}</bdi></span><button type="button" className={button} aria-label={t(`מחיקת מועד ${courseName(item.courseId)} ${item.date}`, `Remove exam ${courseName(item.courseId)} ${item.date}`)} onClick={() => onChange({ ...state, exams: state.exams?.filter(value => value.id !== item.id) })}>{t('הסרה', 'Remove')}</button></div>)}
-        {warnings.map(warning => <p key={`${warning.firstId}:${warning.secondId}`} role="status" className="text-amber-700 dark:text-amber-300">{courseName(exams.find(e => e.id === warning.firstId)!.courseId)} / {courseName(exams.find(e => e.id === warning.secondId)!.courseId)}: {warning.kind === 'same_day' ? t('באותו יום', 'Same day') : t(`מרווח של ${warning.days} ימים`, `${warning.days} days apart`)}</p>)}
+        <ExamOverview exams={exams} semesterId={semesterId} courseName={courseName} showList={false}
+          minGapDays={state.examGapDays ?? DEFAULT_EXAM_GAP_DAYS} onGapChange={(examGapDays) => onChange({ ...state, examGapDays })} />
         <form className="grid grid-cols-2 gap-2 sm:grid-cols-3" onSubmit={event => {
           event.preventDefault(); const parsed = manualExamSchema.safeParse({ ...exam, id: `exam_${uuidv4()}`, semesterId })
           if (!parsed.success || !courses.some(c => c.courseId === exam.courseId)) { invalid(); return }

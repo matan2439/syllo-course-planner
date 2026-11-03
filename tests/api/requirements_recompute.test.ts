@@ -101,3 +101,41 @@ describe('unnamed completed courses', () => {
     expect(after).toMatchObject({ satisfied: true, missing_count: 0 });
   });
 });
+
+describe('unnamed completed category courses count toward total credits (שער רוח rule)', () => {
+  const block = {
+    total_required_hours: 20, core_courses_total_min: 0, mandatory_course_ids: [],
+    categories: [
+      { category_id: 'shaar_ruach', name_he: 'קורסי שער רוח', min_courses: 3, is_core: false, course_ids: ['SR1', 'SR2', 'SR3'] },
+      { category_id: 'mixed', name_he: 'מעורב', min_courses: 1, is_core: false, course_ids: ['M1', 'M2'] },
+    ],
+  };
+  const board = {
+    metadata: {
+      program_requirements_categories: block, program_requirements_validation: { valid: false }, completed_course_ids: [],
+      program_repository_courses: [
+        { course_id: 'SR1', weekly_hours: 2 }, { course_id: 'SR2', weekly_hours: 2 }, { course_id: 'SR3', weekly_hours: 2 },
+        { course_id: 'M1', weekly_hours: 3 }, { course_id: 'M2', weekly_hours: 4 },
+      ],
+    },
+    semesters: [],
+  };
+  const plan = [{ semesterId: 'year_3_semester_a', courseIds: ['SR1'] }];
+
+  test('placed + counted שער רוח courses both add their 2 credits to the degree total', () => {
+    const r = recomputeRequirements(board, plan, { shaar_ruach: 2 })!;
+    expect(r.planned_hours).toBe(6); // 1 placed + 2 counted, 2 each
+    expect(r.remaining_hours).toBe(14);
+    expect(r.category_results.find((c) => c.category_id === 'shaar_ruach')).toMatchObject({ selected_count: 3, satisfied: true });
+  });
+
+  test('without the counter the total is unchanged (regression guard)', () => {
+    expect(recomputeRequirements(board, plan)!.planned_hours).toBe(2);
+  });
+
+  test('a mixed-hours category is not guessed: flagged as unknown hours instead', () => {
+    const r = recomputeRequirements(board, plan, { mixed: 1 })!;
+    expect(r.planned_hours).toBe(2);
+    expect(r.unknown_hours_courses).toBe(1);
+  });
+});

@@ -687,3 +687,60 @@ body {
     scroll-behavior: auto !important;
   }
 }
+
+/* ── Dual-thumb range (grade-average filter): two native ranges on one track ── */
+.dual-range { position: relative; height: 1.25rem; }
+.dual-range::before, .dual-range::after { content: ''; position: absolute; top: 50%; height: 4px; transform: translateY(-50%); border-radius: 999px; }
+.dual-range::before { inset-inline: 0; background: var(--border); }
+.dual-range::after { left: var(--range-min); right: calc(100% - var(--range-max)); background: var(--purple-strong); }
+.dual-range input[type='range'] { position: absolute; inset: 0; z-index: 1; width: 100%; margin: 0; appearance: none; background: none; pointer-events: none; }
+.dual-range input[type='range']::-webkit-slider-thumb { appearance: none; pointer-events: auto; width: 1rem; height: 1rem; border-radius: 999px; border: 2px solid var(--surface-panel); background: var(--purple-strong); cursor: pointer; }
+.dual-range input[type='range']::-moz-range-thumb { pointer-events: auto; width: 1rem; height: 1rem; border-radius: 999px; border: 2px solid var(--surface-panel); background: var(--purple-strong); cursor: pointer; }
+.dual-range input[type='range']:focus-visible::-webkit-slider-thumb { outline: 2px solid var(--purple); outline-offset: 2px; }
+.dual-range input[type='range']:focus-visible::-moz-range-thumb { outline: 2px solid var(--purple); outline-offset: 2px; }
+
+/* ── High contrast (WCAG AA+): opaque surfaces, solid borders, strong focus.
+      Layered over light or dark via data-contrast="high" on <html>. ── */
+:root[data-contrast='high'] {
+  --bg: #FFFFFF; --text: #000000; --text-muted: #1F2937;
+  --purple: #4C1D95; --purple-strong: #3B0764;
+  --surface: #FFFFFF; --surface-panel: #FFFFFF; --border: #000000;
+  --syllo-bg-image: none;
+  --cat-fluids-accent: #0B4F63; --cat-solids-accent: #7A3306; --cat-systems-accent: #3B0764;
+  --cat-labs-accent: #064E3B; --cat-other-accent: #1F2937; --cat-gateway-accent: #831843;
+}
+:root[data-contrast='high'][data-theme='dark'] {
+  --bg: #000000; --text: #FFFFFF; --text-muted: #E5E7EB;
+  --purple: #D8B4FE; --purple-strong: #E9D5FF;
+  --surface: #000000; --surface-panel: #0A0A0A; --border: #FFFFFF;
+  --cat-fluids-accent: #67E8F9; --cat-solids-accent: #FCD34D; --cat-systems-accent: #D8B4FE;
+  --cat-labs-accent: #6EE7B7; --cat-other-accent: #E5E7EB; --cat-gateway-accent: #F9A8D4;
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-contrast='high']:not([data-theme]) {
+    --bg: #000000; --text: #FFFFFF; --text-muted: #E5E7EB;
+    --purple: #D8B4FE; --purple-strong: #E9D5FF;
+    --surface: #000000; --surface-panel: #0A0A0A; --border: #FFFFFF;
+  }
+}
+/* Primary buttons use white text on --purple-strong; in dark high contrast that token is light, so flip the text. */
+:root[data-contrast='high'][data-theme='dark'] .text-white { color: #000000; }
+:root[data-contrast='high'] body { background: var(--bg); }
+:root[data-contrast='high'] *:focus-visible { outline: 3px solid var(--text) !important; outline-offset: 2px !important; }
+:root[data-contrast='high'] button, :root[data-contrast='high'] input, :root[data-contrast='high'] select, :root[data-contrast='high'] textarea { border-color: var(--border); }
+:root[data-contrast='high'] .text-amber-700, :root[data-contrast='high'] .text-red-700 { color: var(--text); font-weight: 700; }
+:root[data-contrast='high'] .syllo-bg { display: none; }
+
+/* ── Site tour ── */
+.site-tour { position: fixed; inset: 0; z-index: 90; pointer-events: none; }
+.site-tour-backdrop { position: fixed; inset: 0; background: rgba(10, 8, 25, .55); pointer-events: auto; }
+.site-tour-spotlight { position: fixed; border-radius: .75rem; box-shadow: 0 0 0 9999px rgba(10, 8, 25, .55); outline: 2px solid var(--purple); transition: all .2s ease; }
+.site-tour-card { position: fixed; width: min(22rem, calc(100vw - 2rem)); pointer-events: auto; border: 1px solid var(--border); border-radius: 1rem; background: var(--surface-panel); color: var(--text); padding: 1rem; box-shadow: var(--shadow-premium); }
+.site-tour-card:focus-visible { outline: 2px solid var(--purple); outline-offset: 2px; }
+.site-tour-primary { border-radius: .5rem; background: var(--purple-strong); color: white; padding: .4rem .9rem; font-size: .75rem; font-weight: 700; }
+.site-tour-secondary { border: 1px solid var(--border); border-radius: .5rem; padding: .4rem .8rem; font-size: .75rem; }
+.site-tour-secondary:disabled { opacity: .4; }
+.site-tour-skip { font-size: .72rem; color: var(--text-muted); text-decoration: underline; }
+:root[data-contrast='high'] .site-tour-spotlight { outline: 3px solid var(--text); }
+/* Dark high contrast: purple fills are light, so their text turns black (≥ 12:1). */
+:root[data-contrast='high'][data-theme='dark'] :is(.planner-setup-primary, .weekly-search-result, .weekly-best-button, .site-tour-primary, .planner-rail-tab[aria-selected='true']) { color: #000; }

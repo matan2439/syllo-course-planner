@@ -5,7 +5,7 @@ import type { ReactNode } from 'react'
 import { getProgram, programQuery } from '../../../lib/programs'
 import BrandLogo from './BrandLogo'
 import ShaderGradientBackground from './ShaderGradientBackground'
-import ThemeToggle from './ThemeToggle'
+import ThemeToggle, { ContrastToggle } from './ThemeToggle'
 import AccountButton from '../../auth/AccountButton'
 import CreditsChip from '../../billing/CreditsChip'
 import PublicSiteFooter from './PublicSiteFooter'
@@ -62,7 +62,7 @@ export default function ProductShell({
             <BrandLogo size={26} />
           </Link>
 
-          <nav className="flex w-full flex-wrap items-center justify-start gap-2 sm:w-auto sm:flex-nowrap">
+          <nav data-tour="header-tools" className="flex w-full flex-wrap items-center justify-start gap-2 sm:w-auto sm:flex-nowrap">
             {programId && (
               <Link
                 href={`/programs${query}`}
@@ -77,6 +77,7 @@ export default function ProductShell({
             {programId && <CreditsChip />}
             {progress}
             <ThemeToggle />
+            <ContrastToggle />
             <AccountButton />
           </nav>
         </header>

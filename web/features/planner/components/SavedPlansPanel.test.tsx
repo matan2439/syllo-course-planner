@@ -12,5 +12,8 @@ test('numbered slots add and rename the active combination inline with quiet adv
   fireEvent.click(screen.getByRole('button', { name: 'הוסף תוכנית' }));
   expect(onCreate).toHaveBeenCalledWith('תוכנית 2');
   expect(screen.queryByText('אמת וטען')).not.toBeInTheDocument();
-  expect(screen.getByText('פעולות נוספות').closest('details')).not.toHaveAttribute('open');
+  expect(screen.getByRole('group', { name: 'פעולות לתוכנית' })).toBeInTheDocument();
+  expect(screen.queryByLabelText('הערות לתוכנית')).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'הערות' }));
+  expect(screen.getByLabelText('הערות לתוכנית')).toBeInTheDocument();
 });

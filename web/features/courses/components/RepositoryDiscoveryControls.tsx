@@ -1,6 +1,6 @@
 'use client'
 
-import { useId, useRef, useState, type ReactNode } from 'react'
+import { useId, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import type { AssessmentKind, RepositoryVM } from '../../../lib/repository'
 import { filterRepository, type RepositoryFilters, type RepositorySort } from '../../../lib/repository-filters'
 import { useLocale } from '../../locale/LocaleProvider'
@@ -114,8 +114,21 @@ export default function RepositoryDiscoveryControls({ repo, filters, onChange, q
       <Facet title={t('ממוצע ציונים היסטורי', 'Historical grade average')} count={Number(gradeActive)}>
         <div className="grid grid-cols-2 gap-2">{(['minGrade', 'maxGrade'] as const).map((bound) => {
           const label = bound === 'minGrade' ? t('ממוצע מינימלי', 'Minimum average') : t('ממוצע מקסימלי', 'Maximum average')
-          return <div key={bound} className="min-w-0"><label className="flex flex-col gap-1.5 text-[11px] text-[var(--text-muted)]">{label}<input type="number" min={0} max={100} step={1} className={`${inputClass} w-full text-[var(--text)]`} value={filters[bound] ?? ''} placeholder={bound === 'minGrade' ? '0' : '100'} onChange={(event) => setGrade(bound, event.target.value)} /></label><input className="mt-2 w-full accent-[var(--purple-strong)]" type="range" aria-label={label} min={0} max={100} value={filters[bound] ?? (bound === 'minGrade' ? 0 : 100)} onChange={(event) => setGrade(bound, event.target.value)} /></div>
+          return <label key={bound} className="flex min-w-0 flex-col gap-1.5 text-[11px] text-[var(--text-muted)]">{label}<input type="number" min={0} max={100} step={1} className={`${inputClass} w-full text-[var(--text)]`} value={filters[bound] ?? ''} placeholder={bound === 'minGrade' ? '0' : '100'} onChange={(event) => setGrade(bound, event.target.value)} /></label>
         })}</div>
+        {/* One track, two thumbs: the thumbs never cross (setGrade keeps min ≤ max). */}
+        <div className="dual-range mt-3" dir="ltr" style={{ '--range-min': `${filters.minGrade ?? 0}%`, '--range-max': `${filters.maxGrade ?? 100}%` } as CSSProperties}>
+          {(['minGrade', 'maxGrade'] as const).map((bound) => <input key={bound} type="range" min={0} max={100}
+            aria-label={bound === 'minGrade' ? t('ממוצע מינימלי', 'Minimum average') : t('ממוצע מקסימלי', 'Maximum average')}
+            value={filters[bound] ?? (bound === 'minGrade' ? 0 : 100)}
+            onChange={(event) => {
+              const value = Number(event.target.value)
+              // Dragging a thumb past the other stops at it rather than swapping roles.
+              if (bound === 'minGrade' && value > (filters.maxGrade ?? 100)) return
+              if (bound === 'maxGrade' && value < (filters.minGrade ?? 0)) return
+              setGrade(bound, event.target.value)
+            }} />)}
+        </div>
         {choice(t('כלול גם ממוצע לא ידוע בטווח', 'Include unknown averages in range'), filters.includeUnknownGrades ?? false, () => update({ includeUnknownGrades: !filters.includeUnknownGrades }))}
         <p className="mt-1 text-[10px] leading-4 text-[var(--text-muted)]">{t('הממוצע מבוסס על נתוני עבר ואינו תחזית לציון.', 'Averages reflect past results and do not predict your grade.')}</p>
       </Facet>
