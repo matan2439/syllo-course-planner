@@ -192,29 +192,27 @@ def test_me_spec_passes_all():
     spec = load_spec(spec_path(program))
     facts = json.loads((ROOT / "data/official/tau_course_facts_2026.json").read_text(encoding="utf-8"))
     board = json.loads((ROOT / "data/boards/mechanical_engineering_2027.json").read_text(encoding="utf-8"))
-    # The facts file only covers the Y3/Y4 + elective courses; Y1/Y2 credits come from the builder's
-    # own early-year course index.
-    early = json.loads((ROOT / "data/config/early_year_courses.json").read_text(encoding="utf-8"))
-    extra = {r["courseId"]: r["creditHours"] for r in early[program.id]}
 
     results = [
-        check_courses_known(spec, facts, extra),
+        check_courses_known(spec, facts),
         check_double_counting(spec),
         check_mandatory_offered(spec, facts),
-        check_totals(spec, facts, extra),
+        check_totals(spec, facts),
         check_plannable(board),
     ]
     failed = {r.name: r.problems for r in results if not r.passed}
     assert not failed, failed
 
-    # Pin the warnings so Task 7 can tighten this once facts cover Y1/Y2 and the general requirement.
-    no_facts = {m.course_id for m in spec.mandatory_courses if m.course_id not in facts}
-    assert len(no_facts) == 23
+    # `degree.py refresh` covers every course the spec references (all mandatory years,
+    # every category, the general pool), so no extra credits are needed.
+    referenced = {m.course_id for m in spec.mandatory_courses}
+    referenced |= {c for cat in spec.categories for c in cat.course_ids}
+    referenced |= set(spec.general_requirement["course_ids"])
+    assert referenced <= set(facts)
+    # Honest remaining warnings: שער רוח courses are not in the program listing, so TAU
+    # publishes no credits for them there (the general requirement's credits land in Task 8).
     by_name = {r.name: set(r.problems) for r in results}
-    assert by_name["courses_known"] == (
-        {f"warn: offering unknown for {c}" for c in no_facts}
-        | {"warn: general requirement: 88 course(s) have no credits"}
-    )
-    assert by_name["mandatory_offered"] == {f"warn: no offering data for mandatory {c}" for c in no_facts}
+    assert by_name["courses_known"] == {"warn: general requirement: 88 course(s) have no credits"}
+    assert by_name["mandatory_offered"] == set()
     assert by_name["totals"] == {"warn: general requirement credits unknown (3 courses); excluded from totals"}
     assert not by_name["double_counting"] and not by_name["plannable"]

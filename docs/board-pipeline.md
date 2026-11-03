@@ -29,6 +29,29 @@ python3 scripts/course_planner_pipeline.py --program mechanical_engineering --ye
 Flags can be combined; they always run in order build -> audit -> sync -> verify-live,
 and `--audit` failing (any error-level issue) stops the pipeline before `--sync`.
 
+## Building a degree's boards (`scripts/degree.py`)
+
+Every registered degree (`data/config/programs.json`) builds from its spec:
+
+```bash
+python scripts/degree.py refresh  --program mechanical_engineering_2027 [--live|--offline] [--apply]
+python scripts/degree.py build    --program mechanical_engineering_2027 --offline [--out-dir DIR]
+python scripts/degree.py check    --program mechanical_engineering_2027 --live      # or --offline (never passes)
+python scripts/degree.py evidence --program mechanical_engineering_2027 --offline
+```
+
+`build` = `spec.json` → `spec_to_program` (the mandatory-courses input is generated from the
+spec) → the legacy generate path (board, course-detail links, GraphQL names/hours) →
+official facts (`refresh` apply + syllabus summaries) → the reviewed overlay
+`data/degrees/<inst>/<base>/<year>/curation.json` → the Years 1–2 window board and its
+course index. Each overlay entry names the board, course, field and the reason the committed
+board differs from what the builder derives; a stale entry (course gone, or a value the build
+already produces) fails the build. `tests/test_degree_build_golden.py` proves an offline build
+reproduces the committed ME boards (it skips when the gitignored `data/raw_html/` or
+`data/database.sqlite` are absent). `refresh` covers every course the spec references (all
+mandatory years, every category, the general-requirement pool) and never touches boards
+without `--apply`.
+
 ## Audit-only workflow (safe, no writes)
 
 ```bash

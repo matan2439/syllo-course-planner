@@ -37,7 +37,7 @@ from app.analysis.board_audit import compute_board_hash  # noqa: E402
 from app.analysis.program_requirements import validate_program_plan  # noqa: E402
 from app.analysis.semester_board import build_semester_board  # noqa: E402
 from app.scraping.tau_program_scraper import fetch_program_data  # noqa: E402
-from scripts.refresh_course_data import ACADEMIC_YEAR, PROGRAM_TCID  # noqa: E402
+from app.degrees.registry import get_program  # noqa: E402
 
 BOARDS_DIR = ROOT / "data" / "boards"
 EARLY_YEAR_INDEX = ROOT / "data" / "config" / "early_year_courses.json"
@@ -144,9 +144,17 @@ def remap_repository_course(course: dict, semester_ids: list[str]) -> dict:
     return {**course, "effective_allowed_semesters": allowed}
 
 
-def build(program_id: str, start_year: int, tcid: str, shana: int) -> Path:
+def early_board_path(program_id: str, start_year: int = 1, boards_dir: Path = BOARDS_DIR) -> Path:
     base, year = re.fullmatch(r"(.+)_(\d{4})", program_id).groups()
-    late = json.loads((BOARDS_DIR / f"{program_id}.json").read_text(encoding="utf-8"))
+    return boards_dir / f"{base}_years_{start_year}_{start_year + 1}_{year}.json"
+
+
+def build(program_id: str, start_year: int, tcid: str, shana: int,
+          boards_dir: Path = BOARDS_DIR, out_dir: Path | None = None) -> Path:
+    """Read ``<boards_dir>/<program_id>.json``; write the window board into ``out_dir``
+    (default: ``boards_dir``)."""
+    base, year = re.fullmatch(r"(.+)_(\d{4})", program_id).groups()
+    late = json.loads((boards_dir / f"{program_id}.json").read_text(encoding="utf-8"))
     late_meta = late["metadata"]
     late_block = late_meta["program_requirements_categories"]
 
@@ -195,20 +203,21 @@ def build(program_id: str, start_year: int, tcid: str, shana: int) -> Path:
     board["metadata"]["window_of_program_id"] = program_id
     board["metadata"]["board_data_version"] = compute_board_hash(board)
 
-    out = BOARDS_DIR / f"{base}_years_{window_years[0]}_{window_years[1]}_{year}.json"
+    out = early_board_path(program_id, start_year, out_dir or boards_dir)
+    out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(board, ensure_ascii=False, indent=2), encoding="utf-8")
     return out
 
 
-def write_early_year_index() -> Path:
+def write_early_year_index(boards_dir: Path = BOARDS_DIR, path: Path = EARLY_YEAR_INDEX) -> Path:
     """
     The official Years 1–2 mandatory courses of every program that has an early window
     board, keyed by program id — shared/planner/early_year_courses.ts reads it (client and
     server), so "which courses are Years 1–2" never lives in code.
     """
     index: dict[str, list[dict]] = {}
-    for path in sorted(BOARDS_DIR.glob("*_years_*_*.json")):
-        board = json.loads(path.read_text(encoding="utf-8"))
+    for board_file in sorted(boards_dir.glob("*_years_*_*.json")):
+        board = json.loads(board_file.read_text(encoding="utf-8"))
         meta = board.get("metadata") or {}
         if meta.get("start_year") != 1 or not meta.get("window_of_program_id"):
             continue
@@ -223,18 +232,22 @@ def write_early_year_index() -> Path:
             for course in semester["courses"]
             if course.get("is_mandatory")
         ]
-    EARLY_YEAR_INDEX.write_text(json.dumps(index, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    return EARLY_YEAR_INDEX
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(index, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    return path
 
 
 def main() -> int:
     cli = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     cli.add_argument("--program", default="mechanical_engineering_2027")
     cli.add_argument("--start-year", type=int, default=1)
-    cli.add_argument("--tcid", default=PROGRAM_TCID)
-    cli.add_argument("--shana", type=int, default=ACADEMIC_YEAR)
+    cli.add_argument("--tcid", default=None, help="default: the program's registry sourceIds.tcid")
+    cli.add_argument("--shana", type=int, default=None, help="default: the program's registry sourceYear")
     args = cli.parse_args()
-    out = build(args.program, args.start_year, args.tcid, args.shana)
+    entry = get_program(args.program)
+    tcid = args.tcid or entry.source_ids["tcid"]
+    shana = args.shana or entry.source_year
+    out = build(args.program, args.start_year, tcid, shana)
     board = json.loads(out.read_text(encoding="utf-8"))
     print(f"[early-board] wrote {out.relative_to(ROOT)}")
     print(f"[early-board] wrote {write_early_year_index().relative_to(ROOT)}")

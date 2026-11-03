@@ -25,35 +25,46 @@ from app.scraping.tau_program_scraper import fetch_program_data
 
 _BOARD_PATH    = Path("data/parsed_json/mechanical_semester_board_2027.json")
 _ENRICHED_PATH = Path("data/programs/mechanical_engineering_2027_enriched.json")
-_GQL_CACHE     = Path("data/raw_html/tau_program_8715_2026.json")
 _DB_PATH       = Path("data/database.sqlite")
 _TCID          = "8715"
 _SHANA         = "2026"  # TAU year code for תשפ"ז (2026-2027)
+
+
+def graphql_cache_path(tcid: str = _TCID, shana: str = _SHANA) -> Path:
+    return Path(f"data/raw_html/tau_program_{tcid}_{shana}.json")
+
+
+_GQL_CACHE     = graphql_cache_path()
 
 
 # ---------------------------------------------------------------------------
 # GraphQL helpers (name / hours enrichment)
 # ---------------------------------------------------------------------------
 
-def _load_graphql_body() -> list[dict]:
+def _load_graphql_body(cache: Path = _GQL_CACHE) -> list[dict]:
     for enc in ("utf-8-sig", "utf-8"):
         try:
-            raw = json.loads(_GQL_CACHE.read_text(encoding=enc))
+            raw = json.loads(cache.read_text(encoding=enc))
             return raw["data"]["results"]["body"]
         except Exception:
             continue
     return []
 
 
-def _fetch_or_load_graphql(force_refresh: bool = False) -> list[dict]:
-    if _GQL_CACHE.exists() and not force_refresh:
-        body = _load_graphql_body()
+def _fetch_or_load_graphql(force_refresh: bool = False, tcid: str = _TCID, shana: str = _SHANA,
+                           offline: bool = False) -> list[dict]:
+    cache = graphql_cache_path(tcid, shana)
+    if cache.exists() and not force_refresh:
+        body = _load_graphql_body(cache)
         if body:
             return body
-    print(f"[graphql] Fetching program data for tcid={_TCID} shana={_SHANA}…")
+    if offline:
+        print(f"[graphql] offline and no cache at {cache}; skipping name/hours enrichment")
+        return []
+    print(f"[graphql] Fetching program data for tcid={tcid} shana={shana}…")
     return fetch_program_data(
-        tcid=_TCID, shana=_SHANA, safa="1",
-        cache_path=_GQL_CACHE, force_refresh=force_refresh,
+        tcid=tcid, shana=shana, safa="1",
+        cache_path=cache, force_refresh=force_refresh,
     )
 
 
@@ -130,18 +141,29 @@ def enrich_board(
     board_path: Path = _BOARD_PATH,
     force_refresh: bool = False,
     dry_run: bool = False,
+    *,
+    program: dict | None = None,
+    db_path: Path = _DB_PATH,
+    tcid: str = _TCID,
+    shana: str = _SHANA,
+    offline: bool = False,
 ) -> dict:
-    """Run full 2027 enrichment pipeline. Returns final board stats dict."""
+    """Run the full board enrichment pipeline for one program (default: ME 2027).
+
+    ``program`` is the enriched-program dict (``spec_to_program`` output); when omitted
+    the committed ME enriched program file is read. Returns final board stats dict.
+    """
 
     # Step 1: Build board from enriched program
-    print("[enrich] Loading enriched 2027 program…")
-    program = json.loads(_ENRICHED_PATH.read_text(encoding="utf-8"))
+    if program is None:
+        print("[enrich] Loading enriched 2027 program…")
+        program = json.loads(_ENRICHED_PATH.read_text(encoding="utf-8"))
 
     print("[enrich] Building semester board…")
     board = build_semester_board(
         plan={"selected_courses": []},
         program=program,
-        db_path=_DB_PATH,
+        db_path=db_path,
     )
     if not dry_run:
         board_path.write_text(
@@ -152,15 +174,17 @@ def enrich_board(
     print("[enrich] Running URL enrichment from cached course-detail pages…")
     url_enriched = _enrich_links(
         board_path=board_path,
+        year=int(shana),
         force_refresh=force_refresh,
         dry_run=dry_run,
+        offline=offline,
     )
     n_got_syl = sum(1 for v in url_enriched.values() if "syllabus_url" in v)
     print(f"  enriched {len(url_enriched)} courses, {n_got_syl} got syllabus_url")
 
     # Step 4: Fill names / hours from GraphQL
     print("[enrich] Running name/hours enrichment from GraphQL cache…")
-    body       = _fetch_or_load_graphql(force_refresh)
+    body       = _fetch_or_load_graphql(force_refresh, tcid, shana, offline)
     course_map = _extract_course_map(body)
     print(f"  extracted {len(course_map)} courses from GraphQL")
     if not dry_run:

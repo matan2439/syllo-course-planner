@@ -1,4 +1,417 @@
 {
+  "0509-1624": {
+    "ims": {
+      "name_he": "אלגברה ליניארית להנדסה מכנית",
+      "offered_semesters": [
+        "A",
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0509162401&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05091624&year=2026"
+    },
+    "offering": {
+      "offered_semesters": [
+        "A",
+        "B"
+      ],
+      "source": "program_timetable",
+      "status": "offered",
+      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
+    },
+    "program": {
+      "credits": 6.5,
+      "teaching_format": [
+        {
+          "hours": 5,
+          "type": "שיעור"
+        },
+        {
+          "hours": 2,
+          "type": "תרגיל"
+        }
+      ],
+      "weekly_hours": 7
+    },
+    "timetable": [
+      "A",
+      "B"
+    ]
+  },
+  "0509-1645": {
+    "ims": {
+      "name_he": "משוואות דיפרנציאליות רגילות להנדסה מכנית",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0509164501&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05091645&year=2026"
+    },
+    "offering": {
+      "offered_semesters": [
+        "B"
+      ],
+      "source": "program_timetable",
+      "status": "offered",
+      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
+    },
+    "program": {
+      "credits": 4,
+      "teaching_format": [
+        {
+          "hours": 3,
+          "type": "שיעור"
+        },
+        {
+          "hours": 1,
+          "type": "תרגיל"
+        }
+      ],
+      "weekly_hours": 4
+    },
+    "timetable": [
+      "B"
+    ]
+  },
+  "0509-1646": {
+    "ims": {
+      "name_he": "חשבון דיפרנציאלי ואינטגרלי 1ב' להנדסה מכנית ומדע והנדסה של חומרים",
+      "offered_semesters": [
+        "A",
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0509164601&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05091646&year=2026"
+    },
+    "offering": {
+      "offered_semesters": [
+        "A",
+        "B"
+      ],
+      "source": "program_timetable",
+      "status": "offered",
+      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
+    },
+    "program": {
+      "credits": 5.5,
+      "teaching_format": [
+        {
+          "hours": 4,
+          "type": "שיעור"
+        },
+        {
+          "hours": 2,
+          "type": "תרגיל"
+        }
+      ],
+      "weekly_hours": 6
+    },
+    "timetable": [
+      "A",
+      "B"
+    ]
+  },
+  "0509-1647": {
+    "ims": {
+      "name_he": "חשבון  דיפרנציאלי ואינטגרלי 2ב' למכנית",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0509164701&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05091647&year=2026"
+    },
+    "offering": {
+      "offered_semesters": [
+        "B"
+      ],
+      "source": "program_timetable",
+      "status": "offered",
+      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
+    },
+    "program": {
+      "credits": 5.5,
+      "teaching_format": [
+        {
+          "hours": 4,
+          "type": "שיעור"
+        },
+        {
+          "hours": 2,
+          "type": "תרגיל"
+        }
+      ],
+      "weekly_hours": 6
+    },
+    "timetable": [
+      "B"
+    ]
+  },
+  "0509-1815": {
+    "ims": {
+      "name_he": "כימיה בסיסית להנדסה",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0509181501&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05091815&year=2026"
+    },
+    "offering": {
+      "offered_semesters": [
+        "A"
+      ],
+      "source": "program_timetable",
+      "status": "offered",
+      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
+    },
+    "program": {
+      "credits": 3,
+      "teaching_format": [
+        {
+          "hours": 2,
+          "type": "שיעור"
+        },
+        {
+          "hours": 1,
+          "type": "תרגיל"
+        }
+      ],
+      "weekly_hours": 3
+    },
+    "timetable": [
+      "A"
+    ]
+  },
+  "0509-1829": {
+    "ims": {
+      "name_he": "פיזיקה (2)",
+      "offered_semesters": [
+        "A",
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0509182901&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05091829&year=2026"
+    },
+    "offering": {
+      "offered_semesters": [
+        "A",
+        "B"
+      ],
+      "source": "program_timetable",
+      "status": "offered",
+      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
+    },
+    "program": {
+      "credits": 5.5,
+      "teaching_format": [
+        {
+          "hours": 4,
+          "type": "שיעור"
+        },
+        {
+          "hours": 2,
+          "type": "תרגיל"
+        }
+      ],
+      "weekly_hours": 6
+    },
+    "timetable": [
+      "A",
+      "B"
+    ]
+  },
+  "0509-1834": {
+    "ims": {
+      "name_he": "מעבדה בפיזיקה",
+      "offered_semesters": [
+        "A",
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0509183401&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05091834&year=2026"
+    },
+    "offering": {
+      "offered_semesters": [
+        "A",
+        "B"
+      ],
+      "source": "program_timetable",
+      "status": "offered",
+      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
+    },
+    "program": {
+      "credits": 2,
+      "teaching_format": [
+        {
+          "hours": 2,
+          "type": "מעבדה"
+        }
+      ],
+      "weekly_hours": 2
+    },
+    "timetable": [
+      "A",
+      "B"
+    ]
+  },
+  "0509-2805": {
+    "ims": {
+      "name_he": "מבוא להסתברות וסטטיסטיקה להנדסה מכנית וחומרים",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0509280501&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05092805&year=2026"
+    },
+    "offering": {
+      "offered_semesters": [
+        "A"
+      ],
+      "source": "program_timetable",
+      "status": "offered",
+      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
+    },
+    "program": {
+      "credits": 4,
+      "teaching_format": [
+        {
+          "hours": 3,
+          "type": "שיעור"
+        },
+        {
+          "hours": 1,
+          "type": "תרגיל"
+        }
+      ],
+      "weekly_hours": 4
+    },
+    "timetable": [
+      "A"
+    ]
+  },
+  "0509-2843": {
+    "ims": {
+      "name_he": "אנליזה הרמונית",
+      "offered_semesters": [
+        "A",
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0509284301&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05092843&year=2026"
+    },
+    "offering": {
+      "offered_semesters": [
+        "A",
+        "B"
+      ],
+      "source": "program_timetable",
+      "status": "offered",
+      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
+    },
+    "program": {
+      "credits": 3,
+      "teaching_format": [
+        {
+          "hours": 2,
+          "type": "שיעור"
+        },
+        {
+          "hours": 1,
+          "type": "תרגיל"
+        }
+      ],
+      "weekly_hours": 3
+    },
+    "timetable": [
+      "A",
+      "B"
+    ]
+  },
+  "0509-2844": {
+    "ims": {
+      "name_he": "פונקציות מרוכבות",
+      "offered_semesters": [
+        "A",
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0509284401&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05092844&year=2026"
+    },
+    "offering": {
+      "offered_semesters": [
+        "A",
+        "B"
+      ],
+      "source": "program_timetable",
+      "status": "offered",
+      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
+    },
+    "program": {
+      "credits": 3,
+      "teaching_format": [
+        {
+          "hours": 2,
+          "type": "שיעור"
+        },
+        {
+          "hours": 1,
+          "type": "תרגיל"
+        }
+      ],
+      "weekly_hours": 3
+    },
+    "timetable": [
+      "A",
+      "B"
+    ]
+  },
+  "0509-2846": {
+    "ims": {
+      "name_he": "משוואות דיפרנציאליות חלקיות",
+      "offered_semesters": [
+        "A",
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0509284601&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05092846&year=2026"
+    },
+    "offering": {
+      "offered_semesters": [
+        "A",
+        "B"
+      ],
+      "source": "program_timetable",
+      "status": "offered",
+      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
+    },
+    "program": {
+      "credits": 3,
+      "teaching_format": [
+        {
+          "hours": 2,
+          "type": "שיעור"
+        },
+        {
+          "hours": 1,
+          "type": "תרגיל"
+        }
+      ],
+      "weekly_hours": 3
+    },
+    "timetable": [
+      "A",
+      "B"
+    ]
+  },
   "0509-4010": {
     "ims": {
       "name_he": "ננו לווינים- בין חינוך למדעים למהפכת החלל",
@@ -145,6 +558,42 @@
     },
     "timetable": [
       "A"
+    ]
+  },
+  "0512-1205": {
+    "ims": {
+      "name_he": "מבוא למעגלים מערכות ואותות חשמליים",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512120501&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05121205&year=2026"
+    },
+    "offering": {
+      "offered_semesters": [
+        "B"
+      ],
+      "source": "program_timetable",
+      "status": "offered",
+      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
+    },
+    "program": {
+      "credits": 4,
+      "teaching_format": [
+        {
+          "hours": 3,
+          "type": "שיעור"
+        },
+        {
+          "hours": 1,
+          "type": "תרגיל"
+        }
+      ],
+      "weekly_hours": 4
+    },
+    "timetable": [
+      "B"
     ]
   },
   "0512-2508": {
@@ -333,6 +782,253 @@
       "A"
     ]
   },
+  "0542-1510": {
+    "ims": {
+      "name_he": "גרפיקה הנדסית",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542151001&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05421510&year=2026"
+    },
+    "offering": {
+      "offered_semesters": [
+        "A"
+      ],
+      "source": "program_timetable",
+      "status": "offered",
+      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
+    },
+    "program": {
+      "credits": 4,
+      "teaching_format": [
+        {
+          "hours": 3,
+          "type": "שיעור ותרגיל"
+        },
+        {
+          "hours": 2,
+          "type": "מעבדה"
+        }
+      ],
+      "weekly_hours": 5
+    },
+    "timetable": [
+      "A"
+    ]
+  },
+  "0542-1800": {
+    "ims": {
+      "name_he": "מבוא להנדסה מכנית",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542180001&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05421800&year=2026"
+    },
+    "offering": {
+      "offered_semesters": [
+        "A"
+      ],
+      "source": "program_timetable",
+      "status": "offered",
+      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
+    },
+    "program": {
+      "credits": 0,
+      "teaching_format": [
+        {
+          "hours": null,
+          "type": "תרגיל"
+        }
+      ],
+      "weekly_hours": 0
+    },
+    "timetable": [
+      "A"
+    ]
+  },
+  "0542-1810": {
+    "ims": {
+      "name_he": "מכניקה של חלקיקים",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542181001&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05421810&year=2026"
+    },
+    "offering": {
+      "offered_semesters": [
+        "B"
+      ],
+      "source": "program_timetable",
+      "status": "offered",
+      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
+    },
+    "program": {
+      "credits": 4.5,
+      "teaching_format": [
+        {
+          "hours": 3,
+          "type": "שיעור"
+        },
+        {
+          "hours": 2,
+          "type": "תרגיל"
+        }
+      ],
+      "weekly_hours": 5
+    },
+    "timetable": [
+      "B"
+    ]
+  },
+  "0542-1820": {
+    "ims": {
+      "name_he": "סטטיקה של גוף קשיח",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542182001&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05421820&year=2026"
+    },
+    "offering": {
+      "offered_semesters": [
+        "B"
+      ],
+      "source": "program_timetable",
+      "status": "offered",
+      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
+    },
+    "program": {
+      "credits": 4,
+      "teaching_format": [
+        {
+          "hours": 3,
+          "type": "שיעור"
+        },
+        {
+          "hours": 1,
+          "type": "תרגיל"
+        }
+      ],
+      "weekly_hours": 4
+    },
+    "timetable": [
+      "B"
+    ]
+  },
+  "0542-1821": {
+    "ims": {
+      "name_he": "תכנות בסיסי להנדסה מכנית",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542182101&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05421821&year=2026"
+    },
+    "offering": {
+      "offered_semesters": [
+        "A"
+      ],
+      "source": "program_timetable",
+      "status": "offered",
+      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
+    },
+    "program": {
+      "credits": 3.5,
+      "teaching_format": [
+        {
+          "hours": 2,
+          "type": "שיעור"
+        },
+        {
+          "hours": 2,
+          "type": "תרגיל"
+        }
+      ],
+      "weekly_hours": 4
+    },
+    "timetable": [
+      "A"
+    ]
+  },
+  "0542-2110": {
+    "ims": {
+      "name_he": "דינמיקה של גוף קשיח",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542211001&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05422110&year=2026"
+    },
+    "offering": {
+      "offered_semesters": [
+        "A"
+      ],
+      "source": "program_timetable",
+      "status": "offered",
+      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
+    },
+    "program": {
+      "credits": 4,
+      "teaching_format": [
+        {
+          "hours": 4,
+          "type": "שיעור ותרגיל"
+        }
+      ],
+      "weekly_hours": 4
+    },
+    "timetable": [
+      "A"
+    ]
+  },
+  "0542-2200": {
+    "ims": {
+      "name_he": "מכניקת המוצקים (1)",
+      "offered_semesters": [
+        "A",
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542220001&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05422200&year=2026"
+    },
+    "offering": {
+      "offered_semesters": [
+        "A",
+        "B"
+      ],
+      "source": "program_timetable",
+      "status": "offered",
+      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
+    },
+    "program": {
+      "credits": 5,
+      "teaching_format": [
+        {
+          "hours": 4,
+          "type": "שיעור"
+        },
+        {
+          "hours": 1,
+          "type": "תרגיל"
+        }
+      ],
+      "weekly_hours": 5
+    },
+    "timetable": [
+      "A",
+      "B"
+    ]
+  },
   "0542-2400": {
     "ims": {
       "name_he": "תכן מכני (1)",
@@ -375,6 +1071,45 @@
       "status": "offered",
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542250001&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05422500&year=2026"
+    },
+    "offering": {
+      "offered_semesters": [
+        "A",
+        "B"
+      ],
+      "source": "program_timetable",
+      "status": "offered",
+      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
+    },
+    "program": {
+      "credits": 5,
+      "teaching_format": [
+        {
+          "hours": 4,
+          "type": "שיעור"
+        },
+        {
+          "hours": 1,
+          "type": "תרגיל"
+        }
+      ],
+      "weekly_hours": 5
+    },
+    "timetable": [
+      "A",
+      "B"
+    ]
+  },
+  "0542-2600": {
+    "ims": {
+      "name_he": "תרמודינמיקה (1)",
+      "offered_semesters": [
+        "A",
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542260001&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05422600&year=2026"
     },
     "offering": {
       "offered_semesters": [
@@ -620,6 +1355,42 @@
     },
     "timetable": [
       "A",
+      "B"
+    ]
+  },
+  "0542-3804": {
+    "ims": {
+      "name_he": "אנליזה נומרית להנדסה מכנית",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542380401&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05423804&year=2026"
+    },
+    "offering": {
+      "offered_semesters": [
+        "B"
+      ],
+      "source": "program_timetable",
+      "status": "offered",
+      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
+    },
+    "program": {
+      "credits": 4.5,
+      "teaching_format": [
+        {
+          "hours": 3,
+          "type": "שיעור"
+        },
+        {
+          "hours": 2,
+          "type": "תרגיל"
+        }
+      ],
+      "weekly_hours": 5
+    },
+    "timetable": [
       "B"
     ]
   },
@@ -2296,6 +3067,74 @@
     },
     "timetable": [
       "A"
+    ]
+  },
+  "0581-1111": {
+    "ims": {
+      "name_he": "מבוא למדע והנדסה של חומרים",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0581111101&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05811111&year=2026"
+    },
+    "offering": {
+      "offered_semesters": [
+        "B"
+      ],
+      "source": "program_timetable",
+      "status": "offered",
+      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
+    },
+    "program": {
+      "credits": 4,
+      "teaching_format": [
+        {
+          "hours": 3,
+          "type": "שיעור"
+        },
+        {
+          "hours": 1,
+          "type": "תרגיל"
+        }
+      ],
+      "weekly_hours": 4
+    },
+    "timetable": [
+      "B"
+    ]
+  },
+  "0581-1132": {
+    "ims": {
+      "name_he": "מבוא למדע והנדסה של חומרים - מעבדה",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0581113201&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05811132&year=2026"
+    },
+    "offering": {
+      "offered_semesters": [
+        "B"
+      ],
+      "source": "program_timetable",
+      "status": "offered",
+      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
+    },
+    "program": {
+      "credits": 0.5,
+      "teaching_format": [
+        {
+          "hours": 1,
+          "type": "מעבדה"
+        }
+      ],
+      "weekly_hours": 1
+    },
+    "timetable": [
+      "B"
     ]
   },
   "0581-4131": {

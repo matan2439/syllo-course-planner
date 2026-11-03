@@ -31,17 +31,31 @@ _BOARD_PATH            = Path("data/parsed_json/mechanical_semester_board_2027.j
 _DB_PATH               = Path("data/database.sqlite")
 
 
-def generate(dry_run: bool = False) -> dict:
-    """Generate the 2027 board JSON and return it."""
-    print("[generate] Loading enriched 2027 program…")
-    program = json.loads(_ENRICHED_PROGRAM_PATH.read_text(encoding="utf-8"))
+def generate(
+    dry_run: bool = False,
+    *,
+    program: dict | None = None,
+    board_path: Path = _BOARD_PATH,
+    db_path: Path = _DB_PATH,
+    tcid: str = "8715",
+    shana: str = "2026",
+    offline: bool = False,
+) -> dict:
+    """Generate a program's semester board JSON and return it (defaults: ME 2027).
+
+    ``program`` is the enriched-program dict (``spec_to_program`` output); when omitted
+    the committed ME enriched program file is read.
+    """
+    if program is None:
+        print("[generate] Loading enriched 2027 program…")
+        program = json.loads(_ENRICHED_PROGRAM_PATH.read_text(encoding="utf-8"))
     print(f"  program_id: {program.get('program_id')}")
 
     print("[generate] Building semester board (empty plan, mandatory auto-placed)…")
     board = build_semester_board(
         plan={"selected_courses": []},
         program=program,
-        db_path=_DB_PATH,
+        db_path=db_path,
     )
 
     # Count what was placed
@@ -55,27 +69,28 @@ def generate(dry_run: bool = False) -> dict:
     print(f"  repository courses: {len(repo)}")
 
     if not dry_run:
-        _BOARD_PATH.write_text(
+        board_path.write_text(
             json.dumps(board, ensure_ascii=False, indent=2), encoding="utf-8"
         )
-        print(f"[generate] Board saved: {_BOARD_PATH}")
+        print(f"[generate] Board saved: {board_path}")
 
         # Step 2: restore syllabus/exam/prereq/moodle URLs from cached HTML
         print("[generate] Running URL enrichment from cached course-detail pages…")
-        enriched = enrich_links(board_path=_BOARD_PATH)
+        enriched = enrich_links(board_path=board_path, year=int(shana), offline=offline)
         with_syl = sum(1 for v in enriched.values() if "syllabus_url" in v)
         print(f"  enriched {len(enriched)} courses, {with_syl} got syllabus_url")
 
         # Step 3: fill still-missing names/hours from GraphQL cache
         print("[generate] Running name/hours enrichment from GraphQL cache…")
-        stats = enrich_graphql(board_path=_BOARD_PATH)
+        stats = enrich_graphql(board_path=board_path, program=program, db_path=db_path,
+                               tcid=tcid, shana=shana, offline=offline)
         print(f"  enriched {stats.get('enriched_name', 0)} names, "
               f"{stats.get('enriched_hours', 0)} hours")
         if stats.get("still_missing_name"):
             print(f"  still missing name: {stats['still_missing_name']}")
 
     # Final state
-    board_final = json.loads(_BOARD_PATH.read_text(encoding="utf-8"))
+    board_final = json.loads(board_path.read_text(encoding="utf-8"))
     return board_final
 
 

@@ -35,6 +35,13 @@ DEFAULT_LIVE_BASE = "https://syllo-course-planner.vercel.app"
 
 
 def board_path_for(program: str, year: int) -> Path:
+    # The registry names each program's board file (boardJsonFile); fall back to the
+    # legacy naming convention for programs that aren't registered.
+    from app.degrees.registry import load_registry
+
+    for entry in load_registry():
+        if entry.base == program and entry.year == year:
+            return DEFAULT_BOARD_DIR / entry.board_json_file
     base = program.replace("engineering", "").strip("_") or program
     # data/parsed_json/{base}_semester_board_{year}.json, e.g. mechanical_semester_board_2027.json
     name = f"{base}_semester_board_{year}.json"
