@@ -9,6 +9,7 @@ import {
 } from '../../lib/programs'
 import ProductShell from '../../features/shell/components/ProductShell'
 import { Badge, Card } from '../../components/ui'
+import { getUniversity } from '../../lib/universities'
 
 export const metadata = { title: 'בחירת תוכנית — Syllo' }
 
@@ -80,9 +81,11 @@ function ProgramFamilyCard({
 export default async function ProgramsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ program?: string }>
+  searchParams: Promise<{ program?: string; university?: string }>
 }) {
-  const { program: programParam } = await searchParams
+  const { program: programParam, university: universityParam } = await searchParams
+  // ponytail: every program is TAU's today; filter families by university when a second one lands.
+  const university = getUniversity(universityParam)
   const currentId = getProgram(programParam).id
   // Only offer programs /planner can actually open (its board file must ship).
   const hasBoard = async (p: ProgramVM) => (await readBoardForProgramId(p.id)) !== null
@@ -106,6 +109,12 @@ export default async function ProgramsPage({
       subtitle="איזו תוכנית מתכננים?"
       width="narrow"
     >
+      <div className="mb-4 flex items-center gap-2 text-sm">
+        {/* eslint-disable-next-line @next/next/no-img-element -- a static brand tile */}
+        <img src={university.logo} alt="" width={28} height={28} className="h-7 w-7" />
+        <span className="font-semibold">{university.nameHe}</span>
+        <Link href="/universities" className="text-xs text-[var(--text-muted)] underline hover:text-[var(--purple)]">שינוי</Link>
+      </div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {families.map((f, i) => (
           <ProgramFamilyCard

@@ -16,9 +16,13 @@ export function isCourseQuestion(id: string | undefined): id is CourseQuestionId
 }
 
 /** A draft answer inside a server-issued question; selection alone sends nothing. */
-export default function CourseClarificationAnswer({ questionId, courseNameById = {}, disabled, onConfirm }: {
+const MAX_SELECTED = 64
+
+export default function CourseClarificationAnswer({ questionId, courseNameById = {}, scopes = [], disabled, onConfirm }: {
   questionId: CourseQuestionId
   courseNameById?: Readonly<Record<string, string | null | undefined>>
+  /** Ready-made groups (e.g. the courses on the board) the student can pick in one click. */
+  scopes?: ReadonlyArray<{ id: string; label: string; courseIds: readonly string[] }>
   disabled: boolean
   onConfirm: (ids: string[], text: string) => void
 }) {
@@ -30,6 +34,7 @@ export default function CourseClarificationAnswer({ questionId, courseNameById =
   const matches = useMemo(() => rankCourseMatches(query, courses, (course) => course.name, (course) => course.id), [query, courses])
   const labels = ANSWER_LABELS[questionId]
   const nameOf = (id: string) => courseNameById[id] ?? id
+  const addAll = (ids: readonly string[]) => setSelected((old) => [...new Set([...old, ...ids])].slice(0, MAX_SELECTED))
 
   return (
     <fieldset disabled={disabled} className="mt-3 min-w-0 space-y-3 disabled:opacity-60">
@@ -39,13 +44,29 @@ export default function CourseClarificationAnswer({ questionId, courseNameById =
           placeholder="שם קורס או מספר…"
           className="min-h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 text-sm text-[var(--text)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--purple)]" />
       </label>
+      {(scopes.length > 0 || (query.trim() && matches.length > 1)) && (
+        <div role="group" aria-label="בחירה מהירה" className="flex flex-wrap gap-2">
+          {scopes.map((scope) => (
+            <button key={scope.id} type="button" onClick={() => addAll(scope.courseIds)}
+              className="min-h-9 rounded-full border border-[var(--purple)]/50 px-3 py-1.5 text-xs hover:bg-[var(--purple)]/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--purple)]">
+              כל {scope.label} ({scope.courseIds.length})
+            </button>
+          ))}
+          {query.trim() && matches.length > 1 && (
+            <button type="button" onClick={() => addAll(matches.map(({ item }) => item.id))}
+              className="min-h-9 rounded-full border border-[var(--purple)]/50 px-3 py-1.5 text-xs hover:bg-[var(--purple)]/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--purple)]">
+              כל {matches.length} התוצאות
+            </button>
+          )}
+        </div>
+      )}
       {matches.length > 0 ? (
         <ul aria-label="קורסים לבחירה" className="max-h-44 overflow-y-auto overscroll-contain divide-y divide-[var(--border)]">
           {matches.slice(0, 8).map(({ item }) => (
             <li key={item.id}>
               <label className="flex min-h-11 cursor-pointer items-center gap-3 py-2 text-sm">
                 <input type="checkbox" checked={selected.includes(item.id)}
-                  disabled={selected.length >= 64 && !selected.includes(item.id)}
+                  disabled={selected.length >= MAX_SELECTED && !selected.includes(item.id)}
                   onChange={(event) => setSelected((ids) => event.target.checked ? [...ids, item.id] : ids.filter((id) => id !== item.id))}
                   className="h-4 w-4 shrink-0 accent-[var(--purple-strong)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--purple)]" />
                 <span className="min-w-0"><span className="block break-words">{item.name}</span>

@@ -16,7 +16,7 @@ describe('/programs', () => {
     render(await ProgramsPage({ searchParams: Promise.resolve({}) }))
 
     const links = screen.getAllByRole('link').map((a) => a.getAttribute('href'))
-    expect(links).toEqual(['/planner'])
+    expect(links).toEqual(['/universities', '/planner']) // change university, then the one shipped program
     // The 2025 archive version and the biomedical track have no board here.
     expect(screen.queryByText(/גרסה קודמת/)).toBeNull()
     expect(screen.queryByText(/ביו-רפואית/)).toBeNull()

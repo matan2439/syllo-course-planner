@@ -130,3 +130,14 @@ test('requesting a future target year cannot expose live-year bidding observatio
   const result = await call('GET', null, OWNER, { scope: 'history', program_id: PROGRAM, academic_year: String(year + 1), semester: '1', round: '1' });
   expect(result.body.history.summaries).toHaveLength(0);
 });
+
+test('profile studies are one document per program, owner scoped, CAS protected and strictly shaped', async () => {
+  const data = { priorHours: 12, categoryCounts: { shaar_ruach: 2 } };
+  expect((await call('POST', { scope: 'studies', program_id: PROGRAM, expected_revision: 0, data })).statusCode).toBe(200);
+  expect((await call('GET', null, OWNER, { scope: 'studies', program_id: PROGRAM })).body).toMatchObject({ ok: true, revision: 1, data });
+  expect((await call('GET', null, OTHER, { scope: 'studies', program_id: PROGRAM })).body).toMatchObject({ revision: 0, data: null });
+  expect((await call('POST', { scope: 'studies', program_id: PROGRAM, expected_revision: 0, data })).statusCode).toBe(409);
+  expect((await call('POST', { scope: 'studies', program_id: PROGRAM, expected_revision: 1, data: { ...data, extra: 1 } })).statusCode).toBe(400);
+  // The board's plans document is a separate scope.
+  expect((await call('GET', null, OWNER, { scope: 'program', program_id: PROGRAM })).body.data.plans).toEqual([]);
+});

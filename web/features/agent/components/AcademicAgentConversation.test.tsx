@@ -301,7 +301,7 @@ test('submits Hebrew transcript on Enter, keeps Shift+Enter as a newline, and sh
   // One collapsed, Hebrew-only step summary per reply (no raw tool names), and a proposal card.
   expect(screen.getByText(/1 בדיקות מול כללי התואר/)).toBeInTheDocument()
   expect(screen.getByRole('list', { name: 'שלבי כלי הסוכן' })).toHaveTextContent('דירוג חלופות')
-  expect(screen.getByRole('region', { name: 'הצעה מוכנה' })).toHaveTextContent('ההצעה מוכנה ומוצגת בלוח')
+  expect(screen.getByRole('region', { name: 'הצעה מוכנה' })).toHaveTextContent('ההצעה מוכנה — הלוח מציג תצוגה מקדימה')
   expect(screen.queryByText('rank_candidates')).not.toBeInTheDocument()
   expect(onProposalReady).toHaveBeenCalledWith(expect.objectContaining({ proposal_id: 'prop_1' }))
 })

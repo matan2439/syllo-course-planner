@@ -59,7 +59,7 @@ test('ask_student ends the run and surfaces a typed clarification', async () => 
 })
 
 test('an invalid submit_proposal is rejected and the agent keeps working until the plan validates', async () => {
-  const submit = { tool: 'submit_proposal', args: { summary_he: 'תוכנית מלאה', tradeoffs_he: [] } }
+  const submit = { tool: 'submit_proposal', args: { summary_he: 'תוכנית מלאה', tradeoffs_he: [], removals_requested_by_student: false, extra_hours_reason_he: null } }
   const model = new FakeAgentModel([[submit], [{ tool: 'build_plan' }], [submit]])
   const result = await runPlannerAgent({ transcript, session: await newSession() }, { model })
 
@@ -82,7 +82,7 @@ test('update_preferences binds the planner: an avoided elective is never placed'
       semester_distribution: null, focus_areas: null, free_days: null, excluded_courses_answered: null,
     } }],
     [{ tool: 'build_plan' }],
-    [{ tool: 'submit_proposal', args: { summary_he: 'בלי אלפא', tradeoffs_he: [] } }],
+    [{ tool: 'submit_proposal', args: { summary_he: 'בלי אלפא', tradeoffs_he: [], removals_requested_by_student: false, extra_hours_reason_he: null } }],
   ])
   const result = await runPlannerAgent({ transcript, session }, { model })
 
@@ -393,4 +393,16 @@ test('a run past its deadline answers with what it has instead of cutting the st
   expect(result.outcome).toBe('conversation')
   expect(result.messageHe).toContain('עצרתי לפני שסיימתי')
   expect(result.events.at(-1)).toEqual(expect.objectContaining({ type: 'assistant_message' }))
+})
+
+test('submit_proposal refuses to drop a course the student placed unless they asked for it', async () => {
+  // The board already holds MAND and ALPHA; the agent swaps ALPHA for BETA (same hours, same category).
+  const placed = { ...planContext, semesters: [{ id: 'year_3_semester_a', courses: [{ course_id: 'MAND' }, { course_id: 'ALPHA' }] }] }
+  const session = await newSession({}, placed)
+  await callTool(session, 'remove_course', { course_id: 'ALPHA' })
+  await callTool(session, 'add_course', { course_id: 'BETA', semester_id: null })
+  const args = { summary_he: 'החלפה', tradeoffs_he: [], extra_hours_reason_he: null }
+  const refused = await callTool(session, 'submit_proposal', { ...args, removals_requested_by_student: false })
+  expect(refused).toMatchObject({ accepted: false, removed_courses: [expect.objectContaining({ course_id: 'ALPHA' })] })
+  expect(await callTool(session, 'submit_proposal', { ...args, removals_requested_by_student: true })).toMatchObject({ accepted: true })
 })
