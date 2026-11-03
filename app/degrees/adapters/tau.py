@@ -1,6 +1,7 @@
 """TAU evidence adapters: tochniot program tree, official timetable, IMS course pages."""
 import ast
 import json
+import re
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -84,6 +85,35 @@ def _children(node: dict, key: str) -> list[dict]:
     return [c for c in (_parse(node.get(key)) or []) if isinstance(c, dict)]
 
 
+NOTE_TEXT_KEYS = {"hearakurs": "teurhearakurs", "idkunkurs": "teuridkun"}
+_FLAG_RE = re.compile(r"^[\d\s./:,-]*$")  # purely numeric / date-like values are flags, not text
+
+
+def _note_entries(field: str, value) -> list[tuple[str, dict]]:
+    """(text, entry data) pairs for a course field carrying free text.
+
+    Real payload: lists of dicts (teurhearakurs / teuridkun ...), possibly string-encoded.
+    A plain string is accepted for the known note fields.
+    """
+    if isinstance(value, str) and value.lstrip().startswith("["):
+        value = _parse(value)
+    elif isinstance(value, str):
+        return [(value, {})] if field.startswith(KURS_NOTE_PREFIXES) and strip_html(value) else []
+    if not (isinstance(value, list) and value and all(isinstance(e, dict) for e in value)):
+        return []
+    out = []
+    for entry in value:
+        key = NOTE_TEXT_KEYS.get(field)
+        if key and strip_html(str(entry.get(key) or "")):
+            text = entry[key]
+        else:  # unknown list field: any non-flag string value counts as text
+            parts = [v for v in entry.values() if isinstance(v, str) and strip_html(v) and not _FLAG_RE.match(strip_html(v))]
+            text = " ".join(parts)
+        if strip_html(text):
+            out.append((text, dict(entry)))
+    return out
+
+
 def tochniot_evidence(program: ProgramEntry, live: bool, offline: bool) -> list[EvidenceItem]:
     tcid, shana = program.source_ids["tcid"], str(program.source_year)
     cache = RAW_DIR / f"tau_program_{tcid}_{shana}.json"
@@ -118,10 +148,14 @@ def tochniot_evidence(program: ProgramEntry, live: bool, offline: bool) -> list[
                 add(f"{T}:rama:{rid}:kurs:{show}", "course_listing", rpath, (k.get("teurkurs") or "").strip(),
                     course_id=dashed(show), cancelled=(k.get("mevutal") or "0") == "1",
                     data={f: k.get(f) for f in KURS_DATA_FIELDS})
+                seen_notes: set[str] = set()
                 for field, value in k.items():
-                    if field.startswith(KURS_NOTE_PREFIXES) and isinstance(value, str) and strip_html(value):
-                        add(f"{T}:rama:{rid}:kurs:{show}:{field}:{text_id(value)}", "rule_text", rpath, value,
-                            course_id=dashed(show))
+                    for text, entry in _note_entries(field, value):
+                        nid = f"{T}:rama:{rid}:kurs:{show}:{field}:{text_id(text)}"
+                        if nid in seen_notes:
+                            continue
+                        seen_notes.add(nid)
+                        add(nid, "rule_text", rpath, text, course_id=dashed(show), data=entry)
             walk(r, rpath)
 
     for b in bodies:

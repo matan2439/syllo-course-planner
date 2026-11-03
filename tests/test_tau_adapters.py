@@ -256,3 +256,21 @@ def test_duplicate_ids_raise(program, env, monkeypatch):
     monkeypatch.setitem(ev.ADAPTERS, "tau_tochniot", dup)
     with pytest.raises(ValueError, match="duplicate"):
         collect_evidence(program, live=False, offline=False)
+
+
+def test_real_shaped_list_notes_emit_rule_text(program, env):
+    items = tau.tochniot_evidence(program, False, False)
+    notes = [i for i in items if i.kind == "rule_text" and ":kurs:" in i.id]
+    hea = [i for i in notes if ":hearakurs:" in i.id]
+    idk = [i for i in notes if ":idkunkurs:" in i.id]
+    assert hea and all(i.course_id and i.data.get("teurhearakurs") for i in hea)
+    assert any(i.raw_text.startswith("&nbsp;") for i in hea)
+    assert idk and idk[0].data["misheara"] == "120" and idk[0].data["taarichidkun"]
+    assert "0509.1510" in idk[0].raw_text
+
+
+def test_string_encoded_list_note_parses(program, env):
+    _, k = _first_kurs(env)
+    k["hearakurs"] = repr([{"teurhearakurs": "string encoded note"}])
+    items = tau.tochniot_evidence(program, False, False)
+    assert any(i.raw_text == "string encoded note" for i in items)

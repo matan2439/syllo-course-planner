@@ -163,7 +163,12 @@
            "anglit": "",
            "mevutal": "0",
            "shakul": "",
-           "hidekurs": ""
+           "hidekurs": "",
+           "hearakurs": [
+            {
+             "teurhearakurs": "&nbsp;הקורס נלמד בשפה האנגלית"
+            }
+           ]
           },
           {
            "kursid": "05091646",
@@ -188,7 +193,14 @@
            "anglit": "",
            "mevutal": "0",
            "shakul": "",
-           "hidekurs": ""
+           "hidekurs": "",
+           "idkunkurs": [
+            {
+             "misheara": "120",
+             "teuridkun": "קורס זהה לקורס מספר 0509.1510",
+             "taarichidkun": "08/06/2026 13:43:27"
+            }
+           ]
           }
          ]
         },
