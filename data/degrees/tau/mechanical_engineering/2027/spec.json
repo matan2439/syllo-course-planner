@@ -1,0 +1,1641 @@
+{
+  "program_id": "mechanical_engineering_2027",
+  "institution": "tau",
+  "source_year": 2026,
+  "total_required_credits": 185.0,
+  "catalog_year_policy": "start_year",
+  "mandatory_courses": [
+    {
+      "course_id": "0542-1510",
+      "year": 1,
+      "semester": "A",
+      "placement_rule": "fixed_semester"
+    },
+    {
+      "course_id": "0509-1624",
+      "year": 1,
+      "semester": "A",
+      "placement_rule": "fixed_semester"
+    },
+    {
+      "course_id": "0509-1646",
+      "year": 1,
+      "semester": "A",
+      "placement_rule": "fixed_semester"
+    },
+    {
+      "course_id": "0509-1815",
+      "year": 1,
+      "semester": "A",
+      "placement_rule": "fixed_semester"
+    },
+    {
+      "course_id": "0542-1821",
+      "year": 1,
+      "semester": "A",
+      "placement_rule": "fixed_semester"
+    },
+    {
+      "course_id": "0542-1800",
+      "year": 1,
+      "semester": "A",
+      "placement_rule": "fixed_semester"
+    },
+    {
+      "course_id": "0509-1645",
+      "year": 1,
+      "semester": "B",
+      "placement_rule": "fixed_semester"
+    },
+    {
+      "course_id": "0509-1647",
+      "year": 1,
+      "semester": "B",
+      "placement_rule": "fixed_semester"
+    },
+    {
+      "course_id": "0509-1834",
+      "year": 1,
+      "semester": "B",
+      "placement_rule": "fixed_semester"
+    },
+    {
+      "course_id": "0542-1810",
+      "year": 1,
+      "semester": "B",
+      "placement_rule": "fixed_semester"
+    },
+    {
+      "course_id": "0542-1820",
+      "year": 1,
+      "semester": "B",
+      "placement_rule": "fixed_semester"
+    },
+    {
+      "course_id": "0581-1111",
+      "year": 1,
+      "semester": "B",
+      "placement_rule": "fixed_semester"
+    },
+    {
+      "course_id": "0581-1132",
+      "year": 1,
+      "semester": "B",
+      "placement_rule": "fixed_semester"
+    },
+    {
+      "course_id": "0509-1829",
+      "year": 2,
+      "semester": "A",
+      "placement_rule": "fixed_semester"
+    },
+    {
+      "course_id": "0509-2805",
+      "year": 2,
+      "semester": "A",
+      "placement_rule": "fixed_semester"
+    },
+    {
+      "course_id": "0509-2844",
+      "year": 2,
+      "semester": "A",
+      "placement_rule": "fixed_semester"
+    },
+    {
+      "course_id": "0542-2110",
+      "year": 2,
+      "semester": "A",
+      "placement_rule": "fixed_semester"
+    },
+    {
+      "course_id": "0542-2200",
+      "year": 2,
+      "semester": "A",
+      "placement_rule": "fixed_semester"
+    },
+    {
+      "course_id": "0542-3804",
+      "year": 2,
+      "semester": "B",
+      "placement_rule": "fixed_semester"
+    },
+    {
+      "course_id": "0509-2843",
+      "year": 2,
+      "semester": "B",
+      "placement_rule": "fixed_semester"
+    },
+    {
+      "course_id": "0509-2846",
+      "year": 2,
+      "semester": "B",
+      "placement_rule": "fixed_semester"
+    },
+    {
+      "course_id": "0512-1205",
+      "year": 2,
+      "semester": "B",
+      "placement_rule": "fixed_semester"
+    },
+    {
+      "course_id": "0542-2600",
+      "year": 2,
+      "semester": "B",
+      "placement_rule": "fixed_semester"
+    },
+    {
+      "course_id": "0512-1204",
+      "year": 3,
+      "semester": "A",
+      "placement_rule": "fixed_semester"
+    },
+    {
+      "course_id": "0542-2400",
+      "year": 3,
+      "semester": "A",
+      "placement_rule": "fixed_semester"
+    },
+    {
+      "course_id": "0542-2500",
+      "year": 3,
+      "semester": "A",
+      "placement_rule": "fixed_semester"
+    },
+    {
+      "course_id": "0542-3243",
+      "year": 3,
+      "semester": "A",
+      "placement_rule": "fixed_semester"
+    },
+    {
+      "course_id": "0542-3620",
+      "year": 3,
+      "semester": "either",
+      "placement_rule": "choose_one_allowed_semester"
+    },
+    {
+      "course_id": "0542-3780",
+      "year": 3,
+      "semester": "either",
+      "placement_rule": "choose_one_allowed_semester"
+    },
+    {
+      "course_id": "0542-3791",
+      "year": 3,
+      "semester": "either",
+      "placement_rule": "choose_one_allowed_semester"
+    },
+    {
+      "course_id": "0542-3792",
+      "year": 3,
+      "semester": "either",
+      "placement_rule": "choose_one_allowed_semester"
+    },
+    {
+      "course_id": "0542-4010",
+      "year": 4,
+      "semester": "either",
+      "placement_rule": "choose_one_allowed_semester"
+    },
+    {
+      "course_id": "0542-4020",
+      "year": 4,
+      "semester": "either",
+      "placement_rule": "choose_one_allowed_semester"
+    },
+    {
+      "course_id": "0542-4091",
+      "year": 4,
+      "semester": "either",
+      "placement_rule": "choose_one_allowed_semester"
+    },
+    {
+      "course_id": "0542-4092",
+      "year": 4,
+      "semester": "either",
+      "placement_rule": "choose_one_allowed_semester"
+    }
+  ],
+  "categories": [
+    {
+      "category_id": "fluids",
+      "name_he": "קורסי ליבה — זורמים",
+      "min_courses": 1,
+      "min_credits": null,
+      "course_ids": [
+        "0542-4120",
+        "0542-4123",
+        "0542-4320",
+        "0542-4352"
+      ],
+      "group": "core"
+    },
+    {
+      "category_id": "solids",
+      "name_he": "קורסי ליבה — מוצקים",
+      "min_courses": 1,
+      "min_credits": null,
+      "course_ids": [
+        "0542-4220",
+        "0542-4221",
+        "0542-4223",
+        "0542-4224"
+      ],
+      "group": "core"
+    },
+    {
+      "category_id": "systems",
+      "name_he": "קורסי ליבה — מערכות",
+      "min_courses": 1,
+      "min_credits": null,
+      "course_ids": [
+        "0542-4420",
+        "0542-4422",
+        "0542-4455",
+        "0542-4622"
+      ],
+      "group": "core"
+    },
+    {
+      "category_id": "advanced_labs",
+      "name_he": "מעבדות מתקדמות",
+      "min_courses": 1,
+      "min_credits": null,
+      "course_ids": [
+        "0542-4391",
+        "0542-4624",
+        "0581-4131",
+        "0542-4093",
+        "0542-4094"
+      ],
+      "group": null
+    },
+    {
+      "category_id": "other_specialization",
+      "name_he": "קורסי התמחות / בחירה נוספים",
+      "min_courses": 0,
+      "min_credits": null,
+      "course_ids": [
+        "0542-4124",
+        "0542-4125",
+        "0542-4131",
+        "0542-4132",
+        "0542-4135",
+        "0542-4179",
+        "0542-4191",
+        "0542-4226",
+        "0542-4275",
+        "0542-4321",
+        "0542-4322",
+        "0542-4351",
+        "0542-4425",
+        "0542-4524",
+        "0542-4527",
+        "0542-4559",
+        "0542-4621",
+        "0542-4722",
+        "0509-4010",
+        "0512-1203",
+        "0512-1202",
+        "0512-2508",
+        "0512-4200",
+        "0512-4362",
+        "0512-4700",
+        "0512-4702",
+        "0571-1818",
+        "0571-3802",
+        "0571-4174",
+        "0555-4000",
+        "0555-4432",
+        "0555-4555",
+        "0555-4562",
+        "0555-3160",
+        "0555-4630",
+        "0555-4550",
+        "0542-4011",
+        "0542-4012",
+        "0542-3112"
+      ],
+      "group": null
+    }
+  ],
+  "group_minimums": {
+    "core": 6
+  },
+  "general_requirement": {
+    "category_id": "shaar_ruach",
+    "name_he": "קורסי שער רוח",
+    "min_courses": 3,
+    "needs_review": false,
+    "note": "תוכנית מחייבת 6 נק\"ז קורסי שער רוח (2 נק\"ז לכל קורס) — 3 קורסים לפחות. אינם נספרים כבחירת הנדסה.",
+    "course_ids": [
+      "0609-1005",
+      "0609-1003",
+      "0609-1008",
+      "0609-1007",
+      "0609-1013",
+      "0609-1014",
+      "1880-0901",
+      "1880-0710",
+      "0609-1002",
+      "0609-1011",
+      "0609-1018",
+      "0609-1017",
+      "0609-1201",
+      "0609-1225",
+      "0609-1226",
+      "0609-1303",
+      "0612-6041",
+      "0612-6044",
+      "0618-1059",
+      "0622-1001",
+      "0627-1010",
+      "0631-1130",
+      "0631-2468",
+      "0631-3496",
+      "0671-1045",
+      "0671-2215",
+      "0671-2331",
+      "0671-2669",
+      "0671-2670",
+      "0672-1102",
+      "0677-1514",
+      "0687-1113",
+      "0687-1115",
+      "0616-1311",
+      "0672-1109",
+      "0723-2047",
+      "0723-2022",
+      "0621-1194",
+      "0621-1219",
+      "0669-6175",
+      "0662-1011",
+      "0662-1757",
+      "0662-2642",
+      "0662-2649",
+      "0608-1110",
+      "0608-1177",
+      "0608-1152",
+      "0608-1153",
+      "0669-6198",
+      "0609-1006",
+      "0609-1021",
+      "0609-1004",
+      "0609-1009",
+      "0609-1015",
+      "0609-1010",
+      "0609-1019",
+      "0609-1020",
+      "0609-1209",
+      "0609-1211",
+      "0609-1212",
+      "0618-1016",
+      "0618-1042",
+      "0622-1004",
+      "0622-2001",
+      "0631-2503",
+      "0671-1031",
+      "0671-1091",
+      "0671-1130",
+      "0671-1238",
+      "0671-2383",
+      "0671-2649",
+      "0671-2668",
+      "0671-4389",
+      "0672-1202",
+      "0672-1557",
+      "0677-1283",
+      "1673-4026",
+      "0723-2052",
+      "0621-1101",
+      "0621-1220",
+      "0662-1180",
+      "0662-2253",
+      "0662-2615",
+      "0662-2620",
+      "0662-2653",
+      "0662-2656",
+      "0608-1010",
+      "0669-6203"
+    ]
+  },
+  "double_counting": "forbidden",
+  "ui": {
+    "other_category_label": "קורסים באישור מיוחד",
+    "sidebar_order": [
+      "fluids",
+      "solids",
+      "systems",
+      "advanced_labs",
+      "other_specialization"
+    ]
+  },
+  "legacy": {
+    "program": {
+      "program_name_he": "הנדסה מכנית",
+      "program_name": "Mechanical Engineering",
+      "academic_year_he": "תשפ\"ז",
+      "source_type": "mechanical_engineering_2027_pdf_enriched_with_tau_program_page",
+      "source_file": "קורסי בחירה תשפז - לפרסום לשנה ג'-ד'.pdf",
+      "needs_verification": false,
+      "notes": [
+        "לפי המצגת: יש ללמוד לפחות 6 קורסי ליבה",
+        "יש לבחור לפחות קורס ליבה אחד מכל תת-קבוצה: זורמים, מוצקים, מערכות",
+        "יש ללמוד לפחות מעבדה מתקדמת אחת",
+        "יש להתחשב בדרישות הקדם לכל קורס"
+      ],
+      "elective_courses": [
+        {
+          "course_id": "0542-4120",
+          "name_he": "תרמודינמיקה (2)",
+          "hours": 4,
+          "offered_semesters": [
+            "A"
+          ],
+          "category_id": "fluids",
+          "offered_in_year": true,
+          "prerequisites": [
+            {
+              "name_he": "תרמודינמיקה (1)",
+              "course_id": null,
+              "resolution_status": "unresolved"
+            }
+          ],
+          "teaching_format": [
+            {
+              "type": "שיעור ותרגיל",
+              "hours": 4.0
+            }
+          ],
+          "has_prereqs": true
+        },
+        {
+          "course_id": "0542-4123",
+          "name_he": "תהליכי מעבר חום וחומר",
+          "hours": 4,
+          "offered_semesters": [
+            "B"
+          ],
+          "category_id": "fluids",
+          "offered_in_year": true,
+          "prerequisites": [
+            {
+              "name_he": "מכניקת הזורמים (1)",
+              "course_id": null,
+              "resolution_status": "unresolved"
+            },
+            {
+              "name_he": "מעבר חום",
+              "course_id": null,
+              "resolution_status": "unresolved"
+            }
+          ],
+          "teaching_format": [
+            {
+              "type": "שיעור ותרגיל",
+              "hours": 4.0
+            }
+          ],
+          "has_prereqs": true
+        },
+        {
+          "course_id": "0542-4320",
+          "name_he": "מכניקת הזורמים (2)",
+          "hours": 4,
+          "offered_semesters": [
+            "B"
+          ],
+          "category_id": "fluids",
+          "offered_in_year": true,
+          "prerequisites": [
+            {
+              "name_he": "מכניקת הזורמים (1)",
+              "course_id": null,
+              "resolution_status": "unresolved"
+            }
+          ]
+        },
+        {
+          "course_id": "0542-4352",
+          "name_he": "דינמיקת הגזים",
+          "hours": 4,
+          "offered_semesters": [
+            "A"
+          ],
+          "category_id": "fluids",
+          "offered_in_year": true,
+          "prerequisites": [
+            {
+              "name_he": "מכניקת הזורמים (1)",
+              "course_id": null,
+              "resolution_status": "unresolved"
+            },
+            {
+              "name_he": "תרמודינמיקה (1)",
+              "course_id": null,
+              "resolution_status": "unresolved"
+            }
+          ]
+        },
+        {
+          "course_id": "0542-4220",
+          "name_he": "תורת התנודות",
+          "hours": 4,
+          "offered_semesters": [
+            "A"
+          ],
+          "category_id": "solids",
+          "offered_in_year": true,
+          "prerequisites": [
+            {
+              "name_he": "דינמיקה של גוף קשיח",
+              "course_id": null,
+              "resolution_status": "unresolved"
+            },
+            {
+              "name_he": "מכניקת המוצקים (1)",
+              "course_id": null,
+              "resolution_status": "unresolved"
+            }
+          ],
+          "teaching_format": [
+            {
+              "type": "שיעור ותרגיל",
+              "hours": 4.0
+            }
+          ],
+          "has_prereqs": true
+        },
+        {
+          "course_id": "0542-4221",
+          "name_he": "מבוא לתורת האלסטיות",
+          "hours": 4,
+          "offered_semesters": [
+            "B"
+          ],
+          "category_id": "solids",
+          "offered_in_year": true,
+          "prerequisites": [
+            {
+              "name_he": "מכניקת המוצקים (1)",
+              "course_id": null,
+              "resolution_status": "unresolved"
+            }
+          ],
+          "teaching_format": [
+            {
+              "type": "שיעור ותרגיל",
+              "hours": 4.0
+            }
+          ],
+          "has_prereqs": true
+        },
+        {
+          "course_id": "0542-4223",
+          "name_he": "מבוא לאלמנטים סופיים",
+          "hours": 4,
+          "offered_semesters": [
+            "A"
+          ],
+          "category_id": "solids",
+          "offered_in_year": true,
+          "prerequisites": [
+            {
+              "name_he": "מכניקת המוצקים (1)",
+              "course_id": null,
+              "resolution_status": "unresolved"
+            }
+          ],
+          "teaching_format": [
+            {
+              "type": "שיעור",
+              "hours": 2.0
+            },
+            {
+              "type": "תרגיל",
+              "hours": 2.0
+            }
+          ],
+          "has_prereqs": true
+        },
+        {
+          "course_id": "0542-4224",
+          "name_he": "מכניקת המוצקים (2)",
+          "hours": 4,
+          "offered_semesters": [
+            "B"
+          ],
+          "category_id": "solids",
+          "offered_in_year": true,
+          "prerequisites": [
+            {
+              "name_he": "מכניקת המוצקים (1)",
+              "course_id": null,
+              "resolution_status": "unresolved"
+            }
+          ],
+          "teaching_format": [
+            {
+              "type": "שיעור ותרגיל",
+              "hours": 4.0
+            }
+          ],
+          "has_prereqs": true
+        },
+        {
+          "course_id": "0542-4420",
+          "name_he": "תורת המכונות",
+          "hours": 4,
+          "offered_semesters": [
+            "A"
+          ],
+          "category_id": "systems",
+          "offered_in_year": true,
+          "prerequisites": [
+            {
+              "name_he": "דינמיקה של גוף קשיח",
+              "course_id": null,
+              "resolution_status": "unresolved"
+            },
+            {
+              "name_he": "מכניקת המוצקים (1)",
+              "course_id": null,
+              "resolution_status": "unresolved"
+            }
+          ],
+          "teaching_format": [
+            {
+              "type": "שיעור ותרגיל",
+              "hours": 4.0
+            }
+          ],
+          "has_prereqs": true
+        },
+        {
+          "course_id": "0542-4422",
+          "name_he": "תכן הנדסי: מבוא ושיטות",
+          "hours": 4,
+          "offered_semesters": [
+            "A"
+          ],
+          "category_id": "systems",
+          "offered_in_year": true,
+          "prerequisites": [
+            {
+              "name_he": "אלגברה לינארית",
+              "course_id": null,
+              "resolution_status": "unresolved"
+            }
+          ],
+          "teaching_format": [
+            {
+              "type": "שיעור ותרגיל",
+              "hours": 4.0
+            }
+          ],
+          "has_prereqs": true
+        },
+        {
+          "course_id": "0542-4455",
+          "name_he": "בינה חישובית",
+          "hours": 4,
+          "offered_semesters": [
+            "B"
+          ],
+          "category_id": "systems",
+          "offered_in_year": true,
+          "prerequisites": [
+            {
+              "name_he": "מבוא להסתברות וסטטיסטיקה להנדסה מכנית וחומרים",
+              "course_id": null,
+              "resolution_status": "unresolved"
+            },
+            {
+              "name_he": "מבוא לבקרה",
+              "course_id": null,
+              "resolution_status": "unresolved"
+            }
+          ],
+          "teaching_format": [
+            {
+              "type": "שיעור ותרגיל",
+              "hours": 4.0
+            }
+          ],
+          "has_prereqs": true
+        },
+        {
+          "course_id": "0542-4622",
+          "name_he": "דינמיקה ובקרה של מערכות",
+          "hours": 4,
+          "offered_semesters": [
+            "B"
+          ],
+          "category_id": "systems",
+          "offered_in_year": true,
+          "prerequisites": [
+            {
+              "name_he": "מבוא לבקרה",
+              "course_id": null,
+              "resolution_status": "unresolved"
+            }
+          ],
+          "teaching_format": [
+            {
+              "type": "שיעור ותרגיל",
+              "hours": 4.0
+            }
+          ],
+          "has_prereqs": true
+        },
+        {
+          "course_id": "0542-4391",
+          "name_he": "מעבדה בסימולציות נומריות בזרימה ומעבר חום",
+          "hours": 3.5,
+          "offered_semesters": [
+            "A"
+          ],
+          "category_id": "advanced_labs",
+          "offered_in_year": true,
+          "prerequisites": [
+            {
+              "name_he": "מכניקת הזורמים (1)",
+              "course_id": null,
+              "resolution_status": "unresolved"
+            },
+            {
+              "name_he": "מעבר חום",
+              "course_id": null,
+              "resolution_status": "unresolved"
+            }
+          ]
+        },
+        {
+          "course_id": "0542-4624",
+          "name_he": "מעבדה ברובוטיקה ובקרה של מערכות",
+          "hours": 3,
+          "offered_semesters": [
+            "B"
+          ],
+          "category_id": "advanced_labs",
+          "offered_in_year": true,
+          "prerequisites": [
+            {
+              "name_he": "מבוא לרובוטיקה",
+              "course_id": null,
+              "resolution_status": "unresolved"
+            }
+          ],
+          "teaching_format": [
+            {
+              "type": "מעבדה",
+              "hours": 3.0
+            }
+          ],
+          "has_prereqs": true
+        },
+        {
+          "course_id": "0581-4131",
+          "name_he": "מעבדה בחומרים הנדסיים",
+          "hours": 1,
+          "offered_semesters": [
+            "A"
+          ],
+          "category_id": "advanced_labs",
+          "offered_in_year": true,
+          "prerequisites": [
+            {
+              "name_he": "מבוא למדע והנדסה של חומרים",
+              "course_id": null,
+              "resolution_status": "unresolved"
+            }
+          ],
+          "teaching_format": [
+            {
+              "type": "מעבדה",
+              "hours": 1.0
+            }
+          ],
+          "has_prereqs": true
+        },
+        {
+          "course_id": "0542-4093",
+          "name_he": "מעבדה במערכות אנרגיה",
+          "hours": 1,
+          "offered_semesters": [],
+          "category_id": "advanced_labs",
+          "offered_in_year": false,
+          "not_offered_note": "לא מוצע בתשפ\"ז",
+          "prerequisites": [],
+          "teaching_format": [
+            {
+              "type": "מעבדה",
+              "hours": 1.0
+            }
+          ],
+          "has_prereqs": true
+        },
+        {
+          "course_id": "0542-4094",
+          "name_he": "מעבדת מתקדמת בזרימה ומערכות אנרגיה",
+          "hours": 1,
+          "offered_semesters": [
+            "B"
+          ],
+          "category_id": "advanced_labs",
+          "offered_in_year": true,
+          "prerequisites": [
+            {
+              "name_he": "תרמודינמיקה (1)",
+              "course_id": null,
+              "resolution_status": "unresolved"
+            },
+            {
+              "name_he": "הנדסת ניסויים ומדידות - מעבדה",
+              "course_id": null,
+              "resolution_status": "unresolved"
+            },
+            {
+              "name_he": "מכניקת זורמים (1)",
+              "course_id": null,
+              "resolution_status": "unresolved"
+            },
+            {
+              "name_he": "מעבר חום",
+              "course_id": null,
+              "resolution_status": "unresolved"
+            },
+            {
+              "name_he": "מעבדת זרימה ומעבר חום",
+              "course_id": null,
+              "resolution_status": "unresolved"
+            }
+          ]
+        }
+      ],
+      "other_specialization_electives": [
+        {
+          "course_id": "0542-4124",
+          "name_he": null,
+          "hours": null,
+          "offered_semesters": [],
+          "interest_areas": [],
+          "offered_in_year": true,
+          "notes": ""
+        },
+        {
+          "course_id": "0542-4125",
+          "name_he": "מבוא להנדסת סביבה",
+          "hours": 4.0,
+          "offered_semesters": [],
+          "interest_areas": [],
+          "offered_in_year": true,
+          "notes": "",
+          "teaching_format": [
+            {
+              "type": "שיעור ותרגיל",
+              "hours": 4.0
+            }
+          ],
+          "has_prereqs": true
+        },
+        {
+          "course_id": "0542-4131",
+          "name_he": "מנועי שריפה פנימית",
+          "hours": 4.0,
+          "offered_semesters": [],
+          "interest_areas": [],
+          "offered_in_year": true,
+          "notes": "",
+          "teaching_format": [
+            {
+              "type": "שיעור ותרגיל",
+              "hours": 4.0
+            }
+          ],
+          "has_prereqs": true
+        },
+        {
+          "course_id": "0542-4132",
+          "name_he": "אנרגיה מתחדשת",
+          "hours": 4.0,
+          "offered_semesters": [],
+          "interest_areas": [],
+          "offered_in_year": true,
+          "notes": "",
+          "teaching_format": [
+            {
+              "type": "שיעור ותרגיל",
+              "hours": 4.0
+            }
+          ],
+          "has_prereqs": true
+        },
+        {
+          "course_id": "0542-4135",
+          "name_he": null,
+          "hours": null,
+          "offered_semesters": [],
+          "interest_areas": [],
+          "offered_in_year": true,
+          "notes": ""
+        },
+        {
+          "course_id": "0542-4179",
+          "name_he": "מתקנים לייצור כח וניצול אנרגיה",
+          "hours": 4.0,
+          "offered_semesters": [],
+          "interest_areas": [],
+          "offered_in_year": true,
+          "notes": "",
+          "teaching_format": [
+            {
+              "type": "שיעור ותרגיל",
+              "hours": 4.0
+            }
+          ],
+          "has_prereqs": true
+        },
+        {
+          "course_id": "0542-4191",
+          "name_he": null,
+          "hours": null,
+          "offered_semesters": [],
+          "interest_areas": [],
+          "offered_in_year": true,
+          "notes": ""
+        },
+        {
+          "course_id": "0542-4226",
+          "name_he": null,
+          "hours": null,
+          "offered_semesters": [],
+          "interest_areas": [],
+          "offered_in_year": true,
+          "notes": ""
+        },
+        {
+          "course_id": "0542-4275",
+          "name_he": null,
+          "hours": null,
+          "offered_semesters": [],
+          "interest_areas": [],
+          "offered_in_year": true,
+          "notes": ""
+        },
+        {
+          "course_id": "0542-4321",
+          "name_he": "הידראוליקה הנדסית",
+          "hours": 4.0,
+          "offered_semesters": [],
+          "interest_areas": [],
+          "offered_in_year": true,
+          "notes": "",
+          "teaching_format": [
+            {
+              "type": "שיעור ותרגיל",
+              "hours": 4.0
+            }
+          ],
+          "has_prereqs": true
+        },
+        {
+          "course_id": "0542-4322",
+          "name_he": "תכנון תרמי של ציוד אלקטרוני",
+          "hours": 4.0,
+          "offered_semesters": [],
+          "interest_areas": [],
+          "offered_in_year": true,
+          "notes": "",
+          "teaching_format": [
+            {
+              "type": "שיעור ותרגיל",
+              "hours": 4.0
+            }
+          ],
+          "has_prereqs": true
+        },
+        {
+          "course_id": "0542-4351",
+          "name_he": "הנדסה ימית",
+          "hours": 4.0,
+          "offered_semesters": [],
+          "interest_areas": [],
+          "offered_in_year": true,
+          "notes": "",
+          "teaching_format": [
+            {
+              "type": "שיעור ותרגיל",
+              "hours": 4.0
+            }
+          ],
+          "has_prereqs": true
+        },
+        {
+          "course_id": "0542-4425",
+          "name_he": null,
+          "hours": null,
+          "offered_semesters": [],
+          "interest_areas": [],
+          "offered_in_year": true,
+          "notes": ""
+        },
+        {
+          "course_id": "0542-4524",
+          "name_he": null,
+          "hours": null,
+          "offered_semesters": [],
+          "interest_areas": [],
+          "offered_in_year": true,
+          "notes": ""
+        },
+        {
+          "course_id": "0542-4527",
+          "name_he": null,
+          "hours": null,
+          "offered_semesters": [],
+          "interest_areas": [],
+          "offered_in_year": true,
+          "notes": ""
+        },
+        {
+          "course_id": "0542-4559",
+          "name_he": null,
+          "hours": null,
+          "offered_semesters": [],
+          "interest_areas": [],
+          "offered_in_year": true,
+          "notes": ""
+        },
+        {
+          "course_id": "0542-4621",
+          "name_he": "מבוא לרובוטיקה",
+          "hours": 3.0,
+          "offered_semesters": [],
+          "interest_areas": [],
+          "offered_in_year": true,
+          "notes": "",
+          "teaching_format": [
+            {
+              "type": "שיעור ותרגיל",
+              "hours": 3.0
+            }
+          ],
+          "has_prereqs": true
+        },
+        {
+          "course_id": "0542-4722",
+          "name_he": "מבוא להנדסת מערכות זעירות (Mems)",
+          "hours": 5.0,
+          "offered_semesters": [],
+          "interest_areas": [],
+          "offered_in_year": true,
+          "notes": "",
+          "teaching_format": [
+            {
+              "type": "שיעור ותרגיל",
+              "hours": 4.0
+            },
+            {
+              "type": "מעבדה",
+              "hours": 1.0
+            }
+          ],
+          "has_prereqs": true
+        },
+        {
+          "course_id": "0509-4010",
+          "name_he": null,
+          "hours": null,
+          "offered_semesters": [],
+          "interest_areas": [],
+          "offered_in_year": true,
+          "notes": ""
+        },
+        {
+          "course_id": "0512-1203",
+          "name_he": null,
+          "hours": null,
+          "offered_semesters": [],
+          "interest_areas": [],
+          "offered_in_year": true,
+          "notes": ""
+        },
+        {
+          "course_id": "0512-1202",
+          "name_he": null,
+          "hours": null,
+          "offered_semesters": [],
+          "interest_areas": [],
+          "offered_in_year": true,
+          "notes": ""
+        },
+        {
+          "course_id": "0512-2508",
+          "name_he": null,
+          "hours": null,
+          "offered_semesters": [],
+          "interest_areas": [],
+          "offered_in_year": true,
+          "notes": ""
+        },
+        {
+          "course_id": "0512-4200",
+          "name_he": null,
+          "hours": null,
+          "offered_semesters": [],
+          "interest_areas": [],
+          "offered_in_year": true,
+          "notes": ""
+        },
+        {
+          "course_id": "0512-4362",
+          "name_he": null,
+          "hours": null,
+          "offered_semesters": [],
+          "interest_areas": [],
+          "offered_in_year": true,
+          "notes": ""
+        },
+        {
+          "course_id": "0512-4700",
+          "name_he": null,
+          "hours": null,
+          "offered_semesters": [],
+          "interest_areas": [],
+          "offered_in_year": true,
+          "notes": ""
+        },
+        {
+          "course_id": "0512-4702",
+          "name_he": null,
+          "hours": null,
+          "offered_semesters": [],
+          "interest_areas": [],
+          "offered_in_year": true,
+          "notes": ""
+        },
+        {
+          "course_id": "0571-1818",
+          "name_he": null,
+          "hours": null,
+          "offered_semesters": [],
+          "interest_areas": [],
+          "offered_in_year": true,
+          "notes": ""
+        },
+        {
+          "course_id": "0571-3802",
+          "name_he": null,
+          "hours": null,
+          "offered_semesters": [],
+          "interest_areas": [],
+          "offered_in_year": true,
+          "notes": ""
+        },
+        {
+          "course_id": "0571-4174",
+          "name_he": null,
+          "hours": null,
+          "offered_semesters": [],
+          "interest_areas": [],
+          "offered_in_year": true,
+          "notes": ""
+        },
+        {
+          "course_id": "0555-4000",
+          "name_he": null,
+          "hours": null,
+          "offered_semesters": [],
+          "interest_areas": [],
+          "offered_in_year": true,
+          "notes": ""
+        },
+        {
+          "course_id": "0555-4432",
+          "name_he": null,
+          "hours": null,
+          "offered_semesters": [],
+          "interest_areas": [],
+          "offered_in_year": true,
+          "notes": ""
+        },
+        {
+          "course_id": "0555-4555",
+          "name_he": null,
+          "hours": null,
+          "offered_semesters": [],
+          "interest_areas": [],
+          "offered_in_year": true,
+          "notes": ""
+        },
+        {
+          "course_id": "0555-4562",
+          "name_he": null,
+          "hours": null,
+          "offered_semesters": [],
+          "interest_areas": [],
+          "offered_in_year": true,
+          "notes": ""
+        },
+        {
+          "course_id": "0555-3160",
+          "name_he": null,
+          "hours": null,
+          "offered_semesters": [],
+          "interest_areas": [],
+          "offered_in_year": true,
+          "notes": ""
+        },
+        {
+          "course_id": "0555-4630",
+          "name_he": null,
+          "hours": null,
+          "offered_semesters": [],
+          "interest_areas": [],
+          "offered_in_year": true,
+          "notes": ""
+        },
+        {
+          "course_id": "0555-4550",
+          "name_he": null,
+          "hours": null,
+          "offered_semesters": [],
+          "interest_areas": [],
+          "offered_in_year": true,
+          "notes": ""
+        },
+        {
+          "course_id": "0542-4011",
+          "name_he": "פרוייקט מחקר למצטיינים (1)",
+          "hours": 3.0,
+          "offered_semesters": [],
+          "interest_areas": [],
+          "offered_in_year": true,
+          "notes": "",
+          "teaching_format": [
+            {
+              "type": "פרוייקט",
+              "hours": 3.0
+            }
+          ],
+          "has_prereqs": false
+        },
+        {
+          "course_id": "0542-4012",
+          "name_he": "פרויקט מחקר למצטיינים (2)",
+          "hours": 3.0,
+          "offered_semesters": [],
+          "interest_areas": [],
+          "offered_in_year": true,
+          "notes": "",
+          "teaching_format": [
+            {
+              "type": "פרוייקט",
+              "hours": 3.0
+            }
+          ],
+          "has_prereqs": false
+        },
+        {
+          "course_id": "0542-3112",
+          "name_he": "פרויקט יישומי בהנדסה מכנית",
+          "hours": 2.0,
+          "offered_semesters": [],
+          "interest_areas": [],
+          "offered_in_year": true,
+          "notes": "",
+          "teaching_format": [
+            {
+              "type": "פרוייקט",
+              "hours": 2.0
+            }
+          ],
+          "has_prereqs": false
+        }
+      ],
+      "mandatory_courses_from_page": [
+        {
+          "course_id": "0512-1204",
+          "name_he": "המרת אנרגיה והנע חשמלי",
+          "weekly_hours": 3.5,
+          "credit_hours": 3.0,
+          "has_prereqs": true,
+          "teaching_format": [
+            {
+              "type": "שיעור",
+              "hours": 2.0
+            },
+            {
+              "type": "תרגיל",
+              "hours": 1.0
+            },
+            {
+              "type": "מעבדה",
+              "hours": 0.5
+            }
+          ],
+          "source": "tau_program_page",
+          "year": 3,
+          "semester_section": "סמסטר א",
+          "allowed_semesters": [
+            "year_3_semester_a"
+          ],
+          "locked_by_default": true,
+          "placement_rule": "fixed_semester",
+          "needs_verification": false
+        },
+        {
+          "course_id": "0542-2400",
+          "name_he": "תכן מכני (1)",
+          "weekly_hours": 4.0,
+          "credit_hours": 3.5,
+          "has_prereqs": true,
+          "teaching_format": [
+            {
+              "type": "שיעור ותרגיל",
+              "hours": 4.0
+            }
+          ],
+          "source": "tau_program_page",
+          "year": 3,
+          "semester_section": "סמסטר א",
+          "allowed_semesters": [
+            "year_3_semester_a"
+          ],
+          "locked_by_default": true,
+          "placement_rule": "fixed_semester",
+          "needs_verification": false
+        },
+        {
+          "course_id": "0542-3243",
+          "name_he": "מבוא לבקרה",
+          "weekly_hours": 5.5,
+          "credit_hours": 5.0,
+          "has_prereqs": true,
+          "teaching_format": [
+            {
+              "type": "שיעור",
+              "hours": 3.0
+            },
+            {
+              "type": "תרגיל",
+              "hours": 2.0
+            },
+            {
+              "type": "מעבדה",
+              "hours": 0.5
+            }
+          ],
+          "source": "tau_program_page",
+          "year": 3,
+          "semester_section": "סמסטר א",
+          "allowed_semesters": [
+            "year_3_semester_a"
+          ],
+          "locked_by_default": true,
+          "placement_rule": "fixed_semester",
+          "needs_verification": false
+        },
+        {
+          "course_id": "0542-3620",
+          "name_he": "מעבר חם",
+          "weekly_hours": 4.0,
+          "credit_hours": 4.0,
+          "has_prereqs": true,
+          "teaching_format": [
+            {
+              "type": "שיעור",
+              "hours": 3.0
+            },
+            {
+              "type": "תרגיל",
+              "hours": 1.0
+            }
+          ],
+          "source": "tau_program_page",
+          "year": 3,
+          "semester_section": "סמסטר א",
+          "allowed_semesters": [
+            "year_3_semester_a",
+            "year_3_semester_b"
+          ],
+          "locked_by_default": false,
+          "placement_rule": "choose_one_allowed_semester",
+          "needs_verification": false
+        },
+        {
+          "course_id": "0542-3780",
+          "name_he": "תהליכי עיבוד (1)",
+          "weekly_hours": 3.0,
+          "credit_hours": 3.0,
+          "has_prereqs": true,
+          "teaching_format": [
+            {
+              "type": "שיעור",
+              "hours": 3.0
+            }
+          ],
+          "source": "tau_program_page",
+          "year": 3,
+          "semester_section": "סמסטר א",
+          "allowed_semesters": [
+            "year_3_semester_a",
+            "year_3_semester_b"
+          ],
+          "locked_by_default": false,
+          "placement_rule": "choose_one_allowed_semester",
+          "needs_verification": false
+        },
+        {
+          "course_id": "0542-3791",
+          "name_he": "תהליכי עיבוד - מעבדה",
+          "weekly_hours": 2.0,
+          "credit_hours": 1.0,
+          "has_prereqs": false,
+          "teaching_format": [
+            {
+              "type": "מעבדה",
+              "hours": 2.0
+            }
+          ],
+          "source": "tau_program_page",
+          "year": 3,
+          "semester_section": "סמסטר א",
+          "allowed_semesters": [
+            "year_3_semester_a",
+            "year_3_semester_b"
+          ],
+          "locked_by_default": false,
+          "placement_rule": "choose_one_allowed_semester",
+          "needs_verification": false
+        },
+        {
+          "course_id": "0542-3792",
+          "name_he": "הנדסת ניסויים ומדידות - מעבדה",
+          "weekly_hours": 4.0,
+          "credit_hours": 3.0,
+          "has_prereqs": true,
+          "teaching_format": [
+            {
+              "type": "שיעור",
+              "hours": 2.0
+            },
+            {
+              "type": "מעבדה",
+              "hours": 2.0
+            }
+          ],
+          "source": "tau_program_page",
+          "year": 3,
+          "semester_section": "סמסטר א",
+          "allowed_semesters": [
+            "year_3_semester_a",
+            "year_3_semester_b"
+          ],
+          "locked_by_default": false,
+          "placement_rule": "choose_one_allowed_semester",
+          "needs_verification": false
+        },
+        {
+          "course_id": "0542-4010",
+          "name_he": "תיכון ופרוייקט (1)",
+          "weekly_hours": 3.0,
+          "credit_hours": 4.0,
+          "has_prereqs": false,
+          "teaching_format": [
+            {
+              "type": "פרוייקט",
+              "hours": 3.0
+            }
+          ],
+          "source": "tau_program_page",
+          "year": 4,
+          "semester_section": "קורסי חובה",
+          "allowed_semesters": [
+            "year_4_semester_a",
+            "year_4_semester_b"
+          ],
+          "locked_by_default": false,
+          "placement_rule": "choose_one_allowed_semester",
+          "needs_verification": false
+        },
+        {
+          "course_id": "0542-4020",
+          "name_he": "תיכון ופרוייקט (2)",
+          "weekly_hours": 3.0,
+          "credit_hours": 4.0,
+          "has_prereqs": true,
+          "teaching_format": [
+            {
+              "type": "פרוייקט",
+              "hours": 3.0
+            }
+          ],
+          "source": "tau_program_page",
+          "year": 4,
+          "semester_section": "קורסי חובה",
+          "allowed_semesters": [
+            "year_4_semester_a",
+            "year_4_semester_b"
+          ],
+          "locked_by_default": false,
+          "placement_rule": "choose_one_allowed_semester",
+          "needs_verification": false
+        },
+        {
+          "course_id": "0542-4091",
+          "name_he": "מעבדה במכניקת המוצקים",
+          "weekly_hours": 2.0,
+          "credit_hours": 1.5,
+          "has_prereqs": true,
+          "teaching_format": [
+            {
+              "type": "מעבדה",
+              "hours": 2.0
+            }
+          ],
+          "source": "tau_program_page",
+          "year": 4,
+          "semester_section": "קורסי חובה",
+          "allowed_semesters": [
+            "year_4_semester_a",
+            "year_4_semester_b"
+          ],
+          "locked_by_default": false,
+          "placement_rule": "choose_one_allowed_semester",
+          "needs_verification": false
+        },
+        {
+          "course_id": "0542-4092",
+          "name_he": "מעבדת זרימה ומעבר חום",
+          "weekly_hours": 2.0,
+          "credit_hours": 1.5,
+          "has_prereqs": true,
+          "teaching_format": [
+            {
+              "type": "מעבדה",
+              "hours": 2.0
+            }
+          ],
+          "source": "tau_program_page",
+          "year": 4,
+          "semester_section": "קורסי חובה",
+          "allowed_semesters": [
+            "year_4_semester_a",
+            "year_4_semester_b"
+          ],
+          "locked_by_default": false,
+          "placement_rule": "choose_one_allowed_semester",
+          "needs_verification": false
+        }
+      ],
+      "source_url": "https://www.tau.ac.il/study-program?safa=1&shana=2025&tab=programStudy&tcid=8715",
+      "enrichment_shana": "2025",
+      "parsed_at": "2026-05-28T16:16:33",
+      "parse_warnings": []
+    },
+    "requirements": {
+      "mandatory_courses": {
+        "courses_file": "data/programs/mechanical_engineering_mandatory_2027.json",
+        "source": "tau_graphql_2025",
+        "needs_verification": true
+      }
+    },
+    "requirement_category_keys": {
+      "advanced_labs": "advanced_labs",
+      "other_specialization": "other_specialization"
+    },
+    "key_order": {
+      "program": [
+        "program_id",
+        "program_name_he",
+        "program_name",
+        "academic_year_he",
+        "source_type",
+        "source_file",
+        "needs_verification",
+        "total_required_hours",
+        "notes",
+        "requirements",
+        "elective_courses",
+        "other_specialization_electives",
+        "ui",
+        "mandatory_courses_from_page",
+        "source_url",
+        "enrichment_shana",
+        "parsed_at",
+        "parse_warnings"
+      ],
+      "requirements": [
+        "mandatory_courses",
+        "core_courses_total_min",
+        "core_categories",
+        "advanced_labs",
+        "other_specialization",
+        "general_requirements"
+      ]
+    }
+  },
+  "coverage": {}
+}
