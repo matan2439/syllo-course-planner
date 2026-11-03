@@ -8,6 +8,7 @@ import { adaptRequirementsFromModel } from '../../../lib/requirements'
 import AlternativeBoardSwitcher from './AlternativeBoardSwitcher'
 import NativePlannerBoard from './NativePlannerBoard'
 import ProgressBadge, { type CategoryProgress } from './ProgressBadge'
+import { useLocale } from '../../locale/LocaleProvider'
 
 type Highlight = { semesterId: string; key: number } | null
 
@@ -27,8 +28,8 @@ function withDiffMarkers(board: ReturnType<typeof boardModelToVM>, markers?: Rea
 
 /**
  * The board with its progress badge and, when a proposal offers several plans, the switcher.
- * While a proposal or one of its alternatives is previewed the board is read-only, changed cards carry a
- * marker, and nothing is saved.
+ * Changed cards carry a marker while previewing. Existing courses and repository
+ * drops still edit the committed board; draft-only courses remain read-only.
  */
 export default function CurrentPlanSection({
   current, previewBoard, diffMarkers, alternatives, selectedAlternativeId, onSelectAlternative, stale,
@@ -58,6 +59,7 @@ export default function CurrentPlanSection({
   /** Category id → completed courses the student counted without naming them (e.g. שער רוח). */
   completedCategoryCounts?: Readonly<Record<string, number>>
 }) {
+  const { t } = useLocale()
   // The progress badge lives in the shell's top bar when the page provides the slot; inline otherwise.
   const [progressSlot, setProgressSlot] = useState<HTMLElement | null>(null)
   useEffect(() => { setProgressSlot(document.getElementById('shell-progress-slot')) }, [])
@@ -83,13 +85,13 @@ export default function CurrentPlanSection({
   }))
   const badge = <ProgressBadge requirements={requirements} completedHours={completedHours} categoryProgress={categoryProgress} />
   return (
-    <section aria-label="התוכנית הנוכחית">
+    <section aria-label={t('התוכנית הנוכחית', 'Current plan')}>
       <div className="mb-3 flex items-baseline justify-between gap-2">
         <div className="flex items-center gap-2">
-          <h2 className="text-sm font-bold tracking-tight">התוכנית הנוכחית</h2>
+          <h2 className="text-sm font-bold tracking-tight">{t('התוכנית הנוכחית', 'Current plan')}</h2>
           {progressSlot ? createPortal(badge, progressSlot) : badge}
         </div>
-        {previewBoard && <span className="text-xs text-[var(--text-muted)]">תצוגה מקדימה של ההצעה — לא נשמר עד לאישור מפורש</span>}
+        {previewBoard && <span className="text-xs text-[var(--text-muted)]">{t('תצוגה מקדימה של ההצעה — לא נשמר עד לאישור מפורש', 'Proposal preview — saved only after your explicit approval')}</span>}
       </div>
       {(alternatives?.length ?? 0) >= 2 && (
         <AlternativeBoardSwitcher
@@ -104,18 +106,18 @@ export default function CurrentPlanSection({
       )}
       <NativePlannerBoard
         board={withDiffMarkers(boardModelToVM(previewBoard ?? current), previewBoard ? diffMarkers : undefined)}
-        onRemoveCourse={previewBoard ? undefined : commitManualRemove}
-        onAddCourse={previewBoard ? undefined : (courseId, semesterId) => commitManualAdd(semesterId, courseId)}
-        onMoveCourse={previewBoard ? undefined : commitManualMove}
+        onRemoveCourse={commitManualRemove}
+        onAddCourse={(courseId, semesterId) => commitManualAdd(semesterId, courseId)}
+        onMoveCourse={commitManualMove}
+        editableCourseIds={previewBoard ? new Set(current.semesters.flatMap((semester) => semester.courses.map((course) => course.courseId))) : undefined}
         onSelectCourse={selectBoardCourse}
-        mutationPending={previewBoard || manualEditPhase === 'saving' ? true : false}
-        activeDrag={previewBoard ? null : activeDrag}
-        rejectedSemesterId={previewBoard ? null : rejectedDrop?.semesterId}
-        rejectedDropKey={previewBoard ? null : rejectedDrop?.key}
-        justPlacedSemesterId={previewBoard ? null : justPlaced?.semesterId}
-        justPlacedKey={previewBoard ? null : justPlaced?.key}
-        onDragStateChange={previewBoard ? undefined : onDragStateChange}
-        readOnly={Boolean(previewBoard)}
+        mutationPending={manualEditPhase === 'saving'}
+        activeDrag={activeDrag}
+        rejectedSemesterId={rejectedDrop?.semesterId}
+        rejectedDropKey={rejectedDrop?.key}
+        justPlacedSemesterId={justPlaced?.semesterId}
+        justPlacedKey={justPlaced?.key}
+        onDragStateChange={onDragStateChange}
       />
     </section>
 

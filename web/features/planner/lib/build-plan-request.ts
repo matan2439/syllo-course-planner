@@ -44,7 +44,7 @@ export function buildGeneratePlanRequest(
   // Completed courses are ACADEMIC STATE (never a preference). Ids come only
   // from what the student explicitly reported — never derived from an hours
   // total — and the knowledge marker is attached only once they confirmed.
-  const personalStatus: Record<string, unknown> = { ...applyAcademicStatus(), planned: [] }
+  const personalStatus: Record<string, unknown> = { planned: [], ...applyAcademicStatus() }
   const planContext: Record<string, unknown> = {
     semesters: base.semesters.map((s) => ({
       id: s.semesterId,

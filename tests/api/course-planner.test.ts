@@ -417,6 +417,23 @@ describe('POST /api/ai/course-planner — metering', () => {
     expect(mockMeterCalls).toEqual([expect.stringMatching(/^deliver:/)]);
   });
 
+  it('does not write the first text chunk when credit finalization fails', async () => {
+    mockMeterCalls.length = 0;
+    mockOpenMeter.mockResolvedValueOnce({
+      funding: 'credits',
+      deliver: async () => { mockMeterCalls.push('deliver_failed'); throw new Error('database unavailable'); },
+      release: async (reason?: string) => { mockMeterCalls.push(`release:${reason}`); },
+    });
+    const res = makeRes();
+    const log = jest.spyOn(console, 'error').mockImplementation(() => {});
+    await handler(makeReq(VALID_BODY), res as any);
+    log.mockRestore();
+    expect(res.write).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(503);
+    expect(json(res)).toMatchObject({ code: 'BILLING_UNAVAILABLE' });
+    expect(mockMeterCalls).toEqual(['deliver_failed', 'release:no_reply']);
+  });
+
   it('an advisor that cannot start releases the reservation', async () => {
     mockMeterCalls.length = 0;
     jest.requireMock('../../api/ai/agent/course_advisor').streamCourseAdvisor

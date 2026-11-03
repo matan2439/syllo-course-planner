@@ -6,6 +6,8 @@ import { EmptyState } from '../../../components/ui'
 import type { BoardVM, CourseVM } from '../../../lib/board'
 import type { PlannerDragPayload } from '../../../lib/planner/drag-payload'
 import { annualBandsOf } from '../../../lib/planner/annual-bands'
+import { useLocale } from '../../locale/LocaleProvider'
+import { semesterLabel } from '../../locale/semester-label'
 
 /**
  * Native semester board for the canonical planner. It renders the shared
@@ -20,7 +22,7 @@ import { annualBandsOf } from '../../../lib/planner/annual-bands'
  * as everything else, instead of a separately-styled block elsewhere on the
  * page. A year-pair with no annual course simply has no row 2.
  */
-export default function NativePlannerBoard({ board, onRemoveCourse, onAddCourse, onMoveCourse, onSelectCourse, mutationPending = false, activeDrag, rejectedSemesterId, rejectedDropKey, justPlacedSemesterId, justPlacedKey, onDragStateChange, readOnly = false }: {
+export default function NativePlannerBoard({ board, onRemoveCourse, onAddCourse, onMoveCourse, onSelectCourse, mutationPending = false, activeDrag, rejectedSemesterId, rejectedDropKey, justPlacedSemesterId, justPlacedKey, onDragStateChange, readOnly = false, editableCourseIds }: {
   board: BoardVM
   onRemoveCourse?: (courseId: string) => void
   onAddCourse?: (courseId: string, semesterId: string) => void
@@ -39,9 +41,12 @@ export default function NativePlannerBoard({ board, onRemoveCourse, onAddCourse,
   justPlacedKey?: string | number | null
   onDragStateChange?: (drag: PlannerDragPayload | null) => void
   readOnly?: boolean
+  /** During an AI preview, only courses already committed can be moved/removed. */
+  editableCourseIds?: ReadonlySet<string>
 }) {
+  const { t, locale } = useLocale()
   if (board.semesters.length === 0) {
-    return <EmptyState>נתוני הלוח לתוכנית זו עדיין לא זמינים כאן</EmptyState>
+    return <EmptyState>{t('נתוני הלוח לתוכנית זו עדיין לא זמינים כאן', 'Board data for this program is not available yet')}</EmptyState>
   }
   const bandByStartIndex = new Map(annualBandsOf(board).map((band) => [band.startIndex, band]))
   const pairs: Array<{ start: number; semesters: typeof board.semesters }> = []
@@ -54,7 +59,7 @@ export default function NativePlannerBoard({ board, onRemoveCourse, onAddCourse,
     <div className="overflow-x-auto rounded-xl border border-[var(--border)] bg-[var(--surface)]">
     <div
       role="list"
-      aria-label="לוח סמסטרים"
+      aria-label={t('לוח סמסטרים', 'Semester board')}
       className="flex min-w-full items-start"
     >
       {pairs.map((pair) => {
@@ -83,7 +88,7 @@ export default function NativePlannerBoard({ board, onRemoveCourse, onAddCourse,
             {band && (
               <AnnualCourseBand
                 course={band.course}
-                onRemove={readOnly ? undefined : onRemoveCourse}
+                onRemove={readOnly || (editableCourseIds && !editableCourseIds.has(band.course.id)) ? undefined : onRemoveCourse}
                 onSelect={onSelectCourse}
               />
             )}
@@ -99,9 +104,10 @@ export default function NativePlannerBoard({ board, onRemoveCourse, onAddCourse,
                 <SemesterColumn
                   semester={s} index={pair.start + j} onRemoveCourse={readOnly ? undefined : onRemoveCourse} onAddCourse={readOnly ? undefined : onAddCourse} onMoveCourse={readOnly ? undefined : onMoveCourse}
                   onSelectCourse={onSelectCourse}
+                  editableCourseIds={editableCourseIds}
                   moveDestinations={board.semesters
                     .filter((destination) => destination.id !== s.id)
-                    .map((destination) => ({ semesterId: destination.id, label: destination.title }))}
+                    .map((destination) => ({ semesterId: destination.id, label: semesterLabel(destination.id, destination.title, locale) }))}
                   mutationPending={readOnly || mutationPending}
                   activeDrag={readOnly ? null : activeDrag}
                   rejected={rejectedSemesterId === s.id}

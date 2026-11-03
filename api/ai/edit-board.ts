@@ -35,7 +35,7 @@ const MESSAGE_HE: Record<FailureCode, string> = {
   COURSE_COMPLETED: 'קורס שהושלם אינו ניתן להוספה מחדש.',
   COURSE_CURRENTLY_TAKING: 'הקורס כבר נלמד כעת.',
   COURSE_HARD_EXCLUDED: 'הקורס מוחרג לפי אילוץ מאושר.',
-  PLAN_INVALID: 'ההוספה אינה חוקית לפי דרישות התוכנית.',
+  PLAN_INVALID: 'לא ניתן לבצע את השיבוץ לפי דרישות התוכנית.',
   BOARD_VERSION_CONFLICT: 'הלוח השתנה. יש לרענן ולנסות שוב.',
   IDEMPOTENCY_CONFLICT: 'מזהה העריכה כבר שימש לפעולה אחרת.',
   PLANNER_STORAGE_UNAVAILABLE: 'אחסון התכנון אינו זמין כרגע. נא לנסות שוב מאוחר יותר.',
@@ -44,9 +44,9 @@ const MESSAGE_HE: Record<FailureCode, string> = {
 };
 
 
-function reject(res: VercelResponse, code: FailureCode, currentBoardVersion?: string | null): void {
+function reject(res: VercelResponse, code: FailureCode, currentBoardVersion?: string | null, details?: string[]): void {
   const body: ManualBoardEditResponse = {
-    ok: false, code, message_he: MESSAGE_HE[code],
+    ok: false, code, message_he: code === 'PLAN_INVALID' && details?.length ? details.slice(0, 3).join('\n') : MESSAGE_HE[code],
     ...(currentBoardVersion !== undefined ? { currentBoardVersion } : {}),
   };
   const status = code === 'METHOD_NOT_ALLOWED' ? 405
@@ -101,7 +101,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       : request.operation === 'move_course'
           ? prepareManualCourseMove({ boardJson, context, currentBoard, request })
           : prepareManualCourseRemove({ boardJson, context, currentBoard, request });
-    if (!prepared.ok) { reject(res, prepared.code); return; }
+    if (!prepared.ok) { reject(res, prepared.code, undefined, prepared.details); return; }
 
     const commit = await repo.commit({
       ownerId: owner.ownerId, programId: request.program_id,

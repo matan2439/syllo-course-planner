@@ -8,6 +8,7 @@
  *
  * Pure presentation mapping: no selection, eligibility, scoring or board logic.
  */
+import type { RepositoryAssessment, RepositoryGradeSummary } from './repository'
 
 export type CoursePrereq = { id: string; name: string | null }
 
@@ -20,6 +21,8 @@ export type CourseDetailsVM = {
   offered: string[]
   prerequisites: CoursePrereq[]
   syllabusUrl: string | null
+  assessment?: RepositoryAssessment
+  gradeSummary?: RepositoryGradeSummary | null
 }
 
 type RawPrereq = {
@@ -45,6 +48,8 @@ export type RawCourseDetails = {
   prerequisites?: Array<string | RawPrereq> | null
   syllabus_url?: string | null
   syllabusUrl?: string | null
+  assessment?: RepositoryAssessment
+  gradeSummary?: RepositoryGradeSummary | null
 }
 
 function normalizePrereqs(raw: RawCourseDetails): CoursePrereq[] {
@@ -72,5 +77,7 @@ export function buildCourseDetails(raw: RawCourseDetails): CourseDetailsVM {
     offered: raw.offered_semesters ?? raw.offered ?? [],
     prerequisites: normalizePrereqs(raw),
     syllabusUrl: raw.syllabus_url ?? raw.syllabusUrl ?? null,
+    ...(raw.assessment ? { assessment: raw.assessment } : {}),
+    ...(raw.gradeSummary !== undefined ? { gradeSummary: raw.gradeSummary } : {}),
   }
 }

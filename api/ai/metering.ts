@@ -33,9 +33,11 @@ export const METERING_VERSION = 'v1-1credit-per-reply';
 export interface MeteredOperation {
   /** How this operation is paid for. 'unmetered_dev' = local dev without a database. */
   funding: 'credits' | 'exempt' | 'unmetered_dev';
-  /** The result reached the user. Idempotent; never throws. */
+  /** Finalize before sending the result. Throws if consumption cannot be confirmed. */
   deliver(usage?: OperationUsage): Promise<void>;
-  /** Not delivered. A no-op after deliver(). Never throws. */
+  /** Add provider usage that arrived after a streamed reply was charged. */
+  recordUsage?(usage: OperationUsage): Promise<void>;
+  /** Not delivered. A no-op after successful deliver(). */
   release(reason?: string): Promise<void>;
 }
 
@@ -96,18 +98,41 @@ export async function openMeteredOperation(
   // the settlement is also registered with waitUntil (a no-op outside Vercel);
   // callers that must charge BEFORE answering simply await deliver().
   let settlement: Promise<void> | null = null;
-  const settle = (label: string, fn: () => Promise<unknown>): Promise<void> => {
-    if (settlement) return settlement;
-    settlement = fn().then(() => {}, (error) => {
-      // A reservation left open is surfaced by reconciliation (stale reserved ops).
+  let settledAction: 'finalize' | 'release' | null = null;
+  const settle = (label: string, fn: () => Promise<void>): Promise<void> => {
+    if (settlement) {
+      if (label === 'finalize' && settledAction === 'release') {
+        return Promise.reject(new Error('Credit reservation was released before delivery'));
+      }
+      return settlement;
+    }
+    settledAction = label as 'finalize' | 'release';
+    settlement = fn().catch((error) => {
       console.error(`[metering] ${label} failed for ${operationId}:`, (error as Error)?.message);
+      // A failed finalization must never authorize response delivery. The caller
+      // can release the still-reserved operation; both SQL paths are idempotent.
+      settlement = null;
+      settledAction = null;
+      throw error;
     });
-    waitUntil(settlement);
+    waitUntil(settlement.catch(() => {}));
     return settlement;
   };
   return {
     funding: status === 'exempt' ? 'exempt' : 'credits',
-    deliver: (usage = {}) => settle('finalize', () => finalizeCredits(sql, operationId, { model: opts.model, ...usage })),
+    deliver: (usage = {}) => settle('finalize', async () => {
+      const result = await finalizeCredits(sql, operationId, { model: opts.model, ...usage });
+      if (result.status === 'released') throw new Error('Credit reservation was released before delivery');
+    }),
+    recordUsage: async (usage) => {
+      await sql.unsafe(
+        `UPDATE public.ai_operations SET input_tokens = $2, output_tokens = $3,
+           cached_tokens = $4, provider_cost_usd = $5
+         WHERE operation_id = $1 AND state = 'delivered'`,
+        [operationId, usage.input_tokens ?? null, usage.output_tokens ?? null,
+          usage.cached_tokens ?? null, usage.provider_cost_usd ?? null],
+      );
+    },
     release: (reason = 'not_delivered') => settle('release', async () => {
       await releaseCredits(sql, operationId);
       await sql.unsafe(

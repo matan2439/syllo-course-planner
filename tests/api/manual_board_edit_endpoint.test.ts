@@ -3,6 +3,7 @@ jest.mock('../../api/ai/board_loader', () => ({ loadLocalBoardJson: jest.fn(() =
 import handler from '../../api/ai/edit-board';
 import { getAcademicContextStore, getBoardRepository, resetApplyRuntime } from '../../api/ai/apply_runtime';
 import { SESSION_COOKIE } from '../../api/ai/session_owner';
+import { loadLocalBoardJson } from '../../api/ai/board_loader';
 
 const OWNER = 'o'.repeat(43);
 const OTHER = 'x'.repeat(43);
@@ -56,6 +57,16 @@ beforeEach(async () => {
 afterAll(() => { delete process.env.AI_DEV_MODE; });
 
 describe('R2 — POST /api/ai/edit-board', () => {
+  test('returns the actual prerequisite reason instead of a generic invalid-plan message', async () => {
+    jest.mocked(loadLocalBoardJson).mockReturnValueOnce({ ...BOARD, metadata: { ...BOARD.metadata,
+      program_repository_courses: [{ ...BOARD.metadata.program_repository_courses[0], prerequisites: ['MISSING'] }],
+    } });
+    const res = await call(OWNER, body());
+    expect(res.statusCode).toBe(422);
+    expect(res._body.message_he).toContain('דרישת הקדם');
+    expect(res._body.message_he).toContain('MISSING');
+    expect(await getBoardRepository().load(OWNER, PROGRAM)).toBeNull();
+  });
   test('commits the server-prepared course and mints one board version', async () => {
     const res = await call(OWNER, body());
     expect(res.statusCode).toBe(200);

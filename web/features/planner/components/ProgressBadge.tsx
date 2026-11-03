@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { RequirementsVM } from '../../../lib/requirements'
 import { categoryAccentColor } from '../../courses/components/course-category'
+import { useLocale } from '../../locale/LocaleProvider'
 
 /** Hours and course count toward one requirement category, including completed courses. */
 export type CategoryProgress = { hours: number; count: number }
@@ -18,6 +19,7 @@ export default function ProgressBadge({ requirements, completedHours = 0, catego
   /** Category id → hours and courses counted there (board + completed). */
   categoryProgress?: Readonly<Record<string, CategoryProgress>>
 }) {
+  const { t } = useLocale()
   const [open, setOpen] = useState(false)
   if (!requirements) return null
   const earned = Math.round((requirements.plannedHours + completedHours) * 10) / 10
@@ -29,23 +31,23 @@ export default function ProgressBadge({ requirements, completedHours = 0, catego
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        aria-label={`התקדמות בתוכנית — ${earned} מתוך ${requirements.totalRequiredHours} ש״ש`}
+        aria-label={t(`התקדמות בתוכנית — ${earned} מתוך ${requirements.totalRequiredHours} ש״ש`, `Plan progress — ${earned} of ${requirements.totalRequiredHours} weekly hours`)}
         className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--purple)]"
       >
         <span
           aria-hidden="true"
           className={`size-2 rounded-full ${satisfied ? 'bg-emerald-500' : 'bg-amber-400'}`}
         />
-        {earned}/{requirements.totalRequiredHours} ש״ש
+        {earned}/{requirements.totalRequiredHours} {t('ש״ש', 'weekly hours')}
       </button>
       {open && (
         <div className="absolute end-0 z-20 mt-2 w-64 max-w-[calc(100vw-2rem)] rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-premium)] backdrop-blur-sm">
           <div className="flex items-baseline justify-between gap-2 text-xs">
-            <span className="font-semibold">נותרו {remaining} ש״ש</span>
-            <span className="text-[var(--text-muted)]">ליבה {requirements.core.selected}/{requirements.core.min}</span>
+            <span className="font-semibold">{t(`נותרו ${remaining} ש״ש`, `${remaining} weekly hours remaining`)}</span>
+            <span className="text-[var(--text-muted)]">{t('ליבה', 'Core')} {requirements.core.selected}/{requirements.core.min}</span>
           </div>
           {completedHours > 0 && (
-            <p className="mt-0.5 text-[11px] text-[var(--text-muted)]">כולל {completedHours} ש״ש שכבר הושלמו</p>
+            <p className="mt-0.5 text-[11px] text-[var(--text-muted)]">{t(`כולל ${completedHours} ש״ש שכבר הושלמו`, `Includes ${completedHours} weekly hours already completed`)}</p>
           )}
           <ul className="mt-2.5 flex flex-col gap-1.5 border-t border-[var(--border)] pt-2.5">
             {requirements.categories.map((c) => {
@@ -56,9 +58,9 @@ export default function ProgressBadge({ requirements, completedHours = 0, catego
                 <li key={c.id} className="flex items-center gap-2 text-xs">
                   <span aria-hidden="true" className="size-2 shrink-0 rounded-full" style={{ background: categoryAccentColor(c.id) }} />
                   <span className="min-w-0 flex-1 leading-snug">{c.title}</span>
-                  {progress && <span className="shrink-0 tabular-nums text-[var(--text-muted)]">{progress.hours} ש״ש</span>}
+                  {progress && <span className="shrink-0 tabular-nums text-[var(--text-muted)]">{progress.hours} {t('ש״ש', 'weekly hours')}</span>}
                   <span className={`shrink-0 tabular-nums font-medium ${done ? 'text-emerald-500' : c.minCourses > 0 ? 'text-amber-500' : 'text-[var(--text-muted)]'}`}>
-                    {done && <span className="sr-only">הושלם </span>}
+                    {done && <span className="sr-only">{t('הושלם ', 'Completed ')}</span>}
                     {c.minCourses > 0 ? `${count}/${c.minCourses}` : count}
                   </span>
                 </li>

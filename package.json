@@ -18,7 +18,8 @@
     "import:shaar-ruach": "tsx scripts/import_shaar_ruach_courses.ts",
     "audit:shaar-ruach": "tsx scripts/audit_shaar_ruach.ts",
     "enrich:shaar-ruach-bidit": "tsx scripts/enrich_shaar_ruach_bidit.ts",
-    "migrate:planner-state": "tsx scripts/migrate_planner_state.ts"
+    "migrate:planner-state": "tsx scripts/migrate_planner_state.ts",
+    "migrate:student-workspace": "tsx scripts/migrate_student_workspace.ts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^1.0.7",

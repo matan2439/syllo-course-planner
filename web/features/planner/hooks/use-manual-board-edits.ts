@@ -1,4 +1,4 @@
-import { useRef, useState, type Dispatch, type MutableRefObject, type SetStateAction } from 'react'
+import { useEffect, useRef, useState, type Dispatch, type MutableRefObject, type SetStateAction } from 'react'
 import type { BoardModel, GeneratedPlanModel } from '../../../../shared/planner/model'
 import type { CommittedBoardState } from '../../../../shared/planner/api-client'
 import type {
@@ -23,6 +23,7 @@ const SAVE_FAILED_HE = 'שמירת העריכה נכשלה. הלוח הנוכח�
 export function useManualBoardEdits({
   programId, current, setCurrent, boardVersion, setBoardVersion, manualAddIntent,
   loadedAcademicContext, proposal, buildRequest, convProfileRef, establishPlanningContextFn, editBoardFn,
+  contextVersion, contextReady,
   showRejectedDrop, showJustPlaced, setMessages, onCommittedCourseIdsChange, onManualAddSettled, onEditCommitted,
 }: {
   programId: string
@@ -37,6 +38,8 @@ export function useManualBoardEdits({
   convProfileRef: MutableRefObject<PreferenceProfile>
   establishPlanningContextFn: typeof defaultEstablishPlanningContext
   editBoardFn: (req: Parameters<typeof editBoard>[1]) => Promise<ManualBoardEditResult>
+  contextVersion: string
+  contextReady: boolean
   showRejectedDrop: (semesterId: string) => void
   showJustPlaced: (semesterId: string) => void
   setMessages: Dispatch<SetStateAction<ChatMsg[]>>
@@ -47,18 +50,26 @@ export function useManualBoardEdits({
 }) {
   const [manualEditPhase, setManualEditPhase] = useState<'idle' | 'saving'>('idle')
   const [manualEditError, setManualEditError] = useState<string | null>(null)
-  const manualEditKeyRef = useRef<string | null>(null)
+  const manualEditKeyRef = useRef<{ identity: string; operationId: string } | null>(null)
+  const editInFlightRef = useRef(false)
+  const submittedIntentRef = useRef<ManualAddIntent | null>(null)
+  const syncedContextRef = useRef<{ version: string; sourceDigest: string | undefined; digest: string } | null>(null)
 
   /** The academic-status digest an edit must echo; establishes the context first if none exists yet. */
   const resolveAcademicStatusDigest = async (base: BoardModel): Promise<string> => {
     const known = loadedAcademicContext?.academicStatusDigest ?? proposal?.proposal?.academicStatusDigest
-    if (known) return known
+    const cached = syncedContextRef.current
+    if (cached?.version === contextVersion && cached.sourceDigest === known) return cached.digest
+    // A digest loaded before a profile edit describes the old completions and
+    // constraints. Publish the student's changed inputs before validating a drop.
+    if (known && contextVersion === '0:0') return known
     const contextRequest = buildRequest(base, convProfileRef.current ?? undefined)
     const synced = await establishPlanningContextFn({
       program_id: programId,
       plan_context: contextRequest.plan_context as Parameters<typeof establishPlanningContextFn>[0]['plan_context'],
       preferences: contextRequest.preferences as Parameters<typeof establishPlanningContextFn>[0]['preferences'],
     })
+    syncedContextRef.current = { version: contextVersion, sourceDigest: known, digest: synced.academicStatusDigest }
     return synced.academicStatusDigest
   }
 
@@ -67,9 +78,12 @@ export function useManualBoardEdits({
    * the same work, but dropped on a definitive server rejection: nothing was committed, and reusing the
    * key for the NEXT, different edit makes the server answer IDEMPOTENCY_CONFLICT (409).
    */
-  const beginEdit = (): string => {
-    const operationId = manualEditKeyRef.current ?? `edit_${uuidv4()}`
-    manualEditKeyRef.current = operationId
+  const beginEdit = (operation: string, courseId: string, semesterId?: string): string => {
+    const identity = JSON.stringify([programId, boardVersion, contextVersion, operation, courseId, semesterId])
+    const operationId = manualEditKeyRef.current?.identity === identity
+      ? manualEditKeyRef.current.operationId : `edit_${uuidv4()}`
+    manualEditKeyRef.current = { identity, operationId }
+    editInFlightRef.current = true
     setManualEditPhase('saving')
     setManualEditError(null)
     return operationId
@@ -90,8 +104,8 @@ export function useManualBoardEdits({
 
   const commitManualAdd = async (semesterId: string, requestedCourseId?: string) => {
     const courseId = requestedCourseId ?? manualAddIntent?.courseId
-    if (!current || !courseId || manualEditPhase === 'saving') return
-    const operationId = beginEdit()
+    if (!current || !courseId || editInFlightRef.current) return
+    const operationId = beginEdit('add_course', courseId, semesterId)
     let result: ManualBoardEditResult
     try {
       const academicStatusDigest = await resolveAcademicStatusDigest(current)
@@ -102,10 +116,12 @@ export function useManualBoardEdits({
         academic_status_digest: academicStatusDigest,
       })
     } catch {
+      editInFlightRef.current = false
       setManualEditPhase('idle')
       setManualEditError(SAVE_FAILED_HE)
       return
     }
+    editInFlightRef.current = false
     setManualEditPhase('idle')
     if (!result.ok) {
       manualEditKeyRef.current = null
@@ -120,8 +136,8 @@ export function useManualBoardEdits({
   }
 
   const commitManualRemove = async (courseId: string) => {
-    if (!current || manualEditPhase === 'saving') return
-    const operationId = beginEdit()
+    if (!current || editInFlightRef.current) return
+    const operationId = beginEdit('remove_course', courseId)
     try {
       const academicStatusDigest = await resolveAcademicStatusDigest(current)
       const result = await editBoardFn({
@@ -129,6 +145,7 @@ export function useManualBoardEdits({
         expected_board_version: boardVersion, operation_id: operationId,
         course_id: courseId, academic_status_digest: academicStatusDigest,
       })
+      editInFlightRef.current = false
       setManualEditPhase('idle')
       if (!result.ok) {
         manualEditKeyRef.current = null
@@ -138,14 +155,15 @@ export function useManualBoardEdits({
       }
       adoptCommittedBoard(current, result.board, 'הקורס הוסר מהלוח לאחר אימות השרת. יש לבנות מחדש כדי לעדכן את הצעת העוזר.')
     } catch {
+      editInFlightRef.current = false
       setManualEditPhase('idle')
       setManualEditError(SAVE_FAILED_HE)
     }
   }
 
   const commitManualMove = async (courseId: string, semesterId: string) => {
-    if (!current || manualEditPhase === 'saving') return
-    const operationId = beginEdit()
+    if (!current || editInFlightRef.current) return
+    const operationId = beginEdit('move_course', courseId, semesterId)
     try {
       const academicStatusDigest = await resolveAcademicStatusDigest(current)
       const result = await editBoardFn({
@@ -154,20 +172,34 @@ export function useManualBoardEdits({
         course_id: courseId, semester_id: semesterId,
         academic_status_digest: academicStatusDigest,
       })
+      editInFlightRef.current = false
       setManualEditPhase('idle')
       if (!result.ok) {
         manualEditKeyRef.current = null
         setManualEditError(result.messageHe)
+        showRejectedDrop(semesterId)
         if (result.currentBoardVersion !== undefined) setBoardVersion(result.currentBoardVersion ?? null)
         return
       }
       showJustPlaced(semesterId)
       adoptCommittedBoard(current, result.board, 'הקורס הועבר בלוח לאחר אימות השרת. יש לבנות מחדש כדי לעדכן את הצעת העוזר.')
     } catch {
+      editInFlightRef.current = false
       setManualEditPhase('idle')
       setManualEditError(SAVE_FAILED_HE)
     }
   }
+
+  // Choosing a destination is the action. A second confirmation adds no
+  // information; ask only when multiple semester choices remain. Remember the
+  // intent object so rerenders and StrictMode effect replay cannot submit twice.
+  useEffect(() => {
+    if (!manualAddIntent) { submittedIntentRef.current = null; return }
+    if (!current || !contextReady || manualAddIntent.semesterIds.length !== 1 || editInFlightRef.current
+      || submittedIntentRef.current === manualAddIntent) return
+    submittedIntentRef.current = manualAddIntent
+    void commitManualAdd(manualAddIntent.semesterIds[0], manualAddIntent.courseId)
+  }, [manualAddIntent, current, manualEditPhase, contextReady])
 
   return { manualEditPhase, manualEditError, commitManualAdd, commitManualRemove, commitManualMove }
 }

@@ -3,6 +3,7 @@ import BrandLogo from '../features/shell/components/BrandLogo'
 import ShaderGradientBackground from '../features/shell/components/ShaderGradientBackground'
 import LandingCtas from '../features/shell/components/LandingCtas'
 import ThemeToggle from '../features/shell/components/ThemeToggle'
+import PublicSiteFooter from '../features/shell/components/PublicSiteFooter'
 
 const FEATURES = [
   'עוזר AI שבונה תוכנית מלאה',
@@ -16,20 +17,28 @@ export default function Home() {
       <ShaderGradientBackground />
 
       <div className="flex min-h-screen flex-col">
-        <header className="flex items-center gap-3 px-6 py-5 sm:px-10">
+        <header className="flex flex-wrap items-center gap-3 px-6 py-5 sm:px-10">
           <BrandLogo size={30} />
+          <nav aria-label="מידע על המוצר" className="ms-auto flex flex-wrap items-center gap-4 text-sm">
+            <Link href="/product" className="hover:text-[var(--purple)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--purple)]">איך Syllo עובד / Product</Link>
+            <Link href="/pricing" className="hover:text-[var(--purple)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--purple)]">חבילות ומחירים / Pricing</Link>
+          </nav>
           <ThemeToggle />
         </header>
 
         <main className="flex flex-1 flex-col items-center justify-center px-6 pb-24 text-center">
-          <h1 className="sr-only">Syllo — תכנון לימודים חכם</h1>
           <div className="rise">
             <BrandLogo variant="wordmark" size="clamp(6.5rem, 15vw, 11rem)" />
           </div>
 
-          <p className="rise rise-1 mt-4 max-w-md text-base leading-relaxed text-[var(--text-muted)]">
-            תכנון לימודים פשוט, ברור ומותאם לך.
+          <h1 className="rise rise-1 mt-4 max-w-xl text-2xl font-bold sm:text-3xl">תוכנה לתכנון קורסים וסמסטרים</h1>
+          <p className="rise rise-1 mt-3 max-w-xl text-base leading-relaxed">
+            Syllo הוא יישום דיגיטלי שפועל בדפדפן: בוחרים תוכנית לימודים, מארגנים קורסים בלוח סמסטרים ונעזרים בעוזר AI לבחינת אפשרויות.
           </p>
+          <div lang="en" dir="ltr" className="rise rise-1 mt-5 max-w-xl space-y-2">
+            <p className="font-semibold">Browser-based academic planning software</p>
+            <p className="text-sm leading-relaxed">Syllo is a digital software product for Tel Aviv University students. Organize courses into semesters, check degree requirements, and use an AI assistant to explore your study plan. Proposed one-time packages provide AI responses delivered inside the app.</p>
+          </div>
 
           <div className="rise rise-2 mt-9 flex flex-col items-center gap-4">
             <LandingCtas />
@@ -45,9 +54,7 @@ export default function Home() {
           </ul>
         </main>
 
-        <footer className="px-6 py-5 text-center text-xs text-[var(--text-muted)] opacity-70">
-          אוניברסיטת תל אביב · <Link href="/privacy" className="underline hover:text-[var(--purple)]">מדיניות פרטיות</Link> · <Link href="/refund-policy" className="underline hover:text-[var(--purple)]">מדיניות החזרים</Link>
-        </footer>
+        <PublicSiteFooter />
       </div>
     </>
   )

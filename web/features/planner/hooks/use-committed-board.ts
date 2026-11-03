@@ -38,10 +38,9 @@ export function useCommittedBoard({
     // COMMITTED board is this session's own state. Both are needed, and only
     // the second is user data — so a failure to read it must not hide the
     // catalog, but it must also never be replaced by a silent default.
-    const committed = committedBoardFn(programId).catch((e) => {
-      console.error('[NativePlannerJourney] committed board load failed:', e)
-      return null
-    })
+    // A failed read is not an empty account. Never let a transient network or
+    // storage error replace the user's saved placements with catalog defaults.
+    const committed = committedBoardFn(programId)
 
     Promise.all([getBoardFn(programId), committed]).then(
       ([catalog, saved]) => {

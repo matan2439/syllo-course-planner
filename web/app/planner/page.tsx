@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation'
 import { readBoardForProgramId } from '../../lib/board-data'
 import { resolveProgram } from '../../lib/programs'
-import { adaptRepository } from '../../lib/repository'
+import { adaptRepositoryWithSummaries } from '../../lib/repository-summaries'
 import { semesterTitleHe } from '../../lib/planner/board-vm'
 import { SEMESTER_WINDOWS, windowBoardIdFor } from '../../lib/planner/semester-window'
 import type { RawBoard } from '../../lib/board'
@@ -23,7 +23,7 @@ export default async function PlannerPage({
   if (!program) notFound()
   const raw = await readBoardForProgramId(program.id)
   if (!raw) notFound()
-  const repo = adaptRepository(raw)
+  const repo = await adaptRepositoryWithSummaries(raw)
   const destinationsOf = (board: RawBoard) => board.semesters.map((semester) => ({
     id: semester.semester_id,
     label: semesterTitleHe(semester.semester_id),
@@ -32,7 +32,7 @@ export default async function PlannerPage({
   const windowBoards = Object.fromEntries((await Promise.all(SEMESTER_WINDOWS.map(async (window) => {
     const boardId = windowBoardIdFor(program.id, window, raw.metadata?.start_year)
     const board = boardId === program.id ? raw : await readBoardForProgramId(boardId)
-    return board ? [[window, { boardId, repo: adaptRepository(board), semesterDestinations: destinationsOf(board) }]] : []
+    return board ? [[window, { boardId, repo: board === raw ? repo : await adaptRepositoryWithSummaries(board), semesterDestinations: destinationsOf(board) }]] : []
   }))).flat())
 
   return (

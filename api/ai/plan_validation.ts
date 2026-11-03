@@ -204,6 +204,8 @@ export interface PlanValidationContext {
    * (rule 4 — strictly earlier than every proposal semester by construction).
    */
   currentlyPlannedCourseIds?: Set<string>;
+  /** Manual boards may display current enrollment; AI proposals still omit it. */
+  allowInProgressPlacement?: boolean;
   /** Per-course info used for hours/effective-semester/prerequisite checks. */
   courses: Record<string, PlanValidationCourseInfo>;
   /** Maximum total weekly hours allowed per semester (from user preferences). */
@@ -365,7 +367,7 @@ export function validatePlanProposal(
 
       // 2a. currently_taking/planned course must not be (re-)proposed — it is
       // already accounted for as prior progress (Phase 1 proposal-dedup).
-      else if (ctx.currentlyPlannedCourseIds?.has(courseId)) {
+      else if (!ctx.allowInProgressPlacement && ctx.currentlyPlannedCourseIds?.has(courseId)) {
         errors.push(`קורס ${cName} ${CURRENTLY_TAKING_REUSE_ERROR_MARKER} ולא ניתן להציע אותו שוב (ב${semName}).`);
       }
 
@@ -405,10 +407,12 @@ export function validatePlanProposal(
       ]);
       const targetIdx = semOrder.get(sem.semester_id)!;
       for (const prereq of prereqUnion) {
-        // A currently-taking course is prior progress: rule 2a guarantees it can
-        // never appear in the proposal, so it is strictly earlier than every
-        // proposed semester and satisfies the prereq like a completed course.
-        if (ctx.completedCourseIds.has(prereq) || ctx.currentlyPlannedCourseIds?.has(prereq)) continue;
+        // AI proposals omit current enrollment and count it as prior progress.
+        // A manual board may display it; when placed, its actual semester must
+        // strictly precede the dependent's semester, like any other prerequisite.
+        if (ctx.completedCourseIds.has(prereq) ||
+          (ctx.currentlyPlannedCourseIds?.has(prereq) &&
+            (!ctx.allowInProgressPlacement || !courseSemIdx.has(prereq)))) continue;
         const pIdx = courseSemIdx.get(prereq);
         if (pIdx === undefined) {
           errors.push(`לא ניתן לשבץ את ${cName} (ב${semName}) — דרישת הקדם ${courseLabel(prereq, ctx.courseNames)} אינה משובצת בתוכנית ולא הושלמה.`);

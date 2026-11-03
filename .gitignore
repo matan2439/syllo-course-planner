@@ -62,3 +62,10 @@ data/evidence_cache/
 # api/ai/board_repository_file.ts. Real user data — never committed, and never
 # stored under data/ (which is tracked catalog content).
 .runtime/
+
+# Local scratch / review evidence (never commit)
+.tmp/
+tmp/
+output/
+.playwright-mcp/
+web/.tmp/

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { RepositoryVM } from '../../../lib/repository'
 import NativePlannerJourney, { type ManualAddIntent } from './NativePlannerJourney'
 import { CLOSE_PANELS_EVENT } from '../../billing/ai_access'
@@ -11,6 +11,12 @@ import { LAST_PROGRAM_KEY } from '../../shell/last-program'
 import { semesterWindowForDegreeYear, semesterWindowSlots, type SemesterWindow } from '../../../lib/planner/semester-window'
 import { useCurrentDegreeYear } from '../hooks/use-current-degree-year'
 import { useAuth } from '../../auth/AuthProvider'
+import { useLocale } from '../../locale/LocaleProvider'
+import StudentWorkspaceTools, { type CourseSearchLibrary } from './StudentWorkspaceTools'
+import type { BoardSnapshot } from '../lib/saved-plans'
+import { EMPTY_WEEKLY_SCHEDULE, weeklyScheduleSchema, type SavedWeeklySchedule } from '../../../../shared/planner/student-workspace'
+import type { WeeklyScheduleState } from '../../../lib/planner/schedule-storage'
+import { semesterLabel } from '../../locale/semester-label'
 
 type RailTab = 'courses' | 'agent' | 'profile'
 type MainTab = 'board' | 'schedule'
@@ -48,6 +54,7 @@ export default function UnifiedPlannerWorkspace({
   /** The board each two-year window plans over; a window without one falls back to the program's board. */
   windowBoards?: Partial<Record<SemesterWindow, WindowBoard>>
 }) {
+  const { t, dir, locale } = useLocale()
   // Profile fact → derived window → the board it plans over and the weekly schedule's four tabs.
   const [currentDegreeYear, setCurrentDegreeYear] = useCurrentDegreeYear()
   const semesterWindow = semesterWindowForDegreeYear(currentDegreeYear)
@@ -79,6 +86,41 @@ export default function UnifiedPlannerWorkspace({
     setOwner({ id: ownerId, epoch: owner.id === undefined ? owner.epoch : owner.epoch + 1 })
   }
   const reloadForOwner = () => setOwner((current) => ({ ...current, epoch: current.epoch + 1 }))
+  const scopeKey = `${boardId}:${ownerId === undefined ? 'pending' : ownerId ?? 'guest'}`
+  const [searchLibrary, setSearchLibrary] = useState<{ scope: string; value: CourseSearchLibrary } | null>(null)
+  const onSearchLibrary = useCallback((value: CourseSearchLibrary | null) => {
+    setSearchLibrary((old) => value ? { scope: scopeKey, value } : old?.scope === scopeKey ? null : old)
+  }, [scopeKey])
+  const restorePreparer = useRef<{ scope: string; prepare: () => Promise<void> } | null>(null)
+  const onPrepareRestore = useCallback((prepare: (() => Promise<void>) | null) => {
+    if (prepare) restorePreparer.current = { scope: scopeKey, prepare }
+    else if (restorePreparer.current?.scope === scopeKey) restorePreparer.current = null
+  }, [scopeKey])
+  const [capturedBoard, setCapturedBoard] = useState<{ scope: string; value: BoardSnapshot } | null>(null)
+  const [capturedWeekly, setCapturedWeekly] = useState<{ scope: string; value: SavedWeeklySchedule } | null>(null)
+  const [restoredWeekly, setRestoredWeekly] = useState<{ scope: string; value: SavedWeeklySchedule; epoch: number } | null>(null)
+  const onBoardSnapshot = useCallback((value: BoardSnapshot) => setCapturedBoard({ scope: scopeKey, value }), [scopeKey])
+  const onWeeklyState = useCallback((value: WeeklyScheduleState) => {
+    const parsed = weeklyScheduleSchema.safeParse(value)
+    if (parsed.success) {
+      setCapturedWeekly({ scope: scopeKey, value: parsed.data })
+      // A restored payload seeds a mount once. Subsequent edits must be the seed
+      // on a later account/window return, rather than replaying the old restore.
+      setRestoredWeekly((previous) => previous?.scope === scopeKey
+        && JSON.stringify(previous.value) !== JSON.stringify(parsed.data)
+          ? { ...previous, value: parsed.data } : previous)
+    }
+  }, [scopeKey])
+  const onPlanRestored = useCallback((value: SavedWeeklySchedule) => {
+    setCapturedBoard(null)
+    setCapturedWeekly({ scope: scopeKey, value })
+    setRestoredWeekly((old) => ({ scope: scopeKey, value, epoch: (old?.epoch ?? 0) + 1 }))
+    setOwner((current) => ({ ...current, epoch: current.epoch + 1 }))
+  }, [scopeKey])
+  const onWeeklyHydrated = useCallback((value: SavedWeeklySchedule) => {
+    setCapturedWeekly({ scope: scopeKey, value })
+    setRestoredWeekly((old) => ({ scope: scopeKey, value, epoch: (old?.epoch ?? 0) + 1 }))
+  }, [scopeKey])
   const accountProgramId = profile ? profile.program_id : undefined
   useEffect(() => {
     if (accountProgramId !== undefined && accountProgramId !== programId) void updateProfile({ program_id: programId })
@@ -107,15 +149,22 @@ export default function UnifiedPlannerWorkspace({
     const offered = new Set((course?.offered ?? []).map((value) => value.toLowerCase()))
     const semesterIds = semesterDestinations
       .map(({ id }) => id)
-      .filter((semesterId) => offered.has(semesterId) || offered.has(semesterId.endsWith('_a') ? 'a' : 'b'))
+      .filter((semesterId) => offered.size === 0 || offered.has(semesterId) || offered.has(semesterId.endsWith('_a') ? 'a' : 'b'))
     setManualAddIntent({ courseId, semesterIds: semesterId ? [semesterId] : semesterIds })
     setMainTab('board') // the semester prompt lives on the board
+    // On small screens the repository is a sheet over the board. Reveal the
+    // confirmation prompt immediately instead of leaving it behind that sheet.
+    if (window.matchMedia?.('(max-width: 1023px)').matches) setRailTab(null)
     onRequestAdd(courseId)
   }
 
   const closeRail = () => {
     setRailTab(null)
-    toggleRef.current?.focus()
+    if (window.matchMedia?.('(max-width: 1023px)').matches) {
+      document.querySelector<HTMLButtonElement>(`.planner-bottom-tab[data-view="${mainTab}"]`)?.focus()
+    } else {
+      toggleRef.current?.focus()
+    }
   }
 
   useEffect(() => {
@@ -142,14 +191,14 @@ export default function UnifiedPlannerWorkspace({
   return (
     <section
       role="region"
-      aria-label="מרחב תכנון מאוחד"
-      dir="rtl"
+      aria-label={t('מרחב תכנון מאוחד', 'Unified planning workspace')}
+      dir={dir}
       className="flex flex-col gap-5"
     >
       <div>
-        <h1 className="text-xl font-bold tracking-tight">מרחב התכנון</h1>
+        <h1 className="text-xl font-bold tracking-tight">{t('מרחב התכנון', 'Planning workspace')}</h1>
         <p className="mt-1 text-sm text-[var(--text-muted)]">
-          הלוח, מאגר הקורסים ועוזר התכנון עובדים כאן כחלקים של אותו מוצר.
+          {t('הלוח, מאגר הקורסים ועוזר התכנון עובדים כאן כחלקים של אותו מוצר.', 'Your board, course catalog and assistant share one planning workspace.')}
         </p>
       </div>
 
@@ -160,14 +209,23 @@ export default function UnifiedPlannerWorkspace({
           type="button"
           aria-controls="workspace-rail"
           aria-expanded={railTab !== null}
-          aria-label={`${railTab ? 'סגור' : 'פתח'} כלי תכנון`}
+          aria-label={railTab ? t('סגור כלי תכנון', 'Close planning tools') : t('פתח כלי תכנון', 'Open planning tools')}
           onClick={() => (railTab ? closeRail() : setRailTab(lastTab.current))}
           className="planner-drawer-toggle"
         >
           <span aria-hidden="true">☰</span>
-          <span>כלי תכנון</span>
+          <span>{t('כלי תכנון', 'Planning tools')}</span>
         </button>
       </div>
+
+      {!authLoading && <StudentWorkspaceTools key={scopeKey} programId={boardId}
+        snapshot={capturedBoard?.scope === scopeKey ? capturedBoard.value : null}
+        weeklySchedule={capturedWeekly?.scope === scopeKey ? capturedWeekly.value : EMPTY_WEEKLY_SCHEDULE}
+        prepareRestore={async () => {
+          if (restorePreparer.current?.scope !== scopeKey) throw new Error('Planning context is still loading')
+          await restorePreparer.current.prepare()
+        }}
+        onRestored={onPlanRestored} onWeeklyHydrated={onWeeklyHydrated} onSearchLibrary={onSearchLibrary} />}
 
       <div
         className="planner-workbench min-w-0"
@@ -177,21 +235,21 @@ export default function UnifiedPlannerWorkspace({
       >
         <div className="planner-main min-w-0">
         {showSetup && mainTab === 'board' && (
-          <section aria-label="הגדרה ראשונית" className="planner-setup-card">
+          <section aria-label={t('הגדרה ראשונית', 'Initial setup')} className="planner-setup-card">
             <div>
-              <h2 className="text-sm font-bold">בואו נתחיל: איפה אתם בתואר?</h2>
+              <h2 className="text-sm font-bold">{t('בואו נתחיל: איפה אתם בתואר?', 'Let’s start: where are you in your degree?')}</h2>
               <p className="mt-1 text-xs text-[var(--text-muted)]">
-                ככל שהעוזר יודע יותר (קורסים שהשלמתם, שעות שבועיות, מה לשלב או להימנע) כך התוכנית מדויקת יותר. אפשר גם לדלג ולגרור קורסים ישר ללוח.
+                {t('ככל שהעוזר יודע יותר (קורסים שהשלמתם, שעות שבועיות, מה לשלב או להימנע) כך התוכנית מדויקת יותר. אפשר גם לדלג ולגרור קורסים ישר ללוח.', 'Add completed courses and preferences for more relevant plans, or start by dragging courses onto the board.')}
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
-              <button type="button" onClick={() => finishSetup('agent')} className="planner-setup-primary">ספרו לעוזר</button>
-              <button type="button" onClick={() => finishSetup('profile')} className="planner-setup-secondary">סמנו קורסים שהשלמתי</button>
-              <button type="button" onClick={() => finishSetup()} className="planner-setup-dismiss">לא עכשיו</button>
+              <button type="button" onClick={() => finishSetup('agent')} className="planner-setup-primary">{t('ספרו לעוזר', 'Tell the assistant')}</button>
+              <button type="button" onClick={() => finishSetup('profile')} className="planner-setup-secondary">{t('סמנו קורסים שהשלמתי', 'Mark completed courses')}</button>
+              <button type="button" onClick={() => finishSetup()} className="planner-setup-dismiss">{t('לא עכשיו', 'Not now')}</button>
             </div>
           </section>
         )}
-        <div role="tablist" aria-label="תצוגת תכנון" className="planner-main-tabs">
+        <div role="tablist" aria-label={t('תצוגת תכנון', 'Planning view')} className="planner-main-tabs">
           {MAIN_TABS.map((tab) => (
             <button
               key={tab.id}
@@ -203,7 +261,7 @@ export default function UnifiedPlannerWorkspace({
               onClick={() => setMainTab(tab.id)}
               className="planner-rail-tab"
             >
-              {tab.label}
+              {t(tab.label, tab.id === 'board' ? 'Semester board' : 'Weekly timetable')}
             </button>
           ))}
         </div>
@@ -214,13 +272,12 @@ export default function UnifiedPlannerWorkspace({
           data-board-surface="persistent-drop-target"
           data-board-layout="stable"
           data-drop-surface="semester-table"
-          aria-label="לוח סמסטרים פעיל"
+          aria-label={t('לוח סמסטרים פעיל', 'Active semester board')}
           className="planner-board-canvas planner-board-canvas-stable min-w-0"
         >
           {railTab === 'courses' && (
             <p role="status" aria-live="polite" className="planner-board-drop-hint">
-              גררו קורס מהמאגר אל עמודת סמסטר כדי להוסיף אותו ללוח. לחלופין,
-              השתמשו ב״הוסף לסמסטר״.
+              {t('גררו קורס מהמאגר אל עמודת סמסטר כדי להוסיף אותו ללוח. לחלופין, השתמשו ב״הוסף לסמסטר״.', 'Drag a course from the catalog to a semester, or use “Add to semester”.')}
             </p>
           )}
           <NativePlannerJourney
@@ -233,6 +290,8 @@ export default function UnifiedPlannerWorkspace({
             onManualAddCancelled={() => setManualAddIntent(null)}
             onCommittedCourseIdsChange={setCommittedCourseIds}
             onSemestersChange={setSemesterCourses}
+            onBoardSnapshot={onBoardSnapshot}
+            onPrepareRestore={onPrepareRestore}
             agentOpen={railTab === 'agent'}
             agentPortalTarget={agentSlot}
             profilePortalTarget={profileSlot}
@@ -246,14 +305,18 @@ export default function UnifiedPlannerWorkspace({
         {/* Kept mounted (hidden) so the chosen groups survive switching back to the board. */}
         <section
           id="workspace-panel-weekly"
-          aria-label="מערכת שעות"
+          aria-label={t('מערכת שעות', 'Timetable')}
           hidden={mainTab !== 'schedule'}
           className="planner-weekly-panel w-full"
         >
           <WeeklyScheduleDrawer
+            key={`${scopeKey}:${restoredWeekly?.scope === scopeKey ? restoredWeekly.epoch : 0}`}
             programId={programId}
+            storageScope={ownerId ? `${programId}:account:${ownerId}` : ownerId === undefined ? `${programId}:pending` : programId}
+            initialState={restoredWeekly?.scope === scopeKey ? restoredWeekly.value : undefined}
+            onStateChange={onWeeklyState}
             currentDegreeYear={currentDegreeYear}
-            semesterDestinations={scheduleSemesters}
+            semesterDestinations={scheduleSemesters.map((s) => ({ ...s, label: semesterLabel(s.id, s.label, locale) }))}
             semesterCourses={semesterCourses}
           />
         </section>
@@ -261,7 +324,7 @@ export default function UnifiedPlannerWorkspace({
 
         <aside
           id="workspace-rail"
-          aria-label="סרגל כלים"
+          aria-label={t('סרגל כלים', 'Tools panel')}
           data-open={railTab !== null}
           data-drag-pass-through={activeDrag ? 'true' : 'false'}
           aria-hidden={railTab === null}
@@ -269,7 +332,7 @@ export default function UnifiedPlannerWorkspace({
           className="planner-rail min-w-0"
         >
           <div className="planner-rail-header">
-            <div role="tablist" aria-label="כלי תכנון" className="flex gap-1">
+            <div role="tablist" aria-label={t('כלי תכנון', 'Planning tools')} className="flex gap-1">
               {TABS.map((tab) => (
                 <button
                   key={tab.id}
@@ -281,18 +344,18 @@ export default function UnifiedPlannerWorkspace({
                   onClick={() => setRailTab(tab.id)}
                   className="planner-rail-tab"
                 >
-                  {tab.label}
+                  {t(tab.label, tab.id === 'courses' ? 'Courses' : tab.id === 'agent' ? 'AI assistant' : 'My profile')}
                 </button>
               ))}
             </div>
             <button
               ref={railCloseRef}
               type="button"
-              aria-label="סגור סרגל כלים"
+              aria-label={t('סגור סרגל כלים', 'Close tools panel')}
               onClick={closeRail}
               className="planner-drawer-close"
             >
-              × <span>סגור</span>
+              × <span>{t('סגור', 'Close')}</span>
             </button>
           </div>
 
@@ -304,7 +367,11 @@ export default function UnifiedPlannerWorkspace({
             className="planner-rail-body"
           >
             <UnifiedCourseRepository
+              key={scopeKey}
               repo={boardRepo}
+              savedSearches={searchLibrary?.scope === scopeKey ? searchLibrary.value.searches : []}
+              savedSearchesReady={!authLoading && searchLibrary?.scope === scopeKey && searchLibrary.value.ready}
+              onSavedSearchesChange={searchLibrary?.scope === scopeKey ? searchLibrary.value.change : undefined}
               programId={boardId}
               selectedCourseIds={committedCourseIds}
               semesterDestinations={semesterDestinations}
@@ -332,21 +399,23 @@ export default function UnifiedPlannerWorkspace({
       </div>
 
       {/* Phones: the four working views one thumb away (the tabs above and the toolbar are for larger screens). */}
-      <nav aria-label="ניווט תכנון" className="planner-bottom-bar">
+      <nav aria-label={t('ניווט תכנון', 'Planning navigation')} className="planner-bottom-bar">
         {[
           { key: 'board', label: 'לוח', active: mainTab === 'board' && railTab === null, go: () => { setMainTab('board'); setRailTab(null) } },
           { key: 'schedule', label: 'מערכת', active: mainTab === 'schedule' && railTab === null, go: () => { setMainTab('schedule'); setRailTab(null) } },
           { key: 'courses', label: 'קורסים', active: railTab === 'courses', go: () => setRailTab('courses') },
           { key: 'agent', label: 'עוזר', active: railTab === 'agent', go: () => setRailTab('agent') },
+          { key: 'profile', label: 'פרופיל', active: railTab === 'profile', go: () => setRailTab('profile') },
         ].map((item) => (
           <button
             key={item.key}
             type="button"
+            data-view={item.key}
             onClick={item.go}
             aria-current={item.active ? 'page' : undefined}
             className="planner-bottom-tab"
           >
-            {item.label}
+            {t(item.label, ({ board: 'Board', schedule: 'Timetable', courses: 'Courses', agent: 'Assistant', profile: 'Profile' } as Record<string,string>)[item.key])}
           </button>
         ))}
       </nav>

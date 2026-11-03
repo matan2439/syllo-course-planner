@@ -16,6 +16,7 @@ test('topic preference is not rendered as a second journey questionnaire', async
     <NativePlannerJourney
       programId="mechanical_engineering_2027"
       getBoardFn={async () => boardResponseToModel(BOARD)}
+      committedBoardFn={async () => null}
       planningContextFn={async () => null}
       sendConversationFn={jest.fn()}
     />,

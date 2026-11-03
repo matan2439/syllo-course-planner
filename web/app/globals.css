@@ -469,7 +469,7 @@ body {
 
 /* Wide screens: the rail docks beside the board (nothing covers a semester
    column); the board keeps scrolling horizontally inside its own frame. */
-@media (min-width: 1280px) {
+@media (min-width: 1024px) {
   .planner-workbench[data-rail-open="true"] {
     display: grid;
     grid-template-columns: 24rem minmax(0, 1fr);
@@ -507,22 +507,25 @@ body {
 /* Phone bottom tab bar (hidden on larger screens). */
 .planner-bottom-bar { display: none; }
 
-/* Phones and small tablets: a bottom sheet over the board. */
+/* Phones and small tablets: tools are a separate view above the bottom nav. */
 @media (max-width: 1023px) {
   .planner-drawer-controls { top: 4rem; }
+  .planner-workbench[data-rail-open="true"] .planner-main { display: none; }
+  .planner-rail-header { gap: .3rem; padding: .6rem .65rem; }
+  .planner-rail-header [role="tablist"] { flex: 1; min-width: 0; gap: 0; }
+  .planner-rail-tab { white-space: nowrap; padding: .35rem .35rem; font-size: .75rem; }
   .planner-rail {
-    top: auto;
-    left: .5rem;
-    right: .5rem;
-    bottom: .5rem;
-    width: auto;
-    max-height: 70dvh;
+    position: relative;
+    top: auto; bottom: auto; left: auto; right: auto;
+    width: 100%;
+    height: min(70dvh, calc(100dvh - 19rem));
+    min-height: 16rem;
+    max-height: none;
     transform: none;
   }
-  .planner-rail[data-open="false"] { transform: translateY(calc(100% + 1rem)); }
-  .planner-rail[data-open="true"] { animation-name: planner-sheet-in; }
-  /* Keep the sheet and the page content clear of the bottom bar. */
-  .planner-rail { bottom: 3.75rem; max-height: calc(70dvh - 3.25rem); }
+  .planner-rail[data-open="false"] { display: none; }
+  .planner-rail[data-open="true"] { animation: none; }
+  .planner-rail [data-drag-handle] { display: none; }
   .planner-bottom-bar {
     position: fixed; z-index: 45; left: 0; right: 0; bottom: 0;
     display: flex; gap: .25rem; padding: .4rem .75rem calc(.4rem + env(safe-area-inset-bottom));

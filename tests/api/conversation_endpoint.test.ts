@@ -542,8 +542,8 @@ test('with Accept: application/x-ndjson, tool events and reply text stream live 
     loadProgramBoard: () => ({ semesters: [], metadata: {} }),
     runAgent: async ({ session }, { onTextDelta }) => {
       session.emit({ type: 'tool_status', tool: 'get_student_context', status: 'completed' })
-      onTextDelta?.('שלום, ')
-      onTextDelta?.('מה חשוב לך?')
+      await onTextDelta?.('שלום, ')
+      await onTextDelta?.('מה חשוב לך?')
       return { outcome: 'conversation', messageHe: 'שלום, מה חשוב לך?', events: [...session.events] }
     },
   })
@@ -563,6 +563,43 @@ test('with Accept: application/x-ndjson, tool events and reply text stream live 
   expect(parsed[0].event).toEqual({ type: 'tool_status', tool: 'get_student_context', status: 'completed' })
   expect(parsed[3]).toEqual({ type: 'result', status: 200, body: expect.objectContaining({ outcome: 'conversation', message_he: 'שלום, מה חשוב לך?' }) })
   expect(res.end).toHaveBeenCalled()
+})
+
+test.each([false, true])('streaming metering: finalization failure=%s never delivers uncharged text', async (failFinalize) => {
+  const preferences = { max_weekly_hours: 22, disallowed_course_ids: [] }
+  const calls: string[] = []
+  const lines: any[] = []
+  const handler = createConversationHandler({
+    resolveModel: () => ({ model: {} as any, name: 'test-model' }),
+    openMeter: async () => ({
+      funding: 'credits',
+      deliver: async () => { calls.push('deliver'); if (failFinalize) throw new Error('database unavailable') },
+      release: async () => { calls.push('release') },
+    }) as any,
+    loadBoard: async () => null,
+    loadAcademicContext: async () => ({
+      ownerId: 'server-owner', programId: validBody.program_id, digest: validBody.academic_status_digest,
+      personalStatus: { completed: [], completed_knowledge: { status: 'known', provenance: 'explicit_user' } },
+      planContext: {}, preferences, updatedAt: 1,
+    }),
+    loadProgramBoard: () => ({ semesters: [], metadata: {} }),
+    runAgent: async (_input, { onTextDelta }) => {
+      await onTextDelta?.('partial answer')
+      throw new Error('provider failed after first delta')
+    },
+  })
+  const res = response() as any
+  res.write = (chunk: string) => { lines.push(...chunk.split('\n').filter(Boolean).map((line) => JSON.parse(line))); return true }
+  res.end = jest.fn()
+  const log = jest.spyOn(console, 'error').mockImplementation(() => {})
+  await handler({
+    method: 'POST', headers: { cookie: `syllo_owner=${'x'.repeat(43)}`, accept: 'application/x-ndjson' },
+    body: { ...validBody, preference_digest: preferenceDigest(preferences) },
+  } as any, res)
+  log.mockRestore()
+  expect(calls).toEqual(failFinalize ? ['deliver', 'release'] : ['deliver'])
+  expect(lines.some((line) => line.type === 'text_delta')).toBe(!failFinalize)
+  expect(lines.at(-1)).toMatchObject({ type: 'result', status: failFinalize ? 503 : 500 })
 })
 
 test('a leave-out question asked by the endpoint gate is counted toward the two-ask limit', async () => {

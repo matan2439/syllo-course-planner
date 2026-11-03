@@ -1,4 +1,5 @@
 import type { SemesterTerm } from '../../../shared/planner/schedule';
+import { busyTimeSchema, manualExamSchema, calendarRangeSchema, type BusyTime, type ManualExam, type CalendarRange } from '../../../shared/planner/student-schedule-tools';
 
 const STORAGE_PREFIX = 'tau_weekly_schedule';
 
@@ -8,6 +9,9 @@ export interface WeeklyScheduleState {
   selections: Record<string, string[]>;
   /** Weekdays (א..ו) the student wants free of classes — the best-groups search avoids them. */
   freeDays: string[];
+  busyTimes?: BusyTime[];
+  exams?: ManualExam[];
+  calendarRange?: CalendarRange;
 }
 
 export function selectionKey(courseId: string, term: SemesterTerm): string {
@@ -26,10 +30,16 @@ export function loadWeeklyScheduleState(
     const raw = window.localStorage.getItem(storageKey(programId));
     if (!raw) return { termMapping: defaultMapping, selections: {}, freeDays: [] };
     const parsed = JSON.parse(raw) as Partial<WeeklyScheduleState>;
+    const busy = busyTimeSchema.array().max(50).safeParse(parsed.busyTimes);
+    const exams = manualExamSchema.array().max(100).safeParse(parsed.exams);
+    const range = calendarRangeSchema.safeParse(parsed.calendarRange);
     return {
       termMapping: { ...defaultMapping, ...(parsed.termMapping ?? {}) },
       selections: parsed.selections ?? {},
       freeDays: Array.isArray(parsed.freeDays) ? parsed.freeDays : [],
+      ...(busy.success ? { busyTimes: busy.data } : {}),
+      ...(exams.success ? { exams: exams.data } : {}),
+      ...(range.success ? { calendarRange: range.data } : {}),
     };
   } catch {
     return { termMapping: defaultMapping, selections: {}, freeDays: [] };

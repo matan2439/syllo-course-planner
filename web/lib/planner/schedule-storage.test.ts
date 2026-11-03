@@ -19,6 +19,16 @@ describe('selectionKey', () => {
 });
 
 describe('loadWeeklyScheduleState', () => {
+  test('keeps personal busy times, manually entered exams and the explicit calendar range', () => {
+    const stored = {
+      termMapping: DEFAULT_MAPPING, selections: {}, freeDays: [],
+      busyTimes: [{ id: 'busy1', day: 'א', start: '09:00', end: '11:00', label: 'עבודה', semesterId: 'year_3_semester_a' }],
+      exams: [{ id: 'exam1', courseId: '0542-2400', date: '2026-12-01', start: '09:00', end: '12:00', kind: 'a', semesterId: 'year_3_semester_a' }],
+      calendarRange: { startDate: '2026-10-01', endDate: '2027-01-31' },
+    };
+    window.localStorage.setItem('tau_weekly_schedule:tools', JSON.stringify(stored));
+    expect(loadWeeklyScheduleState('tools', DEFAULT_MAPPING)).toEqual(stored);
+  });
   test('returns the default mapping and empty selections when nothing is stored', () => {
     const state = loadWeeklyScheduleState('mechanical_engineering_2027', DEFAULT_MAPPING);
     expect(state).toEqual({ termMapping: DEFAULT_MAPPING, selections: {}, freeDays: [] });

@@ -11,8 +11,8 @@ import { adminRefundAllowed, LEGAL_POLICY, proportionalRefund } from '../../api/
 import { ALL_BILLING, createBillingDb, type BillingDb } from './helpers/billing_db';
 
 const SECRET = 'pdl_ntfset_ops_secret';
-const PRICE = 'pri_sandboxsmall0001';
-const ENV = { PADDLE_PRICE_CREDITS_SMALL: PRICE, CRON_SECRET: 'cron-secret-123' } as NodeJS.ProcessEnv;
+const PRICE = 'pri_01m3qasab7exbpj6dv3k70tjn9';
+const ENV = { PADDLE_ENV: 'sandbox', VERCEL_ENV: 'preview', PADDLE_PRICE_CREDITS_SMALL: PRICE, CRON_SECRET: 'cron-secret-123' } as NodeJS.ProcessEnv;
 const CONFIG: PaddleConfig = { environment: 'sandbox', apiKey: 'pdl_sdbx_apikey_ops', webhookSecret: SECRET, apiBase: 'http://paddle.invalid' };
 
 let db: BillingDb;

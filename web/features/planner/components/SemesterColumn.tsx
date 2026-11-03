@@ -5,6 +5,8 @@ import { useEffect, useState, type DragEvent } from 'react'
 import CourseCard from './CourseCard'
 import { EmptyState } from '../../../components/ui'
 import { hasPlannerDragType, REPOSITORY_COURSE_MIME, readPlannerDrag, type PlannerDragPayload } from '../../../lib/planner/drag-payload'
+import { useLocale } from '../../locale/LocaleProvider'
+import { semesterLabel } from '../../locale/semester-label'
 
 export default function SemesterColumn({
   semester,
@@ -21,6 +23,7 @@ export default function SemesterColumn({
   justPlaced = false,
   justPlacedKey,
   onDragStateChange,
+  editableCourseIds,
 }: {
   semester: SemesterVM
   index: number
@@ -39,15 +42,18 @@ export default function SemesterColumn({
   /** Changes on every successful placement so the confirmation animation restarts. */
   justPlacedKey?: string | number | null
   onDragStateChange?: (drag: PlannerDragPayload | null) => void
+  /** Preview-only additions cannot mutate the committed plan. */
+  editableCourseIds?: ReadonlySet<string>
 }) {
+  const { t, locale } = useLocale()
   const [dragState, setDragState] = useState<'allowed' | 'invalid' | 'unknown' | null>(null)
   const acceptsPayload = (payload: ReturnType<typeof readPlannerDrag>): payload is NonNullable<ReturnType<typeof readPlannerDrag>> => {
     if (!payload) return false
     if (payload.kind === 'repository' && !onAddCourse) return false
     if (payload.kind === 'board' && !onMoveCourse) return false
-    // An absent offering list is an unknown academic fact. A drop target must
-    // never turn that absence into permission for every semester.
-    return payload.allowedSemesterIds !== undefined && payload.allowedSemesterIds.includes(semester.id)
+    // Unknown offering is checked by the server on drop; explicit restrictions
+    // can be rejected here without a request. Neither path commits locally.
+    return payload.allowedSemesterIds === undefined || payload.allowedSemesterIds.includes(semester.id)
   }
 
   useEffect(() => {
@@ -74,7 +80,7 @@ export default function SemesterColumn({
     }
     event.preventDefault()
     event.dataTransfer.dropEffect = payload.kind === 'repository' ? 'copy' : 'move'
-    setDragState('allowed')
+    setDragState(payload.allowedSemesterIds === undefined ? 'unknown' : 'allowed')
     return true
   }
 
@@ -84,7 +90,8 @@ export default function SemesterColumn({
   // glance instead of discovering them one column at a time.
   const previewDragState = mutationPending || !activeDrag
     ? null
-    : acceptsPayload(activeDrag) ? 'allowed' : 'invalid'
+    : !acceptsPayload(activeDrag) ? 'invalid'
+      : activeDrag.allowedSemesterIds === undefined ? 'unknown' : 'allowed'
   const visibleDragState = previewDragState ?? dragState
   const feedbackState = rejected ? 'invalid' : visibleDragState
   const feedbackKey = rejected ? `rejected-${rejectedKey ?? 'latest'}` : feedbackState
@@ -96,7 +103,7 @@ export default function SemesterColumn({
 
   return (
     <section
-      aria-label={semester.title}
+      aria-label={semesterLabel(semester.id, semester.title, locale)}
       data-drop-state={rejected ? 'rejected' : visibleDragState ?? undefined}
       data-just-placed={justPlaced ? 'true' : undefined}
       onDragEnter={updateDragState}
@@ -143,9 +150,9 @@ export default function SemesterColumn({
           </span>
           {' '}
           <span>
-            {feedbackState === 'allowed' && 'ניתן לשחרר כאן'}
-            {feedbackState === 'invalid' && 'לא ניתן לשחרר כאן'}
-            {feedbackState === 'unknown' && 'בודקים אם ניתן לשחרר כאן…'}
+            {feedbackState === 'allowed' && t('ניתן לשחרר כאן', 'Drop here')}
+            {feedbackState === 'invalid' && t('לא ניתן לשחרר כאן', 'Cannot drop here')}
+            {feedbackState === 'unknown' && t('בודקים אם ניתן לשחרר כאן…', 'Checking this drop target…')}
           </span>
         </p>
       )}
@@ -153,10 +160,13 @@ export default function SemesterColumn({
       {/* semester.courses (not bodyCourses) so an annual-only semester — shown
           via the spanning card above, not here — never falsely reports empty. */}
       {semester.courses.length === 0 ? (
-        <EmptyState>אין קורסים משובצים</EmptyState>
+        <EmptyState>{t('אין קורסים משובצים', 'No courses scheduled')}</EmptyState>
       ) : (
         bodyCourses.map((c) => <CourseCard
-          key={c.id} course={c} onRemove={onRemoveCourse} onMove={onMoveCourse} onSelect={onSelectCourse}
+          key={c.id} course={c}
+          onRemove={!editableCourseIds || editableCourseIds.has(c.id) ? onRemoveCourse : undefined}
+          onMove={!editableCourseIds || editableCourseIds.has(c.id) ? onMoveCourse : undefined}
+          onSelect={onSelectCourse}
           moveDestinations={moveDestinations} mutationPending={mutationPending}
           onDragStateChange={onDragStateChange}
         />)

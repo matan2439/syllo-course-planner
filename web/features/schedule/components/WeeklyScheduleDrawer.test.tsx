@@ -58,6 +58,14 @@ function renderDrawer(overrides: Partial<Parameters<typeof WeeklyScheduleDrawer>
 
 beforeEach(() => window.localStorage.clear())
 
+test('busy times block a new alternative but preserve fixed selected meetings with a warning', async () => {
+  renderDrawer({ initialState: { termMapping: {}, selections: {}, freeDays: [], busyTimes: [
+    { id: 'work1', day: 'א', start: '10:00', end: '13:00', label: 'עבודה', semesterId: 'year_3_semester_a' },
+  ] } })
+  expect(await screen.findByRole('gridcell', { name: /תכן מכני \(1\)/ })).toBeInTheDocument()
+  expect(await screen.findByText(/קבוצות שנבחרו חופפות לשעות/)).toBeInTheDocument()
+})
+
 test('fetches and lists groups for the active tab’s board-synced courses automatically', async () => {
   const { fetchScheduleGroupsFn } = renderDrawer()
   await waitFor(() => expect(fetchScheduleGroupsFn).toHaveBeenCalledWith(

@@ -3,7 +3,7 @@ import type { AcademicContextRecord } from './academic_context_store';
 import type { CommittedBoard, BoardSemesterState } from './board_repository';
 import { buildModel } from './generate-plan';
 import { planContextToState } from './planner_model';
-import { validatePlanState } from './planner_validate';
+import { validateManualBoardChange } from './manual_board_validation';
 
 export type ManualAddFailureCode =
   | 'ACADEMIC_STATUS_MISMATCH'
@@ -88,15 +88,12 @@ export function prepareManualCourseAdd(input: PrepareManualCourseAddInput): Manu
   if (completed.has(request.course_id) || model.completedCourseIds.has(request.course_id)) {
     return { ok: false, code: 'COURSE_COMPLETED' };
   }
-  const taking = statusIds(context.personalStatus, 'currently_taking');
-  if (taking.has(request.course_id) || model.currentlyPlannedCourseIds?.has(request.course_id)) {
-    return { ok: false, code: 'COURSE_CURRENTLY_TAKING' };
-  }
   if (model.disallowedCourseIds.has(request.course_id) || profile.excluded) {
     return { ok: false, code: 'COURSE_HARD_EXCLUDED' };
   }
 
-  const state = boardState(currentBoard, context, model);
+  const before = boardState(currentBoard, context, model);
+  const state = { semesters: Object.fromEntries(Object.entries(before.semesters).map(([id, ids]) => [id, [...ids]])) };
 
   if (Object.values(state.semesters).some((ids) => ids.includes(request.course_id))) {
     return { ok: false, code: 'COURSE_ALREADY_PRESENT' };
@@ -112,7 +109,7 @@ export function prepareManualCourseAdd(input: PrepareManualCourseAddInput): Manu
     state.semesters[semesterId] = [...(state.semesters[semesterId] ?? []), request.course_id];
   }
 
-  const validation = validatePlanState(state, model);
+  const validation = validateManualBoardChange(state, before, model);
   if (!validation.valid) return { ok: false, code: 'PLAN_INVALID', details: validation.errors };
 
   return {
@@ -144,7 +141,7 @@ export function prepareManualCourseRemove(input: PrepareManualCourseRemoveInput)
     semesterId,
     (initialState.semesters[semesterId] ?? []).filter((courseId) => courseId !== request.course_id),
   ])) };
-  const validation = validatePlanState(state, model);
+  const validation = validateManualBoardChange(state, initialState, model);
   if (!validation.valid) return { ok: false, code: 'PLAN_INVALID', details: validation.errors };
   return {
     ok: true,
@@ -185,7 +182,7 @@ export function prepareManualCourseMove(input: PrepareManualCourseMoveInput):
   for (const semesterId of destinations) {
     state.semesters[semesterId] = [...(state.semesters[semesterId] ?? []), request.course_id];
   }
-  const validation = validatePlanState(state, model);
+  const validation = validateManualBoardChange(state, initialState, model, request.course_id);
   if (!validation.valid) return { ok: false, code: 'PLAN_INVALID', details: validation.errors };
   return {
     ok: true,

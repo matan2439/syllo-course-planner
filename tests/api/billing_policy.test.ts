@@ -1,9 +1,16 @@
 /** Pure pieces of billing: webhook signatures, config guards, catalog, the RefundPolicyEngine. */
 import { paddleConfig, signPaddleBody, verifyPaddleSignature, minimizeEntity } from '../../api/billing/paddle';
-import { packageById, packageByPriceId } from '../../api/billing/catalog';
+import { creditCatalog, packageById, packageByPriceId } from '../../api/billing/catalog';
 import {
   POLICY_VERSION, decideAdjustment, recommendRefundRequest, type AdjustmentFacts,
 } from '../../api/billing/refund_policy';
+
+const LIVE_PRICES = {
+  PADDLE_PRICE_CREDITS_SMALL: 'pri_01m4bf9ge86dj44by7a603nm50',
+  PADDLE_PRICE_CREDITS_MEDIUM: 'pri_01m4bf9gy11s5cft1m7r28ahcf',
+  PADDLE_PRICE_CREDITS_LARGE: 'pri_01m4bf9hagtt179xqzrqcee1wq',
+};
+const LIVE_ENV = { ...LIVE_PRICES, PADDLE_ENV: 'production', VERCEL_ENV: 'production', PADDLE_API_KEY: 'pdl_live_apikey_test', PADDLE_WEBHOOK_SECRET: 'test-secret' };
 
 describe('Paddle-Signature', () => {
   const body = '{"event_id":"evt_1"}';
@@ -31,7 +38,7 @@ describe('environment separation', () => {
   test('the API key must belong to PADDLE_ENV', () => {
     const base = { PADDLE_WEBHOOK_SECRET: 'x' };
     expect(paddleConfig({ ...base, PADDLE_ENV: 'sandbox', PADDLE_API_KEY: 'pdl_sdbx_apikey_1' }).apiBase).toBe('https://sandbox-api.paddle.com');
-    expect(paddleConfig({ ...base, VERCEL_ENV: 'production', PADDLE_ENV: 'production', PADDLE_API_KEY: 'pdl_live_apikey_1' }).apiBase).toBe('https://api.paddle.com');
+    expect(paddleConfig({ ...LIVE_PRICES, ...base, VERCEL_ENV: 'production', PADDLE_ENV: 'production', PADDLE_API_KEY: 'pdl_live_apikey_1' }).apiBase).toBe('https://api.paddle.com');
     expect(() => paddleConfig({ ...base, VERCEL_ENV: 'production', PADDLE_ENV: 'production', PADDLE_API_KEY: 'pdl_sdbx_apikey_1' })).toThrow(/not a production key/);
     expect(() => paddleConfig({ ...base, PADDLE_ENV: 'sandbox', PADDLE_API_KEY: 'pdl_live_apikey_1' })).toThrow(/not a sandbox key/);
     expect(() => paddleConfig({ ...base, PADDLE_API_KEY: 'pdl_sdbx_apikey_1' })).toThrow(/PADDLE_ENV/);
@@ -40,7 +47,7 @@ describe('environment separation', () => {
   test('mixed sandbox/production configuration fails closed', () => {
     const base = { PADDLE_WEBHOOK_SECRET: 'whsec' } as NodeJS.ProcessEnv;
     const sandbox = { ...base, PADDLE_ENV: 'sandbox', PADDLE_API_KEY: 'pdl_sdbx_apikey_1' } as NodeJS.ProcessEnv;
-    const live = { ...base, PADDLE_ENV: 'production', PADDLE_API_KEY: 'pdl_live_apikey_1' } as NodeJS.ProcessEnv;
+    const live = { ...LIVE_PRICES, ...base, PADDLE_ENV: 'production', PADDLE_API_KEY: 'pdl_live_apikey_1' } as NodeJS.ProcessEnv;
     // Sandbox on a production deployment would grant real credits for fake payments.
     expect(() => paddleConfig({ ...sandbox, VERCEL_ENV: 'production' })).toThrow(/not allowed on VERCEL_ENV=production/);
     // Live billing only on the production deployment.
@@ -55,11 +62,47 @@ describe('environment separation', () => {
   });
 
   test('catalog: price id → package → credits, only for this deployment\'s prices', () => {
-    const env = { PADDLE_PRICE_CREDITS_SMALL: 'pri_sandboxsmall0001' } as NodeJS.ProcessEnv;
-    expect(packageByPriceId('pri_sandboxsmall0001', env)).toMatchObject({ id: 'credits_small', credits: 50 });
+    const env = { PADDLE_ENV: 'sandbox', PADDLE_PRICE_CREDITS_SMALL: 'pri_01m3qasab7exbpj6dv3k70tjn9' } as NodeJS.ProcessEnv;
+    expect(packageByPriceId('pri_01m3qasab7exbpj6dv3k70tjn9', env)).toMatchObject({ id: 'credits_small', credits: 50 });
     expect(packageByPriceId('pri_liveprice00001', env)).toBeNull();
     expect(packageById('credits_medium', env)).toBeNull(); // no price configured → not purchasable
     expect(packageById('credits_small', { PADDLE_PRICE_CREDITS_SMALL: 'not-a-price' } as NodeJS.ProcessEnv)).toBeNull();
+  });
+
+  test('approved Live version 2 maps each price to exactly one 10/15/20-reply package', () => {
+    const catalog = creditCatalog(LIVE_ENV);
+    expect(catalog.map(({ id, version, credits }) => ({ id, version, credits }))).toEqual([
+      { id: 'credits_small', version: 2, credits: 10 },
+      { id: 'credits_medium', version: 2, credits: 15 },
+      { id: 'credits_large', version: 2, credits: 20 },
+    ]);
+    expect(new Set(catalog.map(p => p.paddlePriceId)).size).toBe(3);
+    for (const p of catalog) expect(packageByPriceId(p.paddlePriceId, LIVE_ENV)).toEqual(p);
+  });
+
+  test('mixed, swapped, duplicate, unknown and missing Live price config all fail closed', () => {
+    const broken = [
+      { ...LIVE_ENV, PADDLE_PRICE_CREDITS_SMALL: 'pri_01m3qasab7exbpj6dv3k70tjn9' },
+      { ...LIVE_ENV, PADDLE_PRICE_CREDITS_SMALL: LIVE_PRICES.PADDLE_PRICE_CREDITS_MEDIUM },
+      { ...LIVE_ENV, PADDLE_PRICE_CREDITS_LARGE: LIVE_PRICES.PADDLE_PRICE_CREDITS_MEDIUM },
+      { ...LIVE_ENV, PADDLE_PRICE_CREDITS_SMALL: 'pri_01xxxxxxxxxxxxxxxxxxxxxxxx' },
+      { ...LIVE_ENV, PADDLE_PRICE_CREDITS_SMALL: '' },
+      { ...LIVE_ENV, VERCEL_ENV: 'preview' },
+      { ...LIVE_ENV, PADDLE_ENV: '' },
+    ];
+    for (const env of broken) {
+      expect(() => paddleConfig(env)).toThrow();
+      expect(creditCatalog(env)).toEqual([]);
+      expect(packageById('credits_small', env)).toBeNull();
+    }
+  });
+
+  test('Sandbox rejects Live prices even though both use the same pri_ prefix', () => {
+    const sandbox = { PADDLE_ENV: 'sandbox', VERCEL_ENV: 'preview', PADDLE_API_KEY: 'pdl_sdbx_test', PADDLE_WEBHOOK_SECRET: 'test-secret',
+      PADDLE_PRICE_CREDITS_SMALL: LIVE_PRICES.PADDLE_PRICE_CREDITS_SMALL };
+    expect(() => paddleConfig(sandbox)).toThrow(/Catalog price/);
+    expect(creditCatalog(sandbox)).toEqual([]);
+    expect(packageByPriceId(LIVE_PRICES.PADDLE_PRICE_CREDITS_SMALL, sandbox)).toBeNull();
   });
 
   test('stored payloads drop payment-method and address data', () => {

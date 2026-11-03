@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import ProductShell from './ProductShell'
 
 jest.mock('./ShaderGradientBackground', () => ({
@@ -14,8 +14,9 @@ describe('ProductShell header', () => {
       </ProductShell>,
     )
 
-    expect(screen.getByRole('banner')).toHaveClass('flex-wrap')
-    expect(screen.getByRole('navigation')).toHaveClass('w-full', 'flex-wrap')
+    const header = screen.getByRole('banner')
+    expect(header).toHaveClass('flex-wrap')
+    expect(within(header).getByRole('navigation')).toHaveClass('w-full', 'flex-wrap')
   })
 
   test('shows the current program as a chip that links to the program picker', () => {

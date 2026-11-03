@@ -95,15 +95,21 @@ export function useAcademicContext({
    */
   const applyAcademicStatus = useCallback((): Record<string, unknown> => {
     const completedIds = completedCourseIdsOf(academicStatus)
+    // The completion editor owns completed courses only. Enrollment reported
+    // through the assistant must survive unrelated profile edits and context sync.
+    const stored = (loadedAcademicContext?.personalStatus ?? {}) as {
+      currently_taking?: unknown; planned?: unknown
+    }
     const status: Record<string, unknown> = {
       completed: completedIds.map((course_id) => ({ course_id })),
-      currently_taking: [],
+      currently_taking: Array.isArray(stored.currently_taking) ? stored.currently_taking : [],
+      ...(Array.isArray(stored.planned) ? { planned: stored.planned } : {}),
     }
     if (academicStatus.confirmed) {
       status.completed_knowledge = { status: 'known', provenance: 'explicit_user' }
     }
     return status
-  }, [academicStatus])
+  }, [academicStatus, loadedAcademicContext])
 
   const refreshAcademicContext = useCallback(() => {
     const readVersion = ++academicContextReadVersionRef.current

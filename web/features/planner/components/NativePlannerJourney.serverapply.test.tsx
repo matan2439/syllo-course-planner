@@ -116,7 +116,7 @@ describe('S5 — Apply goes to the server, and only the server commits', () => {
       throw new Error('cancel must not edit the board')
     })
     await renderReady({
-      manualAddIntent: { courseId: 'Y-1', semesterIds: [SEM_A] },
+      manualAddIntent: { courseId: 'Y-1', semesterIds: [SEM_A, SEM_B] },
       onManualAddCancelled,
       editBoardFn,
     })
@@ -169,7 +169,7 @@ describe('S5 — Apply goes to the server, and only the server commits', () => {
       ] },
     }))
     await renderReady({
-      manualAddIntent: { courseId: 'Y-1', semesterIds: [SEM_A] },
+      manualAddIntent: { courseId: 'Y-1', semesterIds: [SEM_A, SEM_B] },
       sendConversationFn, establishPlanningContextFn, editBoardFn,
     })
 
@@ -189,7 +189,7 @@ describe('S5 — Apply goes to the server, and only the server commits', () => {
       currentBoardVersion: null,
     }))
     await renderReady({
-      manualAddIntent: { courseId: 'Y-1', semesterIds: [SEM_B] },
+      manualAddIntent: { courseId: 'Y-1', semesterIds: [SEM_A, SEM_B] },
       editBoardFn,
       establishPlanningContextFn: async () => ({ academicStatusDigest: 'as_rejected' }),
     })
@@ -211,7 +211,7 @@ describe('S5 — Apply goes to the server, and only the server commits', () => {
         { semesterId: SEM_A, courseIds: ['X-1', 'Y-1'] }, { semesterId: SEM_B, courseIds: [] },
       ] },
     }))
-    await renderReady({ manualAddIntent: { courseId: 'Y-1', semesterIds: [SEM_A] }, editBoardFn, sendConversationFn })
+    await renderReady({ manualAddIntent: { courseId: 'Y-1', semesterIds: [SEM_A, SEM_B] }, editBoardFn, sendConversationFn })
     await build()
     fireEvent.click(screen.getByRole('button', { name: /הוסף.*שנה ג׳.*סמסטר א׳/ }))
     await waitFor(() => expect(editBoardFn).toHaveBeenCalledTimes(1))
@@ -233,7 +233,7 @@ describe('S5 — Apply goes to the server, and only the server commits', () => {
     expect(screen.getByLabelText('התוכנית הנוכחית')).toHaveTextContent('קורס Y')
   })
 
-  test('manual remove is unavailable while an alternative is previewed on the board', async () => {
+  test('an existing committed course can still be removed while an alternative is previewed', async () => {
     await renderReady({
       committedBoardFn: async () => ({
         programId: 'mechanical_engineering_2027', version: 'bv_1', semesters: [
@@ -243,12 +243,12 @@ describe('S5 — Apply goes to the server, and only the server commits', () => {
     })
     await build()
 
-    expect(screen.queryByRole('button', { name: 'הסר קורס Y מהלוח' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'הסר קורס Y מהלוח' })).toBeEnabled()
     expect(screen.getByLabelText('התוכנית הנוכחית')).toHaveTextContent('קורס Y')
     expect(applyBtn()).not.toBeDisabled()
   })
 
-  test('keyboard move controls are unavailable while an alternative is previewed', async () => {
+  test('an existing committed course keeps keyboard move controls during a preview', async () => {
     await renderReady({
       committedBoardFn: async () => ({
         programId: 'mechanical_engineering_2027', version: 'bv_1', semesters: [
@@ -258,7 +258,7 @@ describe('S5 — Apply goes to the server, and only the server commits', () => {
     })
     await build()
 
-    expect(screen.queryByText('אפשרויות העברה עבור קורס Y')).toBeNull()
+    expect(screen.getByText('אפשרויות העברה עבור קורס Y')).toBeInTheDocument()
     expect(screen.getByLabelText('התוכנית הנוכחית')).toHaveTextContent('קורס Y')
     expect(applyBtn()).not.toBeDisabled()
   })
@@ -345,7 +345,7 @@ describe('S5 — Apply goes to the server, and only the server commits', () => {
 describe('S5 — a refusal leaves the committed board alone', () => {
   test('shows a manual drop refusal at the top of the board feedback area', async () => {
     await renderReady({
-      manualAddIntent: { courseId: 'Y-1', semesterIds: [SEM_A] },
+      manualAddIntent: { courseId: 'Y-1', semesterIds: [SEM_A, SEM_B] },
       establishPlanningContextFn: async () => ({ academicStatusDigest: 'as_drop' }),
       editBoardFn: async (): Promise<ManualBoardEditResult> => ({
         ok: false, code: 'PLAN_INVALID', messageHe: 'הקורס אינו חוקי בסמסטר שנבחר.',
@@ -478,10 +478,17 @@ describe('S5 — refresh reads the server’s board back', () => {
     expect(screen.queryByText('קורס Z')).toBeNull()
   })
 
-  test('a failure to read the committed board does not hide the catalog', async () => {
+  test('a failure to read the committed board shows an error instead of editing a catalog fallback', async () => {
     const spy = jest.spyOn(console, 'error').mockImplementation(() => {})
-    await renderReady({ committedBoardFn: async () => { throw new Error('offline') } })
-    expect(screen.getByText('קורס בסיס X')).toBeInTheDocument()
+    render(<NativePlannerJourney
+      programId="mechanical_engineering_2027"
+      getBoardFn={async () => boardResponseToModel(BOARD)}
+      committedBoardFn={async () => { throw new Error('offline') }}
+      planningContextFn={async () => null}
+    />)
+    expect(await screen.findByRole('alert')).toHaveTextContent('טעינת התוכנית הנוכחית נכשלה')
+    expect(screen.queryByText('קורס בסיס X')).toBeNull()
+    expect(screen.queryByRole('region', { name: 'שנה ג׳ — סמסטר א׳' })).toBeNull()
     spy.mockRestore()
   })
 })

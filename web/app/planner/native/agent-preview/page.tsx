@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation'
 import { readBoardForProgramId } from '../../../../lib/board-data'
 import { getProgram } from '../../../../lib/programs'
-import { adaptRepository } from '../../../../lib/repository'
+import { adaptRepositoryWithSummaries } from '../../../../lib/repository-summaries'
 import ProductShell from '../../../../features/shell/components/ProductShell'
 import UnifiedPlannerWorkspace from '../../../../features/planner/components/UnifiedPlannerWorkspace'
 
@@ -36,7 +36,7 @@ export default async function AgentPreviewPage({
   const program = getProgram(programParam)
   const programId = programParam?.trim() || program.id
   const raw = await readBoardForProgramId(programId)
-  const repo = raw ? adaptRepository(raw) : { categories: [], totalCourses: 0 }
+  const repo = raw ? await adaptRepositoryWithSummaries(raw) : { categories: [], totalCourses: 0 }
 
   return (
     <ProductShell

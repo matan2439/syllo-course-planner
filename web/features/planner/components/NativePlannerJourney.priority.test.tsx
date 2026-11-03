@@ -24,6 +24,7 @@ test('the flagged journey keeps priority clarification inside the agent and hide
     <NativePlannerJourney
       programId="mechanical_engineering_2027"
       getBoardFn={async () => boardResponseToModel(BOARD)}
+      committedBoardFn={async () => null}
       planningContextFn={async () => null}
       sendConversationFn={jest.fn()}
     />,

@@ -298,6 +298,7 @@ async function pipeTextStream(
   res: VercelResponse,
   textStream: ReadableStream<string>,
   provider: AiProvider,
+  beforeFirstText: () => Promise<void>,
 ): Promise<boolean> {
   const reader = textStream.getReader();
 
@@ -321,6 +322,15 @@ async function pipeTextStream(
       `שירות ה-AI לא החזיר תוכן. בדוק חיוב/קרדיטים בקונסולה של ${PROVIDER_LABEL[provider]}.`,
       'AI_EMPTY_RESPONSE',
     );
+    return false;
+  }
+
+  try {
+    await beforeFirstText();
+  } catch (err) {
+    console.error('[ai] credit finalization failed:', err instanceof Error ? err.message : String(err));
+    await reader.cancel().catch(() => {});
+    sendMeterRefusal(res, 'unavailable');
     return false;
   }
 
@@ -444,12 +454,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       console.error('[ai] course advisor run failed:', err instanceof Error ? err.message : String(err));
     });
     console.log('[ai] stream started');
-    delivered = await pipeTextStream(res, advisor.textStream, 'openai');
+    delivered = await pipeTextStream(res, advisor.textStream, 'openai', () => meter.deliver());
     await completed;
+    const finalUsage = delivered ? usage?.() : undefined;
+    if (finalUsage && meter.recordUsage) await meter.recordUsage(finalUsage).catch((err) => {
+      console.error('[ai] usage recording failed:', err instanceof Error ? err.message : String(err));
+    });
   } finally {
     // One credit per answer that reached the student (they keep what they saw);
     // an empty or failed run returns the reserved credit.
-    if (delivered) await meter.deliver(usage?.());
-    else await meter.release('no_reply');
+    if (!delivered) await meter.release('no_reply');
   }
 }

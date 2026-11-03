@@ -59,7 +59,7 @@ test('an empty semester shows the truthful "no courses" state', () => {
   expect(screen.getByText('אין קורסים משובצים')).toBeInTheDocument()
 })
 
-test('a movable course without an authoritative offering is not advertised as draggable', () => {
+test('a course with unknown offering can request a server-validated move', () => {
   const boardWithUnknownOffering = {
     metadata: { board_data_version: 'rev-1' },
     semesters: [
@@ -77,13 +77,15 @@ test('a movable course without an authoritative offering is not advertised as dr
     ],
   }
 
-  const { container } = render(
-    <NativePlannerBoard board={vmFromPayload(boardWithUnknownOffering)} onMoveCourse={jest.fn()} />,
+  const onMoveCourse = jest.fn()
+  render(
+    <NativePlannerBoard board={vmFromPayload(boardWithUnknownOffering)} onMoveCourse={onMoveCourse} />,
   )
 
   const card = screen.getByText('קורס ללא זמינות מאומתת').closest('[draggable]')
-  expect(card).not.toHaveAttribute('draggable', 'true')
-  expect(container.querySelector('[data-drag-handle]')).toBeNull()
+  expect(card).toHaveAttribute('draggable', 'true')
+  fireEvent.click(screen.getByRole('button', { name: 'העבר קורס ללא זמינות מאומתת אל שנה ג׳ — סמסטר ב׳' }))
+  expect(onMoveCourse).toHaveBeenCalledWith('E-UNKNOWN', 'year_3_semester_b')
 })
 
 test('the board and its semesters expose accessible labels (RTL Hebrew)', () => {
@@ -377,9 +379,12 @@ test('a repository drop outside its offering fails closed', () => {
   expect(onAddCourse).not.toHaveBeenCalled()
 })
 
-test('mandatory courses do not advertise a move that authoritative validation must reject', () => {
+test('mandatory courses explicitly unavailable this year do not advertise a move', () => {
   const onMoveCourse = jest.fn()
-  render(<NativePlannerBoard board={vmFromPayload(BOARD)} onMoveCourse={onMoveCourse} />)
+  render(<NativePlannerBoard board={vmFromPayload({ ...BOARD, semesters: [
+    { ...BOARD.semesters[0], courses: [{ ...BOARD.semesters[0].courses[0], offered_in_year: false }] },
+    BOARD.semesters[1],
+  ] })} onMoveCourse={onMoveCourse} />)
   const card = screen.getByText('קורס לדוגמה').closest('[draggable]')
   expect(screen.getByText('קורס לדוגמה').closest('[draggable="true"]')).toBeNull()
   // Scoped to the card itself — the board also renders an unrelated <details>

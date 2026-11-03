@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useLocale } from '../../locale/LocaleProvider'
 
 type Theme = 'light' | 'dark'
 
@@ -13,6 +14,7 @@ function currentTheme(): Theme {
 }
 
 export default function ThemeToggle() {
+  const { t } = useLocale()
   const [theme, setTheme] = useState<Theme>('light')
 
   useEffect(() => setTheme(currentTheme()), [])
@@ -29,11 +31,11 @@ export default function ThemeToggle() {
     <button
       type="button"
       onClick={toggle}
-      aria-label={dark ? 'מעבר למצב יום' : 'מעבר למצב לילה'}
-      title={dark ? 'מצב יום' : 'מצב לילה'}
+      aria-label={dark ? t('מעבר למצב יום', 'Switch to light mode') : t('מעבר למצב לילה', 'Switch to dark mode')}
+      title={dark ? t('מצב יום', 'Light mode') : t('מצב לילה', 'Dark mode')}
       className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs font-semibold text-[var(--text)] shadow-sm transition-colors hover:border-[var(--purple)]/50 hover:text-[var(--purple)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--purple)]"
     >
-      {dark ? '☀ יום' : '☾ לילה'}
+      {dark ? t('☀ יום', '☀ Light') : t('☾ לילה', '☾ Dark')}
     </button>
   )
 }
