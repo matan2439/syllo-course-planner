@@ -1,5 +1,8 @@
 'use client';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import ExamOverview from '../../schedule/components/ExamOverview';
+import { semesterTitleHe } from '../../../lib/planner/board-vm';
 import { programWorkspaceSchema, type ProgramWorkspace, type SavedPlan, type SavedWeeklySchedule } from '../../../../shared/planner/student-workspace';
 import { useLocale } from '../../locale/LocaleProvider';
 import BiddingPanel from '../../bidding/BiddingPanel';
@@ -8,10 +11,13 @@ import { captureSavedPlan, type BoardSnapshot } from '../lib/saved-plans';
 import { loadStudentWorkspace, saveStudentWorkspace, restoreStudentPlan, fetchBiddingHistory, shareBiddingResults, WorkspaceError } from '../lib/student-workspace-client';
 import { uuidv4 } from '../../../lib/ai-session-token';
 import type { SavedCourseSearch } from '../../../../shared/planner/catalog-searches';
+import { MAX_COURSE_NOTES, type CourseNote } from '../../../../shared/planner/course-notes';
+import type { CourseNotesLibrary } from '../../courses/components/CourseNotesSection';
 import type { BiddingRoundSnapshot, BiddingRoundTransition } from '../../../../shared/planner/bidding-rounds';
 
 export interface CourseSearchLibrary { searches: readonly SavedCourseSearch[]; ready: boolean; change: (searches: SavedCourseSearch[]) => void }
 const EMPTY_SEARCHES: readonly SavedCourseSearch[] = [];
+const EMPTY_NOTES: readonly CourseNote[] = [];
 const withRounds = (plan: SavedPlan, rounds: BiddingRoundSnapshot[] | undefined): SavedPlan => rounds ? { ...plan, biddingRounds: JSON.parse(JSON.stringify(rounds)) } : plan;
 
 // Ignore object and course ordering when deciding whether a restored combination
@@ -24,19 +30,21 @@ const matches = (plan: Pick<SavedPlan, 'semesters' | 'weeklySchedule'>, snapshot
   sameBoard(plan, snapshot) && stable(plan.weeklySchedule) === stable(weekly);
 
 /** Mounted per account + board window. It never caches a prior account's plans. */
-export default function StudentWorkspaceTools({ programId, snapshot, weeklySchedule, onRestored, onWeeklyHydrated, prepareRestore, onSearchLibrary }: {
+export default function StudentWorkspaceTools({ programId, snapshot, weeklySchedule, onRestored, onWeeklyHydrated, prepareRestore, onSearchLibrary, onNotesLibrary, biddingTarget }: {
   programId: string; snapshot: BoardSnapshot | null; weeklySchedule: SavedWeeklySchedule;
   onRestored: (weekly: SavedWeeklySchedule) => void;
   onWeeklyHydrated?: (weekly: SavedWeeklySchedule) => void;
   prepareRestore?: () => Promise<void>;
   onSearchLibrary?: (library: CourseSearchLibrary | null) => void;
+  onNotesLibrary?: (library: CourseNotesLibrary | null) => void;
+  /** The workspace's bidding tab: the planner renders there (it owns the bidding data here). */
+  biddingTarget?: HTMLElement | null;
 }) {
   const { t, dir } = useLocale();
   const [data, setData] = useState<ProgramWorkspace>(() => programWorkspaceSchema.parse({}));
   const [loaded, setLoaded] = useState(false);
   const [hydrationReady, setHydrationReady] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [biddingOpen, setBiddingOpen] = useState(false);
   const [message, setMessage] = useState('');
   const [failed, setFailed] = useState(false);
   const [conflict, setConflict] = useState(false);
@@ -111,6 +119,23 @@ export default function StudentWorkspaceTools({ programId, snapshot, weeklySched
     onSearchLibrary?.({ searches, ready: loaded && !conflict, change: changeSearches });
   }, [searches, loaded, conflict, changeSearches, onSearchLibrary]);
   useEffect(() => () => onSearchLibrary?.(null), [onSearchLibrary]);
+  const notes = data.courseNotes ?? EMPTY_NOTES;
+  const saveNote = useCallback<CourseNotesLibrary['save']>((input) => {
+    const current = ref.current.data.courseNotes ?? [];
+    const now = Date.now();
+    const existing = input.id ? current.find((note) => note.id === input.id) : undefined;
+    if (!existing && current.length >= MAX_COURSE_NOTES) return;
+    const { id: _id, ...fields } = input;
+    const note: CourseNote = { ...fields, id: existing?.id ?? `note_${uuidv4()}`, visibility: 'private', createdAt: existing?.createdAt ?? now, updatedAt: now };
+    mutate({ ...ref.current.data, courseNotes: existing ? current.map((item) => item.id === note.id ? note : item) : [...current, note] });
+  }, [mutate]);
+  const removeNote = useCallback((id: string) => {
+    mutate({ ...ref.current.data, courseNotes: (ref.current.data.courseNotes ?? []).filter((note) => note.id !== id) });
+  }, [mutate]);
+  useEffect(() => {
+    onNotesLibrary?.({ notes, ready: loaded && !conflict, save: saveNote, remove: removeNote });
+  }, [notes, loaded, conflict, saveNote, removeNote, onNotesLibrary]);
+  useEffect(() => () => onNotesLibrary?.(null), [onNotesLibrary]);
   const replacePlan = (plan: SavedPlan) => mutate({ ...ref.current.data, plans: ref.current.data.plans.map((p) => p.id === plan.id ? { ...plan, name: plan.name.trim(), updatedAt: Date.now() } : p) });
 
   const restore = useCallback(async (plan: SavedPlan, initial = false, deleteId?: string) => {
@@ -223,17 +248,21 @@ export default function StudentWorkspaceTools({ programId, snapshot, weeklySched
       onCreate={create} onChange={replacePlan} onRestore={(plan) => void restore(plan)}
       onDuplicate={(plan) => create(`${plan.name.slice(0, 65)} ${t('(עותק)', '(copy)')}`)}
       onDelete={(plan) => { const next = ref.current.data.plans.find((item) => item.id !== plan.id); if (next) void restore(next, false, plan.id); }} />
-    <details className="text-xs text-[var(--text-muted)]" onToggle={(event) => setBiddingOpen(event.currentTarget.open)}>
-      <summary className="w-fit cursor-pointer py-1 hover:text-[var(--text)]">{t('תכנון נקודות ותוצאות בידינג', 'Bidding points and results')}</summary>
-      {biddingOpen && <fieldset disabled={!ready || busy} className="mt-3 min-w-0 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3">
+    {biddingTarget && createPortal(<div dir={dir} className="space-y-4">
+      <section aria-label={t('מבחנים בתוכנית', 'Exams in this plan')} className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3">
+        <h3 className="mb-2 text-sm font-semibold">{t('מועדי מבחנים', 'Exam dates')}</h3>
+        <ExamOverview exams={weeklySchedule.exams ?? []} semesterId={null} minGapDays={weeklySchedule.examGapDays}
+          courseName={(id) => snapshot?.courseNames[id] ?? id} semesterLabel={semesterTitleHe} />
+      </section>
+      <fieldset disabled={!ready || busy} className="min-w-0 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3">
         <BiddingPanel programId={programId} courseOptions={Object.entries(snapshot?.courseNames ?? {}).map(([id, name]) => ({ id, name }))}
           roundSnapshots={data.biddingRounds ?? []} onRoundSnapshot={(round) => saveRound(round)}
           onRoundTransition={({ snapshot: round, nextDraft }: BiddingRoundTransition) => saveRound(round, nextDraft)}
           draft={data.bidding} onChange={(bidding) => mutate({ ...ref.current.data, bidding,
             plans: ref.current.data.plans.map((plan) => plan.id === ref.current.data.activePlanId ? { ...plan, bidding, updatedAt: Date.now() } : plan) }, false)}
           loadHistory={(draft) => fetchBiddingHistory(programId, draft)} onShare={(draft, consent) => shareBiddingResults(programId, draft, consent)} />
-      </fieldset>}
-    </details>
+      </fieldset>
+    </div>, biddingTarget)}
     {(message || !loaded) && <p aria-live="polite" className={`text-xs ${failed ? 'text-red-600 dark:text-red-300' : 'text-[var(--text-muted)]'}`}>
       {message || t('טעינת תוכניות אישיות…', 'Loading personal plans…')}
       {failed && !conflict && <button type="button" className="ms-2 underline" onClick={() => { const retry = failedRestore.current; if (retry) void restore(retry.plan, retry.initial); else if (loaded) save(); else void load(); }}>{t('נסה שוב', 'Retry')}</button>}

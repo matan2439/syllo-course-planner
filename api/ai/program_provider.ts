@@ -15,6 +15,7 @@ import { parseProgramVersionId, queryBoardJson, type ParsedProgramId } from '../
 import { loadLocalBoardJson } from './board_loader';
 import { buildConstraintModel, type BuildModelOptions } from './planner_model';
 import type { ConstraintModel } from './planner_types';
+import { institutionForProgram, type Institution } from '../../shared/institutions';
 
 export interface ProgramProvider {
   parseProgramId(programId: string): ParsedProgramId | null;
@@ -45,4 +46,15 @@ export class TauProgramProvider implements ProgramProvider {
   buildModel(boardJson: any, opts: BuildModelOptions = {}): ConstraintModel {
     return buildConstraintModel(boardJson, opts);
   }
+}
+
+/** One provider per board format; an institution picks its format in data/config/institutions.json. */
+const PROVIDERS: Record<Institution['boardFormat'], () => ProgramProvider> = {
+  syllo_board_v1: () => new TauProgramProvider(),
+};
+
+/** The provider for a program's institution; unknown programs keep TAU's pipeline (today's behavior). */
+export function programProviderFor(programId: string): ProgramProvider {
+  const institution = institutionForProgram(programId);
+  return (institution ? PROVIDERS[institution.boardFormat] : PROVIDERS.syllo_board_v1)();
 }

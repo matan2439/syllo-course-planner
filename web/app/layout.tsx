@@ -35,7 +35,7 @@ export default function RootLayout({
         <script
           dangerouslySetInnerHTML={{
             __html:
-              "try{var t=localStorage.getItem('tau_theme');if(t==='dark'||t==='light')document.documentElement.dataset.theme=t;var d=document.documentElement.dataset.theme==='dark'||(!document.documentElement.dataset.theme&&window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches);var i=document.getElementById('syllo-favicon');if(i)i.href=d?'/brand/syllo-mark-dark.png':'/brand/syllo-mark-light.png'}catch(e){}",
+              "try{if(localStorage.getItem('tau_contrast')==='high')document.documentElement.dataset.contrast='high';var t=localStorage.getItem('tau_theme');if(t==='dark'||t==='light')document.documentElement.dataset.theme=t;var d=document.documentElement.dataset.theme==='dark'||(!document.documentElement.dataset.theme&&window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches);var i=document.getElementById('syllo-favicon');if(i)i.href=d?'/brand/syllo-mark-dark.png':'/brand/syllo-mark-light.png'}catch(e){}",
           }}
         />
         <script dangerouslySetInnerHTML={{ __html: "try{var l=localStorage.getItem('tau_locale');if(l==='he'||l==='en'){document.documentElement.lang=l;document.documentElement.dir=l==='he'?'rtl':'ltr'}}catch(e){}" }} />

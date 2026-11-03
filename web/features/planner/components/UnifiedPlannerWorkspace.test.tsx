@@ -1,17 +1,23 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import type { RepositoryVM } from '../../../lib/repository'
 import UnifiedPlannerWorkspace from './UnifiedPlannerWorkspace'
+import { OPEN_PROFILE_EVENT } from '../../auth/AccountButton'
 
 // Persistence has its own integration suite; these tests exercise workspace/rail wiring.
 jest.mock('./StudentWorkspaceTools', () => ({ __esModule: true, default: () => null }))
+
+const FOUR_YEAR_COLUMNS = ['year_3_semester_a', 'year_3_semester_b', 'year_4_semester_a', 'year_4_semester_b']
+let mockBoardColumns = FOUR_YEAR_COLUMNS
+beforeEach(() => { mockBoardColumns = FOUR_YEAR_COLUMNS })
 
 jest.mock('./NativePlannerJourney', () => ({
   __esModule: true,
   default: ({ programId, manualAddIntent, onManualAddCancelled, onSemestersChange, agentPortalTarget, currentDegreeYear, onCurrentDegreeYearChange }: any) => {
     useEffect(() => {
-      onSemestersChange?.([{ semesterId: 'year_3_semester_a', courseIds: ['0542-2400'] }])
+      // The board reports every column, as the real journey does.
+      onSemestersChange?.(mockBoardColumns.map((semesterId, i) => ({ semesterId, courseIds: i ? [] : ['0542-2400'] })))
     }, [onSemestersChange])
     const agent = <aside className="planner-agent-region" aria-label="עוזר אקדמי">עוזר פעיל</aside>
     return (
@@ -221,6 +227,7 @@ describe('UnifiedPlannerWorkspace', () => {
   })
 
   test('routes add intent against the actual board semester destinations', () => {
+    mockBoardColumns = ['year_1_semester_a', 'year_3_semester_a']
     renderWorkspace({
       repo: repoWithCourse,
       semesterDestinations: [
@@ -360,7 +367,7 @@ describe('UnifiedPlannerWorkspace — first visit and phones', () => {
   test('"סמנו קורסים שהשלמתי" opens the profile and "לא עכשיו" just dismisses', () => {
     const { unmount } = renderWorkspace()
     fireEvent.click(screen.getByRole('button', { name: 'סמנו קורסים שהשלמתי' }))
-    expect(screen.getByRole('tab', { name: 'הפרופיל שלי' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('region', { name: 'הפרופיל שלי' })).not.toHaveAttribute('hidden')
     unmount()
 
     localStorage.clear()
@@ -370,7 +377,7 @@ describe('UnifiedPlannerWorkspace — first visit and phones', () => {
     expect(second.container.querySelector('.planner-workbench')).toHaveAttribute('data-rail-open', 'false')
   })
 
-  test('the phone bottom bar reaches all five working views', () => {
+  test('the phone bottom bar reaches the working views and the header event opens the profile', () => {
     const { container } = renderWorkspace()
     const bar = screen.getByRole('navigation', { name: 'ניווט תכנון' })
     const workbench = container.querySelector('.planner-workbench')!
@@ -380,9 +387,13 @@ describe('UnifiedPlannerWorkspace — first visit and phones', () => {
     expect(workbench).toHaveAttribute('data-rail-tab', 'agent')
     fireEvent.click(tab('קורסים'))
     expect(workbench).toHaveAttribute('data-rail-tab', 'courses')
-    fireEvent.click(tab('פרופיל'))
+    fireEvent.click(tab('בידינג'))
+    expect(workbench).toHaveAttribute('data-rail-open', 'false')
+    expect(document.getElementById('workspace-panel-bidding')).not.toHaveAttribute('hidden')
+    expect(tab('בידינג')).toHaveAttribute('aria-current', 'page')
+    // The profile has one entry point: the header button's event opens the rail's profile panel.
+    act(() => { window.dispatchEvent(new CustomEvent(OPEN_PROFILE_EVENT, { cancelable: true })) })
     expect(workbench).toHaveAttribute('data-rail-tab', 'profile')
-    expect(tab('פרופיל')).toHaveAttribute('aria-current', 'page')
     fireEvent.click(tab('מערכת'))
     expect(workbench).toHaveAttribute('data-rail-open', 'false')
     expect(document.getElementById('workspace-panel-weekly')).not.toHaveAttribute('hidden')

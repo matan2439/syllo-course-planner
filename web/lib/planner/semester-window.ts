@@ -5,7 +5,7 @@
  * by semesterTitleHe, never stored alongside it.
  */
 import { semesterTitleHe } from './board-vm'
-import { windowBoardId } from '../../../shared/planner/window_board'
+import { MAX_DEGREE_YEAR, windowBoardId } from '../../../shared/planner/window_board'
 
 export type SemesterWindow = 'early' | 'late'
 
@@ -33,12 +33,58 @@ export function semesterWindowSlots(window: SemesterWindow = DEFAULT_SEMESTER_WI
   )
 }
 
-/** The student's current year in the degree — a profile fact, not UI state. */
-export type DegreeYear = 1 | 2 | 3 | 4
-export const DEGREE_YEARS: readonly DegreeYear[] = [1, 2, 3, 4]
+const plansWindow = (slots: readonly { id: string }[], boardSemesterIds: readonly string[]) =>
+  boardSemesterIds.some((id) => slots.some((slot) => slot.id === id))
+
+/**
+ * The window's tabs fitted to the degree's real length and grown by the semesters the student added
+ * (e.g. year_5_semester_a): a 3-year degree's board has no Year 4, so those tabs go, and Year 4 comes
+ * back once the student adds it. A board that does not plan the window leaves it as is.
+ */
+export function scheduleSlotsForBoard(window: SemesterWindow, boardSemesterIds: readonly string[]) {
+  const slots = semesterWindowSlots(window)
+  if (!plansWindow(slots, boardSemesterIds)) return slots
+  return withAddedSemesters(slots.filter((slot) => boardSemesterIds.includes(slot.id)), boardSemesterIds)
+}
+
+/**
+ * `slots`, then the board's columns past the last one (semesters the student added, e.g.
+ * year_5_semester_a) in rank order, flagged `added`. Without such columns this is `slots` itself.
+ */
+export function withAddedSemesters<T extends { id: string; label: string }>(
+  slots: readonly T[], boardSemesterIds: readonly string[],
+): Array<T | { id: string; label: string; added: true }> {
+  // Only a board that plans these slots (shares a column with them) extends them.
+  if (!plansWindow(slots, boardSemesterIds)) return [...slots]
+  const last = Math.max(-1, ...slots.map((slot) => semesterRank(slot.id) ?? -1))
+  const added = boardSemesterIds
+    .filter((id) => (semesterRank(id) ?? -1) > last)
+    .sort((a, b) => semesterRank(a)! - semesterRank(b)!)
+    .map((id) => ({ id, label: semesterTitleHe(id), added: true as const }))
+  return added.length ? [...slots, ...added] : [...slots]
+}
+
+const semesterRank = (id: string): number | null => {
+  const m = /^year_(\d+)_semester_([ab])$/.exec(id)
+  return m ? Number(m[1]) * 2 + (m[2] === 'b' ? 1 : 0) : null
+}
+
+/** The semester after the board's latest column, or null once that would pass MAX_DEGREE_YEAR. */
+export function nextSemesterId(boardSemesterIds: readonly string[]): string | null {
+  const ranks = boardSemesterIds.map(semesterRank).filter((rank): rank is number => rank !== null)
+  if (!ranks.length) return null
+  const next = Math.max(...ranks) + 1
+  return next / 2 >= MAX_DEGREE_YEAR + 1 ? null : `year_${Math.floor(next / 2)}_semester_${next % 2 ? 'b' : 'a'}`
+}
+
+/** The student's current year in the degree — a profile fact, not UI state. Degrees may run past year 4. */
+export type DegreeYear = 1 | 2 | 3 | 4 | 5 | 6
+export const DEGREE_YEARS: readonly DegreeYear[] = [1, 2, 3, 4, 5, 6]
 /** Device cache of the profile's current degree year (the account profile is the source when signed in). */
 export const CURRENT_DEGREE_YEAR_KEY = 'syllo_current_degree_year'
-export const DEGREE_YEAR_LABELS: Record<DegreeYear, string> = { 1: 'שנה א׳', 2: 'שנה ב׳', 3: 'שנה ג׳', 4: 'שנה ד׳' }
+export const DEGREE_YEAR_LABELS: Record<DegreeYear, string> = {
+  1: 'שנה א׳', 2: 'שנה ב׳', 3: 'שנה ג׳', 4: 'שנה ד׳', 5: 'שנה ה׳', 6: 'שנה ו׳',
+}
 
 /** The one place that maps the student's year to the visible window. Unknown year → the default. */
 export function semesterWindowForDegreeYear(year: DegreeYear | null | undefined): SemesterWindow {

@@ -12,6 +12,7 @@ export interface WeeklyScheduleState {
   busyTimes?: BusyTime[];
   exams?: ManualExam[];
   calendarRange?: CalendarRange;
+  examGapDays?: number;
 }
 
 export function selectionKey(courseId: string, term: SemesterTerm): string {
@@ -40,6 +41,7 @@ export function loadWeeklyScheduleState(
       ...(busy.success ? { busyTimes: busy.data } : {}),
       ...(exams.success ? { exams: exams.data } : {}),
       ...(range.success ? { calendarRange: range.data } : {}),
+      ...(Number.isInteger(parsed.examGapDays) && parsed.examGapDays! >= 1 && parsed.examGapDays! <= 14 ? { examGapDays: parsed.examGapDays } : {}),
     };
   } catch {
     return { termMapping: defaultMapping, selections: {}, freeDays: [] };

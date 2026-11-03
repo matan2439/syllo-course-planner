@@ -29,14 +29,16 @@ export const groupBusyConflicts = (group: Pick<ScheduleGroup, 'slots'>, busy: re
   busy.filter((item) => group.slots.some((slot) => hasOverlap(slot, item)));
 
 export interface ExamWarning { firstId: string; secondId: string; kind: 'same_day' | 'short_gap'; days: number }
-/** A/B sittings of the same course are alternatives, not an exam-load conflict. */
-export function examWarnings(exams: readonly ManualExam[], semesterId: string): ExamWarning[] {
-  const scoped = exams.filter((exam) => exam.semesterId === semesterId);
+/** Default minimum days between two exams before a short-gap warning (the student can change it). */
+export const DEFAULT_EXAM_GAP_DAYS = 3;
+/** A/B sittings of the same course are alternatives, not an exam-load conflict. `semesterId` null = all semesters. */
+export function examWarnings(exams: readonly ManualExam[], semesterId: string | null, minGapDays = DEFAULT_EXAM_GAP_DAYS): ExamWarning[] {
+  const scoped = semesterId === null ? [...exams] : exams.filter((exam) => exam.semesterId === semesterId);
   const warnings: ExamWarning[] = [];
   for (let i = 0; i < scoped.length; i++) for (let j = i + 1; j < scoped.length; j++) {
     if (scoped[i].courseId === scoped[j].courseId) continue;
     const days = Math.abs(Date.parse(scoped[i].date) - Date.parse(scoped[j].date)) / 86_400_000;
-    if (days < 3) warnings.push({ firstId: scoped[i].id, secondId: scoped[j].id, kind: days === 0 ? 'same_day' : 'short_gap', days });
+    if (days === 0 || days < minGapDays) warnings.push({ firstId: scoped[i].id, secondId: scoped[j].id, kind: days === 0 ? 'same_day' : 'short_gap', days });
   }
   return warnings;
 }

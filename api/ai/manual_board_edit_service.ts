@@ -2,8 +2,9 @@ import type { ManualBoardEditRequest } from '../../shared/planner/wire';
 import type { AcademicContextRecord } from './academic_context_store';
 import type { CommittedBoard, BoardSemesterState } from './board_repository';
 import { buildModel } from './generate-plan';
-import { planContextToState } from './planner_model';
+import { addedSemesterIds, planContextToState, withCommittedColumns } from './planner_model';
 import { validateManualBoardChange } from './manual_board_validation';
+import { programIdOfBoard } from '../../shared/planner/window_board';
 
 export type ManualAddFailureCode =
   | 'ACADEMIC_STATUS_MISMATCH'
@@ -15,6 +16,7 @@ export type ManualAddFailureCode =
   | 'COURSE_HARD_EXCLUDED'
   | 'PLAN_INVALID';
 export type ManualRemoveFailureCode = ManualAddFailureCode | 'COURSE_NOT_PRESENT' | 'COURSE_REQUIRED';
+export type ManualSemesterFailureCode = 'ACADEMIC_STATUS_MISMATCH' | 'UNKNOWN_SEMESTER' | 'SEMESTER_ALREADY_PRESENT' | 'SEMESTER_NOT_REMOVABLE' | 'SEMESTER_NOT_EMPTY';
 
 export type ManualAddResult =
   | { ok: true; semesters: BoardSemesterState[] }
@@ -66,6 +68,14 @@ function manualEditPreferences(preferences: unknown): any {
   return rest;
 }
 
+/** The model an edit validates against: the stored context, with the committed board's columns. */
+function editModel(input: { boardJson: unknown; context: AcademicContextRecord; currentBoard: CommittedBoard | null; request: { program_id: string } }) {
+  const { boardJson, context, currentBoard, request } = input;
+  const columns = currentBoard?.semesters.map((semester) => semester.semesterId);
+  return buildModel(boardJson, withCommittedColumns(boardJson, context.planContext, columns),
+    manualEditPreferences(context.preferences), request.program_id);
+}
+
 /**
  * Build and validate the exact board the repository may commit. This function
  * is pure: ownership, CAS and idempotency belong to the handler/repository;
@@ -77,7 +87,7 @@ export function prepareManualCourseAdd(input: PrepareManualCourseAddInput): Manu
     return { ok: false, code: 'ACADEMIC_STATUS_MISMATCH' };
   }
 
-  const model = buildModel(boardJson, context.planContext, manualEditPreferences(context.preferences), request.program_id);
+  const model = editModel(input);
   if (!model.knownSemesterIds.includes(request.semester_id)) {
     return { ok: false, code: 'UNKNOWN_SEMESTER' };
   }
@@ -128,7 +138,7 @@ export function prepareManualCourseRemove(input: PrepareManualCourseRemoveInput)
   if (context.digest !== request.academic_status_digest) {
     return { ok: false, code: 'ACADEMIC_STATUS_MISMATCH' };
   }
-  const model = buildModel(boardJson, context.planContext, manualEditPreferences(context.preferences), request.program_id);
+  const model = editModel(input);
   const profile = model.profiles.get(request.course_id);
   if (!profile) return { ok: false, code: 'UNKNOWN_COURSE' };
   if (profile.is_mandatory) return { ok: false, code: 'COURSE_REQUIRED' };
@@ -158,7 +168,7 @@ export function prepareManualCourseMove(input: PrepareManualCourseMoveInput):
   if (context.digest !== request.academic_status_digest) {
     return { ok: false, code: 'ACADEMIC_STATUS_MISMATCH' };
   }
-  const model = buildModel(boardJson, context.planContext, manualEditPreferences(context.preferences), request.program_id);
+  const model = editModel(input);
   if (!model.knownSemesterIds.includes(request.semester_id)) {
     return { ok: false, code: 'UNKNOWN_SEMESTER' };
   }
@@ -187,6 +197,49 @@ export function prepareManualCourseMove(input: PrepareManualCourseMoveInput):
   return {
     ok: true,
     semesters: model.knownSemesterIds.map((semesterId) => ({
+      semesterId, courseIds: [...new Set(state.semesters[semesterId] ?? [])].sort(),
+    })),
+  };
+}
+
+export interface PrepareManualSemesterInput {
+  boardJson: unknown;
+  context: AcademicContextRecord;
+  currentBoard: CommittedBoard | null;
+  request: Extract<ManualBoardEditRequest, { operation: 'add_semester' | 'remove_semester' }>;
+}
+
+/**
+ * Add or remove a semester column past the board's own. Only an added column can be removed, and
+ * only while it holds no course, so removing a column can never drop a placement.
+ */
+export function prepareManualSemesterChange(input: PrepareManualSemesterInput):
+  | { ok: true; semesters: BoardSemesterState[] }
+  | { ok: false; code: ManualSemesterFailureCode } {
+  const { boardJson, context, currentBoard, request } = input;
+  if (context.digest !== request.academic_status_digest) {
+    return { ok: false, code: 'ACADEMIC_STATUS_MISMATCH' };
+  }
+  // Only the program's own (last) board grows; a two-year window board is followed by the next window.
+  const isAdded = programIdOfBoard(request.program_id) === request.program_id
+    && addedSemesterIds(boardJson, [request.semester_id]).length > 0;
+  const model = editModel(input);
+  const state = boardState(currentBoard, context, model);
+  const present = model.knownSemesterIds.includes(request.semester_id);
+  let columns = model.knownSemesterIds;
+  if (request.operation === 'add_semester') {
+    if (!isAdded) return { ok: false, code: 'UNKNOWN_SEMESTER' };
+    if (present) return { ok: false, code: 'SEMESTER_ALREADY_PRESENT' };
+    columns = [...columns, request.semester_id];
+  } else {
+    if (!present) return { ok: false, code: 'UNKNOWN_SEMESTER' };
+    if (!isAdded) return { ok: false, code: 'SEMESTER_NOT_REMOVABLE' };
+    if (state.semesters[request.semester_id]?.length) return { ok: false, code: 'SEMESTER_NOT_EMPTY' };
+    columns = columns.filter((id) => id !== request.semester_id);
+  }
+  return {
+    ok: true,
+    semesters: columns.map((semesterId) => ({
       semesterId, courseIds: [...new Set(state.semesters[semesterId] ?? [])].sort(),
     })),
   };

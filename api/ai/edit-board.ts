@@ -10,13 +10,15 @@ import {
 import { loadLocalBoardJson } from './board_loader';
 import type { CommittedBoard } from './board_repository';
 import {
-  prepareManualCourseAdd, prepareManualCourseMove, prepareManualCourseRemove,
-  type ManualAddFailureCode, type ManualRemoveFailureCode,
+  prepareManualCourseAdd, prepareManualCourseMove, prepareManualCourseRemove, prepareManualSemesterChange,
+  type ManualAddFailureCode, type ManualRemoveFailureCode, type ManualSemesterFailureCode,
 } from './manual_board_edit_service';
 import { committedBoardView } from './committed_board_view';
 import { resolveRequestOwner } from './auth_session';
+import { loadBoardWithAddedSemesters, saveAddedSemesters } from './student_semesters';
+import { addedSemesterIds } from './planner_model';
 
-type FailureCode = ManualAddFailureCode | ManualRemoveFailureCode
+type FailureCode = ManualAddFailureCode | ManualRemoveFailureCode | ManualSemesterFailureCode
   | 'INVALID_REQUEST' | 'METHOD_NOT_ALLOWED' | 'ACADEMIC_CONTEXT_NOT_FOUND'
   | 'PROGRAM_NOT_FOUND' | 'BOARD_VERSION_CONFLICT' | 'IDEMPOTENCY_CONFLICT'
   | 'PLANNER_STORAGE_UNAVAILABLE' | 'PLANNER_SCHEMA_MISMATCH' | 'INTERNAL_ERROR';
@@ -35,6 +37,9 @@ const MESSAGE_HE: Record<FailureCode, string> = {
   COURSE_COMPLETED: 'קורס שהושלם אינו ניתן להוספה מחדש.',
   COURSE_CURRENTLY_TAKING: 'הקורס כבר נלמד כעת.',
   COURSE_HARD_EXCLUDED: 'הקורס מוחרג לפי אילוץ מאושר.',
+  SEMESTER_ALREADY_PRESENT: 'הסמסטר כבר נמצא בלוח.',
+  SEMESTER_NOT_REMOVABLE: 'ניתן להסיר רק סמסטר שנוסף ללוח.',
+  SEMESTER_NOT_EMPTY: 'ניתן להסיר סמסטר רק כשאין בו קורסים.',
   PLAN_INVALID: 'לא ניתן לבצע את השיבוץ לפי דרישות התוכנית.',
   BOARD_VERSION_CONFLICT: 'הלוח השתנה. יש לרענן ולנסות שוב.',
   IDEMPOTENCY_CONFLICT: 'מזהה העריכה כבר שימש לפעולה אחרת.',
@@ -67,7 +72,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     const request = parsed.data;
     const owner = await resolveRequestOwner(req as any, res);
     const repo = getBoardRepository();
-    const currentBoard = await repo.load(owner.ownerId, request.program_id);
+    const currentBoard = await loadBoardWithAddedSemesters(repo, owner.ownerId, request.program_id);
     const context = await getAcademicContextStore().load(owner.ownerId, request.program_id);
     // Unnamed completions in the stored context count toward the board's categories.
     const boardView = (board: CommittedBoard) => committedBoardView(board, context?.planContext);
@@ -75,7 +80,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       ? `add:${request.course_id}:${request.semester_id}:${request.academic_status_digest}`
       : request.operation === 'move_course'
         ? `move:${request.course_id}:${request.semester_id}:${request.academic_status_digest}`
-        : `remove:${request.course_id}:${request.academic_status_digest}`;
+        : request.operation === 'remove_course'
+          ? `remove:${request.course_id}:${request.academic_status_digest}`
+          : `${request.operation}:${request.semester_id}:${request.academic_status_digest}`;
 
     // A retry legitimately carries the old version. Ask the repository first;
     // only its history can distinguish that replay from a stale new mutation.
@@ -100,8 +107,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       ? prepareManualCourseAdd({ boardJson, context, currentBoard, request })
       : request.operation === 'move_course'
           ? prepareManualCourseMove({ boardJson, context, currentBoard, request })
-          : prepareManualCourseRemove({ boardJson, context, currentBoard, request });
-    if (!prepared.ok) { reject(res, prepared.code, undefined, prepared.details); return; }
+          : request.operation === 'remove_course'
+            ? prepareManualCourseRemove({ boardJson, context, currentBoard, request })
+            : prepareManualSemesterChange({ boardJson, context, currentBoard, request });
+    if (!prepared.ok) { reject(res, prepared.code, undefined, 'details' in prepared ? prepared.details : undefined); return; }
+    if (request.operation === 'add_semester' || request.operation === 'remove_semester') {
+      // The account preference is the authority for added columns; the board commit only shows them.
+      try {
+        await saveAddedSemesters(owner.ownerId, request.program_id, addedSemesterIds(boardJson, prepared.semesters.map((s) => s.semesterId)));
+      } catch (error) {
+        console.error('[ai/edit-board] added semesters not saved:', error instanceof Error ? error.message : String(error));
+        reject(res, 'PLANNER_STORAGE_UNAVAILABLE'); return;
+      }
+    }
 
     const commit = await repo.commit({
       ownerId: owner.ownerId, programId: request.program_id,

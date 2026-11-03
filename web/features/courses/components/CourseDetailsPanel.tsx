@@ -6,6 +6,7 @@ import type { CourseDetailsVM } from '../../../lib/course-details'
 import { Badge } from '../../../components/ui'
 import CourseAiChat, { type StudentContext } from './CourseAiChat'
 import CourseGradesSection from './CourseGradesSection'
+import CourseNotesSection from './CourseNotesSection'
 import { useCourseInsights, type CourseInsightsFetch } from '../hooks/use-course-insights'
 import { CLOSE_PANELS_EVENT } from '../../billing/ai_access'
 import { semesterTitleHe } from '../../../lib/planner/board-vm'
@@ -172,6 +173,7 @@ export default function CourseDetailsPanel({
           </Field>}
 
           {programId && <CourseGradesSection key={`grades-${course.id}`} insights={insights} />}
+          <CourseNotesSection key={`notes-${course.id}`} courseId={course.id} />
 
           {programId && (
             <CourseAiChat

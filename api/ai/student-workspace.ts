@@ -11,6 +11,7 @@ import { ensurePlannerStorageReady, getAcademicContextStore, getBoardRepository 
 import { loadLocalBoardJson } from './board_loader';
 import { committedBoardView } from './committed_board_view';
 import { validateSavedPlan } from './student_plan_restore';
+import { loadBoardWithAddedSemesters } from './student_semesters';
 
 const queryYear = z.coerce.number().int().min(2000).max(2200);
 const querySemester = z.coerce.number().int().min(1).max(2);
@@ -86,7 +87,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       const catalog = loadLocalBoardJson(program_id);
       if (!context || !catalog) { error(res, 404, 'ACADEMIC_CONTEXT_NOT_FOUND'); return; }
       const repo = getBoardRepository();
-      const current = await repo.load(ownerId, program_id);
+      const current = await loadBoardWithAddedSemesters(repo, ownerId, program_id);
       const identity = createHash('sha256').update(JSON.stringify({ semesters: plan.semesters, weeklySchedule: plan.weeklySchedule, bidding: plan.bidding, biddingRounds: plan.biddingRounds })).digest('hex');
       const commitInput = { ownerId, programId: program_id, expectedVersion: expected_board_version,
         semesters: plan.semesters, proposalId: `saved-plan:${plan.id}`, candidateId: identity, idempotencyKey: idempotency_key };

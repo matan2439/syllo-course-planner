@@ -140,6 +140,19 @@ export function recomputeRequirements(
     });
   }
 
+  // Unnamed completed courses (e.g. "I finished 2 שער רוח courses") count toward the degree total,
+  // not only their category: TAU engineering's 6 ש"ס humanities requirement is part of the total
+  // credits (docs/requirements/shaar-ruach-credits.md). Their weight is the category's uniform
+  // per-course hours (every שער רוח course is 2); a mixed-hours pool can't be credited blindly.
+  for (const cat of categories) {
+    const count = unidentifiedCompletedByCategory[cat.category_id] ?? 0;
+    if (count <= 0) continue;
+    const known = new Set(cat.course_ids.map((c) => hoursById.get(normalizeCourseIdLikePython(String(c))))
+      .filter((h): h is number => typeof h === 'number'));
+    if (known.size === 1) plannedHours += count * [...known][0];
+    else unknownHoursCount += count;
+  }
+
   const coreSatisfied = coreSelected >= coreTotalMin;
   if (!coreSatisfied) missingRequiredCategories.push('core_total');
 

@@ -9,16 +9,21 @@ export const profileSchema = z.object({
   email: z.string().nullable(),
   role: z.enum(['user', 'developer']),
   program_id: z.string().nullable(),
-  current_degree_year: z.number().int().min(1).max(4).nullable(),
+  current_degree_year: z.number().int().min(1).max(DEGREE_YEARS.length).nullable(),
   /** Server-set entitlement: AI use is not charged in Syllo Credits. */
   billing_exempt: z.boolean().default(false),
+  /** Identity (auth/003_profile_identity.sql). Absent until that migration is applied. */
+  display_name: z.string().nullable().optional(),
+  faculty: z.string().nullable().optional(),
+  degree: z.string().nullable().optional(),
+  avatar_data_url: z.string().nullable().optional(),
   created_at: z.string(),
   updated_at: z.string(),
 })
 export type Profile = z.infer<typeof profileSchema>
 
 /** The only columns a client may write (mirrors the column GRANT in the migration). */
-export type ProfilePatch = Partial<Pick<Profile, 'program_id' | 'current_degree_year'>>
+export type ProfilePatch = Partial<Pick<Profile, 'program_id' | 'current_degree_year' | 'display_name' | 'faculty' | 'degree' | 'avatar_data_url'>>
 
 export async function fetchProfile(client: SupabaseClient, userId: string): Promise<Profile | null> {
   const { data, error } = await client.from('profiles').select('*').eq('id', userId).maybeSingle()

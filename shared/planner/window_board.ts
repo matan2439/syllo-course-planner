@@ -4,6 +4,9 @@
  *   mechanical_engineering_2027 + Years 1–2  →  mechanical_engineering_years_1_2_2027
  * Each window board is its own planning universe (own committed board and context).
  */
+
+/** The furthest degree year a student may plan: semesters may be added to a board up to it. */
+export const MAX_DEGREE_YEAR = 6
 export function windowBoardId(programId: string, firstYear: number): string {
   return programId.replace(/_(\d{4})$/, `_years_${firstYear}_${firstYear + 1}_$1`)
 }

@@ -22,7 +22,7 @@ import { semesterLabel } from '../../locale/semester-label'
  * as everything else, instead of a separately-styled block elsewhere on the
  * page. A year-pair with no annual course simply has no row 2.
  */
-export default function NativePlannerBoard({ board, onRemoveCourse, onAddCourse, onMoveCourse, onSelectCourse, mutationPending = false, activeDrag, rejectedSemesterId, rejectedDropKey, justPlacedSemesterId, justPlacedKey, onDragStateChange, readOnly = false, editableCourseIds }: {
+export default function NativePlannerBoard({ board, onRemoveCourse, onAddCourse, onMoveCourse, onSelectCourse, mutationPending = false, activeDrag, rejectedSemesterId, rejectedDropKey, justPlacedSemesterId, justPlacedKey, onDragStateChange, readOnly = false, editableCourseIds, onAddSemester, removableSemesterIds, onRemoveSemester }: {
   board: BoardVM
   onRemoveCourse?: (courseId: string) => void
   onAddCourse?: (courseId: string, semesterId: string) => void
@@ -43,6 +43,11 @@ export default function NativePlannerBoard({ board, onRemoveCourse, onAddCourse,
   readOnly?: boolean
   /** During an AI preview, only courses already committed can be moved/removed. */
   editableCourseIds?: ReadonlySet<string>
+  /** Adds the next semester after the last column (degrees that run long). */
+  onAddSemester?: () => void
+  /** Empty semesters the student added; only these offer removal. */
+  removableSemesterIds?: ReadonlySet<string>
+  onRemoveSemester?: (semesterId: string) => void
 }) {
   const { t, locale } = useLocale()
   if (board.semesters.length === 0) {
@@ -81,7 +86,11 @@ export default function NativePlannerBoard({ board, onRemoveCourse, onAddCourse,
               const isLastOverall = pair.start + j === board.semesters.length - 1
               return (
                 <div key={`${s.id}-header`} style={{ gridColumn: j + 1, gridRow: 1 }} className={`min-w-0 border-l border-[var(--border)] ${isLastOverall ? 'border-l-0' : ''}`}>
-                  <SemesterColumnHeader semester={s} />
+                  <SemesterColumnHeader
+                    semester={s}
+                    onRemove={!readOnly && onRemoveSemester && removableSemesterIds?.has(s.id) && !mutationPending
+                      ? () => onRemoveSemester(s.id) : undefined}
+                  />
                 </div>
               )
             })}
@@ -124,6 +133,16 @@ export default function NativePlannerBoard({ board, onRemoveCourse, onAddCourse,
       })}
     </div>
     </div>
+    {!readOnly && onAddSemester && (
+      <button
+        type="button"
+        onClick={onAddSemester}
+        disabled={mutationPending}
+        className="self-start rounded-lg border border-dashed border-[var(--border)] px-3 py-1.5 text-xs font-semibold text-[var(--text-muted)] hover:text-[var(--text)] disabled:opacity-50"
+      >
+        + {t('הוספת סמסטר', 'Add semester')}
+      </button>
+    )}
     <CategoryLegend />
     </div>
   )

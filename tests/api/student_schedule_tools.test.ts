@@ -20,3 +20,11 @@ test('exam warnings distinguish same day from short gaps and ignore other semest
   expect(result[0]).toMatchObject({ kind: 'same_day', days: 0 });
   expect(examWarnings([exam, { ...exam, id: 'sitting2', kind: 'b' }], exam.semesterId)).toEqual([]);
 });
+test('exam gap threshold is configurable and a null semester compares across the whole plan', () => {
+  const later = { ...exam, id: 'e5', courseId: 'C5', date: '2026-12-06' }; // 5 days after `exam`
+  expect(examWarnings([exam, later], exam.semesterId, 3)).toEqual([]);
+  expect(examWarnings([exam, later], exam.semesterId, 6)).toMatchObject([{ kind: 'short_gap', days: 5 }]);
+  const otherTerm = { ...exam, id: 'e6', courseId: 'C6', semesterId: 'year_3_semester_b' };
+  expect(examWarnings([exam, otherTerm], exam.semesterId)).toEqual([]);
+  expect(examWarnings([exam, otherTerm], null)).toMatchObject([{ kind: 'same_day' }]);
+});

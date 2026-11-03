@@ -344,6 +344,15 @@ export const manualBoardEditRequestSchema = z.discriminatedUnion('operation', [
     operation: z.literal('move_course'),
     semester_id: z.string().min(1),
   }).strict(),
+  // A semester column past the board's own (e.g. year_5_semester_a); removal only while empty.
+  manualBoardEditBaseSchema.omit({ course_id: true }).extend({
+    operation: z.literal('add_semester'),
+    semester_id: z.string().min(1),
+  }).strict(),
+  manualBoardEditBaseSchema.omit({ course_id: true }).extend({
+    operation: z.literal('remove_semester'),
+    semester_id: z.string().min(1),
+  }).strict(),
 ]);
 export type ManualBoardEditRequest = z.infer<typeof manualBoardEditRequestSchema>;
 

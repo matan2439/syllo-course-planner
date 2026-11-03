@@ -39,3 +39,29 @@ export default function ThemeToggle() {
     </button>
   )
 }
+
+/** High-contrast palette, layered over light or dark (tau_contrast → data-contrast, seeded before paint in layout). */
+export function ContrastToggle() {
+  const { t } = useLocale()
+  const [high, setHigh] = useState(false)
+  useEffect(() => setHigh(document.documentElement.dataset.contrast === 'high'), [])
+  const toggle = () => {
+    const next = !high
+    if (next) document.documentElement.dataset.contrast = 'high'
+    else delete document.documentElement.dataset.contrast
+    try { localStorage.setItem('tau_contrast', next ? 'high' : 'normal') } catch { /* private browsing can reject storage */ }
+    setHigh(next)
+  }
+  return (
+    <button
+      type="button"
+      onClick={toggle}
+      aria-pressed={high}
+      aria-label={t('ניגודיות גבוהה', 'High contrast')}
+      title={t('ניגודיות גבוהה', 'High contrast')}
+      className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs font-semibold text-[var(--text)] shadow-sm transition-colors hover:border-[var(--purple)]/50 hover:text-[var(--purple)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--purple)]"
+    >
+      <span aria-hidden="true">◐</span>
+    </button>
+  )
+}
