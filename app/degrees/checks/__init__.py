@@ -10,4 +10,21 @@ class CheckResult(BaseModel):
 
 from app.degrees.checks.coverage import check_coverage, check_freshness  # noqa: E402
 
-__all__ = ["CheckResult", "check_coverage", "check_freshness"]
+from app.degrees.checks.consistency import (  # noqa: E402
+    check_courses_known,
+    check_double_counting,
+    check_mandatory_offered,
+    check_plannable,
+    check_totals,
+)
+
+__all__ = [
+    "CheckResult",
+    "check_coverage",
+    "check_freshness",
+    "check_courses_known",
+    "check_double_counting",
+    "check_mandatory_offered",
+    "check_plannable",
+    "check_totals",
+]
