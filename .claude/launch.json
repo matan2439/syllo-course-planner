@@ -33,6 +33,22 @@
       }
     },
     {
+      "name": "api-alt-port",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["tsx", "scripts/dev_api_server.ts"],
+      "port": 3012,
+      "autoPort": false,
+      "env": { "DEV_API_PORT": "3012", "AI_DEV_MODE": "true", "AI_DEV_BYPASS_QUOTA": "true", "DATABASE_URL": "", "OPENAI_API_KEY": "" }
+    },
+    {
+      "name": "web-alt-port",
+      "runtimeExecutable": "cmd",
+      "runtimeArgs": ["/c", "cd web && npx next dev --port 3011"],
+      "port": 3011,
+      "autoPort": false,
+      "env": { "PLANNER_API_ORIGIN": "http://localhost:3012", "NODE_OPTIONS": "--max-old-space-size=4096" }
+    },
+    {
       "name": "api-topic-preview",
       "runtimeExecutable": "npx",
       "runtimeArgs": [

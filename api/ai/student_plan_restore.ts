@@ -4,11 +4,13 @@ import type { CommittedBoard } from './board_repository';
 import { buildModel } from './generate-plan';
 import { validatePlanState } from './planner_validate';
 import { manualBoardValidationContext } from './manual_board_validation';
+import { withCommittedColumns } from './planner_model';
 
 /** A saved draft is input, never authority. Reuse today's context and legality gate. */
 export function validateSavedPlan(plan: SavedPlan, boardJson: any, context: AcademicContextRecord, programId: string, current: CommittedBoard | null) {
   const { gateway_assessment_types: _planningOnly, ...preferences } = (context.preferences ?? {}) as Record<string, unknown>;
-  const model = buildModel(boardJson, context.planContext, preferences, programId);
+  // The saved plan's own columns (including any semesters it added) are the ones it restores.
+  const model = buildModel(boardJson, withCommittedColumns(boardJson, context.planContext, plan.semesters.map((s) => s.semesterId)), preferences, programId);
   const known = new Set(model.knownSemesterIds);
   const errors: string[] = [];
   const state = { semesters: Object.fromEntries(model.knownSemesterIds.map((id) => [id, [] as string[]])) };

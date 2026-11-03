@@ -86,5 +86,7 @@ export function useCommittedBoard({
     })))
   }, [current, onSemestersChange])
 
-  return { boardPhase, current, setCurrent, boardVersion, setBoardVersion, resyncCommittedBoard }
+  // The catalog's own columns; any other column on the board is one the student added.
+  const catalogSemesterIds = catalogRef.current?.semesters.map((semester) => semester.semesterId) ?? []
+  return { boardPhase, current, setCurrent, boardVersion, setBoardVersion, resyncCommittedBoard, catalogSemesterIds }
 }

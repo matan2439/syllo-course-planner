@@ -33,7 +33,7 @@ test('picking a שער רוח assessment type reaches the plan request preferenc
   expect(request.preferences).toEqual({ gateway_assessment_types: ['paper'] })
 })
 
-test('the profile asks for the current year in the degree (שנה א׳–ד׳) and reports it as a number', () => {
+test('the profile asks for the current year in the degree (שנה א׳–ו׳) and reports it as a number', () => {
   const onCurrentDegreeYearChange = jest.fn()
   render(
     <AgentPreferencePanel
@@ -49,7 +49,7 @@ test('the profile asks for the current year in the degree (שנה א׳–ד׳) a
   )
   const group = screen.getByRole('radiogroup', { name: 'השנה שלי בתואר' })
   const options = within(group).getAllByRole('radio')
-  expect(options.map((o) => o.textContent)).toEqual(['שנה א׳', 'שנה ב׳', 'שנה ג׳', 'שנה ד׳'])
+  expect(options.map((o) => o.textContent)).toEqual(['שנה א׳', 'שנה ב׳', 'שנה ג׳', 'שנה ד׳', 'שנה ה׳', 'שנה ו׳'])
   expect(options.every((o) => o.getAttribute('aria-checked') === 'false')).toBe(true)
   fireEvent.click(within(group).getByRole('radio', { name: 'שנה ג׳' }))
   expect(onCurrentDegreeYearChange).toHaveBeenCalledWith(3)

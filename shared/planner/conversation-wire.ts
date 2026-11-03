@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { boardRequirementsValidationSchema } from './wire'
+import { MAX_DEGREE_YEAR } from './window_board'
 import type { PreferenceProfile } from '../../api/ai/preference_model'
 
 /** Wire limits shared by the server (which bounds its replies) and the client (which bounds its requests). */
@@ -44,7 +45,7 @@ export const conversationRequestSchema = z.object({
   academic_status_digest: digest,
   preference_digest: digest,
   /** The student's year in the degree (profile, 1–4); null/absent when they have not said. */
-  current_degree_year: z.number().int().min(1).max(4).nullable().optional(),
+  current_degree_year: z.number().int().min(1).max(MAX_DEGREE_YEAR).nullable().optional(),
   /** The typed answers from the unified agent intake, not a UI-only shadow. */
   preference_profile: preferenceProfileSchema.optional(),
   /** Answers to the current server-issued clarification question. */

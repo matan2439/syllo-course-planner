@@ -26,6 +26,7 @@ import { DEGREE_REQUIRED_HOURS } from './completion_analysis';
 import { HARD_LOAD_CAP, DEFAULT_MAX_HOURS_PER_SEMESTER, SOFT_LOAD_MAX, ABSOLUTE_MAX_REASONABLE } from './load_constants';
 import { type ConstraintModel, type CategoryReq, type PlanState, type DistributionPolicy, emptyState } from './planner_types';
 import { computeAcademicProgress, type AcademicProgress } from './academic_progress';
+import { MAX_DEGREE_YEAR } from '../../shared/planner/window_board';
 
 export interface BuildModelOptions {
   /** course_ids the user has completed (merged with board metadata.completed_course_ids). */
@@ -74,10 +75,68 @@ export interface BuildModelOptions {
   absoluteMaxReasonable?: number;
   /** Slice 17A — requested semester-distribution policy. Undefined = 'neutral' (legacy baseline). */
   distributionPolicy?: DistributionPolicy;
+  /** Semester ids the student added past the board's own columns; non-qualifying ids are ignored. */
+  extraSemesterIds?: Iterable<unknown>;
 }
 
 function uniq<T>(xs: T[]): T[] {
   return [...new Set(xs)];
+}
+
+/** A canonical semester column id: `year_<N>_semester_<a|b>`. */
+const SEMESTER_ID = /^year_(\d+)_semester_([ab])$/;
+
+const boardSemesterIds = (boardJson: any): string[] => uniq(
+  ((boardJson?.semesters ?? []) as any[]).map(s => s?.semester_id).filter((x: unknown): x is string => typeof x === 'string'),
+);
+
+const boardLastYear = (boardJson: any): number =>
+  Math.max(0, ...boardSemesterIds(boardJson).map(id => Number(SEMESTER_ID.exec(id)?.[1] ?? 0)));
+
+const isAddedSemesterId = (id: unknown, lastYear: number): id is string => {
+  const m = typeof id === 'string' ? SEMESTER_ID.exec(id) : null;
+  return !!m && Number(m[1]) > lastYear && Number(m[1]) <= MAX_DEGREE_YEAR;
+};
+
+const semesterRank = (id: string) => {
+  const m = SEMESTER_ID.exec(id)!;
+  return Number(m[1]) * 2 + (m[2] === 'b' ? 1 : 0);
+};
+
+/**
+ * Student-added semesters past the board's own columns, in order. Only canonical ids later than
+ * the board's last year qualify, so an added column never shadows one another window's board owns.
+ */
+export function addedSemesterIds(boardJson: any, ids: Iterable<unknown>): string[] {
+  const lastYear = boardLastYear(boardJson);
+  return uniq([...ids].filter((id): id is string => isAddedSemesterId(id, lastYear)))
+    .sort((a, b) => semesterRank(a) - semesterRank(b));
+}
+
+/**
+ * `ctx` with its added semesters taken from `columnIds` (the committed board's columns): the board
+ * is the authority once one exists, so a column added or removed after the context was stored is
+ * seen the same way by every validator. Board-own entries of `ctx` are kept untouched.
+ */
+export function withCommittedColumns(boardJson: any, ctx: any, columnIds: readonly string[] | null | undefined): any {
+  if (!columnIds) return ctx;
+  const lastYear = boardLastYear(boardJson);
+  const columns = new Set(columnIds);
+  const listed = ((ctx?.semesters ?? []) as any[]).filter(s => columns.has(s?.id) || !isAddedSemesterId(s?.id, lastYear));
+  const missing = addedSemesterIds(boardJson, columnIds)
+    .filter(id => !listed.some(s => s?.id === id))
+    .map(id => ({ id, courses: [] }));
+  return { ...ctx, semesters: [...listed, ...missing] };
+}
+
+/** An added semester is offered whenever its term (א/ב) is offered in the board's own columns. */
+function extendOfferingToAdded(profile: any, added: readonly string[]): void {
+  for (const field of ['effective_allowed_semesters', 'program_allowed_semesters', 'allowed_semesters', 'offered_semesters'] as const) {
+    const list: string[] | null = profile[field];
+    if (!list?.length) continue;
+    const terms = new Set(list.map(id => SEMESTER_ID.exec(id)?.[2]).filter(Boolean));
+    profile[field] = [...list, ...added.filter(id => terms.has(SEMESTER_ID.exec(id)![2]) && !list.includes(id))];
+  }
 }
 
 export function buildConstraintModel(boardJson: any, opts: BuildModelOptions = {}): ConstraintModel {
@@ -108,10 +167,11 @@ export function buildConstraintModel(boardJson: any, opts: BuildModelOptions = {
     [...reportedCurrentlyPlannedCourseIds].filter((id) => profiles.has(id)),
   );
 
-  // Semester availability — the board's own canonical semester ids, in order.
-  const knownSemesterIds = uniq(
-    ((boardJson?.semesters ?? []) as any[]).map(s => s.semester_id).filter((x: unknown): x is string => typeof x === 'string'),
-  );
+  // Semester availability — the board's own canonical semester ids, in order, then any semesters
+  // the student added past them. This is the ONE merge every validator, planner and agent reads.
+  const added = addedSemesterIds(boardJson, opts.extraSemesterIds ?? []);
+  const knownSemesterIds = [...boardSemesterIds(boardJson), ...added];
+  if (added.length) for (const profile of profiles.values()) extendOfferingToAdded(profile, added);
 
   // Program requirements — degree hours + category requirements, from metadata.
   const catMeta = boardJson?.metadata?.program_requirements_categories;

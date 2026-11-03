@@ -30,7 +30,7 @@ import {
   runAcademicDecisionAgent as runAcademicDecisionAgentDefault,
   type AcademicDecisionAgentRun,
 } from './academic_decision_integration';
-import type { BuildModelOptions } from './planner_model';
+import { withCommittedColumns, type BuildModelOptions } from './planner_model';
 import { PROPOSAL_TTL_MS, newProposalId, toReceipt, type ProposalRecord, type ProposalStore } from './proposal_store';
 import {
   getAcademicContextStore,
@@ -50,6 +50,7 @@ import type { PreferenceProfile } from './preference_model';
 import { applyConversationClarificationAnswers, withCompletedCredit } from './conversation_clarification';
 import { DeterministicProposalExplanationCapability } from './proposal_explanation';
 import { DeterministicCandidateDecisionCapability } from './candidate_decision';
+import { loadBoardWithAddedSemesters } from './student_semesters';
 
 type AgentModelConfig = { model: string | Model; name: string };
 
@@ -152,7 +153,7 @@ function ndjsonResult(res: VercelResponse): Pick<VercelResponse, 'status' | 'jso
 
 export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
   const resolveModel = deps.resolveModel ?? defaultResolveModel;
-  const loadBoard = deps.loadBoard ?? ((ownerId, programId) => getBoardRepository().load(ownerId, programId));
+  const loadBoard = deps.loadBoard ?? ((ownerId, programId) => loadBoardWithAddedSemesters(getBoardRepository(), ownerId, programId));
   const loadAcademicContext = deps.loadAcademicContext
     ?? ((ownerId, programId) => getAcademicContextStore().load(ownerId, programId));
   const loadProgramBoard = deps.loadProgramBoard ?? loadLocalBoardJson;
@@ -324,7 +325,7 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
         currentDegreeYear: parsed.data.current_degree_year ?? null,
         // The model must see the student's completed courses even when the stored
         // plan context keeps them only in personal status.
-        planContext: contextWithStatus,
+        planContext: withCommittedColumns(programBoard, contextWithStatus, board?.semesters.map((semester) => semester.semesterId)),
         committedContext,
         preferences,
         clarification,

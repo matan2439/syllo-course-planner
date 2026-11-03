@@ -30,6 +30,17 @@ import {
 import { checkProposalAccess, type ProposalRecord } from './proposal_store';
 import type { CommittedBoard } from './board_repository';
 import { validateAuthoritativeCandidate } from './authoritative_candidate_validation';
+import { loadLocalBoardJson } from './board_loader';
+import { addedSemesterIds } from './planner_model';
+import { loadBoardWithAddedSemesters } from './student_semesters';
+
+/** An Apply replaces placements, not the semester columns the student added: their empty ones stay. */
+function keepAddedColumns(programId: string, semesters: CommittedBoard['semesters'], current: CommittedBoard | null): CommittedBoard['semesters'] {
+  const listed = new Set(semesters.map((s) => s.semesterId));
+  const kept = addedSemesterIds(loadLocalBoardJson(programId), current?.semesters.map((s) => s.semesterId) ?? [])
+    .filter((semesterId) => !listed.has(semesterId));
+  return kept.length ? [...semesters, ...kept.map((semesterId) => ({ semesterId, courseIds: [] }))] : semesters;
+}
 
 /** Stable, deterministic rejection codes. Additive only — never renumbered. */
 export type ApplyRejectionCode =
@@ -222,7 +233,7 @@ async function handle(req: VercelRequest, res: VercelResponse): Promise<void> {
       (Array.isArray(req.query?.program_id) ? req.query.program_id[0] : req.query?.program_id) ?? '',
     ).trim();
     if (!programId) { reject(res, 'INVALID_REQUEST'); return; }
-    const board = await getBoardRepository().load(owner.ownerId, programId);
+    const board = await loadBoardWithAddedSemesters(getBoardRepository(), owner.ownerId, programId);
     res.status(200).json({
       ok: true,
       board: board ? committedBoardView(board, await storedPlanContext(owner.ownerId, programId)) : null,
@@ -282,7 +293,7 @@ async function handle(req: VercelRequest, res: VercelResponse): Promise<void> {
 
   const repo = getBoardRepository();
   const record = await getProposalStore().get(request.proposal_id);
-  const currentBoard = await repo.load(owner.ownerId, request.program_id);
+  const currentBoard = await loadBoardWithAddedSemesters(repo, owner.ownerId, request.program_id);
   const verdict = validateApply(record, request, owner.ownerId, Date.now(), currentBoard);
 
   if (verdict.code !== null) {
@@ -307,7 +318,7 @@ async function handle(req: VercelRequest, res: VercelResponse): Promise<void> {
     programId: request.program_id,
     expectedVersion: request.expected_board_version ?? null,
     // THE authoritative content: the server's stored plan, never the request's.
-    semesters: verdict.candidate.semesters,
+    semesters: keepAddedColumns(request.program_id, verdict.candidate.semesters, currentBoard),
     proposalId: record!.proposalId,
     candidateId: verdict.candidate.candidateId,
     idempotencyKey: request.idempotency_key,

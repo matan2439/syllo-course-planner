@@ -9,7 +9,7 @@ export const profileSchema = z.object({
   email: z.string().nullable(),
   role: z.enum(['user', 'developer']),
   program_id: z.string().nullable(),
-  current_degree_year: z.number().int().min(1).max(4).nullable(),
+  current_degree_year: z.number().int().min(1).max(DEGREE_YEARS.length).nullable(),
   /** Server-set entitlement: AI use is not charged in Syllo Credits. */
   billing_exempt: z.boolean().default(false),
   /** Identity (auth/003_profile_identity.sql). Absent until that migration is applied. */

@@ -1,5 +1,6 @@
 import {
-  DEFAULT_SEMESTER_WINDOW, resolveSelectedSemester, semesterWindowForDegreeYear, semesterWindowSlots, windowBoardIdFor,
+  DEFAULT_SEMESTER_WINDOW, DEGREE_YEARS, nextSemesterId, resolveSelectedSemester, semesterWindowForDegreeYear, semesterWindowSlots,
+  scheduleSlotsForBoard, windowBoardIdFor, withAddedSemesters,
 } from './semester-window'
 import { programIdOfBoard } from '../../../shared/planner/window_board'
 import { earlyYearCoursesFor } from '../../../shared/planner/early_year_courses'
@@ -73,4 +74,45 @@ test('each window resolves to the board that holds it; the published board keeps
   expect(programIdOfBoard('mechanical_engineering_2027')).toBe('mechanical_engineering_2027')
   expect(earlyYearCoursesFor('mechanical_engineering_years_1_2_2027'))
     .toEqual(earlyYearCoursesFor('mechanical_engineering_2027'))
+})
+
+test('degrees that run long: years 5–6 use the late window and its board grows past year 4', () => {
+  expect(DEGREE_YEARS).toEqual([1, 2, 3, 4, 5, 6])
+  expect(semesterWindowForDegreeYear(5)).toBe('late')
+  const late = ['year_3_semester_a', 'year_3_semester_b', 'year_4_semester_a', 'year_4_semester_b']
+  expect(nextSemesterId(late)).toBe('year_5_semester_a')
+  expect(nextSemesterId([...late, 'year_5_semester_a'])).toBe('year_5_semester_b')
+  expect(nextSemesterId(['year_6_semester_b'])).toBeNull()
+  expect(nextSemesterId([])).toBeNull()
+})
+
+test('withAddedSemesters appends only the board columns past the window, flagged as added', () => {
+  const slots = semesterWindowSlots('late')
+  expect(withAddedSemesters(slots, slots.map((s) => s.id))).toEqual(slots)
+  expect(withAddedSemesters(slots, [...slots.map((s) => s.id), 'year_5_semester_a']).at(-1))
+    .toEqual({ id: 'year_5_semester_a', label: 'שנה ה׳ — סמסטר א׳', added: true })
+})
+
+test('a shorter degree drops the window slots its board lacks, and can still grow', () => {
+  const slots = semesterWindowSlots('late')
+  const threeYear = ['year_3_semester_a', 'year_3_semester_b']
+  expect(scheduleSlotsForBoard('late', threeYear).map((s) => s.id)).toEqual(threeYear)
+  expect(nextSemesterId(threeYear)).toBe('year_4_semester_a')
+  expect(scheduleSlotsForBoard('late', [...threeYear, 'year_4_semester_a']).map((s) => s.id))
+    .toEqual([...threeYear, 'year_4_semester_a'])
+  // A four-year board keeps the window exactly; a board for the other window leaves it alone.
+  expect(scheduleSlotsForBoard('late', slots.map((s) => s.id))).toEqual(slots)
+  expect(scheduleSlotsForBoard('early', threeYear)).toEqual(semesterWindowSlots('early'))
+  // Its own Year 3 columns are the destinations; Year 4 added there is past them, flagged added.
+  const destinations = slots.slice(0, 2)
+  expect(withAddedSemesters(destinations, [...threeYear, 'year_4_semester_a']).at(-1))
+    .toEqual({ id: 'year_4_semester_a', label: 'שנה ד׳ — סמסטר א׳', added: true })
+  // Board order does not matter; columns past the window come out in rank order.
+  expect(withAddedSemesters(slots, [...slots.map((s) => s.id), 'year_6_semester_a', 'year_5_semester_b'])
+    .slice(4).map((s) => s.id)).toEqual(['year_5_semester_b', 'year_6_semester_a'])
+})
+
+test('a board that does not plan the window never extends it', () => {
+  const early = semesterWindowSlots('early')
+  expect(withAddedSemesters(early, ['year_3_semester_a', 'year_5_semester_a'])).toEqual(early)
 })

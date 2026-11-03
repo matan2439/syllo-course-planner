@@ -56,7 +56,8 @@ import {
 } from '../lib/api-defaults'
 import type { ManualAddIntent } from '../types'
 import type { PlannerDragPayload } from '../../../lib/planner/drag-payload'
-import type { DegreeYear } from '../../../lib/planner/semester-window'
+import { nextSemesterId, type DegreeYear } from '../../../lib/planner/semester-window'
+import { programIdOfBoard } from '../../../../shared/planner/window_board'
 import { getAiSessionToken } from '../../../lib/ai-session-token'
 import type { BoardSnapshot } from '../lib/saved-plans'
 import { useLocale } from '../../locale/LocaleProvider'
@@ -127,7 +128,7 @@ export default function NativePlannerJourney({
 }) {
   const { t } = useLocale()
   // ── the board ─────────────────────────────────────────────────────────────
-  const { boardPhase, current, setCurrent, boardVersion, setBoardVersion, resyncCommittedBoard } = useCommittedBoard({
+  const { boardPhase, current, setCurrent, boardVersion, setBoardVersion, resyncCommittedBoard, catalogSemesterIds } = useCommittedBoard({
     programId, getBoardFn, committedBoardFn, onCommittedCourseIdsChange, onSemestersChange,
   })
   useEffect(() => {
@@ -252,7 +253,7 @@ export default function NativePlannerJourney({
     applyAcademicStatus, setMessages,
   })
   const {
-    manualEditPhase, manualEditError, commitManualAdd, commitManualRemove, commitManualMove,
+    manualEditPhase, manualEditError, commitManualAdd, commitManualRemove, commitManualMove, commitSemesterChange,
   } = useManualBoardEdits({
     programId, current, setCurrent, boardVersion, setBoardVersion, manualAddIntent,
     loadedAcademicContext, proposal, buildRequest, convProfileRef, establishPlanningContextFn, editBoardFn,
@@ -260,6 +261,11 @@ export default function NativePlannerJourney({
     showRejectedDrop, showJustPlaced, setMessages, onCommittedCourseIdsChange, onManualAddSettled,
     onEditCommitted: () => setManualRevision((value) => value + 1),
   })
+  // Degrees that run long: only the program's own board grows past its columns — a two-year
+  // window board is followed by the next window's board instead.
+  const addableSemesterId = current && programIdOfBoard(programId) === programId
+    ? nextSemesterId([...catalogSemesterIds, ...current.semesters.map((semester) => semester.semesterId)])
+    : null
   useInitialPlanningContext({
     enabled: initializePlanningContext, current, academicContextPhase,
     loadedAcademicContext, buildRequest, convProfileRef, establishPlanningContextFn, programId,
@@ -375,6 +381,11 @@ export default function NativePlannerJourney({
           justPlaced={justPlaced}
           onDragStateChange={onDragStateChange}
           completedCategoryCounts={completedCategoryCounts}
+          onAddSemester={addableSemesterId ? () => void commitSemesterChange('add_semester', addableSemesterId) : undefined}
+          removableSemesterIds={new Set(current.semesters
+            .filter((semester) => semester.courses.length === 0 && !catalogSemesterIds.includes(semester.semesterId))
+            .map((semester) => semester.semesterId))}
+          onRemoveSemester={(semesterId) => void commitSemesterChange('remove_semester', semesterId)}
           completedCredit={academicStatus.confirmed ? Object.fromEntries(completedCourseIdsOf(academicStatus).flatMap((id) => {
             // Same credit rule as the profile panel and the server: Years 1–2 table, else catalog hours.
             const hours = earlyYearHoursById(programId)[id] ?? catalogHoursById[id]

@@ -8,11 +8,16 @@ import { OPEN_PROFILE_EVENT } from '../../auth/AccountButton'
 // Persistence has its own integration suite; these tests exercise workspace/rail wiring.
 jest.mock('./StudentWorkspaceTools', () => ({ __esModule: true, default: () => null }))
 
+const FOUR_YEAR_COLUMNS = ['year_3_semester_a', 'year_3_semester_b', 'year_4_semester_a', 'year_4_semester_b']
+let mockBoardColumns = FOUR_YEAR_COLUMNS
+beforeEach(() => { mockBoardColumns = FOUR_YEAR_COLUMNS })
+
 jest.mock('./NativePlannerJourney', () => ({
   __esModule: true,
   default: ({ programId, manualAddIntent, onManualAddCancelled, onSemestersChange, agentPortalTarget, currentDegreeYear, onCurrentDegreeYearChange }: any) => {
     useEffect(() => {
-      onSemestersChange?.([{ semesterId: 'year_3_semester_a', courseIds: ['0542-2400'] }])
+      // The board reports every column, as the real journey does.
+      onSemestersChange?.(mockBoardColumns.map((semesterId, i) => ({ semesterId, courseIds: i ? [] : ['0542-2400'] })))
     }, [onSemestersChange])
     const agent = <aside className="planner-agent-region" aria-label="עוזר אקדמי">עוזר פעיל</aside>
     return (
@@ -222,6 +227,7 @@ describe('UnifiedPlannerWorkspace', () => {
   })
 
   test('routes add intent against the actual board semester destinations', () => {
+    mockBoardColumns = ['year_1_semester_a', 'year_3_semester_a']
     renderWorkspace({
       repo: repoWithCourse,
       semesterDestinations: [

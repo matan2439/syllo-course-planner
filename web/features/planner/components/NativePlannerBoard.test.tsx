@@ -619,3 +619,24 @@ test('dropping an elective outside its catalog offering does not send a move int
 
   expect(onMoveCourse).not.toHaveBeenCalled()
 })
+
+test('added semesters: the board offers adding one, and removal only where allowed', () => {
+  const onAdd = jest.fn()
+  const onRemoveSemester = jest.fn()
+  const board = vmFromPayload({ ...BOARD, semesters: [...BOARD.semesters, { semester_id: 'year_4_semester_a', courses: [] }] })
+  render(<NativePlannerBoard board={board} onAddSemester={onAdd}
+    removableSemesterIds={new Set(['year_4_semester_a'])} onRemoveSemester={onRemoveSemester} />)
+  fireEvent.click(screen.getByRole('button', { name: /הוספת סמסטר/ }))
+  expect(onAdd).toHaveBeenCalledTimes(1)
+  // Only the empty added column offers removal; the board's own empty column does not.
+  const remove = screen.getAllByRole('button', { name: /^הסרת / })
+  expect(remove).toHaveLength(1)
+  fireEvent.click(remove[0])
+  expect(onRemoveSemester).toHaveBeenCalledWith('year_4_semester_a')
+})
+
+test('a board without added semesters shows no semester controls', () => {
+  render(<NativePlannerBoard board={vmFromPayload(BOARD)} />)
+  expect(screen.queryByRole('button', { name: /הוספת סמסטר/ })).toBeNull()
+  expect(screen.queryByRole('button', { name: /^הסרת / })).toBeNull()
+})

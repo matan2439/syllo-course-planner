@@ -6,6 +6,7 @@ import WeeklyScheduleDrawer from '../schedule/components/WeeklyScheduleDrawer'
 import AgentPreferencePanel from '../planner/components/AgentPreferencePanel'
 import { EMPTY_ACADEMIC_STATUS } from '../courses/components/CompletedCoursesPanel'
 import type { ScheduleGroupsResponse } from '../../../shared/planner/schedule'
+import type { DegreeYear } from '../../lib/planner/semester-window'
 
 beforeEach(() => { localStorage.clear(); localStorage.setItem(LOCALE_STORAGE_KEY, 'en') })
 
@@ -57,7 +58,7 @@ test('timetable error messages switch language without refetching or losing thei
 function Profile() {
   const [status, setStatus] = useState(EMPTY_ACADEMIC_STATUS)
   const [hours, setHours] = useState('')
-  const [year, setYear] = useState<1 | 2 | 3 | 4 | null>(null)
+  const [year, setYear] = useState<DegreeYear | null>(null)
   return <AgentPreferencePanel
     programId="mechanical_engineering_2027" pickerCourses={[]} catalogHoursById={{}}
     academicStatus={status} updateAcademicStatus={setStatus}

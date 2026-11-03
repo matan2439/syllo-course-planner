@@ -15,10 +15,15 @@ import RepositoryCourseEvidence from './RepositoryCourseEvidence'
 import RepositorySavedSearches from './RepositorySavedSearches'
 import { savedCourseSearchSchema, type SavedCourseSearch } from '../../../../shared/planner/catalog-searches'
 
-export type SemesterDestination = { id: string; label: string }
+/** `added`: a semester the student added past the board's own columns. */
+export type SemesterDestination = { id: string; label: string; added?: boolean }
 
 function allowedDestinations(course: RepoCourseVM, destinations: readonly SemesterDestination[]) {
-  if (course.allowedSemesterIds) return destinations.filter(({ id }) => course.allowedSemesterIds!.includes(id))
+  if (course.allowedSemesterIds) {
+    // An added semester is offered whenever its term (א/ב) is — the server applies the same rule.
+    const terms = new Set(course.allowedSemesterIds.map((id) => id.slice(-2)))
+    return destinations.filter(({ id, added }) => course.allowedSemesterIds!.includes(id) || (added && terms.has(id.slice(-2))))
+  }
   const offered = new Set(course.offered.map((value) => value.toLowerCase()))
   return destinations.filter(({ id }) => (
     offered.has(id.toLowerCase())

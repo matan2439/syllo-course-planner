@@ -190,6 +190,34 @@ export function useManualBoardEdits({
     }
   }
 
+  /** Add a semester past the board's own columns, or remove an empty added one. */
+  const commitSemesterChange = async (operation: 'add_semester' | 'remove_semester', semesterId: string) => {
+    if (!current || editInFlightRef.current) return
+    const operationId = beginEdit(operation, '', semesterId)
+    try {
+      const academicStatusDigest = await resolveAcademicStatusDigest(current)
+      const result = await editBoardFn({
+        operation, program_id: programId,
+        expected_board_version: boardVersion, operation_id: operationId,
+        semester_id: semesterId, academic_status_digest: academicStatusDigest,
+      })
+      editInFlightRef.current = false
+      setManualEditPhase('idle')
+      if (!result.ok) {
+        manualEditKeyRef.current = null
+        setManualEditError(result.messageHe)
+        if (result.currentBoardVersion !== undefined) setBoardVersion(result.currentBoardVersion ?? null)
+        return
+      }
+      adoptCommittedBoard(current, result.board, operation === 'add_semester'
+        ? 'סמסטר נוסף ללוח.' : 'הסמסטר הוסר מהלוח.')
+    } catch {
+      editInFlightRef.current = false
+      setManualEditPhase('idle')
+      setManualEditError(SAVE_FAILED_HE)
+    }
+  }
+
   // Choosing a destination is the action. A second confirmation adds no
   // information; ask only when multiple semester choices remain. Remember the
   // intent object so rerenders and StrictMode effect replay cannot submit twice.
@@ -201,5 +229,5 @@ export function useManualBoardEdits({
     void commitManualAdd(manualAddIntent.semesterIds[0], manualAddIntent.courseId)
   }, [manualAddIntent, current, manualEditPhase, contextReady])
 
-  return { manualEditPhase, manualEditError, commitManualAdd, commitManualRemove, commitManualMove }
+  return { manualEditPhase, manualEditError, commitManualAdd, commitManualRemove, commitManualMove, commitSemesterChange }
 }

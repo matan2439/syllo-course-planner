@@ -126,6 +126,7 @@ import { loadEnrichedProfileCache, lookupProfile } from './course_profile_cache'
 import { preferencesWithPlannerPolicy } from './planner_policy_context';
 import { GATEWAY_ASSESSMENT_TYPES, gatewayAssessmentMismatchIds } from './gateway_assessment';
 import { databaseUrl } from '../db_env';
+import { loadBoardWithAddedSemesters } from './student_semesters';
 
 export const preferencesSchema = z.object({
   max_weekly_hours:        z.number().nullish(),
@@ -326,6 +327,8 @@ export function buildModel(board: any, ctx: any, prefs: Preferences, program_id?
     programId: pv?.base,
     catalogYear: pv?.year,
     ...(distributionPolicy ? { distributionPolicy } : {}),
+    // Columns the student added past the board's own (see withCommittedColumns for stored contexts).
+    extraSemesterIds: ((ctx?.semesters ?? []) as any[]).map((s) => s?.id),
   });
   const initialState = planContextToState(ctx, model);
   const inProgress = deriveInProgressCredit(ctx, model, initialState);
@@ -2339,7 +2342,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
 
       if (storedCandidates.length) {
         const now = Date.now();
-        const committed = await getBoardRepository().load(owner.ownerId, program_id);
+        const committed = await loadBoardWithAddedSemesters(getBoardRepository(), owner.ownerId, program_id);
         const record: ProposalRecord = {
           proposalId: newProposalId(),
           ownerId: owner.ownerId,

@@ -13,7 +13,7 @@ import UnifiedCourseRepository, { type SemesterDestination } from '../../courses
 import WeeklyScheduleDrawer from '../../schedule/components/WeeklyScheduleDrawer'
 import type { PlannerDragPayload } from '../../../lib/planner/drag-payload'
 import { LAST_PROGRAM_KEY } from '../../shell/last-program'
-import { semesterWindowForDegreeYear, semesterWindowSlots, type SemesterWindow } from '../../../lib/planner/semester-window'
+import { scheduleSlotsForBoard, semesterWindowForDegreeYear, semesterWindowSlots, withAddedSemesters, type SemesterWindow } from '../../../lib/planner/semester-window'
 import { useCurrentDegreeYear } from '../hooks/use-current-degree-year'
 import { useAuth } from '../../auth/AuthProvider'
 import { useLocale } from '../../locale/LocaleProvider'
@@ -66,9 +66,15 @@ export default function UnifiedPlannerWorkspace({
   // Profile fact → derived window → the board it plans over and the weekly schedule's four tabs.
   const [currentDegreeYear, setCurrentDegreeYear] = useCurrentDegreeYear()
   const semesterWindow = semesterWindowForDegreeYear(currentDegreeYear)
-  const scheduleSemesters = useMemo(() => semesterWindowSlots(semesterWindow), [semesterWindow])
-  const { boardId, repo: boardRepo, semesterDestinations } =
+  // The board's columns as the journey reports them, including semesters the student added past the window.
+  const [semesterCourses, setSemesterCourses] = useState<Array<{ semesterId: string; courseIds: string[] }>>([])
+  const boardSemesterIds = useMemo(() => semesterCourses.map((s) => s.semesterId), [semesterCourses])
+  const scheduleSemesters = useMemo(
+    () => scheduleSlotsForBoard(semesterWindow, boardSemesterIds), [semesterWindow, boardSemesterIds])
+  const { boardId, repo: boardRepo, semesterDestinations: catalogDestinations } =
     windowBoards[semesterWindow] ?? { boardId: programId, repo, semesterDestinations: programDestinations }
+  const semesterDestinations = useMemo(
+    () => withAddedSemesters(catalogDestinations, boardSemesterIds), [catalogDestinations, boardSemesterIds])
   // One rail, one open tab. `null` = closed, board only.
   const [railTab, setRailTab] = useState<RailTab | null>(null)
   const [mainTab, setMainTab] = useState<MainTab>('board')
@@ -142,7 +148,6 @@ export default function UnifiedPlannerWorkspace({
     try { localStorage.setItem(setupKey, '1') } catch { /* best effort */ }
     if (tab) setRailTab(tab)
   }
-  const [semesterCourses, setSemesterCourses] = useState<Array<{ semesterId: string; courseIds: string[] }>>([])
   const [manualAddIntent, setManualAddIntent] = useState<ManualAddIntent | null>(null)
   useEffect(() => setManualAddIntent(null), [boardId]) // a pending add targets the previous board's columns
   const [committedCourseIds, setCommittedCourseIds] = useState<readonly string[]>(selectedCourseIds)

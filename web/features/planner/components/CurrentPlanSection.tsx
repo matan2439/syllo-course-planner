@@ -35,6 +35,7 @@ export default function CurrentPlanSection({
   current, previewBoard, diffMarkers, alternatives, selectedAlternativeId, onSelectAlternative, stale,
   commitManualRemove, commitManualAdd, commitManualMove, selectBoardCourse, manualEditPhase,
   activeDrag, rejectedDrop, justPlaced, onDragStateChange, completedCredit, completedCategoryCounts = {},
+  onAddSemester, removableSemesterIds, onRemoveSemester,
 }: {
   current: BoardModel
   /** The proposal (or selected alternative) applied to the current board, or null when none is being previewed. */
@@ -58,6 +59,9 @@ export default function CurrentPlanSection({
   completedCredit?: Readonly<Record<string, number>>
   /** Category id → completed courses the student counted without naming them (e.g. שער רוח). */
   completedCategoryCounts?: Readonly<Record<string, number>>
+  onAddSemester?: () => void
+  removableSemesterIds?: ReadonlySet<string>
+  onRemoveSemester?: (semesterId: string) => void
 }) {
   const { t } = useLocale()
   // The progress badge lives in the shell's top bar when the page provides the slot; inline otherwise.
@@ -118,6 +122,10 @@ export default function CurrentPlanSection({
         justPlacedSemesterId={justPlaced?.semesterId}
         justPlacedKey={justPlaced?.key}
         onDragStateChange={onDragStateChange}
+        // Columns change only on the committed board, never while previewing a proposal.
+        onAddSemester={previewBoard ? undefined : onAddSemester}
+        removableSemesterIds={removableSemesterIds}
+        onRemoveSemester={previewBoard ? undefined : onRemoveSemester}
       />
     </section>
 
