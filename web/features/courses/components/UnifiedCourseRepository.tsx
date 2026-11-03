@@ -160,9 +160,6 @@ export default function UnifiedCourseRepository({
         </table>
       </div></details>}
 
-      <p className="text-[11px] leading-5 text-[var(--text-muted)]">
-        {t('בחירת קורס מהמאגר פותחת בחירת סמסטר. הקורס יתווסף ללוח רק לאחר אימות השרת.', 'Choose a course, then a semester. The course is added to the board after server validation.')}
-      </p>
 
       {filtered.length === 0 ? (
         <EmptyState>

@@ -34,7 +34,6 @@ export default function ScheduleOptions({ programId, semesterId, state, onChange
     <div className="space-y-5 border-t border-[var(--border)] p-3">
       <section className="space-y-2">
         <h3 className="font-semibold">{t('שעות שאינני פנוי בהן', 'Times I am unavailable')}</h3>
-        <p className="text-[var(--text-muted)]">{t('לסמסטר הנבחר. קבוצות קיימות אינן נמחקות; בחירה חדשה וחיפוש קבוצות מתחשבים באילוצים.', 'For the selected semester. Existing groups stay selected; new choices and group search respect these times.')}</p>
         {scopedBusy.map(item => <div key={item.id} className="flex items-center justify-between gap-2"><span>{item.label} · {weekDayLabel(item.day, locale)} <bdi>{item.start}–{item.end}</bdi></span><button type="button" className={button} aria-label={t(`הסרת אילוץ ${item.label}`, `Remove unavailable time ${item.label}`)} onClick={() => onChange({ ...state, busyTimes: state.busyTimes?.filter(value => value.id !== item.id) })}>{t('הסרה', 'Remove')}</button></div>)}
         <form className="grid grid-cols-2 gap-2 sm:grid-cols-4" onSubmit={event => {
           event.preventDefault(); const parsed = busyTimeSchema.safeParse({ ...busy, id: `busy_${uuidv4()}`, semesterId })
@@ -71,7 +70,7 @@ export default function ScheduleOptions({ programId, semesterId, state, onChange
       </section>
       <section className="space-y-2">
         <h3 className="font-semibold">{t('ייצוא ליומן', 'Export to calendar')}</h3>
-        <p className="text-[var(--text-muted)]">{t('בחרו את תקופת השיעורים (עד שנה). ייוצאו הקבוצות הנבחרות עם שעות ידועות, ובנוסף מבחני הסמסטר בתאריכים שהזנתם. חופשות אינן מוחרגות אוטומטית. אזור זמן: ירושלים.', 'Choose the teaching period (up to one year). Exports selected groups with known times, plus this semester’s entered exams. Holidays are not excluded automatically. Time zone: Jerusalem.')}</p>
+        <p className="text-[var(--text-muted)]">{t('חופשות אינן מוחרגות אוטומטית.', 'Holidays are not excluded automatically.')}</p>
         <div className="grid grid-cols-2 gap-2"><label>{t('תחילת תקופת השיעורים', 'Classes from')}<input className={field} type="date" value={range.startDate} onInput={e => setDates({ ...range, startDate: e.currentTarget.value })} /></label><label>{t('סיום תקופת השיעורים', 'Classes until')}<input className={field} type="date" value={range.endDate} onInput={e => setDates({ ...range, endDate: e.currentTarget.value })} /></label></div>
         <button type="button" className={button} onClick={() => {
           try {

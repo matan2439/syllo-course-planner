@@ -12,6 +12,7 @@ import { loadLocalBoardJson } from './board_loader';
 import { committedBoardView } from './committed_board_view';
 import { validateSavedPlan } from './student_plan_restore';
 import { loadBoardWithAddedSemesters } from './student_semesters';
+import { courseNoteSchema, moderateNoteSchema, publishNoteSchema, reportNoteSchema, withdrawNoteSchema } from '../../shared/planner/course-notes';
 
 const queryYear = z.coerce.number().int().min(2000).max(2200);
 const querySemester = z.coerce.number().int().min(1).max(2);
@@ -55,6 +56,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
         const data = preferencesSchema.safeParse(record?.data ?? { locale: 'he' });
         if (!data.success) { error(res, 503, 'WORKSPACE_SCHEMA_MISMATCH'); return; }
         res.status(200).json({ ok: true, revision: record?.revision ?? 0, data: data.data }); return;
+      }
+      if (scope === 'community_notes') {
+        const course = courseNoteSchema.shape.courseId.safeParse(req.query?.course_id);
+        if (!course.success) { error(res, 400, 'INVALID_REQUEST'); return; }
+        res.status(200).json({ ok: true, notes: await store.communityNotes(ownerId, course.data) }); return;
+      }
+      if (scope === 'moderation') {
+        if (!await store.isDeveloper(ownerId)) { error(res, 403, 'FORBIDDEN'); return; }
+        res.status(200).json({ ok: true, notes: await store.hiddenNotes() }); return;
       }
       const program = programIdSchema.safeParse(req.query?.program_id);
       if (!program.success) { error(res, 400, 'INVALID_REQUEST'); return; }
@@ -131,6 +141,37 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
           outcome: e.outcome, rejectionReason: e.rejectionReason ?? '' }));
       await store.replaceObservations(ownerId, program_id, draft.academicYear, draft.semester, draft.round, observations);
       res.status(200).json({ ok: true, shared: true, observations: observations.length }); return;
+    }
+
+    // Shared course notes: anonymous to readers, signed-in authors and reporters only.
+    const noteAction = req.body?.action;
+    if (noteAction === 'publish_note' || noteAction === 'withdraw_note' || noteAction === 'report_note' || noteAction === 'moderate_note') {
+      if (!ownerId.startsWith('auth:')) { error(res, 401, 'SIGN_IN_REQUIRED'); return; }
+      if (noteAction === 'publish_note') {
+        const request = publishNoteSchema.safeParse(req.body);
+        if (!request.success) { error(res, 400, 'INVALID_REQUEST'); return; }
+        await store.publishNote(ownerId, request.data.note);
+        res.status(200).json({ ok: true }); return;
+      }
+      if (noteAction === 'withdraw_note') {
+        const request = withdrawNoteSchema.safeParse(req.body);
+        if (!request.success) { error(res, 400, 'INVALID_REQUEST'); return; }
+        await store.withdrawNote(ownerId, request.data.note_id);
+        res.status(200).json({ ok: true }); return;
+      }
+      if (noteAction === 'report_note') {
+        const request = reportNoteSchema.safeParse(req.body);
+        if (!request.success) { error(res, 400, 'INVALID_REQUEST'); return; }
+        const result = await store.reportNote(ownerId, request.data.public_id);
+        if (result === 'not_found') { error(res, 404, 'NOTE_NOT_FOUND'); return; }
+        if (result === 'own_note') { error(res, 422, 'OWN_NOTE'); return; }
+        res.status(200).json({ ok: true }); return;
+      }
+      const request = moderateNoteSchema.safeParse(req.body);
+      if (!request.success) { error(res, 400, 'INVALID_REQUEST'); return; }
+      if (!await store.isDeveloper(ownerId)) { error(res, 403, 'FORBIDDEN'); return; }
+      if (!await store.moderateNote(request.data.public_id, request.data.decision)) { error(res, 404, 'NOTE_NOT_FOUND'); return; }
+      res.status(200).json({ ok: true }); return;
     }
 
     const request = workspaceWriteSchema.safeParse(req.body);

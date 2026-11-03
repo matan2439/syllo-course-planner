@@ -42,13 +42,16 @@ export default function SavedPlansPanel({ plans, activePlanId, ready, busy, cour
         <input aria-label={t('שם התוכנית הפעילה', 'Active plan name')} maxLength={80} value={name} onChange={(event) => setName(event.target.value)} onBlur={rename}
           disabled={busy || !ready} className="w-full min-w-28 rounded-md border border-transparent bg-transparent px-2 py-1.5 text-sm font-medium hover:border-[var(--border)] focus:border-[var(--purple)] focus:outline-none disabled:opacity-50" />
       </form>}
-      {active && <div role="group" aria-label={t('פעולות לתוכנית', 'Plan actions')} className="flex flex-wrap items-center gap-1.5 text-xs text-[var(--text-muted)]">
+      {active && <details className="relative">
+        <summary aria-label={t('פעולות לתוכנית', 'Plan actions')} className="cursor-pointer list-none rounded-md border border-[var(--border)] px-2.5 py-1 text-sm text-[var(--text-muted)] hover:border-[var(--purple)] [&::-webkit-details-marker]:hidden">⋯</summary>
+        <div role="group" aria-label={t('פעולות לתוכנית', 'Plan actions')} className="absolute end-0 top-full z-30 mt-1 flex w-56 flex-col items-stretch gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface-panel)] p-2 text-xs text-[var(--text-muted)] shadow-[var(--shadow-premium)]">
         <span title={t('עומס שיא ידוע', 'Known peak load')}>{new Set(active.semesters.flatMap((semester) => semester.courseIds)).size} {t('קורסים', 'courses')} · {peakLoad} {t('ש״ש שיא', 'peak h/week')}</span>
         <button type="button" className={button} aria-pressed={open === 'notes'} onClick={() => setOpen(open === 'notes' ? null : 'notes')}>{t('הערות', 'Notes')}</button>
         <button type="button" className={button} disabled={busy || !ready || plans.length >= 30} onClick={() => onDuplicate(active)}>{t('שכפל', 'Duplicate')}</button>
         {plans.length > 1 && <button type="button" className={button} aria-pressed={open === 'compare'} onClick={() => setOpen(open === 'compare' ? null : 'compare')}>{t('השווה', 'Compare')}</button>}
         <button type="button" className={button} aria-label={t('מחק תוכנית', 'Delete plan')} disabled={busy || !ready || plans.length <= 1} onClick={() => setDeleting(true)}>{t('מחק', 'Delete')}</button>
-      </div>}
+        </div>
+      </details>}
     </div>
     {active && open === 'notes' && <label className="block space-y-1 text-xs text-[var(--text-muted)]"><span>{t('הערות לתוכנית', 'Plan notes')}</span><textarea key={active.id} defaultValue={active.notes} maxLength={2000} disabled={busy || !ready}
       className="block w-full rounded-md border border-[var(--border)] bg-[var(--surface)] px-2 py-1.5 text-sm" onBlur={(event) => { if (event.target.value !== active.notes) onChange({ ...active, notes: event.target.value }); }} /></label>}

@@ -3,6 +3,12 @@ import { PG_OPTS } from './_quota';
 import { isolatedUrl } from '../db_env';
 import { ownerStorageKey } from './owner_key';
 import type { BiddingObservation, ObservationInput } from './student_bidding_history';
+import { randomUUID } from 'crypto';
+import { COMMUNITY_NOTE_HIDE_AFTER_REPORTS, type CommunityCourseNote, type CourseNote, type HiddenCommunityNote } from '../../shared/planner/course-notes';
+
+/** A note as its author publishes it (server timestamps). */
+export type PublishedNoteInput = Pick<CourseNote, 'id' | 'courseId' | 'kind' | 'lecturer' | 'body'>;
+export type ReportResult = 'reported' | 'own_note' | 'not_found';
 
 export interface WorkspaceDocument { revision: number; data: unknown }
 export type WorkspaceSaveResult = ({ ok: true } & WorkspaceDocument) | { ok: false; revision: number };
@@ -13,7 +19,15 @@ export interface StudentWorkspaceStore {
   replaceObservations(ownerId: string, programId: string, year: number, semester: 1 | 2, round: number, rows: ObservationInput[]): Promise<void>;
   withdrawObservations(ownerId: string, programId: string): Promise<void>;
   observations(programId: string, beforeYear: number, semester: 1 | 2, round: number): Promise<BiddingObservation[]>;
+  publishNote(ownerId: string, note: PublishedNoteInput): Promise<void>;
+  withdrawNote(ownerId: string, noteId: string): Promise<void>;
+  communityNotes(viewerId: string, courseId: string): Promise<CommunityCourseNote[]>;
+  reportNote(viewerId: string, publicId: string): Promise<ReportResult>;
+  isDeveloper(ownerId: string): Promise<boolean>;
+  hiddenNotes(): Promise<HiddenCommunityNote[]>;
+  moderateNote(publicId: string, decision: 'restore' | 'remove'): Promise<boolean>;
 }
+const MAX_LISTED_NOTES = 50;
 
 export class MemoryStudentWorkspaceStore implements StudentWorkspaceStore {
   private documents = new Map<string, WorkspaceDocument>();
@@ -48,6 +62,42 @@ export class MemoryStudentWorkspaceStore implements StudentWorkspaceStore {
       const [reportOwner, reportProgram] = JSON.parse(key) as string[];
       if (reportOwner === owner && reportProgram === programId) this.reports.delete(key);
     }
+  }
+  private notes = new Map<string, PublishedNoteInput & { publicId: string; owner: string; updatedAt: number; reporters: Set<string>; hiddenAt: number | null }>();
+  developers = new Set<string>();
+  async publishNote(owner: string, note: PublishedNoteInput) {
+    const key = JSON.stringify([owner, note.id]);
+    const old = this.notes.get(key);
+    this.notes.set(key, { ...structuredClone(note), publicId: old?.publicId ?? randomUUID(), owner, updatedAt: Date.now(),
+      reporters: old?.reporters ?? new Set(), hiddenAt: old?.hiddenAt ?? null });
+  }
+  async withdrawNote(owner: string, noteId: string) { this.notes.delete(JSON.stringify([owner, noteId])); }
+  async communityNotes(viewer: string, courseId: string) {
+    return [...this.notes.values()].filter((n) => n.courseId === courseId && n.hiddenAt === null)
+      .sort((a, b) => b.updatedAt - a.updatedAt).slice(0, MAX_LISTED_NOTES)
+      .map((n) => ({ id: n.publicId, courseId: n.courseId, kind: n.kind, ...(n.lecturer ? { lecturer: n.lecturer } : {}), body: n.body,
+        updatedAt: n.updatedAt, mine: n.owner === viewer, reported: n.reporters.has(viewer) }));
+  }
+  async reportNote(viewer: string, publicId: string): Promise<ReportResult> {
+    const note = [...this.notes.values()].find((n) => n.publicId === publicId);
+    if (!note) return 'not_found';
+    if (note.owner === viewer) return 'own_note';
+    note.reporters.add(viewer);
+    if (note.hiddenAt === null && note.reporters.size >= COMMUNITY_NOTE_HIDE_AFTER_REPORTS) note.hiddenAt = Date.now();
+    return 'reported';
+  }
+  async isDeveloper(owner: string) { return this.developers.has(owner); }
+  async hiddenNotes() {
+    return [...this.notes.values()].filter((n) => n.hiddenAt !== null)
+      .map((n) => ({ id: n.publicId, courseId: n.courseId, kind: n.kind, ...(n.lecturer ? { lecturer: n.lecturer } : {}), body: n.body, reports: n.reporters.size, hiddenAt: n.hiddenAt! }));
+  }
+  async moderateNote(publicId: string, decision: 'restore' | 'remove') {
+    for (const [key, note] of this.notes) {
+      if (note.publicId !== publicId) continue;
+      if (decision === 'remove') this.notes.delete(key); else { note.hiddenAt = null; note.reporters = new Set(); }
+      return true;
+    }
+    return false;
   }
 }
 
@@ -102,6 +152,57 @@ export class PostgresStudentWorkspaceStore implements StudentWorkspaceStore {
     await this.sql.begin(async (tx) => {
       await tx.unsafe('SELECT id FROM auth.users WHERE id=$1 FOR UPDATE', [userId(owner)]);
       await tx.unsafe('DELETE FROM student_bidding_observations WHERE owner_hash=$1 AND program_id=$2', [ownerStorageKey(owner), programId]);
+    });
+  }
+  async publishNote(owner: string, note: PublishedNoteInput) {
+    // An edit keeps its reports and hidden state: re-publishing never clears a moderation hold.
+    await this.sql.unsafe(`INSERT INTO community_course_notes(owner_hash,user_id,note_id,course_id,kind,lecturer,body)
+      VALUES($1,$2,$3,$4,$5,$6,$7)
+      ON CONFLICT(owner_hash,note_id) DO UPDATE SET course_id=EXCLUDED.course_id,kind=EXCLUDED.kind,lecturer=EXCLUDED.lecturer,body=EXCLUDED.body,updated_at=now()`,
+    [ownerStorageKey(owner), userId(owner), note.id, note.courseId, note.kind, note.lecturer ?? null, note.body]);
+  }
+  async withdrawNote(owner: string, noteId: string) {
+    await this.sql.unsafe('DELETE FROM community_course_notes WHERE owner_hash=$1 AND note_id=$2', [ownerStorageKey(owner), noteId]);
+  }
+  async communityNotes(viewer: string, courseId: string): Promise<CommunityCourseNote[]> {
+    const hash = ownerStorageKey(viewer);
+    const rows = await this.sql.unsafe(`SELECT n.public_id,n.course_id,n.kind,n.lecturer,n.body,n.updated_at,(n.owner_hash=$2) AS mine,
+        EXISTS(SELECT 1 FROM community_course_note_reports r WHERE r.public_id=n.public_id AND r.reporter_hash=$2) AS reported
+      FROM community_course_notes n WHERE n.course_id=$1 AND n.hidden_at IS NULL ORDER BY n.updated_at DESC LIMIT ${MAX_LISTED_NOTES}`, [courseId, hash]);
+    return rows.map((r) => ({ id: String(r.public_id), courseId: String(r.course_id), kind: r.kind as CourseNote['kind'],
+      ...(r.lecturer ? { lecturer: String(r.lecturer) } : {}), body: String(r.body), updatedAt: new Date(r.updated_at as string).getTime(),
+      mine: r.mine === true, reported: r.reported === true }));
+  }
+  async reportNote(viewer: string, publicId: string): Promise<ReportResult> {
+    const hash = ownerStorageKey(viewer);
+    return this.sql.begin(async (tx) => {
+      const [note] = await tx.unsafe('SELECT owner_hash FROM community_course_notes WHERE public_id=$1 FOR UPDATE', [publicId]);
+      if (!note) return 'not_found';
+      if (note.owner_hash === hash) return 'own_note';
+      const added = await tx.unsafe('INSERT INTO community_course_note_reports(public_id,reporter_hash) VALUES($1,$2) ON CONFLICT DO NOTHING RETURNING 1', [publicId, hash]);
+      if (added.length) {
+        await tx.unsafe(`UPDATE community_course_notes SET report_count=report_count+1,
+          hidden_at=CASE WHEN hidden_at IS NULL AND report_count+1 >= $2 THEN now() ELSE hidden_at END WHERE public_id=$1`, [publicId, COMMUNITY_NOTE_HIDE_AFTER_REPORTS]);
+      }
+      return 'reported';
+    });
+  }
+  async isDeveloper(owner: string) {
+    const id = userId(owner);
+    if (!id) return false;
+    const [row] = await this.sql.unsafe('SELECT role FROM profiles WHERE id=$1', [id]);
+    return row?.role === 'developer';
+  }
+  async hiddenNotes(): Promise<HiddenCommunityNote[]> {
+    const rows = await this.sql.unsafe('SELECT public_id,course_id,kind,lecturer,body,report_count,hidden_at FROM community_course_notes WHERE hidden_at IS NOT NULL ORDER BY hidden_at LIMIT 200');
+    return rows.map((r) => ({ id: String(r.public_id), courseId: String(r.course_id), kind: r.kind as CourseNote['kind'],
+      ...(r.lecturer ? { lecturer: String(r.lecturer) } : {}), body: String(r.body), reports: Number(r.report_count), hiddenAt: new Date(r.hidden_at as string).getTime() }));
+  }
+  async moderateNote(publicId: string, decision: 'restore' | 'remove') {
+    if (decision === 'remove') return (await this.sql.unsafe('DELETE FROM community_course_notes WHERE public_id=$1 RETURNING 1', [publicId])).length > 0;
+    return this.sql.begin(async (tx) => {
+      await tx.unsafe('DELETE FROM community_course_note_reports WHERE public_id=$1', [publicId]);
+      return (await tx.unsafe('UPDATE community_course_notes SET hidden_at=NULL,report_count=0 WHERE public_id=$1 RETURNING 1', [publicId])).length > 0;
     });
   }
 }

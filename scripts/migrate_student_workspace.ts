@@ -9,8 +9,10 @@ async function main() {
   if (process.env.VERCEL_ENV === 'production' && !process.argv.includes('--production')) throw new Error('Production migration requires --production.');
   const sql = postgres(url, { max: 1 });
   try {
-    await sql.unsafe(readFileSync(resolve('scripts/migrations/planner/002_student_workspace.sql'), 'utf8'));
-    const rows = await sql.unsafe("SELECT to_regclass('public.student_workspace_documents') IS NOT NULL AND to_regclass('public.student_bidding_observations') IS NOT NULL AS ready");
+    for (const file of ['002_student_workspace.sql', '003_community_course_notes.sql']) {
+      await sql.unsafe(readFileSync(resolve('scripts/migrations/planner', file), 'utf8'));
+    }
+    const rows = await sql.unsafe("SELECT to_regclass('public.student_workspace_documents') IS NOT NULL AND to_regclass('public.student_bidding_observations') IS NOT NULL AND to_regclass('public.community_course_notes') IS NOT NULL AS ready");
     if (rows[0]?.ready !== true) throw new Error('Student workspace migration verification failed.');
     process.stdout.write('Student workspace schema is ready.\n');
   } finally { await sql.end(); }

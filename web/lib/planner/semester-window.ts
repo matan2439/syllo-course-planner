@@ -86,6 +86,12 @@ export const DEGREE_YEAR_LABELS: Record<DegreeYear, string> = {
   1: 'שנה א׳', 2: 'שנה ב׳', 3: 'שנה ג׳', 4: 'שנה ד׳', 5: 'שנה ה׳', 6: 'שנה ו׳',
 }
 
+/** Years 1–4 always; a later year only once the board has a semester in it (or it is the chosen year). */
+export function degreeYearsForBoard(semesterIds: readonly string[], chosen?: DegreeYear | null): DegreeYear[] {
+  const added = new Set(semesterIds.map((id) => Number(/^year_(\d+)_/.exec(id)?.[1])))
+  return DEGREE_YEARS.filter((year) => year <= 4 || added.has(year) || year === chosen)
+}
+
 /** The one place that maps the student's year to the visible window. Unknown year → the default. */
 export function semesterWindowForDegreeYear(year: DegreeYear | null | undefined): SemesterWindow {
   if (!year) return DEFAULT_SEMESTER_WINDOW

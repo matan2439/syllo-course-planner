@@ -46,6 +46,8 @@ describe('Postgres storage and schema access', () => {
     pg = new PGlite();
     await pg.exec('CREATE SCHEMA auth; CREATE TABLE auth.users(id uuid PRIMARY KEY); CREATE ROLE anon; CREATE ROLE authenticated;');
     await pg.exec(readFileSync(join(__dirname, '../../scripts/migrations/planner/002_student_workspace.sql'), 'utf8'));
+    await pg.exec('CREATE TABLE profiles(id uuid PRIMARY KEY, role text)');
+    await pg.exec(readFileSync(join(__dirname, '../../scripts/migrations/planner/003_community_course_notes.sql'), 'utf8'));
     const sql = {
       unsafe: async (query: string, params: readonly unknown[] = []) => (await pg.query(query, [...params])).rows as Record<string, unknown>[],
       begin: <T>(fn: (tx: any) => Promise<T>) => pg.transaction((tx) => fn({
@@ -66,6 +68,31 @@ describe('Postgres storage and schema access', () => {
     await pg.exec('SET ROLE anon');
     try { await expect(pg.query('SELECT * FROM student_workspace_documents')).rejects.toThrow(/permission denied/i); }
     finally { await pg.exec('RESET ROLE'); }
+  });
+
+  test('shared course notes: anonymous reads, report hold, developer review, cascade on account deletion', async () => {
+    const [author, r1, r2, r3, dev] = [1, 2, 3, 4, 5].map((n) => `00000000-0000-4000-8000-00000000010${n}`);
+    for (const id of [author, r1, r2, r3, dev]) await pg.query('INSERT INTO auth.users(id) VALUES($1)', [id]);
+    await pg.query("INSERT INTO profiles(id, role) VALUES($1,'developer')", [dev]);
+    const note = { id: 'note_pg_000001', courseId: 'C9', kind: 'tip' as const, body: 'טיפ' };
+    await store.publishNote(`auth:${author}`, note);
+    await store.publishNote(`auth:${author}`, { ...note, body: 'טיפ מעודכן' }); // an edit, not a second note
+    const [seen] = await store.communityNotes(`auth:${r1}`, 'C9');
+    expect(seen).toMatchObject({ body: 'טיפ מעודכן', mine: false, reported: false });
+    expect(Object.keys(seen)).not.toContain('owner');
+    expect(await store.reportNote(`auth:${author}`, seen.id)).toBe('own_note');
+    for (const reporter of [r1, r1, r2, r3]) expect(await store.reportNote(`auth:${reporter}`, seen.id)).toBe('reported');
+    expect(await store.communityNotes(`auth:${r1}`, 'C9')).toEqual([]);
+    expect(await store.isDeveloper(`auth:${r1}`)).toBe(false);
+    expect(await store.isDeveloper(`auth:${dev}`)).toBe(true);
+    expect(await store.hiddenNotes()).toEqual([expect.objectContaining({ id: seen.id, reports: 3 })]);
+    expect(await store.moderateNote(seen.id, 'restore')).toBe(true);
+    expect(await store.communityNotes(`auth:${r1}`, 'C9')).toHaveLength(1);
+    await pg.exec('SET ROLE anon');
+    try { await expect(pg.query('SELECT * FROM community_course_notes')).rejects.toThrow(/permission denied/i); }
+    finally { await pg.exec('RESET ROLE'); }
+    await pg.query('DELETE FROM auth.users WHERE id=$1', [author]);
+    expect(await store.communityNotes(`auth:${r1}`, 'C9')).toEqual([]);
   });
 
   test('deleting an account also removes workspace documents and reports', async () => {

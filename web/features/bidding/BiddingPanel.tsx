@@ -170,10 +170,6 @@ export function BiddingPanel({ programId, courseOptions, draft, onChange, loadHi
   ]
 
   return <section dir={dir} aria-label={t('תכנון בידינג', 'Bidding preparation')} className="space-y-4 text-start text-[var(--text)]">
-    <div>
-      <h2 className="text-lg font-semibold">{t('תכנון בידינג ותוצאות', 'Bidding preparation and results')}</h2>
-      <p className="mt-1 text-sm text-[var(--text-muted)]">{t('מכינים ניקוד להזנה ידנית באתר הרשמי. התוצאות מוזנות על ידך ואינן אישור רישום.', 'Prepare points for manual entry on the official site. Results are student-reported and do not confirm registration.')}</p>
-    </div>
 
     {(onRoundSnapshot || onRoundTransition || roundSnapshots.length > 0) && <BiddingRoundTools draft={draft} snapshots={roundSnapshots} onChange={onChange} onSnapshot={onRoundSnapshot} onTransition={onRoundTransition} />}
 
@@ -188,7 +184,6 @@ export function BiddingPanel({ programId, courseOptions, draft, onChange, loadHi
         <Field label={t('העברת נקודות', 'Point transfers')}><select className={CONTROL} value={draft.transferMode} onChange={(e) => rule({ transferMode: e.target.value as BiddingDraft['transferMode'] })}><option value="automatic">{t('לפי העדיפות הבאה', 'Next priority')}</option><option value="manual">{t('ליעד שאני בוחר', 'Designated target')}</option></select></Field>
       </div>
       <Field label={t('מקור ותאריך אימות הכללים (אופציונלי)', 'Rules source and verification date (optional)')}><input className={CONTROL} type="text" maxLength={1000} value={draft.rulesSource} onChange={(e) => rule({ rulesSource: e.target.value })} placeholder={t('מכתב הפקולטה, שנתון או כתובת מקור', 'Faculty letter, handbook or source URL')} /></Field>
-      <p className="text-xs text-[var(--text-muted)]">{t('המינימום, התקציב וסדר ההעברה עשויים להשתנות לפי חוג ומקצה. יש לבדוק גם זכאות, חפיפות וכללי המנות באתר הרשמי.', 'Minimum bids, budgets and transfers vary by department and round. Also check eligibility, timetable conflicts and packet rules on the official site.')}</p>
       <label className="flex items-start gap-2 text-sm"><input type="checkbox" checked={draft.rulesConfirmed} onChange={(e) => update({ rulesConfirmed: e.target.checked })} />{t('בדקתי את התקציב, המינימום וכללי ההעברה למקצה הזה מול המקור הרשמי.', 'I checked this round’s budget, minimum bid and transfer rules against the official source.')}</label>
     </fieldset>
 
@@ -227,7 +222,7 @@ export function BiddingPanel({ programId, courseOptions, draft, onChange, loadHi
       <div><button type="button" className={PRIMARY} disabled={draft.entries.length === 0} onClick={() => { setProposal(proposeBiddingAllocation(draft, history)); setError('') }}>{t('הצעת הקצאה', 'Suggest allocation')}</button></div>
       {visibleProposal && <div className="space-y-2 text-sm" aria-live="polite">
         <p>{visibleProposal.method === 'priority' ? t('כלל אצבע לפי עדיפות — אין מספיק היסטוריה תואמת.', 'Priority heuristic — insufficient matching history.') : t('כלל אצבע לפי עדיפות וניקודי קבלה היסטוריים מצטברים.', 'Heuristic using priority and aggregated historical accepted scores.')}</p>
-        <p className="text-xs text-[var(--text-muted)]">{t('ההצעה מקצה את התקציב הפנוי לבחירות ממתינות עם ניקוד חיובי. חלופות באפס ותוצאות שכבר דיווחת נשמרות. זו אינה הסתברות לקבלה.', 'The proposal allocates available points to pending choices with positive bids. Zero fallbacks and reported results are preserved. This is not an acceptance probability.')}</p>
+        <p className="text-xs text-[var(--text-muted)]">{t('זו אינה הסתברות לקבלה.', 'This is not an acceptance probability.')}</p>
         {visibleProposal.feasible ? <><ul className="space-y-1">{visibleProposal.allocations.map((a) => <li key={a.entryId}>{draft.entries.find((e) => e.id === a.entryId)?.label}: {a.points} {t('נקודות', 'points')}</li>)}</ul><button type="button" className={PRIMARY} onClick={() => {
           try { update(applyBiddingAllocation(draft, visibleProposal)); setProposal(null) }
           catch { setError(t('הטיוטה השתנתה או שההצעה אינה תקינה. יש ליצור הצעה חדשה.', 'The draft changed or the proposal is invalid. Generate a new proposal.')) }
@@ -239,7 +234,7 @@ export function BiddingPanel({ programId, courseOptions, draft, onChange, loadHi
 
     <div className={`${BOX} space-y-3`}>
       <h3 className="font-semibold">{t('תרחיש העברות: מה יקרה אם אדחה?', 'What-if transfers: what if I am rejected?')}</h3>
-      <p className="text-xs text-[var(--text-muted)]">{t('מודל בדיקה לפי הכללים שאישרת: דחייה מעבירה את כל הניקוד ליעד; ביטול משאיר אותו ללא יעד. בחירה ממתינה או שהתקבלה שומרת את הניקוד. התרחיש אינו משנה תוצאות או מנבא ביקוש.', 'Model under your confirmed rules: rejection passes the whole score to the target; cancellation leaves it unallocated. Pending or accepted choices keep the score. A scenario does not change results or predict demand.')}</p>
+      <p className="text-xs text-[var(--text-muted)]">{t('תרחיש בלבד: אינו משנה תוצאות ואינו מנבא ביקוש.', 'Scenario only: it does not change results or predict demand.')}</p>
       <div className="flex flex-wrap gap-3">{sorted.map((e) => <label key={e.id} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={assumptions[e.id] === 'rejected'} onChange={(event) => {
         setAssumptions((current) => { const next = { ...current }; if (event.target.checked) next[e.id] = 'rejected'; else delete next[e.id]; return next }); setSimulation(null)
       }} />{t(`להניח דחייה: ${e.label}`, `Assume rejection: ${e.label}`)}</label>)}</div>
