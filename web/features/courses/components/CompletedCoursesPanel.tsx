@@ -33,6 +33,8 @@ import {
 } from '../../../../shared/planner/early_year_courses'
 import CourseNamePicker, { type PickerCourse } from './CourseNamePicker'
 import { Badge } from '../../../components/ui'
+import { useLocale } from '../../locale/LocaleProvider'
+import { semesterLabel } from '../../locale/semester-label'
 
 export type CompletionAnswer = 'completed' | 'not_completed' | 'unknown'
 
@@ -94,6 +96,7 @@ export default function CompletedCoursesPanel({
   value: AcademicStatusDraft
   onChange: (next: AcademicStatusDraft) => void
 }) {
+  const { locale, dir, t } = useLocale()
   const standard = useMemo(() => earlyYearCoursesFor(programId), [programId])
   const standardHours = useMemo(() => earlyYearHoursById(programId), [programId])
 
@@ -137,16 +140,16 @@ export default function CompletedCoursesPanel({
   return (
     <details className="group rounded-xl border border-[var(--border)] bg-[var(--surface)]">
       <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-2.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--purple)]">
-        <span className="text-sm font-semibold">קורסים שהשלמתי</span>
+        <span className="text-sm font-semibold">{t('קורסים שהשלמתי', 'Courses I completed')}</span>
         {/* Always-visible status — text, not colour alone. */}
         <span role="status" aria-live="polite" className="flex items-center gap-1.5">
-          {(completedIds.length > 0 || value.confirmed) && <Badge>{completedIds.length} קורסים · {credits} ש״ש</Badge>}
-          {value.confirmed ? <Badge variant="success">נשמר</Badge> : <Badge variant="warn">לא נשמר</Badge>}
+          {(completedIds.length > 0 || value.confirmed) && <Badge>{completedIds.length} {t('קורסים', 'courses')} · {credits} {t('ש״ש', 'weekly hours')}</Badge>}
+          {value.confirmed ? <Badge variant="success">{t('נשמר', 'Saved')}</Badge> : <Badge variant="warn">{t('לא נשמר', 'Not saved')}</Badge>}
           <span aria-hidden className="text-xs text-[var(--text-muted)] group-open:rotate-180">▾</span>
         </span>
       </summary>
 
-      <div className="flex flex-col gap-3 border-t border-[var(--border)] p-3" dir="rtl">
+      <div className="flex flex-col gap-3 border-t border-[var(--border)] p-3" dir={dir}>
         {EARLY_YEAR_SEMESTERS.map((sem) => {
           const courses = standard.filter((c) => c.semesterId === sem.id)
           if (courses.length === 0) return null
@@ -156,9 +159,9 @@ export default function CompletedCoursesPanel({
             <fieldset key={sem.id} className="flex flex-col gap-1.5">
               <legend className="mb-1 flex w-full items-center gap-2 text-xs font-semibold">
                 <input type="checkbox" className={checkbox} checked={allDone}
-                  aria-label={`כל ${sem.titleHe}`}
+                  aria-label={t(`כל ${sem.titleHe}`, `All ${semesterLabel(sem.id, sem.titleHe, 'en')}`)}
                   onChange={() => setMany(ids, !allDone)} />
-                {sem.titleHe}
+                {semesterLabel(sem.id, sem.titleHe, locale)}
               </legend>
               {courses.map((c) => (
                 <label key={c.courseId} className="flex items-center gap-2 ps-6 text-xs">
@@ -166,7 +169,7 @@ export default function CompletedCoursesPanel({
                     checked={value.statuses[c.courseId] === 'completed'}
                     onChange={(e) => setMany([c.courseId], e.target.checked)} />
                   <span className="min-w-0 flex-1">{c.nameHe}</span>
-                  <span className="shrink-0 text-[var(--text-muted)]">{c.creditHours} ש״ש</span>
+                  <span className="shrink-0 text-[var(--text-muted)]">{c.creditHours} {t('ש״ש', 'weekly hours')}</span>
                 </label>
               ))}
             </fieldset>
@@ -177,8 +180,8 @@ export default function CompletedCoursesPanel({
             a course, its credits, or its category. */}
         <CourseNamePicker
           inputName="completed-elective-search"
-          label="קורסי בחירה שהשלמתי"
-          placeholder="חיפוש לפי שם…"
+          label={t('קורסי בחירה שהשלמתי', 'Completed electives')}
+          placeholder={t('חיפוש לפי שם…', 'Search by course name…')}
           courses={catalogCourses}
           selectedIds={value.electiveIds}
           onChange={(ids) => onChange({ ...value, electiveIds: ids, confirmed: false })}
@@ -186,7 +189,7 @@ export default function CompletedCoursesPanel({
 
         {unknownHourIds.length > 0 && (
           <p className="text-[11px] text-amber-700 dark:text-amber-300">
-            לחלק מהקורסים אין נתוני שעות בקטלוג — הם לא נספרים בשעות.
+            {t('לחלק מהקורסים אין נתוני שעות בקטלוג — הם לא נספרים בשעות.', 'Some courses have no hours in the catalog and are excluded from the hours total.')}
           </p>
         )}
 
@@ -196,7 +199,7 @@ export default function CompletedCoursesPanel({
           disabled={value.confirmed}
           className="self-start rounded-lg bg-[var(--purple-strong)] px-4 py-1.5 text-xs font-semibold text-white disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--purple)]"
         >
-          {value.confirmed ? 'נשמר' : 'שמירה'}
+          {value.confirmed ? t('נשמר', 'Saved') : t('שמירה', 'Save')}
         </button>
       </div>
     </details>

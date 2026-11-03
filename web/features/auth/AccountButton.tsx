@@ -5,6 +5,8 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { useAuth } from './AuthProvider'
 import BuyCredits from '../billing/BuyCredits'
 import { OPEN_ACCOUNT_EVENT, openBuyCredits } from '../billing/ai_access'
+import { useLocale } from '../locale/LocaleProvider'
+import LanguageSwitcher from '../locale/LanguageSwitcher'
 
 const CHIP =
   'rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs font-semibold text-[var(--text)] shadow-sm transition-colors hover:border-[var(--purple)]/50 hover:text-[var(--purple)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--purple)]'
@@ -14,13 +16,23 @@ const PRIMARY =
   'flex-1 rounded-lg bg-[var(--purple-strong)] px-3 py-2 text-sm font-semibold text-white hover:bg-[var(--purple)] disabled:opacity-60'
 const SECONDARY =
   'flex-1 rounded-lg border border-[var(--border)] px-3 py-2 text-sm font-semibold text-[var(--text)] hover:border-[var(--purple)]/50 disabled:opacity-60'
+const AUTH_ERRORS_EN: Record<string, string> = {
+  'אימייל או סיסמה שגויים.': 'Incorrect email or password.',
+  'יש לאשר את כתובת האימייל (בדקו את תיבת הדואר).': 'Confirm your email address by opening the link in your inbox.',
+  'כתובת האימייל כבר רשומה. נסו להתחבר.': 'This email is already registered. Try signing in.',
+  'הסיסמה חייבת להכיל לפחות 6 תווים.': 'Your password must contain at least 6 characters.',
+  'מחיקת החשבון נכשלה. נסו שוב.': 'Could not delete the account. Try again.',
+  'כבר שלחנו מייל אישור לכתובת הזו. אשרו את החשבון דרך הקישור במייל (בדקו גם בספאם) ואז התחברו. שליחה חוזרת אפשרית בעוד כדקה.': 'We already sent a confirmation email. Open its link (check spam too), then sign in. You can request another email in about a minute.',
+  'אם קיים חשבון לכתובת הזו, נשלח אליה קישור לאיפוס הסיסמה. בדקו גם בתיקיית הספאם.': 'If an account exists for this email, we sent it a password reset link. Check spam too.',
+}
 
 /**
  * Header account entry point. Accounts are for persistence only: the planner works
- * signed out exactly as before, and this renders nothing when auth is not configured.
+ * signed out. The profile entry also keeps language controls available without auth.
  */
 export default function AccountButton() {
   const auth = useAuth()
+  const { locale, dir, t } = useLocale()
   const [open, setOpen] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -36,7 +48,7 @@ export default function AccountButton() {
     return () => window.removeEventListener(OPEN_ACCOUNT_EVENT, onOpen)
   }, [])
 
-  if (!auth.enabled || auth.loading) return null
+  const accountAvailable = auth.enabled && !auth.loading
 
   const run = async (action: () => Promise<string | null>) => {
     setBusy(true)
@@ -68,6 +80,7 @@ export default function AccountButton() {
   }
 
   const user = auth.user
+  const messageText = message ? t(message, AUTH_ERRORS_EN[message] ?? 'The action failed. Try again.') : null
   return (
     <div className="relative">
       {user ? (
@@ -75,8 +88,8 @@ export default function AccountButton() {
           type="button"
           className={CHIP + ' flex h-[30px] w-[30px] items-center justify-center !px-0 !py-0'}
           aria-expanded={open}
-          aria-label="החשבון שלי"
-          title={user.email ?? 'החשבון שלי'}
+          aria-label={t('החשבון שלי', 'My account')}
+          title={user.email ?? t('החשבון שלי', 'My account')}
           onClick={() => { if (!open) auth.refreshCreditBalance(); setOpen((v) => !v) }}
         >
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
@@ -86,20 +99,22 @@ export default function AccountButton() {
         </button>
       ) : (
         <button type="button" className={CHIP} aria-expanded={open} onClick={() => setOpen((v) => !v)}>
-          התחברות
+          {accountAvailable ? t('התחברות', 'Sign in') : t('הפרופיל שלי', 'My profile')}
         </button>
       )}
       {open && (
         <div
           role="dialog"
-          aria-label={user ? 'החשבון שלי' : 'התחברות לחשבון'}
+          aria-label={user ? t('החשבון שלי', 'My account') : accountAvailable ? t('התחברות לחשבון', 'Sign in to your account') : t('הפרופיל שלי', 'My profile')}
+          dir={dir}
           className="absolute end-0 top-full z-50 mt-2 w-72 max-w-[calc(100vw-2rem)] rounded-2xl border border-[var(--border)] bg-[var(--surface-panel)] p-4 text-sm shadow-[var(--shadow-premium)]"
         >
-          {user ? (
+          <div className="mb-3"><LanguageSwitcher /></div>
+          {!accountAvailable ? <p className="text-xs text-[var(--text-muted)]">{t('אפשר לתכנן ולבחור שפה גם בלי להתחבר.', 'You can plan and choose a language without signing in.')}</p> : user ? (
             <div className="space-y-3">
               <p className="break-all text-[var(--text)]">{user.email}</p>
               {auth.profile?.role === 'developer' && (
-                <span className="inline-block rounded-full bg-[var(--purple)]/15 px-2 py-0.5 text-xs font-semibold text-[var(--purple)]">מפתח</span>
+                <span className="inline-block rounded-full bg-[var(--purple)]/15 px-2 py-0.5 text-xs font-semibold text-[var(--purple)]">{t('מפתח', 'Developer')}</span>
               )}
               {(auth.profile?.billing_exempt || auth.creditBalance != null) && (
                 <div
@@ -113,79 +128,79 @@ export default function AccountButton() {
                     </svg>
                   </span>
                   <div className="min-w-0">
-                    <p className="text-xs text-[var(--text-muted)]">קרדיטים של <bdi>Syllo</bdi></p>
+                    <p className="text-xs text-[var(--text-muted)]">{t('קרדיטים של ', '')}<bdi>Syllo</bdi>{t('', ' Credits')}</p>
                     <p className="text-xl font-bold leading-tight text-[var(--text)]">
-                      {auth.profile?.billing_exempt ? 'ללא חיוב' : auth.creditBalance?.toLocaleString('he-IL')}
+                      {auth.profile?.billing_exempt ? t('ללא חיוב', 'No charge') : auth.creditBalance?.toLocaleString(locale === 'he' ? 'he-IL' : 'en-US')}
                     </p>
                   </div>
                 </div>
               )}
               {!auth.profile?.billing_exempt && (
                 <>
-                  <button type="button" className={PRIMARY + ' w-full'} onClick={() => { setOpen(false); openBuyCredits() }}>קניית קרדיטים</button>
-                  <Link href="/refund-policy" className="block text-center text-xs text-[var(--text-muted)] underline hover:text-[var(--purple)]">מדיניות החזרים ובקשת החזר</Link>
+                  <button type="button" className={PRIMARY + ' w-full'} onClick={() => { setOpen(false); openBuyCredits() }}>{t('קניית קרדיטים', 'Buy credits')}</button>
+                  <Link href="/refund-policy" className="block text-center text-xs text-[var(--text-muted)] underline hover:text-[var(--purple)]">{t('מדיניות החזרים ובקשת החזר', 'Refund policy and requests')}</Link>
                 </>
               )}
               {/* Navigation only: the console's API re-checks role = 'developer' server-side. */}
               {auth.profile?.role === 'developer' && (
-                <Link href="/admin/billing" className={SECONDARY + ' block w-full text-center'} onClick={() => setOpen(false)}>ניהול חיובים</Link>
+                <Link href="/admin/billing" className={SECONDARY + ' block w-full text-center'} onClick={() => setOpen(false)}>{t('ניהול חיובים', 'Billing console')}</Link>
               )}
-              <p className="text-xs text-[var(--text-muted)]">הפרופיל והתוכנית שלך נשמרים בחשבון.</p>
+              <p className="text-xs text-[var(--text-muted)]">{t('הפרופיל והתוכנית שלך נשמרים בחשבון.', 'Your profile and plan are saved to your account.')}</p>
               <button type="button" className={SECONDARY + ' w-full'} onClick={() => { void auth.signOut(); setOpen(false) }}>
-                התנתקות
+                {t('התנתקות', 'Sign out')}
               </button>
               {confirmDelete ? (
                 <div className="space-y-2 rounded-lg border border-red-500/40 p-3">
-                  <p className="text-xs text-[var(--text)]">למחוק את החשבון ואת כל נתוני התכנון שלו? אי אפשר לבטל את זה.</p>
+                  <p className="text-xs text-[var(--text)]">{t('למחוק את החשבון ואת כל נתוני התכנון שלו? אי אפשר לבטל את זה.', 'Delete your account and all its planning data? This cannot be undone.')}</p>
                   <div className="flex gap-2">
                     <button type="button" className="flex-1 rounded-lg bg-red-600 px-3 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60" disabled={busy}
                       onClick={() => void run(async () => { const error = await auth.deleteAccount(); if (!error) setConfirmDelete(false); return error })}>
-                      מחיקה לצמיתות
+                      {t('מחיקה לצמיתות', 'Delete permanently')}
                     </button>
-                    <button type="button" className={SECONDARY} disabled={busy} onClick={() => setConfirmDelete(false)}>ביטול</button>
+                    <button type="button" className={SECONDARY} disabled={busy} onClick={() => setConfirmDelete(false)}>{t('ביטול', 'Cancel')}</button>
                   </div>
                 </div>
               ) : (
                 <button type="button" className="w-full text-xs text-[var(--text-muted)] underline hover:text-red-500" onClick={() => setConfirmDelete(true)}>
-                  מחיקת חשבון
+                  {t('מחיקת חשבון', 'Delete account')}
                 </button>
               )}
-              {message && <p role="status" className="text-xs text-[var(--text-muted)]">{message}</p>}
+              {messageText && <p role="status" className="text-xs text-[var(--text-muted)]">{messageText}</p>}
             </div>
           ) : confirmSentTo ? (
             <div data-testid="confirm-email-sent" className="space-y-3">
-              <p className="text-base font-bold text-[var(--text)]">בדקו את תיבת הדואר ✉️</p>
+              <p className="text-base font-bold text-[var(--text)]">{t('בדקו את תיבת הדואר ✉️', 'Check your email ✉️')}</p>
               <p className="text-sm text-[var(--text)]">
-                שלחנו קישור לאישור החשבון אל <bdi className="font-semibold" dir="ltr">{confirmSentTo}</bdi>.
-                לחצו על הקישור במייל, ואז חזרו לכאן והתחברו.
+                {t('שלחנו קישור לאישור החשבון אל ', 'We sent an account confirmation link to ')}<bdi className="font-semibold" dir="ltr">{confirmSentTo}</bdi>.
+                {' '}{t('לחצו על הקישור במייל, ואז חזרו לכאן והתחברו.', 'Open the link in your email, then return here and sign in.')}
               </p>
-              <p className="text-xs text-[var(--text-muted)]">לא הגיע תוך כמה דקות? בדקו גם בספאם. אין צורך להירשם שוב.</p>
+              <p className="text-xs text-[var(--text-muted)]">{t('לא הגיע תוך כמה דקות? בדקו גם בספאם. אין צורך להירשם שוב.', 'No email after a few minutes? Check spam too. You do not need to sign up again.')}</p>
               <button type="button" className={PRIMARY + ' w-full'} onClick={() => { setConfirmSentTo(null); setMessage(null) }}>
-                אישרתי — להתחברות
+                {t('אישרתי — להתחברות', 'Confirmed — sign in')}
               </button>
             </div>
           ) : (
             <form className="space-y-3" onSubmit={signIn}>
-              <p className="text-xs text-[var(--text-muted)]">התחברו כדי לשמור את הפרופיל והתוכנית בין מכשירים.</p>
+              <p className="text-xs text-[var(--text-muted)]">{t('התחברו כדי לשמור את הפרופיל והתוכנית בין מכשירים.', 'Sign in to keep your profile and plan across devices.')}</p>
               <label className="block space-y-1">
-                <span className="text-xs text-[var(--text-muted)]">אימייל</span>
+                <span className="text-xs text-[var(--text-muted)]">{t('אימייל', 'Email')}</span>
                 <input className={FIELD} type="email" autoComplete="email" dir="ltr" required value={email} onChange={(e) => setEmail(e.target.value)} />
               </label>
               <label className="block space-y-1">
-                <span className="text-xs text-[var(--text-muted)]">סיסמה</span>
+                <span className="text-xs text-[var(--text-muted)]">{t('סיסמה', 'Password')}</span>
                 <input className={FIELD} type="password" autoComplete="current-password" dir="ltr" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} />
               </label>
               <div className="flex gap-2">
-                <button type="submit" className={PRIMARY} disabled={busy}>התחברות</button>
-                <button type="button" className={SECONDARY} disabled={busy || !email || password.length < 6} onClick={() => void signUp()}>הרשמה</button>
+                <button type="submit" className={PRIMARY} disabled={busy}>{t('התחברות', 'Sign in')}</button>
+                <button type="button" className={SECONDARY} disabled={busy || !email || password.length < 6} onClick={() => void signUp()}>{t('הרשמה', 'Sign up')}</button>
               </div>
               <button type="button" className="w-full text-xs text-[var(--text-muted)] underline hover:text-[var(--purple)] disabled:opacity-60"
-                disabled={busy || !email} onClick={() => void requestPasswordReset()}>שכחתי סיסמה</button>
+                disabled={busy || !email} onClick={() => void requestPasswordReset()}>{t('שכחתי סיסמה', 'Forgot password')}</button>
               <button type="button" className={SECONDARY + ' w-full'} disabled={busy} onClick={() => void run(auth.signInWithGoogle)}>
-                המשך עם Google
+                {t('המשך עם Google', 'Continue with Google')}
               </button>
-              {message && <p role="status" className="text-xs text-[var(--text-muted)]">{message}</p>}
-              <Link href="/privacy" className="block text-center text-xs text-[var(--text-muted)] underline hover:text-[var(--purple)]">מדיניות פרטיות</Link>
+              {messageText && <p role="status" className="text-xs text-[var(--text-muted)]">{messageText}</p>}
+              <Link href="/privacy" className="block text-center text-xs text-[var(--text-muted)] underline hover:text-[var(--purple)]">{t('מדיניות פרטיות', 'Privacy policy')}</Link>
             </form>
           )}
         </div>

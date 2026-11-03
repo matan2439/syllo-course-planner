@@ -46,6 +46,20 @@ const reads = () => ({
   context: (plannerApi.getPlanningContext as jest.Mock).mock.calls.length,
 })
 
+test('resizing between phone and desktop does not reload or replace the account board', async () => {
+  render(workspace())
+  await waitFor(() => expect(reads()).toEqual({ board: 1, committed: 1, context: 1 }))
+  const before = document.querySelector('[data-board-layout="stable"]')
+  for (const width of [390, 1440, 768, 1280]) {
+    await act(async () => {
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: width })
+      window.dispatchEvent(new Event('resize'))
+    })
+    expect(document.querySelector('[data-board-layout="stable"]')).toBe(before)
+    expect(reads()).toEqual({ board: 1, committed: 1, context: 1 })
+  }
+})
+
 test('a user change on an open page re-reads the board, committed board and planning context', async () => {
   const { rerender } = render(workspace())
   await waitFor(() => expect(reads()).toEqual({ board: 1, committed: 1, context: 1 }))

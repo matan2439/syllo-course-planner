@@ -71,6 +71,7 @@ const notApplyableResponse = (): ConversationResponse => ({
 const deps = (over: Partial<{ getBoardFn: any; sendConversationFn: any }> = {}) => ({
   programId: 'mechanical_engineering_2027',
   getBoardFn: over.getBoardFn ?? (async () => board()),
+  committedBoardFn: async () => null,
   planningContextFn: async () => null,
   sendConversationFn: over.sendConversationFn ?? (async () => proposalResponse()),
 })

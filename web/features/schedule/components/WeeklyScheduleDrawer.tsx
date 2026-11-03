@@ -3,11 +3,14 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { SemesterDestination } from '../../courses/components/UnifiedCourseRepository'
 import WeeklyScheduleGrid, { type GridBlock } from './WeeklyScheduleGrid'
+import ScheduleOptions from './ScheduleOptions'
+import { busyTimesForSemester, groupBusyConflicts } from '../../../../shared/planner/student-schedule-tools'
 import { fetchScheduleGroups, fetchCourseSearch } from '../../../lib/planner/schedule-client'
 import {
   loadWeeklyScheduleState,
   saveWeeklyScheduleState,
   selectionKey,
+  type WeeklyScheduleState,
 } from '../../../lib/planner/schedule-storage'
 import { resolveSelectedSemester, type DegreeYear } from '../../../lib/planner/semester-window'
 import { defaultTermMapping, groupsOverlap } from '../../../../shared/planner/schedule'
@@ -20,6 +23,9 @@ import type {
   SemesterTerm,
   CourseSearchResponse,
 } from '../../../../shared/planner/schedule'
+import { useLocale, type Locale } from '../../locale/LocaleProvider'
+import { semesterLabel } from '../../locale/semester-label'
+import { weekDayLabel, teachingLabel } from '../../locale/schedule-labels'
 
 interface SemesterCourses {
   semesterId: string
@@ -27,6 +33,7 @@ interface SemesterCourses {
 }
 
 type SelectedScheduleGroup = { courseId: string; courseName: string; group: ScheduleGroup }
+type UiMessage = [he: string, en: string]
 
 function automaticGroupIds(groups: readonly ScheduleGroup[]): string[] {
   return groupsByChoice(groups)
@@ -34,8 +41,11 @@ function automaticGroupIds(groups: readonly ScheduleGroup[]): string[] {
     .map(([group]) => group.groupId)
 }
 
-function groupDescription(group: ScheduleGroup): string {
+function groupDescription(group: ScheduleGroup, locale: Locale): string {
   const slot = group.slots[0]
+  if (locale === 'en') return slot
+    ? `${teachingLabel(group.kind, locale)} · Group ${groupLabel(group)} · ${weekDayLabel(slot.day, locale)} ${slot.start}–${slot.end}`
+    : `${teachingLabel(group.kind, locale)} · Group ${groupLabel(group)} · No meeting times`
   return slot
     ? `${group.kind} · קבוצה ${groupLabel(group)} · יום ${slot.day} ${slot.start}–${slot.end}`
     : `${group.kind} · קבוצה ${groupLabel(group)} · ללא שעות`
@@ -48,6 +58,9 @@ export default function WeeklyScheduleDrawer({
   currentDegreeYear = null,
   fetchScheduleGroupsFn = fetchScheduleGroups,
   fetchCourseSearchFn = fetchCourseSearch,
+  storageScope,
+  initialState,
+  onStateChange,
 }: {
   programId: string
   semesterDestinations: readonly SemesterDestination[]
@@ -56,12 +69,18 @@ export default function WeeklyScheduleDrawer({
   currentDegreeYear?: DegreeYear | null
   fetchScheduleGroupsFn?: typeof fetchScheduleGroups
   fetchCourseSearchFn?: typeof fetchCourseSearch
+  storageScope?: string
+  initialState?: WeeklyScheduleState
+  onStateChange?: (state: WeeklyScheduleState) => void
 }) {
+  const { locale, dir, t } = useLocale()
   const defaultMapping = useMemo(
     () => defaultTermMapping(semesterDestinations.map((d) => d.id), new Date(), currentDegreeYear),
     [semesterDestinations, currentDegreeYear],
   )
-  const [state, setState] = useState(() => loadWeeklyScheduleState(programId, defaultMapping))
+  const [state, setState] = useState(() => initialState
+    ? { ...initialState, termMapping: { ...defaultMapping, ...initialState.termMapping } }
+    : loadWeeklyScheduleState(storageScope ?? programId, defaultMapping))
   // The student's pick; the shown semester is always resolved into the current window.
   const [pickedSemesterId, setActiveSemesterId] = useState('')
   const activeSemesterId = resolveSelectedSemester(
@@ -71,15 +90,16 @@ export default function WeeklyScheduleDrawer({
   const [extraCourseIds, setExtraCourseIds] = useState<string[]>([])
   const [searchText, setSearchText] = useState('')
   const [searchResults, setSearchResults] = useState<CourseSearchResponse['results']>([])
-  const [conflictMessage, setConflictMessage] = useState<string | null>(null)
-  const [searchError, setSearchError] = useState<string | null>(null)
-  const [fetchError, setFetchError] = useState<string | null>(null)
-  const [bestMessage, setBestMessage] = useState<string | null>(null)
+  const [conflictMessage, setConflictMessage] = useState<UiMessage | null>(null)
+  const [searchError, setSearchError] = useState<UiMessage | null>(null)
+  const [fetchError, setFetchError] = useState<UiMessage | null>(null)
+  const [bestMessage, setBestMessage] = useState<UiMessage | null>(null)
   const [copied, setCopied] = useState(false)
 
   useEffect(() => {
-    saveWeeklyScheduleState(programId, state)
-  }, [programId, state])
+    saveWeeklyScheduleState(storageScope ?? programId, state)
+    onStateChange?.(state)
+  }, [programId, storageScope, state, onStateChange])
 
   // Each board semester is shown in its real term.
   const term: SemesterTerm = defaultMapping[activeSemesterId]
@@ -118,7 +138,7 @@ export default function WeeklyScheduleDrawer({
       (data) => { if (live) { setFetchError(null); setScheduleData(data) } },
       () => {
         if (live) {
-          setFetchError('טעינת נתוני השעות נכשלה. נסו לרענן או לנסות שוב מאוחר יותר.')
+          setFetchError(['טעינת נתוני השעות נכשלה. נסו לרענן או לנסות שוב מאוחר יותר.', 'Could not load meeting times. Refresh or try again later.'])
           setScheduleData(null)
         }
       },
@@ -217,18 +237,22 @@ export default function WeeklyScheduleDrawer({
       const removal = removedSelections[0]
       setConflictMessage(
         removal.kind === 'conflict'
-          ? `הבחירה ב'${removal.courseName}' הוסרה כי היא חופפת ל'${removal.conflictingCourseName}' לאחר רענון נתוני השעות.`
-          : `הבחירה ב'${removal.courseName}' הוסרה כי נתוני הקבוצה השתנו או נעלמו לאחר רענון נתוני השעות.`,
+          ? [`הבחירה ב'${removal.courseName}' הוסרה כי היא חופפת ל'${removal.conflictingCourseName}' לאחר רענון נתוני השעות.`, `Your selection for '${removal.courseName}' was removed because it overlaps '${removal.conflictingCourseName}' after the meeting times were refreshed.`]
+          : [`הבחירה ב'${removal.courseName}' הוסרה כי נתוני הקבוצה השתנו או נעלמו לאחר רענון נתוני השעות.`, `Your selection for '${removal.courseName}' was removed because its group changed or disappeared after the meeting times were refreshed.`],
       )
     } else if (removedSelections.length > 1) {
       const courseNames = [...new Set(removedSelections.map((removal) => removal.courseName))]
       setConflictMessage(
-        `הבחירות הבאות הוסרו לאחר רענון נתוני השעות: ${courseNames.join(', ')}.`,
+        [`הבחירות הבאות הוסרו לאחר רענון נתוני השעות: ${courseNames.join(', ')}.`, `These selections were removed after the meeting times were refreshed: ${courseNames.join(', ')}.`],
       )
     }
   }, [scheduleData, state.selections, term])
 
   const chooseGroup = (courseId: string, courseName: string, group: ScheduleGroup) => {
+    if (groupBusyConflicts(group, busyTimesForSemester(state.busyTimes ?? [], activeSemesterId)).length) {
+      setConflictMessage(['הקבוצה חופפת לשעות שסימנתם כלא פנויות.', 'This group overlaps your unavailable times.'])
+      return
+    }
     const key = selectionKey(courseId, term)
     const current = state.selections[key] ?? []
 
@@ -238,7 +262,7 @@ export default function WeeklyScheduleDrawer({
     if (conflict) {
       const slot = conflict.group.slots[0]
       setConflictMessage(
-        `חופף ל'${conflict.courseName}' בימי ${slot?.day ?? ''} ${slot?.start ?? ''}–${slot?.end ?? ''}`,
+        [`חופף ל'${conflict.courseName}' בימי ${slot?.day ?? ''} ${slot?.start ?? ''}–${slot?.end ?? ''}`, `Overlaps '${conflict.courseName}' on ${weekDayLabel(slot?.day ?? '', 'en')} ${slot?.start ?? ''}–${slot?.end ?? ''}`],
       )
       return
     }
@@ -273,21 +297,26 @@ export default function WeeklyScheduleDrawer({
         }
       }
     }
-    const result = checkTimetable(scheduleData.courses, state.freeDays, locked)
+    const result = checkTimetable(scheduleData.courses, state.freeDays, locked, busyTimesForSemester(state.busyTimes ?? [], activeSemesterId))
     setConflictMessage(null)
     setCopied(false)
     if (result.feasible === null) {
-      setBestMessage('יש יותר מדי אפשרויות לבדיקה. בחרו ידנית חלק מהקבוצות ונסו שוב.')
+      setBestMessage(['יש יותר מדי אפשרויות לבדיקה. בחרו ידנית חלק מהקבוצות ונסו שוב.', 'There are too many combinations to check. Choose some groups manually and try again.'])
       return
     }
     if (!result.feasible) {
       const pairs = result.conflictingCoursePairs.map(([a, b]) => `${courseName(a)} ו־${courseName(b)}`)
+      const englishPairs = result.conflictingCoursePairs.map(([a, b]) => `${courseName(a)} and ${courseName(b)}`)
       const blocking = result.coursesBlockingFreeDays.map(courseName)
-      setBestMessage([
+      setBestMessage([[
         'לא נמצא שילוב קבוצות בלי חפיפות.',
         pairs.length ? `חופפים תמיד: ${pairs.join('; ')}.` : '',
         blocking.length ? `לא ניתן לפנות את הימים שבחרתם בגלל: ${blocking.join(', ')}.` : '',
-      ].filter(Boolean).join(' '))
+      ].filter(Boolean).join(' '), [
+        'No combination without overlaps was found.',
+        englishPairs.length ? `Always overlap: ${englishPairs.join('; ')}.` : '',
+        blocking.length ? `These courses prevent keeping your chosen days free: ${blocking.join(', ')}.` : '',
+      ].filter(Boolean).join(' ')])
       return
     }
     const nextSelections = { ...state.selections }
@@ -297,7 +326,10 @@ export default function WeeklyScheduleDrawer({
     }
     setState((previous) => ({ ...previous, selections: nextSelections }))
     const freeKept = WEEK_DAYS.filter((day) => !result.daysUsed.includes(day))
-    setBestMessage(`נבחרו הקבוצות הנוחות ביותר: ${result.daysUsed.length} ימים בקמפוס${freeKept.length ? ` (פנויים: ${freeKept.join(', ')})` : ''}.`)
+    setBestMessage([
+      `נבחרו הקבוצות הנוחות ביותר: ${result.daysUsed.length} ימים בקמפוס${freeKept.length ? ` (פנויים: ${freeKept.join(', ')})` : ''}.`,
+      `Selected the most convenient groups: ${result.daysUsed.length} days on campus${freeKept.length ? ` (free: ${freeKept.map((day) => weekDayLabel(day, 'en')).join(', ')})` : ''}.`,
+    ])
   }
 
   const toggleFreeDay = (day: string) => setState((previous) => ({
@@ -314,7 +346,7 @@ export default function WeeklyScheduleDrawer({
       setSearchError(null)
       setSearchResults(result.results)
     } catch {
-      setSearchError('החיפוש נכשל. נסו שוב.')
+      setSearchError(['החיפוש נכשל. נסו שוב.', 'Search failed. Try again.'])
     }
   }
 
@@ -330,12 +362,12 @@ export default function WeeklyScheduleDrawer({
     key: `${courseId}:${group.groupId}`,
     courseId,
     name,
-    mode: group.teachingMode || group.kind,
+    mode: teachingLabel(group.teachingMode || group.kind, locale),
     group: groupLabel(group),
-    times: group.slots.map((slot) => `${slot.day} ${slot.start}–${slot.end}`).join(', '),
+    times: group.slots.map((slot) => `${weekDayLabel(slot.day, locale)} ${slot.start}–${slot.end}`).join(', '),
   }))
   const copyBiddingList = () => {
-    const text = biddingRows.map((row) => `${row.courseId} ${row.name} · ${row.mode} · קבוצה ${row.group} · ${row.times}`).join('\n')
+    const text = biddingRows.map((row) => `${row.courseId} ${row.name} · ${row.mode} · ${t('קבוצה', 'Group')} ${row.group} · ${row.times}`).join('\n')
     navigator.clipboard?.writeText(text).then(() => setCopied(true), () => setCopied(false))
   }
 
@@ -345,16 +377,21 @@ export default function WeeklyScheduleDrawer({
   )
 
   return (
-    <div className="weekly-schedule" dir="rtl">
+    <div className="weekly-schedule" dir={dir}>
       <header className="weekly-schedule-header">
         <div>
-          <p className="weekly-schedule-eyebrow">תצוגת מערכת</p>
-          <h2 className="weekly-schedule-title">מערכת שעות שבועית</h2>
-          <p className="weekly-schedule-description">קבוצות יחידות מהלוח נבחרות אוטומטית. בחלופות בוחרים את הקבוצה המתאימה.</p>
+          <p className="weekly-schedule-eyebrow">{t('תצוגת מערכת', 'Timetable view')}</p>
+          <h2 className="weekly-schedule-title">{t('מערכת שעות שבועית', 'Weekly timetable')}</h2>
+          <p className="weekly-schedule-description">{t('קבוצות יחידות מהלוח נבחרות אוטומטית. בחלופות בוחרים את הקבוצה המתאימה.', 'Groups with a single option are selected automatically. When alternatives are available, choose the group that suits you.')}</p>
         </div>
       </header>
 
-      <div role="tablist" aria-label="בחירת סמסטר" className="weekly-semester-tabs">
+      <ScheduleOptions key={activeSemesterId} programId={programId} semesterId={activeSemesterId} state={state} onChange={setState}
+        meetings={allSelectedGroups()} courses={candidateCourseIds.map(courseId => ({ courseId, name: courseName(courseId) }))} />
+      {allSelectedGroups().some(item => groupBusyConflicts(item.group, busyTimesForSemester(state.busyTimes ?? [], activeSemesterId)).length > 0) &&
+        <p role="status" className="weekly-schedule-alert">{t('קבוצות שנבחרו חופפות לשעות שאינכם פנויים בהן. הבחירות נשמרו; אפשר לבחור חלופה או לחפש קבוצות אחרות.', 'Selected groups overlap your unavailable times. Your choices were preserved; choose alternatives or search for other groups.')}</p>}
+
+      <div role="tablist" aria-label={t('בחירת סמסטר', 'Choose semester')} className="weekly-semester-tabs">
         {semesterDestinations.map((dest) => (
           <button
             key={dest.id}
@@ -363,25 +400,25 @@ export default function WeeklyScheduleDrawer({
             aria-selected={activeSemesterId === dest.id}
             onClick={() => setActiveSemesterId(dest.id)}
           >
-            {dest.label}
+            {semesterLabel(dest.id, dest.label, locale)}
           </button>
         ))}
       </div>
 
       <div className="weekly-schedule-layout">
-        <section className="weekly-schedule-grid-panel" aria-label="לוח שעות">
+        <section className="weekly-schedule-grid-panel" aria-label={t('לוח שעות', 'Timetable grid')}>
           <WeeklyScheduleGrid blocks={blocks} />
-          {fetchError && <p role="alert" className="weekly-schedule-alert">{fetchError}</p>}
-          {conflictMessage && <p role="alert" className="weekly-schedule-alert">{conflictMessage}</p>}
+          {fetchError && <p role="alert" className="weekly-schedule-alert">{t(...fetchError)}</p>}
+          {conflictMessage && <p role="alert" className="weekly-schedule-alert">{t(...conflictMessage)}</p>}
           {biddingRows.length > 0 && (
-            <section className="weekly-bidding-list" aria-label="רשימה לבידינג">
+            <section className="weekly-bidding-list" aria-label={t('רשימה לבידינג', 'Bidding list')}>
               <div className="weekly-bidding-heading">
-                <h3>רשימה לבידינג</h3>
-                <button type="button" onClick={copyBiddingList}>{copied ? 'הועתק' : 'העתק'}</button>
+                <h3>{t('רשימה לבידינג', 'Bidding list')}</h3>
+                <button type="button" onClick={copyBiddingList}>{copied ? t('הועתק', 'Copied') : t('העתק', 'Copy')}</button>
               </div>
               <table>
                 <thead>
-                  <tr><th>קורס</th><th>סוג</th><th>קבוצה</th><th>מועד</th></tr>
+                  <tr><th>{t('קורס', 'Course')}</th><th>{t('סוג', 'Type')}</th><th>{t('קבוצה', 'Group')}</th><th>{t('מועד', 'Meeting time')}</th></tr>
                 </thead>
                 <tbody>
                   {biddingRows.map((row) => (
@@ -397,40 +434,40 @@ export default function WeeklyScheduleDrawer({
             </section>
           )}
           {scheduleData && (
-            <p className="weekly-schedule-provenance">מקור: bid-it (לא רשמי) · עודכן {new Date(scheduleData.fetchedAt).toLocaleTimeString('he-IL')}</p>
+            <p className="weekly-schedule-provenance">{t('מקור: bid-it (לא רשמי) · עודכן ', 'Source: bid-it (unofficial) · Updated ')}{new Date(scheduleData.fetchedAt).toLocaleTimeString(locale === 'he' ? 'he-IL' : 'en-US')}</p>
           )}
         </section>
 
-        <aside className="weekly-group-picker" aria-label="בחירת קבוצות">
+        <aside className="weekly-group-picker" aria-label={t('בחירת קבוצות', 'Choose groups')}>
           <div className="weekly-group-picker-heading">
-            <h3>בחירת קבוצות</h3>
-            <span>{coursesWithAlternatives.length} קורסים לבחירה</span>
+            <h3>{t('בחירת קבוצות', 'Choose groups')}</h3>
+            <span>{t(`${coursesWithAlternatives.length} קורסים לבחירה`, `${coursesWithAlternatives.length} courses with alternatives`)}</span>
           </div>
           {courses.some((course) => course.found) && (
             <div className="weekly-best-groups">
               <fieldset className="weekly-free-days">
-                <legend>ימים שתרצו להשאיר פנויים</legend>
+                <legend>{t('ימים שתרצו להשאיר פנויים', 'Days to keep free')}</legend>
                 {WEEK_DAYS.map((day) => (
                   <button key={day} type="button" aria-pressed={state.freeDays.includes(day)} onClick={() => toggleFreeDay(day)}>
-                    {day}׳
+                    {t(`${day}׳`, weekDayLabel(day, 'en'))}
                   </button>
                 ))}
               </fieldset>
               <button type="button" className="weekly-best-button" onClick={() => pickBestGroups(true)}>
-                בחירת הקבוצות הטובות ביותר
+                {t('בחירת הקבוצות הטובות ביותר', 'Choose the best groups')}
               </button>
               <button type="button" className="weekly-best-reset" onClick={() => pickBestGroups(false)}>
-                חישוב מחדש בלי הבחירות שלי
+                {t('חישוב מחדש בלי הבחירות שלי', 'Recalculate without my choices')}
               </button>
-              {bestMessage && <p role="status" className="weekly-best-message">{bestMessage}</p>}
+              {bestMessage && <p role="status" className="weekly-best-message">{t(...bestMessage)}</p>}
             </div>
           )}
           {courses.filter((course) => course.found && !groupsByChoice(course.groups).some((choices) => choices.length > 1)).map((course) => (
             <p key={course.courseId} className="weekly-auto-course">
               <strong>{course.nameHe ?? course.courseId}</strong>
-              <span>נבחר אוטומטית</span>
+              <span>{t('נבחר אוטומטית', 'Selected automatically')}</span>
               {course.cYear !== null && course.cYear !== term.year && (
-                <small role="status">נתוני bid-it הם לשנת {course.cYear}</small>
+                <small role="status">{t(`נתוני bid-it הם לשנת ${course.cYear}`, `bid-it data is for ${course.cYear}`)}</small>
               )}
             </p>
           ))}
@@ -439,14 +476,14 @@ export default function WeeklyScheduleDrawer({
               <div>
                 <h4>{course.nameHe ?? course.courseId}</h4>
                 {course.cYear !== null && course.cYear !== term.year && (
-                  <p role="status">נתוני bid-it הם לשנת {course.cYear}, ולא לשנת {term.year} שנבחרה</p>
+                  <p role="status">{t(`נתוני bid-it הם לשנת ${course.cYear}, ולא לשנת ${term.year} שנבחרה`, `bid-it data is for ${course.cYear}; your selected term is ${term.year}`)}</p>
                 )}
               </div>
               {groupsByChoice(course.groups).filter((choices) => choices.length > 1).map((choices) => (
                 <fieldset key={choiceKey(choices[0])} className="weekly-group-options">
-                  <legend>בחירת {choices[0].teachingMode || choices[0].kind}</legend>
+                  <legend>{t('בחירת ', 'Choose ')}{teachingLabel(choices[0].teachingMode || choices[0].kind, locale)}</legend>
                   {choices.map((group) => {
-                    const label = `${course.nameHe ?? course.courseId}, ${groupDescription(group)}`
+                    const label = `${course.nameHe ?? course.courseId}, ${groupDescription(group, locale)}`
                     return (
                       <label key={group.groupId} className="weekly-group-option">
                         <input
@@ -457,7 +494,7 @@ export default function WeeklyScheduleDrawer({
                           disabled={group.slots.length === 0}
                           onChange={() => chooseGroup(course.courseId, course.nameHe ?? course.courseId, group)}
                         />
-                        <span>{groupDescription(group)}</span>
+                        <span>{groupDescription(group, locale)}</span>
                       </label>
                     )
                   })}
@@ -466,24 +503,25 @@ export default function WeeklyScheduleDrawer({
             </article>
           ))}
           {courses.some((course) => !course.found) && (
-            <p className="weekly-missing-data">לחלק מהקורסים אין עדיין נתוני שעות ב־bid-it.</p>
+            <p className="weekly-missing-data">{t('לחלק מהקורסים אין עדיין נתוני שעות ב־bid-it.', 'Some courses do not yet have meeting times in bid-it.')}</p>
           )}
           {courses.length > 0 && coursesWithAlternatives.length === 0 && (
-            <p className="weekly-picker-empty">כל הקבוצות הייחודיות מהלוח כבר מוצגות במערכת.</p>
+            <p className="weekly-picker-empty">{t('כל הקבוצות הייחודיות מהלוח כבר מוצגות במערכת.', 'All groups with a single option are already shown in the timetable.')}</p>
           )}
 
           <details className="weekly-search-details">
-            <summary>הוספת קורס נוסף לצפייה</summary>
+            <summary>{t('הוספת קורס נוסף לצפייה', 'Preview another course')}</summary>
             <div className="weekly-search-controls">
               <input
                 type="text"
-                placeholder="חיפוש קורס להוספה לצפייה"
+                placeholder={t('חיפוש קורס להוספה לצפייה', 'Search for a course to preview')}
+                aria-label={t('חיפוש קורס להוספה לצפייה', 'Search for a course to preview')}
                 value={searchText}
                 onChange={(e) => setSearchText(e.target.value)}
               />
-              <button type="button" onClick={runSearch}>חפש</button>
+              <button type="button" onClick={runSearch}>{t('חפש', 'Search')}</button>
             </div>
-            {searchError && <p role="alert" className="weekly-schedule-alert">{searchError}</p>}
+            {searchError && <p role="alert" className="weekly-schedule-alert">{t(...searchError)}</p>}
             {searchResults.map((result) => (
               <button
                 key={result.courseId}
@@ -491,7 +529,7 @@ export default function WeeklyScheduleDrawer({
                 className="weekly-search-result"
                 onClick={() => setExtraCourseIds((previous) => [...new Set([...previous, result.courseId])])}
               >
-                הוסף {result.nameHe}
+                {t(`הוסף ${result.nameHe}`, `Add ${result.nameHe}`)}
               </button>
             ))}
           </details>

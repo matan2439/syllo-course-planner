@@ -4,6 +4,9 @@ import { createPortal } from 'react-dom'
 import type { RepositoryVM } from '../../../lib/repository'
 import UnifiedPlannerWorkspace from './UnifiedPlannerWorkspace'
 
+// Persistence has its own integration suite; these tests exercise workspace/rail wiring.
+jest.mock('./StudentWorkspaceTools', () => ({ __esModule: true, default: () => null }))
+
 jest.mock('./NativePlannerJourney', () => ({
   __esModule: true,
   default: ({ programId, manualAddIntent, onManualAddCancelled, onSemestersChange, agentPortalTarget, currentDegreeYear, onCurrentDegreeYearChange }: any) => {
@@ -189,6 +192,24 @@ describe('UnifiedPlannerWorkspace', () => {
     expect(screen.getByTestId('agent-journey')).toHaveAttribute('data-manual-semesters', 'year_3_semester_a,year_4_semester_a')
   })
 
+  test('reveals the board confirmation after choosing a course from the phone sheet', () => {
+    const previousMatchMedia = window.matchMedia
+    Object.defineProperty(window, 'matchMedia', {
+      configurable: true,
+      value: jest.fn().mockReturnValue({ matches: true }),
+    })
+    try {
+      const { container } = renderWorkspace({ repo: repoWithCourse })
+      fireEvent.click(screen.getByRole('button', { name: 'קורסים', hidden: true }))
+      expect(container.querySelector('.planner-workbench')).toHaveAttribute('data-rail-open', 'true')
+      fireEvent.click(screen.getByRole('button', { name: 'בקש הוספה' }))
+      expect(container.querySelector('.planner-workbench')).toHaveAttribute('data-rail-open', 'false')
+      expect(screen.getByTestId('agent-journey')).toHaveAttribute('data-manual-course', 'C1')
+    } finally {
+      Object.defineProperty(window, 'matchMedia', { configurable: true, value: previousMatchMedia })
+    }
+  })
+
   test('clears a pending repository add intent when the student cancels it', () => {
     renderWorkspace({ repo: repoWithCourse })
 
@@ -349,7 +370,7 @@ describe('UnifiedPlannerWorkspace — first visit and phones', () => {
     expect(second.container.querySelector('.planner-workbench')).toHaveAttribute('data-rail-open', 'false')
   })
 
-  test('the phone bottom bar reaches all four working views', () => {
+  test('the phone bottom bar reaches all five working views', () => {
     const { container } = renderWorkspace()
     const bar = screen.getByRole('navigation', { name: 'ניווט תכנון' })
     const workbench = container.querySelector('.planner-workbench')!
@@ -359,6 +380,9 @@ describe('UnifiedPlannerWorkspace — first visit and phones', () => {
     expect(workbench).toHaveAttribute('data-rail-tab', 'agent')
     fireEvent.click(tab('קורסים'))
     expect(workbench).toHaveAttribute('data-rail-tab', 'courses')
+    fireEvent.click(tab('פרופיל'))
+    expect(workbench).toHaveAttribute('data-rail-tab', 'profile')
+    expect(tab('פרופיל')).toHaveAttribute('aria-current', 'page')
     fireEvent.click(tab('מערכת'))
     expect(workbench).toHaveAttribute('data-rail-open', 'false')
     expect(document.getElementById('workspace-panel-weekly')).not.toHaveAttribute('hidden')

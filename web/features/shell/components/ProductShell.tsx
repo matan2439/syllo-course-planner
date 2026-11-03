@@ -1,3 +1,5 @@
+'use client'
+
 import Link from 'next/link'
 import type { ReactNode } from 'react'
 import { getProgram, programQuery } from '../../../lib/programs'
@@ -6,6 +8,8 @@ import ShaderGradientBackground from './ShaderGradientBackground'
 import ThemeToggle from './ThemeToggle'
 import AccountButton from '../../auth/AccountButton'
 import CreditsChip from '../../billing/CreditsChip'
+import PublicSiteFooter from './PublicSiteFooter'
+import { useLocale } from '../../locale/LocaleProvider'
 
 /**
  * Shared product frame for planner-facing Next pages: gradient background,
@@ -33,6 +37,7 @@ export default function ProductShell({
   preferLightweightBackground?: boolean
   children: ReactNode
 }) {
+  const { t, dir } = useLocale()
   const query = programQuery(programId)
   const program = programId ? getProgram(programId) : null
   const programLabel = program
@@ -44,6 +49,7 @@ export default function ProductShell({
       <ShaderGradientBackground lightweight={lightweightBg} />
 
       <div
+        dir={dir}
         className={`mx-auto flex min-h-screen flex-col px-4 sm:px-6 ${
           width === 'full' ? 'max-w-[1680px]' : width === 'wide' ? 'max-w-6xl' : 'max-w-5xl'
         }`}
@@ -60,7 +66,7 @@ export default function ProductShell({
             {programId && (
               <Link
                 href={`/programs${query}`}
-                aria-label={`תוכנית: ${programLabel}. החלפת תוכנית`}
+                aria-label={t(`תוכנית: ${programLabel}. החלפת תוכנית`, `Program: ${programLabel}. Change program`)}
                 className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs font-medium text-[var(--text-muted)] transition-colors duration-150 hover:text-[var(--purple)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--purple)]"
               >
                 {programLabel} <span aria-hidden="true">▾</span>
@@ -88,6 +94,7 @@ export default function ProductShell({
           )}
           {children}
         </main>
+        <PublicSiteFooter />
       </div>
     </>
   )

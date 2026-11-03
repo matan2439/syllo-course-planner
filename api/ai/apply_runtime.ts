@@ -17,6 +17,7 @@
  */
 import { createHash } from 'crypto';
 import postgres from 'postgres';
+import { PG_OPTS } from './_quota';
 import { isolatedUrl } from '../db_env';
 import {
   InMemoryBoardRepository,
@@ -70,7 +71,7 @@ let postgresSchemaVerified = false;
 type PostgresPlannerStateFactory = (url: string) => PostgresPlannerState;
 
 const defaultPostgresStateFactory: PostgresPlannerStateFactory = (url) => {
-  const sql = postgres(url, { max: 5 }) as unknown as PlannerPostgresSql;
+  const sql = postgres(url, { ...PG_OPTS, max: 5 }) as unknown as PlannerPostgresSql;
   return createPostgresPlannerState(sql);
 };
 

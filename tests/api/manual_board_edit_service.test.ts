@@ -2,6 +2,8 @@ import {
   prepareManualCourseAdd, prepareManualCourseMove, prepareManualCourseRemove,
 } from '../../api/ai/manual_board_edit_service';
 import type { AcademicContextRecord } from '../../api/ai/academic_context_store';
+import { readFileSync } from 'node:fs';
+import { buildModel } from '../../api/ai/generate-plan';
 
 const A = 'year_3_semester_a';
 const B = 'year_3_semester_b';
@@ -43,6 +45,39 @@ const request = (course_id: string, semester_id = A) => ({
 });
 
 describe('R2 — authoritative manual add preparation', () => {
+  test.each([false, true])('real Engineering Design placement at 30 weekly hours (currently taking: %s)', taking => {
+    const boardJson = JSON.parse(readFileSync('data/boards/mechanical_engineering_2027.json', 'utf8'));
+    const initialModel = buildModel(boardJson, {}, {}, 'mechanical_engineering_2027');
+    const personalStatus = {
+      completed: [...new Set([...initialModel.profiles.values()].flatMap(p => p.prerequisites))]
+        .map(course_id => ({ course_id })),
+      currently_taking: taking ? [{ course_id: '0542-4422' }] : [],
+    };
+    const result = prepareManualCourseAdd({ boardJson, currentBoard: null,
+      context: { ...context, programId: 'mechanical_engineering_2027', personalStatus,
+        planContext: { semesters: boardJson.semesters.map((s: any) => ({ id: s.semester_id, courses: s.courses })), personal_status: personalStatus } },
+      request: { ...request('0542-4422'), program_id: 'mechanical_engineering_2027' },
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.semesters.find(s => s.semesterId === A)?.courseIds).toContain('0542-4422');
+  });
+
+  test('an unrelated existing prerequisite error does not block adding a legal course', () => {
+    const result = prepareManualCourseAdd({ boardJson: BOARD,
+      context: { ...context, planContext: { ...context.planContext as object,
+        semesters: [{ id: B, courses: [{ course_id: 'NEEDS_BASE' }] }] } },
+      currentBoard: null, request: request('ONLY_B', B) });
+    expect(result.ok).toBe(true);
+  });
+
+  test('in-progress prerequisites placed on the board must still precede dependents', () => {
+    const personalStatus = { currently_taking: [{ course_id: 'BASE' }] };
+    const ctx = { ...context, personalStatus, planContext: {
+      personal_status: personalStatus, semesters: [{ id: A, courses: [{ course_id: 'BASE' }] }],
+    } };
+    expect(prepareManualCourseAdd({ boardJson: BOARD, context: ctx, currentBoard: null, request: request('NEEDS_BASE', A) }).ok).toBe(false);
+    expect(prepareManualCourseAdd({ boardJson: BOARD, context: ctx, currentBoard: null, request: request('NEEDS_BASE', B) }).ok).toBe(true);
+  });
   test('adds a catalog course to a canonical semester without mutating inputs', () => {
     const result = prepareManualCourseAdd({ boardJson: BOARD, context, currentBoard: null, request: request('BASE') });
     expect(result).toEqual({ ok: true, semesters: [
@@ -104,6 +139,14 @@ describe('R2 — authoritative manual remove preparation', () => {
       ] });
   });
 
+  test('removal cannot strand a dependent even when another error already exists', () => {
+    const withDependent = { ...currentBoard, semesters: [
+      { semesterId: A, courseIds: ['BASE', 'ONLY_B'] },
+      { semesterId: B, courseIds: ['NEEDS_BASE'] },
+    ] };
+    expect(prepareManualCourseRemove({ boardJson: BOARD, context, currentBoard: withDependent, request: remove('BASE') }).ok).toBe(false);
+  });
+
   test('rejects a course that is absent instead of silently succeeding', () => {
     expect(prepareManualCourseRemove({ boardJson: BOARD, context, currentBoard, request: remove('ONLY_B') }))
       .toEqual(expect.objectContaining({ ok: false, code: 'COURSE_NOT_PRESENT' }));
@@ -138,6 +181,26 @@ describe('R2 — authoritative manual move preparation', () => {
       .toEqual({ ok: true, semesters: [
         { semesterId: A, courseIds: [] }, { semesterId: B, courseIds: ['BASE'] },
       ] });
+  });
+
+  test('enforces pins from the existing board', () => {
+    const ctx = { ...context, planContext: { ...context.planContext as object, pinned_course_ids: ['BASE'] } };
+    expect(prepareManualCourseMove({ boardJson: BOARD, context: ctx, currentBoard, request: move('BASE') }).ok).toBe(false);
+  });
+
+  test('rechecks a moved course even if its invalid prerequisite order already existed', () => {
+    const ctx = { ...context, planContext: { ...context.planContext as object, semesters: [
+      { id: A, courses: [{ course_id: 'NEEDS_BASE' }] }, { id: B, courses: [] },
+    ] } };
+    expect(prepareManualCourseMove({ boardJson: BOARD, context: ctx, currentBoard: null,
+      request: { ...move('NEEDS_BASE'), expected_board_version: null } }).ok).toBe(false);
+  });
+
+  test('moving a prerequisite into its dependent semester remains blocked', () => {
+    const withDependent = { ...currentBoard, semesters: [
+      { semesterId: A, courseIds: ['BASE'] }, { semesterId: B, courseIds: ['NEEDS_BASE'] },
+    ] };
+    expect(prepareManualCourseMove({ boardJson: BOARD, context, currentBoard: withDependent, request: move('BASE') }).ok).toBe(false);
   });
 
   test('moves a course from the authoritative planning context before a committed board exists', () => {

@@ -8,6 +8,7 @@
  */
 import { useMemo, useState } from 'react'
 import { rankCourseMatches } from '../../../../shared/search/course-name-match'
+import { useLocale } from '../../locale/LocaleProvider'
 
 export interface PickerCourse {
   id: string
@@ -29,6 +30,7 @@ export default function CourseNamePicker({
   selectedIds: string[]
   onChange: (ids: string[]) => void
 }) {
+  const { t, dir } = useLocale()
   const [q, setQ] = useState('')
 
   const matches = useMemo(() => {
@@ -42,7 +44,7 @@ export default function CourseNamePicker({
   const remove = (id: string) => onChange(selectedIds.filter((x) => x !== id))
 
   return (
-    <div className="flex flex-col gap-1 text-xs text-[var(--text-muted)]">
+    <div className="flex flex-col gap-1 text-xs text-[var(--text-muted)]" dir={dir}>
       {label}
       <div className="relative">
         <input
@@ -50,13 +52,13 @@ export default function CourseNamePicker({
           aria-label={label}
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder={placeholder ?? 'הקלידו שם קורס…'}
+          placeholder={placeholder ?? t('הקלידו שם קורס…', 'Type a course name…')}
           className="w-full rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--text)]"
         />
         {matches.length > 0 && (
           <ul
             role="listbox"
-            aria-label={`${label} — הצעות`}
+            aria-label={t(`${label} — הצעות`, `${label} — suggestions`)}
             className="absolute z-10 mt-1 max-h-56 w-full overflow-y-auto rounded-lg border border-[var(--border)] bg-[var(--bg)] shadow-lg"
           >
             {matches.map((m) => (
@@ -64,7 +66,7 @@ export default function CourseNamePicker({
                 <button
                   type="button"
                   onClick={() => add(m.item.id)}
-                  className="flex w-full items-center justify-between gap-2 px-3 py-2 text-right text-sm hover:bg-[var(--surface-hover,rgba(0,0,0,0.05))]"
+                  className="flex w-full items-center justify-between gap-2 px-3 py-2 text-start text-sm hover:bg-[var(--surface-hover,rgba(0,0,0,0.05))]"
                 >
                   <span className="truncate text-[var(--text)]">{m.item.nameHe ?? m.item.id}</span>
                   <span dir="ltr" className="shrink-0 font-mono text-[11px] text-[var(--text-muted)]">{m.item.id}</span>
@@ -79,7 +81,7 @@ export default function CourseNamePicker({
           {selectedIds.map((id) => (
             <span key={id} className="inline-flex items-center gap-1 rounded-full border border-[var(--border)] px-2 py-0.5 text-xs text-[var(--text)]">
               {nameOf(id)}
-              <button type="button" aria-label={`הסר ${nameOf(id)}`} onClick={() => remove(id)} className="text-[var(--text-muted)] hover:text-[var(--text)]">×</button>
+              <button type="button" aria-label={t(`הסר ${nameOf(id)}`, `Remove ${nameOf(id)}`)} onClick={() => remove(id)} className="text-[var(--text-muted)] hover:text-[var(--text)]">×</button>
             </span>
           ))}
         </div>

@@ -17,9 +17,9 @@ const nextConfig: NextConfig = {
   // runtime, because the paths are computed and the tracer cannot see them).
   outputFileTracingRoot: path.join(process.cwd(), '..'),
   outputFileTracingIncludes: Object.fromEntries(
-    ['/planner', '/board', '/repository', '/programs'].map((route) => [
+    ['/planner', '/planner/native/agent-preview', '/board', '/repository', '/programs'].map((route) => [
       route,
-      ['../data/boards/**', '../data/parsed_json/**'],
+      ['../data/boards/**', '../data/parsed_json/**', '../data/config/course_insight_sources.json', '../data/grades/snapshots/**'],
     ]),
   ),
   experimental: {

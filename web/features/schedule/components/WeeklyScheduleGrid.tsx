@@ -2,6 +2,8 @@
 
 import type { CSSProperties } from 'react'
 import type { TimeSlot } from '../../../../shared/planner/schedule'
+import { useLocale } from '../../locale/LocaleProvider'
+import { weekDayLabel, teachingLabel } from '../../locale/schedule-labels'
 
 const DAYS = ['א', 'ב', 'ג', 'ד', 'ה', 'ו'] as const
 const HOURS = Array.from({ length: 14 }, (_, i) => 8 + i) // 08:00..21:00
@@ -31,11 +33,12 @@ function courseAccents(blocks: readonly GridBlock[]): Map<string, string> {
 }
 
 export default function WeeklyScheduleGrid({ blocks }: { blocks: GridBlock[] }) {
+  const { locale, dir, t } = useLocale()
   const gridStartMinutes = HOURS[0] * 60
   const accents = courseAccents(blocks)
 
   return (
-    <div className="weekly-grid-wrapper overflow-x-auto">
+    <div className="weekly-grid-wrapper overflow-x-auto" dir={dir}>
       <div
         className="weekly-grid-layout"
         style={{ minWidth: `calc(${GUTTER_WIDTH} + 6 * 6rem)`, border: CELL_BORDER, borderRadius: '0.5rem', overflow: 'hidden' }}
@@ -53,7 +56,7 @@ export default function WeeklyScheduleGrid({ blocks }: { blocks: GridBlock[] }) 
                 background: 'var(--surface)',
               }}
             >
-              {day}
+              {weekDayLabel(day, locale)}
             </div>
           ))}
         </div>
@@ -61,7 +64,7 @@ export default function WeeklyScheduleGrid({ blocks }: { blocks: GridBlock[] }) 
         {/* Hour × day body: an hour-label gutter plus a fully bordered 6x14 cell grid, with blocks overlaid absolutely on top. */}
         <div
           role="grid"
-          aria-label="מערכת שעות שבועית"
+          aria-label={t('מערכת שעות שבועית', 'Weekly timetable')}
           className="weekly-grid-hours relative grid"
           style={{
             gridTemplateColumns: GRID_TEMPLATE_COLUMNS,
@@ -111,18 +114,18 @@ export default function WeeklyScheduleGrid({ blocks }: { blocks: GridBlock[] }) 
               <div
                 key={block.key}
                 role="gridcell"
-                aria-label={`${block.courseName}, ${block.kind}, יום ${block.slot.day}, ${block.slot.start}-${block.slot.end}`}
+                aria-label={t(`${block.courseName}, ${block.kind}, יום ${block.slot.day}, ${block.slot.start}-${block.slot.end}`, `${block.courseName}, ${teachingLabel(block.kind, 'en')}, ${weekDayLabel(block.slot.day, 'en')}, ${block.slot.start}-${block.slot.end}`)}
                 className="weekly-grid-block absolute rounded px-1 text-xs overflow-hidden"
                 style={{
                   '--block-accent': accents.get(block.courseId),
                   top: `${top}px`,
                   height: `${height}px`,
-                  right: `calc(${GUTTER_WIDTH} + ${dayIndex} * (100% - ${GUTTER_WIDTH}) / 6)`,
+                  insetInlineStart: `calc(${GUTTER_WIDTH} + ${dayIndex} * (100% - ${GUTTER_WIDTH}) / 6)`,
                   width: `calc((100% - ${GUTTER_WIDTH}) / 6)`,
                 } as CSSProperties}
               >
                 <div className="font-semibold truncate">{block.courseName}</div>
-                <div className="truncate">{block.kind} · {block.slot.start}–{block.slot.end}</div>
+                <div className="truncate">{teachingLabel(block.kind, locale)} · <bdi dir="ltr">{block.slot.start}–{block.slot.end}</bdi></div>
               </div>
             )
           })}

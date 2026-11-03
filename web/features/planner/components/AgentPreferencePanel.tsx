@@ -6,13 +6,14 @@ import CompletedCoursesPanel, { type AcademicStatusDraft } from '../../courses/c
 import CourseNamePicker, { type PickerCourse } from '../../courses/components/CourseNamePicker'
 import type { RequirementCategoryVM } from '../../../lib/requirements'
 import { DEGREE_YEAR_LABELS, DEGREE_YEARS, type DegreeYear } from '../../../lib/planner/semester-window'
+import { useLocale } from '../../locale/LocaleProvider'
 
 
 /** Values match api/ai/gateway_assessment.ts GATEWAY_ASSESSMENT_TYPES. */
 const GATEWAY_ASSESSMENT_OPTIONS = [
-  { value: 'final_exam', label: 'בחינה סופית' },
-  { value: 'home_exam', label: 'בחינת בית' },
-  { value: 'paper', label: 'עבודה או פרויקט' },
+  { value: 'final_exam', label: 'בחינה סופית', en: 'Final exam' },
+  { value: 'home_exam', label: 'בחינת בית', en: 'Take-home exam' },
+  { value: 'paper', label: 'עבודה או פרויקט', en: 'Paper or project' },
 ]
 
 /**
@@ -58,6 +59,7 @@ export default function AgentPreferencePanel({
   currentDegreeYear?: DegreeYear | null
   onCurrentDegreeYearChange?: (year: DegreeYear) => void
 }) {
+  const { t, dir } = useLocale()
   const input = 'w-24 rounded-lg border border-[var(--border)] bg-transparent px-2.5 py-1.5 text-sm text-[var(--text)]'
   const row = 'flex items-center justify-between gap-3 text-xs'
   const checkbox = 'size-4 shrink-0 accent-[var(--purple-strong)]'
@@ -69,12 +71,12 @@ export default function AgentPreferencePanel({
   const hasGateway = Boolean(gatewayCategory && gatewayCategory.minCourses > 0)
 
   const body = (
-        <div className="mt-3 flex flex-col gap-5">
-          <section aria-label="הלימודים שלי" className="flex flex-col gap-2.5">
-            <h3 className={heading}>הלימודים שלי</h3>
+        <div className="mt-3 flex flex-col gap-5" dir={dir}>
+          <section aria-label={t('הלימודים שלי', 'My studies')} className="flex flex-col gap-2.5">
+            <h3 className={heading}>{t('הלימודים שלי', 'My studies')}</h3>
             {onCurrentDegreeYearChange && (
               <div className="flex flex-col gap-1.5 text-xs">
-                <span id="current-degree-year-label">השנה שלי בתואר</span>
+                <span id="current-degree-year-label">{t('השנה שלי בתואר', 'My degree year')}</span>
                 <div role="radiogroup" aria-labelledby="current-degree-year-label"
                   className="grid grid-cols-4 gap-1 rounded-xl border border-[var(--border)] p-1">
                   {DEGREE_YEARS.map((year) => {
@@ -87,7 +89,7 @@ export default function AgentPreferencePanel({
                             ? 'bg-[var(--purple)]/20 text-[var(--purple-strong)]'
                             : 'text-[var(--text-muted)] hover:bg-[var(--purple)]/10 hover:text-[var(--text)]'
                         }`}>
-                        {DEGREE_YEAR_LABELS[year]}
+                        {t(DEGREE_YEAR_LABELS[year], `Year ${year}`)}
                       </button>
                     )
                   })}
@@ -102,15 +104,15 @@ export default function AgentPreferencePanel({
               onChange={updateAcademicStatus}
             />
             <label className={row}>
-              ש״ש שהושלמו מחוץ לרשימה
-              <input name="known-completed-hours" aria-label="שעות שהושלמו" inputMode="numeric" value={priorHours} placeholder="0"
+              {t('ש״ש שהושלמו מחוץ לרשימה', 'Weekly hours completed outside this list')}
+              <input name="known-completed-hours" aria-label={t('שעות שהושלמו', 'Completed hours')} inputMode="numeric" value={priorHours} placeholder="0"
                 onChange={(e) => { setPriorHours(e.target.value); updatePreferenceVersion() }}
                 className={input} />
             </label>
             {hasGateway && gatewayCategory && (
               <label className={row}>
-                {`${gatewayCategory.title} שהשלמתי (מתוך ${gatewayCategory.minCourses})`}
-                <input name="completed-gateway-courses" aria-label={`${gatewayCategory.title} שהשלמתי`}
+                {t(`${gatewayCategory.title} שהשלמתי (מתוך ${gatewayCategory.minCourses})`, `${gatewayCategory.title} completed (of ${gatewayCategory.minCourses})`)}
+                <input name="completed-gateway-courses" aria-label={t(`${gatewayCategory.title} שהשלמתי`, `${gatewayCategory.title} completed`)}
                   type="number" inputMode="numeric" min={0} max={gatewayCategory.minCourses} step={1} placeholder="0"
                   value={completedCategoryCounts[gatewayCategory.id] ?? ''}
                   onChange={(e) => {
@@ -124,38 +126,38 @@ export default function AgentPreferencePanel({
             )}
           </section>
 
-          <section aria-label="העדפות לתכנון" className="flex flex-col gap-3 border-t border-[var(--border)] pt-4">
-            <h3 className={heading}>העדפות לתכנון</h3>
+          <section aria-label={t('העדפות לתכנון', 'Planning preferences')} className="flex flex-col gap-3 border-t border-[var(--border)] pt-4">
+            <h3 className={heading}>{t('העדפות לתכנון', 'Planning preferences')}</h3>
             <label className={row}>
-              מקסימום ש״ש בסמסטר
-              <input id="max-weekly-hours-control" name="max-weekly-hours" aria-label="מגבלת שעות שבועיות" inputMode="numeric" value={maxHours} placeholder="—"
+              {t('מקסימום ש״ש בסמסטר', 'Maximum weekly hours per semester')}
+              <input id="max-weekly-hours-control" name="max-weekly-hours" aria-label={t('מגבלת שעות שבועיות', 'Weekly hours limit')} inputMode="numeric" value={maxHours} placeholder="—"
                 onChange={(e) => { setMaxHours(e.target.value); updatePreferenceVersion() }}
                 className={input} />
             </label>
-            <CourseNamePicker inputName="wanted-course-search" label="קורסים שחשוב לי לשלב" placeholder="חיפוש לפי שם…"
+            <CourseNamePicker inputName="wanted-course-search" label={t('קורסים שחשוב לי לשלב', 'Courses I want to include')} placeholder={t('חיפוש לפי שם…', 'Search by course name…')}
               courses={pickerCourses} selectedIds={wantIds}
               onChange={(ids) => { setWantIds(ids); updatePreferenceVersion() }} />
             <div id="excluded-courses-control" className="flex flex-col gap-1.5">
-              <CourseNamePicker inputName="excluded-course-search" label="קורסים להימנע מהם" placeholder="חיפוש לפי שם…"
+              <CourseNamePicker inputName="excluded-course-search" label={t('קורסים להימנע מהם', 'Courses to avoid')} placeholder={t('חיפוש לפי שם…', 'Search by course name…')}
                 courses={pickerCourses} selectedIds={excludeIds}
                 onChange={(ids) => { setExcludeIds(ids); updatePreferenceVersion() }} />
               {excludeIds.length === 0 && (
                 <label className="flex items-center gap-2 text-xs text-[var(--text-muted)]">
                   <input type="checkbox" className={checkbox} checked={exclusionsNoneConfirmed}
                     onChange={() => { setExclusionsNoneConfirmed((v) => !v); updatePreferenceVersion() }} />
-                  אין כאלה
+                  {t('אין כאלה', 'None to avoid')}
                 </label>
               )}
             </div>
             {hasGateway && (
               <fieldset className="flex flex-col gap-1.5 text-xs">
-                <legend className="mb-1 text-[var(--text-muted)]">סוג מטלת סיום בשער רוח (בלי סימון — כל הסוגים)</legend>
+                <legend className="mb-1 text-[var(--text-muted)]">{t('סוג מטלת סיום בשער רוח (בלי סימון — כל הסוגים)', 'Shaar Ruach assessment type (leave unchecked for all types)')}</legend>
                 <div className="flex flex-wrap gap-x-4 gap-y-1.5">
                   {GATEWAY_ASSESSMENT_OPTIONS.map((o) => (
                     <label key={o.value} className="flex items-center gap-1.5">
                       <input type="checkbox" className={checkbox} checked={gatewayAssessments.includes(o.value)}
                         onChange={(e) => toggleAssessment(o.value, e.target.checked)} />
-                      {o.label}
+                      {t(o.label, o.en)}
                     </label>
                   ))}
                 </div>
@@ -185,16 +187,16 @@ export default function AgentPreferencePanel({
   )
   if (alwaysOpen) {
     return (
-      <section aria-label="הפרופיל שלי" className="flex flex-col gap-3">
-        <h2 className="text-base font-bold">הפרופיל שלי</h2>
+      <section aria-label={t('הפרופיל שלי', 'My profile')} className="flex flex-col gap-3" dir={dir}>
+        <h2 className="text-base font-bold">{t('הפרופיל שלי', 'My profile')}</h2>
         {body}
       </section>
     )
   }
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-3" dir={dir}>
       <details>
-        <summary className="cursor-pointer text-sm font-semibold">מה חשוב לעוזר לדעת? (אופציונלי)</summary>
+        <summary className="cursor-pointer text-sm font-semibold">{t('מה חשוב לעוזר לדעת? (אופציונלי)', 'What should the assistant know? (optional)')}</summary>
         {body}
       </details>
     </div>

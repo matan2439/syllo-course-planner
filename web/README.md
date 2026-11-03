@@ -8,10 +8,15 @@ light/dark via `prefers-color-scheme`.
 | Route | What it is |
 |---|---|
 | `/` | Landing page. Primary CTA opens `/planner` |
+| `/product` | Public Hebrew/English digital-software overview, actual app entry, deliverables, and proposed package explanation |
 | `/planner` | The full planner: one React workspace (`UnifiedPlannerWorkspace`) with board, course repository and the Academic Decision Agent. Manual add/move/remove goes through `/api/ai/edit-board`; generate/apply through `/api/ai/*` |
 | `/planner/native/agent-preview` | Full agent, gated on `ENABLE_ACADEMIC_AGENT_PREVIEW=1` |
 | `/programs` | Program picker; each card opens `/planner?program=...` |
 | `/board`, `/repository`, `/plan` | Read-only board, course repository and requirements views |
+| `/pricing` | Draft 10/15/20 AI-use offers; estimates only, no purchase action |
+| `/terms` | Supplier terms draft requiring legal review before launch |
+| `/contact` | Public support and privacy contact |
+| `/privacy`, `/refund-policy` | Existing privacy and refund disclosures |
 
 The single-file HTML planner that used to live at `app/web/` has been removed.
 Planner rules (legality, scoring, repair) live server-side in `api/ai/*`.

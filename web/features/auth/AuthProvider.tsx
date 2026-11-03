@@ -65,13 +65,21 @@ function hebrewAuthError(error: { message?: string; code?: string } | null | und
   return 'הפעולה נכשלה. נסו שוב.'
 }
 
-export function AuthProvider({ children, client = getBrowserSupabase() }: {
+export function AuthProvider({ children, client: injectedClient }: {
   children: ReactNode
   /** Injected in tests; defaults to the configured browser client (or null → auth off). */
   client?: SupabaseClient | null
 }) {
+  // SSR and the first browser render share the same pending state. Resolving a
+  // browser-only client during render made loading=false on the server and
+  // loading=true during hydration, changing consumers' rendered structure.
+  const [defaultClient, setDefaultClient] = useState<SupabaseClient | null | undefined>(undefined)
+  const client = injectedClient === undefined ? defaultClient : injectedClient
+  useEffect(() => {
+    if (injectedClient === undefined) setDefaultClient(getBrowserSupabase())
+  }, [injectedClient])
   const [user, setUser] = useState<AuthUser | null>(null)
-  const [loading, setLoading] = useState(client != null)
+  const [loading, setLoading] = useState(true)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [creditBalance, setCreditBalance] = useState<number | null>(null)
   const [hasPurchased, setHasPurchased] = useState<boolean | null>(null)
@@ -129,6 +137,7 @@ export function AuthProvider({ children, client = getBrowserSupabase() }: {
   }, [client, userId])
 
   const value = useMemo<AuthState>(() => {
+    if (client === undefined) return { ...signedOut, loading: true }
     if (!client) return signedOut
     return {
       enabled: true, loading, user, profile, creditBalance, hasPurchased, refreshCreditBalance, updateProfile,

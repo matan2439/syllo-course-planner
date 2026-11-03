@@ -8,6 +8,9 @@ import CourseAiChat, { type StudentContext } from './CourseAiChat'
 import CourseGradesSection from './CourseGradesSection'
 import { useCourseInsights, type CourseInsightsFetch } from '../hooks/use-course-insights'
 import { CLOSE_PANELS_EVENT } from '../../billing/ai_access'
+import { semesterTitleHe } from '../../../lib/planner/board-vm'
+import RepositoryCourseEvidence from './RepositoryCourseEvidence'
+import { useLocale } from '../../locale/LocaleProvider'
 
 const SEMESTER_LABELS: Record<string, string> = {
   A: 'סמ׳ א׳',
@@ -40,6 +43,7 @@ export default function CourseDetailsPanel({
   /** Test seam for the insights request. */
   insightsFetch?: CourseInsightsFetch
 }) {
+  const { t } = useLocale()
   const closeRef = useRef<HTMLButtonElement>(null)
   const insights = useCourseInsights(course?.id ?? null, programId, insightsFetch)
 
@@ -129,7 +133,7 @@ export default function CourseDetailsPanel({
               )}
               {course.offered.map((s) => (
                 <Badge key={s} variant="purple">
-                  {SEMESTER_LABELS[s] ?? s}
+                  {SEMESTER_LABELS[s] ?? semesterTitleHe(s)}
                 </Badge>
               ))}
             </div>
@@ -162,6 +166,10 @@ export default function CourseDetailsPanel({
               </div>
             )}
           </Field>
+
+          {(course.assessment || course.gradeSummary !== undefined) && <Field label={t('נתונים ששימשו לסינון במאגר', 'Evidence used by repository filters')}>
+            <RepositoryCourseEvidence course={course} detailed />
+          </Field>}
 
           {programId && <CourseGradesSection key={`grades-${course.id}`} insights={insights} />}
 

@@ -84,11 +84,12 @@ function choicesOf(course: ScheduleCourse): Slot[] | null {
   return slots.length ? slots : null
 }
 
-function slotsFor(courses: readonly ScheduleCourse[], avoidDays: ReadonlySet<string>, locked: LockedChoices = {}): Slot[] {
+function slotsFor(courses: readonly ScheduleCourse[], avoidDays: ReadonlySet<string>, locked: LockedChoices = {}, busyTimes: readonly TimeSlot[] = []): Slot[] {
   const out: Slot[] = []
   for (const course of courses) {
     for (const slot of choicesOf(course) ?? []) {
-      const allowed = slot.options.filter((group) => !group.slots.some((meeting) => avoidDays.has(meeting.day)))
+      const allowed = slot.options.filter((group) => !group.slots.some((meeting) =>
+        avoidDays.has(meeting.day) || busyTimes.some((busy) => hasOverlap(meeting, busy))))
       const lockedId = locked[lockKey(slot.courseId, { kind: slot.kind, teachingMode: slot.mode })]
       const pinned = allowed.filter((group) => group.groupId === lockedId)
       out.push({ ...slot, options: pinned.length ? pinned : allowed })
@@ -159,11 +160,12 @@ export function checkTimetable(
   courses: readonly ScheduleCourse[],
   avoidDays: readonly string[] = [],
   locked: LockedChoices = {},
+  busyTimes: readonly TimeSlot[] = [],
 ): TimetableResult {
   const usable = courses.filter((course) => course.found && choicesOf(course) !== null)
   const unknownCourseIds = courses.filter((course) => !usable.includes(course)).map((course) => course.courseId)
   const avoid = new Set(avoidDays)
-  const slots = slotsFor(usable, avoid, locked)
+  const slots = slotsFor(usable, avoid, locked, busyTimes)
   const solution = solve(slots)
   const base = { unknownCourseIds, conflictingCoursePairs: [] as Array<[string, string]>, coursesBlockingFreeDays: [] as string[] }
 

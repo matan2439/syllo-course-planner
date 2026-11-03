@@ -111,3 +111,26 @@ test('missing repository metadata yields an empty view model', () => {
   expect(repo.categories).toEqual([]);
   expect(repo.totalCourses).toBe(0);
 });
+
+test('normalizes official assessment text and board grade evidence without inventing missing numbers', () => {
+  const repo = adaptRepository({ semesters: [], metadata: { program_repository_courses: [
+    { ...rawBoard.metadata.program_repository_courses[0], assessment_text_raw: 'בחינה סופית ייתכנו מטלות נוספות',
+      grade_signal: { average_grade: 81.5, num_students_total: 120, years_available: [2023, 2024], source_name: 'Arazim', source_url: 'https://example.test/grades' } },
+    { ...rawBoard.metadata.program_repository_courses[1], syllabus_assessment_he: 'עבודת בית ייתכנו מטלות נוספות',
+      grade_signal: { average_grade: null, num_students_total: 0 } },
+  ] } })
+  expect(repo.categories[0].courses[0]).toMatchObject({
+    assessment: { kind: 'exam', text: 'בחינה סופית ייתכנו מטלות נוספות' },
+    gradeSummary: { mean: 81.5, students: 120, terms: null, years: [2023, 2024], sources: [{ label: 'Arazim', url: 'https://example.test/grades' }] },
+  })
+  expect(repo.categories[1].courses[0]).toMatchObject({ assessment: { kind: 'assignment' }, gradeSummary: null })
+})
+
+test('explicit no-exam assessment does not get classified as an exam', () => {
+  const repo = adaptRepository({ semesters: [], metadata: { program_repository_courses: [
+    { ...rawBoard.metadata.program_repository_courses[0], assessment_text_raw: 'ללא בחינה, פרויקט מסכם' },
+    { ...rawBoard.metadata.program_repository_courses[1], assessment_text_raw: null },
+  ] } })
+  expect(repo.categories[0].courses[0]).toMatchObject({ assessment: { kind: 'project' } })
+  expect(repo.categories[1].courses[0]).toMatchObject({ assessment: { kind: 'unknown' } })
+})

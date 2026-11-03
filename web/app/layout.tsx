@@ -2,10 +2,11 @@ import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import ThemeAwareFavicon from '../features/shell/components/ThemeAwareFavicon'
 import { AuthProvider } from '../features/auth/AuthProvider'
+import { LocaleProvider } from '../features/locale/LocaleProvider'
 
 export const metadata: Metadata = {
   title: 'Syllo — תכנון לימודים, אוניברסיטת תל אביב',
-  description: 'תכנון מערכת לימודים חכם עם עוזר AI — אוניברסיטת תל אביב',
+  description: 'Syllo is browser-based academic planning software: organize courses, check degree requirements, and explore study plans with an AI assistant. תוכנה דיגיטלית לתכנון לימודים.',
 }
 
 export const viewport: Viewport = {
@@ -37,10 +38,11 @@ export default function RootLayout({
               "try{var t=localStorage.getItem('tau_theme');if(t==='dark'||t==='light')document.documentElement.dataset.theme=t;var d=document.documentElement.dataset.theme==='dark'||(!document.documentElement.dataset.theme&&window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches);var i=document.getElementById('syllo-favicon');if(i)i.href=d?'/brand/syllo-mark-dark.png':'/brand/syllo-mark-light.png'}catch(e){}",
           }}
         />
+        <script dangerouslySetInnerHTML={{ __html: "try{var l=localStorage.getItem('tau_locale');if(l==='he'||l==='en'){document.documentElement.lang=l;document.documentElement.dir=l==='he'?'rtl':'ltr'}}catch(e){}" }} />
       </head>
       <body className="min-h-screen antialiased">
         <ThemeAwareFavicon />
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider><LocaleProvider>{children}</LocaleProvider></AuthProvider>
       </body>
     </html>
   )

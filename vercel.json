@@ -30,6 +30,11 @@
       "use": "@vercel/node"
     },
     {
+      "src": "api/ai/student-workspace.ts",
+      "use": "@vercel/node",
+      "config": { "includeFiles": ["data/boards/**"] }
+    },
+    {
       "src": "api/ai/conversation.ts",
       "use": "@vercel/node",
       "config": {
@@ -92,6 +97,10 @@
     {
       "source": "/api/ai/planning-context",
       "destination": "/api/ai/planning-context.ts"
+    },
+    {
+      "source": "/api/ai/student-workspace",
+      "destination": "/api/ai/student-workspace.ts"
     },
     {
       "source": "/api/ai/conversation",

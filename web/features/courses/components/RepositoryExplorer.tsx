@@ -6,27 +6,8 @@ import { buildCourseDetails, type CourseDetailsVM } from '../../../lib/course-de
 import CourseDetailsPanel from './CourseDetailsPanel'
 import RepositoryCourseCard from './RepositoryCourseCard'
 import { EmptyState } from '../../../components/ui'
-import { rankCourseMatches, scoreCourseMatch } from '../../../../shared/search/course-name-match'
-
-export function filterRepository(repo: RepositoryVM, rawQuery: string): RepoCategoryVM[] {
-  const query = rawQuery.trim()
-  if (!query) return repo.categories
-  return repo.categories
-    .map((category) => {
-      const titleHit = scoreCourseMatch(query, category.title) > 0
-      const ranked = rankCourseMatches(
-        query,
-        category.courses,
-        (course) => course.name,
-        (course) => course.id,
-      )
-      return {
-        ...category,
-        courses: titleHit ? category.courses : ranked.map((match) => match.item),
-      }
-    })
-    .filter((category) => category.courses.length > 0)
-}
+import { filterRepository } from '../../../lib/repository-filters'
+export { filterRepository } from '../../../lib/repository-filters'
 
 export function repositoryStatus(
   repo: RepositoryVM,

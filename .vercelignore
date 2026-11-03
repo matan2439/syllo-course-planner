@@ -2,6 +2,14 @@
 .env
 .env.local
 .env.production
+.env*
+**/.env*
+
+# Private local workspace data and review evidence are not deployment inputs.
+.git/
+.claude/
+.runtime/
+docs/
 
 # Session runtime state (transient lock files race the upload walk)
 .remember
@@ -9,3 +17,8 @@
 .agents/
 .codex/
 .playwright-mcp/
+tmp/
+output/
+web/.tmp/
+web/.jest-*/
+.jest-*/

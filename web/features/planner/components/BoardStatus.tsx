@@ -1,11 +1,14 @@
+import { useLocale } from '../../locale/LocaleProvider'
+
 /** Placeholder and failure states shown in place of the board while it loads or fails to load. */
 export function BoardLoading() {
+  const { t } = useLocale()
   return (
-    <section aria-label="התוכנית הנוכחית" className="planner-board-region flex flex-col gap-4">
+    <section aria-label={t('התוכנית הנוכחית', 'Current plan')} className="planner-board-region flex flex-col gap-4">
       <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
-        <h2 className="text-sm font-bold tracking-tight">לוח הסמסטרים</h2>
+        <h2 className="text-sm font-bold tracking-tight">{t('לוח הסמסטרים', 'Semester board')}</h2>
         <p role="status" aria-live="polite" className="mt-2 text-sm text-[var(--text-muted)]">
-          טוען את התוכנית הנוכחית…
+          {t('טוען את התוכנית הנוכחית…', 'Loading your current plan…')}
         </p>
         <div aria-hidden="true" className="mt-4 grid min-h-40 grid-flow-col auto-cols-[minmax(12rem,1fr)] gap-px overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--border)]">
           {[
@@ -26,12 +29,13 @@ export function BoardLoading() {
 }
 
 export function BoardError() {
+  const { t } = useLocale()
   return (
-    <section aria-label="התוכנית הנוכחית" className="planner-board-region flex flex-col gap-4">
+    <section aria-label={t('התוכנית הנוכחית', 'Current plan')} className="planner-board-region flex flex-col gap-4">
       <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
-        <h2 className="text-sm font-bold tracking-tight">לוח הסמסטרים</h2>
+        <h2 className="text-sm font-bold tracking-tight">{t('לוח הסמסטרים', 'Semester board')}</h2>
         <p role="alert" className="mt-2 rounded-lg border border-red-500/40 px-4 py-3 text-sm text-red-700 dark:text-red-300">
-          טעינת התוכנית הנוכחית נכשלה. נא לרענן או לנסות שוב מאוחר יותר.
+          {t('טעינת התוכנית הנוכחית נכשלה. נא לרענן או לנסות שוב מאוחר יותר.', 'Could not load your current plan. Refresh or try again later.')}
         </p>
       </div>
     </section>

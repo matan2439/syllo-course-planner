@@ -58,6 +58,8 @@ import type { ManualAddIntent } from '../types'
 import type { PlannerDragPayload } from '../../../lib/planner/drag-payload'
 import type { DegreeYear } from '../../../lib/planner/semester-window'
 import { getAiSessionToken } from '../../../lib/ai-session-token'
+import type { BoardSnapshot } from '../lib/saved-plans'
+import { useLocale } from '../../locale/LocaleProvider'
 
 export type { ManualAddIntent } from '../types'
 
@@ -86,6 +88,8 @@ export default function NativePlannerJourney({
   activeDrag,
   onDragStateChange,
   onAcademicContextMissing,
+  onBoardSnapshot,
+  onPrepareRestore,
 }: {
   programId: string
   getBoardFn?: (programId: string) => Promise<BoardModel>
@@ -118,11 +122,23 @@ export default function NativePlannerJourney({
   onDragStateChange?: (drag: PlannerDragPayload | null) => void
   /** The server has no academic context for the current owner: the parent re-reads everything. */
   onAcademicContextMissing?: () => void
+  onBoardSnapshot?: (snapshot: BoardSnapshot) => void
+  onPrepareRestore?: (prepare: (() => Promise<void>) | null) => void
 }) {
+  const { t } = useLocale()
   // ── the board ─────────────────────────────────────────────────────────────
   const { boardPhase, current, setCurrent, boardVersion, setBoardVersion, resyncCommittedBoard } = useCommittedBoard({
     programId, getBoardFn, committedBoardFn, onCommittedCourseIdsChange, onSemestersChange,
   })
+  useEffect(() => {
+    if (!current) return
+    onBoardSnapshot?.({
+      version: boardVersion, catalogVersion: current.catalogRevision,
+      semesters: current.semesters.map((s) => ({ semesterId: s.semesterId, courseIds: s.courses.map((c) => c.courseId) })),
+      courseNames: Object.fromEntries(Object.entries(current.courseCatalog).map(([id, c]) => [id, c.nameHe ?? id])),
+      courseHours: Object.fromEntries(Object.entries(current.courseCatalog).filter(([, c]) => c.halfHours != null).map(([id, c]) => [id, Number(c.halfHours) / 2])),
+    })
+  }, [current, boardVersion, onBoardSnapshot])
   const { rejectedDrop, justPlaced, showRejectedDrop, showJustPlaced } = useDropHighlights()
   // Read-only details panel (with the per-course AI chat) for a course already on the board.
   const [selectedBoardCourse, setSelectedBoardCourse] = useState<CourseDetailsVM | null>(null)
@@ -200,6 +216,19 @@ export default function NativePlannerJourney({
   [maxHours, priorHours, wantIds, excludeIds, gatewayAssessments, programId, academicStatus, catalogHoursById,
     applyAcademicStatus, exclusionsNoneConfirmed, completedCategoryCounts])
 
+  useEffect(() => {
+    if (!current) return
+    onPrepareRestore?.(async () => {
+      const request = buildRequest(current, convProfileRef.current ?? undefined)
+      await establishPlanningContextFn({
+        program_id: programId,
+        plan_context: request.plan_context as Parameters<typeof establishPlanningContextFn>[0]['plan_context'],
+        preferences: request.preferences as Parameters<typeof establishPlanningContextFn>[0]['preferences'],
+      })
+    })
+    return () => onPrepareRestore?.(null)
+  }, [buildRequest, current, establishPlanningContextFn, onPrepareRestore, programId, convProfileRef])
+
   // The course panel's co-pilot sees the same student context the planning co-pilot does.
   const courseChatContext = useCallback(() => {
     if (!current) return undefined
@@ -227,6 +256,7 @@ export default function NativePlannerJourney({
   } = useManualBoardEdits({
     programId, current, setCurrent, boardVersion, setBoardVersion, manualAddIntent,
     loadedAcademicContext, proposal, buildRequest, convProfileRef, establishPlanningContextFn, editBoardFn,
+    contextVersion: `${statusVersion}:${preferenceVersion}`, contextReady: academicContextPhase !== 'loading',
     showRejectedDrop, showJustPlaced, setMessages, onCommittedCourseIdsChange, onManualAddSettled,
     onEditCommitted: () => setManualRevision((value) => value + 1),
   })
@@ -257,10 +287,9 @@ export default function NativePlannerJourney({
 
   const removed = effectiveProposal ? removedCourseIds(current, effectiveProposal) : []
   const draft = effectiveProposal ? buildDraftVM(effectiveProposal, current) : null
-  // The proposal is previewed on the board itself (read-only, changed cards marked) while it is still
-  // valid to apply. A stale or blocked proposal leaves the committed board editable and untouched.
-  // A selected alternative stays previewed (that is how the switcher shows it), even when stale.
-  const previewBoard = selectedAlternative
+  // A manual edit always targets the committed board. Reveal that board while
+  // saving or dragging from the repository, and after any edit stales a proposal.
+  const previewBoard = stale || manualEditPhase === 'saving' || activeDrag?.kind === 'repository' ? null : selectedAlternative
     ? {
         ...applyGeneratedToBoard({ semesters: selectedAlternative.semesters } as GeneratedPlanModel, current),
         // Progress the student would have AFTER applying this alternative (server-recomputed).
@@ -318,7 +347,7 @@ export default function NativePlannerJourney({
             {manualEditError}
           </p>
         )}
-        {manualAddIntent && (
+        {manualAddIntent && manualAddIntent.semesterIds.length !== 1 && (
           <ManualAddPrompt
             intent={manualAddIntent}
             courseName={current.courseCatalog[manualAddIntent.courseId]?.nameHe ?? manualAddIntent.courseId}
@@ -357,7 +386,7 @@ export default function NativePlannerJourney({
           programId={programId}
           getStudentContext={courseChatContext}
         />
-        {manualEditPhase === 'saving' && <p role="status" aria-live="polite" className="text-sm text-[var(--text-muted)]">שומר ומאמת…</p>}
+        {manualEditPhase === 'saving' && <p role="status" aria-live="polite" className="text-sm text-[var(--text-muted)]">{t('שומר ומאמת…', 'Saving and validating…')}</p>}
         {genPhase === 'done' && proposal && (
           <>
           <ProposalView
@@ -382,7 +411,7 @@ export default function NativePlannerJourney({
       {/* ── assistant + preferences + build ───────────────────────────────── */}
       {wrapAgent(<aside
         id="workspace-agent-drawer"
-        aria-label="עוזר אקדמי"
+        aria-label={t('עוזר אקדמי', 'Academic assistant')}
         aria-hidden={agentOpen === false}
         inert={agentOpen === false}
         data-open={agentOpen ?? true}
@@ -392,11 +421,11 @@ export default function NativePlannerJourney({
           <button
             ref={agentCloseRef}
             type="button"
-            aria-label="סגור סרגל עוזר AI"
+            aria-label={t('סגור סרגל עוזר AI', 'Close AI assistant panel')}
             onClick={onCloseAgent}
             className="planner-drawer-close self-start"
           >
-            × <span>סגור עוזר</span>
+            × <span>{t('סגור עוזר', 'Close assistant')}</span>
           </button>
         )}
         <AcademicAgentConversation

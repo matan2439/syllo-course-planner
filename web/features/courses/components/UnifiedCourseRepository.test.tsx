@@ -1,6 +1,8 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, renderHook, screen, within } from '@testing-library/react'
 import type { RepositoryVM } from '../../../lib/repository'
 import UnifiedCourseRepository from './UnifiedCourseRepository'
+import { LocaleProvider } from '../../locale/LocaleProvider'
+import * as Auth from '../../auth/AuthProvider'
 
 const repo: RepositoryVM = {
   totalCourses: 3,
@@ -29,6 +31,75 @@ const semesterDestinations = [
 ]
 
 describe('UnifiedCourseRepository', () => {
+  beforeEach(() => localStorage.clear())
+  afterEach(() => jest.restoreAllMocks())
+
+  test('combines discovery controls and keeps grade unknowns explicit', () => {
+    const enriched: RepositoryVM = { ...repo, categories: repo.categories.map((category) => ({ ...category, courses: category.courses.map((course) => ({
+      ...course,
+      assessment: { kind: 'exam', text: 'בחינה סופית', sourceUrl: null },
+      gradeSummary: course.id === '0542-4241' ? { mean: 84, students: 90, terms: 2, sources: [{ label: 'TAU+', url: null }] } : null,
+    })) })) } as RepositoryVM
+    render(<UnifiedCourseRepository repo={enriched} selectedCourseIds={[]} onRequestAdd={jest.fn()} />)
+    fireEvent.click(screen.getByRole('button', { name: 'סינון קורסים' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'בקרה ורובוטיקה' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'סמסטר א׳' }))
+    fireEvent.click(screen.getByText('ממוצע ציונים היסטורי'))
+    fireEvent.change(screen.getByRole('spinbutton', { name: 'ממוצע מינימלי' }), { target: { value: '80' } })
+    expect(screen.getByRole('slider', { name: 'ממוצע מינימלי' })).toHaveValue('80')
+    expect(screen.getByText('בקרה מודרנית')).toBeInTheDocument()
+    expect(screen.queryByText('תכן תרמי מתקדם')).not.toBeInTheDocument()
+    expect(screen.getByText(/90.*2/)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'ניקוי מסננים' }))
+    expect(screen.getByText('תכן תרמי מתקדם')).toBeInTheDocument()
+    expect(screen.getAllByText('ממוצע לא ידוע')).toHaveLength(2)
+  })
+
+  test('persists favorites for this program and compares chosen courses', () => {
+    const { unmount } = render(<UnifiedCourseRepository repo={repo} programId="test_a" selectedCourseIds={[]} onRequestAdd={jest.fn()} />)
+    fireEvent.click(screen.getByRole('button', { name: 'שמירת בקרה מודרנית במועדפים' }))
+    fireEvent.click(screen.getByRole('button', { name: 'סינון קורסים' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'מועדפים בלבד' }))
+    expect(screen.queryByText('תכן תרמי מתקדם')).not.toBeInTheDocument()
+    unmount()
+    render(<UnifiedCourseRepository repo={repo} programId="test_a" selectedCourseIds={[]} onRequestAdd={jest.fn()} />)
+    expect(screen.getByRole('button', { name: 'הסרת בקרה מודרנית מהמועדפים' })).toHaveAttribute('aria-pressed', 'true')
+    fireEvent.click(screen.getByRole('checkbox', { name: 'השוואת בקרה מודרנית' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'השוואת תכן תרמי מתקדם' }))
+    fireEvent.click(screen.getByText('השוואת קורסים (2/4)'))
+    const comparison = screen.getByRole('table', { name: 'השוואת קורסים' })
+    expect(within(comparison).getByText('בקרה מודרנית')).toBeInTheDocument()
+    expect(within(comparison).getByText('תכן תרמי מתקדם')).toBeInTheDocument()
+  })
+
+  test('does not expose another owner or program favorites and comparison after switching scope', () => {
+    const signedOut = renderHook(() => Auth.useAuth()).result.current
+    const auth = jest.spyOn(Auth, 'useAuth')
+    auth.mockReturnValue({ ...signedOut, user: { id: 'owner-a', email: null } })
+    const { rerender } = render(<UnifiedCourseRepository repo={repo} programId="program_a" selectedCourseIds={[]} onRequestAdd={jest.fn()} />)
+    fireEvent.click(screen.getByRole('button', { name: 'שמירת בקרה מודרנית במועדפים' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'השוואת בקרה מודרנית' }))
+    expect(screen.getByLabelText('השוואת קורסים')).toBeInTheDocument()
+    auth.mockReturnValue({ ...signedOut, user: { id: 'owner-b', email: null } })
+    rerender(<UnifiedCourseRepository repo={repo} programId="program_a" selectedCourseIds={[]} onRequestAdd={jest.fn()} />)
+    expect(screen.getByRole('button', { name: 'שמירת בקרה מודרנית במועדפים' })).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.queryByLabelText('השוואת קורסים')).not.toBeInTheDocument()
+    auth.mockReturnValue({ ...signedOut, user: { id: 'owner-a', email: null } })
+    rerender(<UnifiedCourseRepository repo={repo} programId="program_b" selectedCourseIds={[]} onRequestAdd={jest.fn()} />)
+    expect(screen.getByRole('button', { name: 'שמירת בקרה מודרנית במועדפים' })).toHaveAttribute('aria-pressed', 'false')
+    rerender(<UnifiedCourseRepository repo={repo} programId="program_a" selectedCourseIds={[]} onRequestAdd={jest.fn()} />)
+    expect(screen.getByRole('button', { name: 'הסרת בקרה מודרנית מהמועדפים' })).toHaveAttribute('aria-pressed', 'true')
+  })
+
+  test('uses English controls and direction while preserving original catalog titles', () => {
+    localStorage.setItem('tau_locale', 'en')
+    render(<LocaleProvider><UnifiedCourseRepository repo={repo} selectedCourseIds={[]} onRequestAdd={jest.fn()} /></LocaleProvider>)
+    expect(screen.getByRole('region', { name: 'Course repository' })).toHaveAttribute('dir', 'ltr')
+    fireEvent.click(screen.getByRole('button', { name: 'Filter courses' }))
+    expect(screen.getByRole('button', { name: 'Clear filters' })).toBeInTheDocument()
+    expect(screen.getByText('בקרה מודרנית')).toBeInTheDocument()
+  })
+
   test('searches by Hebrew name, id and category using the real repository projection', () => {
     render(<UnifiedCourseRepository repo={repo} selectedCourseIds={[]} onRequestAdd={jest.fn()} />)
     const search = screen.getByRole('searchbox', { name: 'חיפוש קורס' })
@@ -284,5 +355,65 @@ describe('UnifiedCourseRepository', () => {
     expect(screen.getByRole('region', { name: 'מאגר קורסים' })).toHaveAttribute('dir', 'rtl')
     fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'קורס שלא קיים' } })
     expect(screen.getByText(/לא נמצאו קורסים/)).toBeInTheDocument()
+  })
+
+  test('keeps filters compact, removes individual facets, and preserves sorting when clearing', () => {
+    render(<UnifiedCourseRepository repo={repo} selectedCourseIds={[]} onRequestAdd={jest.fn()} />)
+    const toggleFilters = screen.getByRole('button', { name: 'סינון קורסים' })
+    expect(toggleFilters).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByRole('checkbox', { name: 'בקרה ורובוטיקה' })).not.toBeInTheDocument()
+    fireEvent.click(toggleFilters)
+    expect(toggleFilters).toHaveAttribute('aria-expanded', 'true')
+    fireEvent.change(screen.getByRole('combobox', { name: 'מיון בתוך קטגוריה' }), { target: { value: 'hours-asc' } })
+    fireEvent.click(screen.getByRole('checkbox', { name: 'בקרה ורובוטיקה' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'סמסטר א׳' }))
+    expect(screen.getByText('מוצגים 1 מתוך 3 קורסים')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'הצגת תוצאות' }))
+    expect(toggleFilters).toHaveAttribute('aria-expanded', 'false')
+    expect(toggleFilters).toHaveFocus()
+    fireEvent.click(screen.getByRole('button', { name: 'הסרת מסנן: בקרה ורובוטיקה' }))
+    expect(screen.getByText('תכן תרמי מתקדם')).toBeInTheDocument()
+    expect(screen.queryByText('מבוא ללמידת מכונה סטטיסטית')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'ניקוי הכול' }))
+    expect(screen.getByText('מוצגים 3 מתוך 3 קורסים')).toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: 'מיון בתוך קטגוריה' })).toHaveValue('hours-asc')
+  })
+
+  test('facet counts respect other selections and keep category alternatives available', () => {
+    render(<UnifiedCourseRepository repo={repo} selectedCourseIds={[]} onRequestAdd={jest.fn()} />)
+    fireEvent.click(screen.getByRole('button', { name: 'סינון קורסים' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'סמסטר א׳' }))
+    const energy = screen.getByRole('checkbox', { name: 'אנרגיה' })
+    const systems = screen.getByRole('checkbox', { name: 'בקרה ורובוטיקה' })
+    expect(within(energy.closest('label')!).getByText('1')).toBeInTheDocument()
+    expect(within(systems.closest('label')!).getByText('1')).toBeInTheDocument()
+    fireEvent.click(systems)
+    // An OR alternative keeps its matching count when another category is selected.
+    expect(within(energy.closest('label')!).getByText('1')).toBeInTheDocument()
+    fireEvent.click(energy)
+    expect(screen.getByText('מוצגים 2 מתוך 3 קורסים')).toBeInTheDocument()
+  })
+
+  test('keeps grade bounds valid and can remove their range without clearing another facet', () => {
+    render(<UnifiedCourseRepository repo={repo} selectedCourseIds={[]} onRequestAdd={jest.fn()} />)
+    fireEvent.click(screen.getByRole('button', { name: 'סינון קורסים' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'סמסטר א׳' }))
+    fireEvent.click(screen.getByText('ממוצע ציונים היסטורי'))
+    fireEvent.change(screen.getByRole('spinbutton', { name: 'ממוצע מקסימלי' }), { target: { value: '70' } })
+    fireEvent.change(screen.getByRole('spinbutton', { name: 'ממוצע מינימלי' }), { target: { value: '80' } })
+    expect(screen.getByRole('spinbutton', { name: 'ממוצע מקסימלי' })).toHaveValue(80)
+    fireEvent.click(screen.getByRole('button', { name: 'הסרת מסנן: ממוצע 80–80' }))
+    expect(screen.getByText('מוצגים 2 מתוך 3 קורסים')).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: 'סמסטר א׳' })).toBeChecked()
+  })
+
+  test('offers an empty-state reset for search and filters while retaining the sort', () => {
+    render(<UnifiedCourseRepository repo={repo} selectedCourseIds={[]} onRequestAdd={jest.fn()} />)
+    fireEvent.change(screen.getByRole('combobox', { name: 'מיון בתוך קטגוריה' }), { target: { value: 'name' } })
+    fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'קורס שלא קיים' } })
+    fireEvent.click(screen.getByRole('button', { name: 'איפוס החיפוש והמסננים' }))
+    expect(screen.getByRole('searchbox')).toHaveValue('')
+    expect(screen.getByText('מוצגים 3 מתוך 3 קורסים')).toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: 'מיון בתוך קטגוריה' })).toHaveValue('name')
   })
 })

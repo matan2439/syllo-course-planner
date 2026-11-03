@@ -18,6 +18,7 @@ import generatePlanHandler from '../api/ai/generate-plan'
 import applyPlanHandler from '../api/ai/apply-plan'
 import editBoardHandler from '../api/ai/edit-board'
 import planningContextHandler from '../api/ai/planning-context'
+import studentWorkspaceHandler from '../api/ai/student-workspace'
 import conversationHandler from '../api/ai/conversation'
 import coursePlannerHandler from '../api/ai/course-planner'
 import scheduleGroupsHandler from '../api/ai/schedule-groups'
@@ -35,6 +36,7 @@ const ROUTES: Record<string, Handler> = {
   '/api/ai/apply-plan': applyPlanHandler as Handler,
   '/api/ai/edit-board': editBoardHandler as Handler,
   '/api/ai/planning-context': planningContextHandler as Handler,
+  '/api/ai/student-workspace': studentWorkspaceHandler as Handler,
   '/api/ai/generate-plan': generatePlanHandler as Handler,
   '/api/ai/conversation': conversationHandler as Handler,
   '/api/ai/course-planner': coursePlannerHandler as Handler,

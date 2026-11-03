@@ -385,7 +385,8 @@ describe('NativePlannerJourney — mounted preference conversation', () => {
     // real handler enforces it too: clicking does not change the committed board
     fireEvent.click(applyBtn)
     expect(server.calls).toHaveLength(0)
-    expect(screen.getByLabelText('התוכנית הנוכחית')).toHaveTextContent('לא נשמר עד לאישור מפורש')
+    expect(screen.getByLabelText('התוכנית הנוכחית')).not.toHaveTextContent('לא נשמר עד לאישור מפורש')
+    expect(screen.getByLabelText('התוכנית הנוכחית')).toHaveTextContent('קורס בסיס X')
   })
 
   test('the assistant changing stored preferences without a new proposal stales the one on the board', async () => {

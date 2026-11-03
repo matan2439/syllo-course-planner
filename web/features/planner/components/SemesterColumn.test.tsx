@@ -1,11 +1,46 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import SemesterColumn from './SemesterColumn'
 import type { SemesterVM } from '../../../lib/board'
+import { writeRepositoryDrag } from '../../../lib/planner/drag-payload'
 
 const SEMESTER_FIXTURE: SemesterVM = {
   id: 'year_3_semester_a', title: 'שנה ג׳ — סמסטר א׳', totalWeeklyHours: null, averageDifficulty: null,
   warnings: [], courses: [],
 }
+
+test('unknown offering is checked by the server on drop instead of silently rejected by the browser', () => {
+  const onAddCourse = jest.fn()
+  const transfer = {
+    values: new Map<string, string>(),
+    setData(type: string, value: string) { this.values.set(type, value) },
+    getData(type: string) { return this.values.get(type) ?? '' },
+    dropEffect: '',
+  }
+  writeRepositoryDrag(transfer, 'UNKNOWN-OFFERING')
+  render(<SemesterColumn semester={SEMESTER_FIXTURE} index={0} onAddCourse={onAddCourse} />)
+  const target = screen.getByLabelText(SEMESTER_FIXTURE.title)
+  fireEvent.dragOver(target, { dataTransfer: transfer })
+  expect(target).toHaveAttribute('data-drop-state', 'unknown')
+  fireEvent.drop(target, { dataTransfer: transfer })
+  expect(onAddCourse).toHaveBeenCalledWith('UNKNOWN-OFFERING', SEMESTER_FIXTURE.id)
+})
+
+test('an explicitly empty destination list remains unavailable', () => {
+  const onAddCourse = jest.fn()
+  const transfer = {
+    values: new Map<string, string>(),
+    setData(type: string, value: string) { this.values.set(type, value) },
+    getData(type: string) { return this.values.get(type) ?? '' },
+    dropEffect: '',
+  }
+  writeRepositoryDrag(transfer, 'NOT-OFFERED', [])
+  render(<SemesterColumn semester={SEMESTER_FIXTURE} index={0} onAddCourse={onAddCourse} />)
+  const target = screen.getByLabelText(SEMESTER_FIXTURE.title)
+  fireEvent.dragOver(target, { dataTransfer: transfer })
+  expect(target).toHaveAttribute('data-drop-state', 'invalid')
+  fireEvent.drop(target, { dataTransfer: transfer })
+  expect(onAddCourse).not.toHaveBeenCalled()
+})
 
 test('a successful placement flashes the target column via data-just-placed, keyed to re-trigger on repeat', () => {
   const { rerender } = render(

@@ -4,6 +4,7 @@ import { Badge, Card } from '../../../components/ui'
 import { writeBoardDrag, type PlannerDragPayload } from '../../../lib/planner/drag-payload'
 import { categoryAccentClass } from '../../courses/components/course-category'
 import { MARKER_LABEL } from '../constants'
+import { useLocale } from '../../locale/LocaleProvider'
 
 const TYPE_LABELS: Record<string, string> = {
   mandatory: 'חובה',
@@ -16,6 +17,9 @@ const DIFFICULTY_LABELS: Record<string, string> = {
   hard: 'קשה',
   very_hard: 'קשה מאוד',
 }
+const ENGLISH_LABELS: Record<string, string> = {
+  mandatory: 'Required', elective: 'Elective', easy: 'Easy', medium: 'Moderate', hard: 'Hard', very_hard: 'Very hard',
+}
 
 export default function CourseCard({ course, onRemove, onMove, onSelect, moveDestinations, mutationPending = false, onDragStateChange }: {
   course: CourseVM
@@ -27,17 +31,18 @@ export default function CourseCard({ course, onRemove, onMove, onSelect, moveDes
   mutationPending?: boolean
   onDragStateChange?: (drag: PlannerDragPayload | null) => void
 }) {
+  const { t } = useLocale()
   const [dragging, setDragging] = useState(false)
-  // Missing offering data is an unknown academic fact, not permission to move
-  // everywhere. Keep the card keyboard-readable, but fail closed until the
-  // authoritative catalog names at least one destination. An annual course
+  // Missing offering data must still reach server validation, which owns
+  // prerequisite, offering and load legality. A known empty list means the
+  // course is unavailable. An annual course
   // spans both halves of its year as one atomic placement — it lists both as
   // "offered" (so each half's card is individually legal), but it must never
   // be independently moved or split, so it never advertises a destination.
   const offeredSemesters = course.offeredSemesters
-  const availableMoveDestinations = course.isAnnual || offeredSemesters === undefined
+  const availableMoveDestinations = course.isAnnual
     ? []
-    : moveDestinations?.filter((destination) => offeredSemesters.includes(destination.semesterId))
+    : moveDestinations?.filter((destination) => offeredSemesters === undefined || offeredSemesters.includes(destination.semesterId))
   const movable = Boolean(onMove) &&
     Boolean(availableMoveDestinations?.length) && !mutationPending
   const allowedSemesterIds = availableMoveDestinations?.map(({ semesterId }) => semesterId) ?? []
@@ -51,7 +56,7 @@ export default function CourseCard({ course, onRemove, onMove, onSelect, moveDes
       draggable={movable}
       role={onSelect ? 'button' : undefined}
       tabIndex={onSelect ? 0 : undefined}
-      aria-label={onSelect ? `פרטים על ${course.name}` : undefined}
+      aria-label={onSelect ? t(`פרטים על ${course.name}`, `Details for ${course.name}`) : undefined}
       className={[movable ? 'planner-drag-source' : '', onSelect ? 'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--purple)] rounded-xl' : ''].filter(Boolean).join(' ') || undefined}
       data-dragging={dragging ? 'true' : undefined}
       data-category={course.categoryId ?? undefined}
@@ -88,8 +93,8 @@ export default function CourseCard({ course, onRemove, onMove, onSelect, moveDes
         <h3 className="text-sm font-semibold leading-snug">{course.name}</h3>
         {course.hasWarnings && (
           <span
-            aria-label="קיימת אזהרה לקורס זה"
-            title="קיימת אזהרה לקורס זה"
+            aria-label={t('קיימת אזהרה לקורס זה', 'This course has a warning')}
+            title={t('קיימת אזהרה לקורס זה', 'This course has a warning')}
             className="mt-0.5 size-2 shrink-0 rounded-full bg-amber-400"
           />
         )}
@@ -97,20 +102,20 @@ export default function CourseCard({ course, onRemove, onMove, onSelect, moveDes
 
       <div className="mt-2 flex flex-wrap items-center gap-1.5">
         <Badge variant={course.type === 'mandatory' ? 'purple' : 'neutral'}>
-          {TYPE_LABELS[course.type] ?? course.type}
+          {t(TYPE_LABELS[course.type] ?? course.type, ENGLISH_LABELS[course.type] ?? course.type)}
         </Badge>
         {course.diffMarker && (
-          <Badge variant="warn">{MARKER_LABEL[course.diffMarker]}</Badge>
+          <Badge variant="warn">{t(MARKER_LABEL[course.diffMarker] ?? '', course.diffMarker === 'new' ? 'New' : 'Moved')}</Badge>
         )}
         {course.isAnnual && (
-          <Badge variant="purple">שנתי (א׳+ב׳)</Badge>
+          <Badge variant="purple">{t('שנתי (א׳+ב׳)', 'Annual (A+B)')}</Badge>
         )}
         {course.weeklyHours != null && (
-          <Badge>{course.weeklyHours} ש״ש</Badge>
+          <Badge>{course.weeklyHours} {t('ש״ש', 'weekly hours')}</Badge>
         )}
         {course.difficulty && (
           <Badge variant="warn">
-            {DIFFICULTY_LABELS[course.difficulty] ?? course.difficulty}
+            {t(DIFFICULTY_LABELS[course.difficulty] ?? course.difficulty, ENGLISH_LABELS[course.difficulty] ?? course.difficulty)}
           </Badge>
         )}
       </div>
@@ -126,7 +131,7 @@ export default function CourseCard({ course, onRemove, onMove, onSelect, moveDes
             rel="noreferrer"
             className="opacity-70 transition-[opacity,color] duration-150 hover:text-[var(--purple)] hover:opacity-100 focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-[var(--purple)]"
           >
-            סילבוס ↗
+            {t('סילבוס ↗', 'Syllabus ↗')}
           </a>
         )}
       </div>
@@ -135,11 +140,11 @@ export default function CourseCard({ course, onRemove, onMove, onSelect, moveDes
           <span
             data-drag-handle
             draggable={movable}
-            title="גררו את הקורס לסמסטר אחר"
-            aria-label={`גרור את ${course.name} לסמסטר אחר`}
+            title={t('גררו את הקורס לסמסטר אחר', 'Drag this course to another semester')}
+            aria-label={t(`גרור את ${course.name} לסמסטר אחר`, `Drag ${course.name} to another semester`)}
             className="planner-drag-handle text-[11px] text-[var(--text-muted)]"
           >
-            ⠿ גרור להעברה
+            {t('⠿ גרור להעברה', '⠿ Drag to move')}
           </span>
         </div>
       )}
@@ -147,17 +152,17 @@ export default function CourseCard({ course, onRemove, onMove, onSelect, moveDes
         <button
           type="button"
           disabled={mutationPending}
-          aria-label={`הסר ${course.name} מהלוח`}
+          aria-label={t(`הסר ${course.name} מהלוח`, `Remove ${course.name} from board`)}
           onClick={() => onRemove(course.id)}
           className="mt-2 rounded-full border border-[var(--border)] px-3 py-1 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--purple)] disabled:opacity-50"
         >
-          הסר מהלוח
+          {t('הסר מהלוח', 'Remove from board')}
         </button>
       )}
       {onMove && availableMoveDestinations && availableMoveDestinations.length > 0 && (
         <details className="mt-2 text-xs">
           <summary className="cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--purple)]">
-            אפשרויות העברה עבור {course.name}
+            {t(`אפשרויות העברה עבור ${course.name}`, `Move options for ${course.name}`)}
           </summary>
           <div className="mt-2 flex flex-wrap gap-1.5">
             {availableMoveDestinations.map((destination) => (
@@ -165,7 +170,7 @@ export default function CourseCard({ course, onRemove, onMove, onSelect, moveDes
                 key={destination.semesterId}
                 type="button"
                 disabled={mutationPending}
-                aria-label={`העבר ${course.name} אל ${destination.label}`}
+                aria-label={t(`העבר ${course.name} אל ${destination.label}`, `Move ${course.name} to ${destination.label}`)}
                 onClick={() => onMove(course.id, destination.semesterId)}
                 className="rounded-full border border-[var(--border)] px-2.5 py-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--purple)] disabled:opacity-50"
               >
