@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createHash } from 'crypto';
 import { z } from 'zod';
-import { preferencesSchema, programIdSchema, programWorkspaceSchema, restorePlanSchema, shareBidsSchema, workspaceWriteSchema } from '../../shared/planner/student-workspace';
+import { completedStudiesSchema, preferencesSchema, programIdSchema, programWorkspaceSchema, restorePlanSchema, shareBidsSchema, workspaceWriteSchema } from '../../shared/planner/student-workspace';
 import { validateBiddingDraft, biddingBundleSignature } from '../../shared/planner/bidding';
 import { resolveRequestOwner } from './auth_session';
 import { readAnonymousOwner, appendSetCookie, serializeSessionCookie, isWellFormedOwnerId } from './session_owner';
@@ -76,6 +76,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
         const beforeYear = Math.min(year.data, academicStartYear);
         const rows = await store.observations(program.data, beforeYear, semester.data as 1 | 2, round.data);
         res.status(200).json({ ok: true, history: aggregateBiddingHistory(rows, beforeYear) }); return;
+      }
+      if (scope === 'studies') {
+        const record = await store.load(ownerId, `studies:${program.data}`);
+        const data = record ? completedStudiesSchema.safeParse(record.data) : null;
+        if (data && !data.success) { error(res, 503, 'WORKSPACE_SCHEMA_MISMATCH'); return; }
+        res.status(200).json({ ok: true, revision: record?.revision ?? 0, data: data?.data ?? null }); return;
       }
       if (scope !== 'program') { error(res, 400, 'INVALID_REQUEST'); return; }
       const record = await store.load(ownerId, `program:${program.data}`);
@@ -177,7 +183,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     const request = workspaceWriteSchema.safeParse(req.body);
     if (!request.success) { error(res, 400, 'INVALID_REQUEST'); return; }
     const body = request.data;
-    const scope = body.scope === 'preferences' ? 'preferences' : `program:${body.program_id}`;
+    const scope = body.scope === 'preferences' ? 'preferences' : `${body.scope}:${body.program_id}`;
     const result = await store.save(ownerId, scope, body.expected_revision, body.data);
     if (!result.ok) { res.status(409).json({ ok: false, code: 'WORKSPACE_VERSION_CONFLICT', revision: result.revision }); return; }
     res.status(200).json(result);

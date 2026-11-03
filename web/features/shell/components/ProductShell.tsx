@@ -54,7 +54,8 @@ export default function ProductShell({
           width === 'full' ? 'max-w-[1680px]' : width === 'wide' ? 'max-w-6xl' : 'max-w-5xl'
         }`}
       >
-        <header className="flex shrink-0 flex-wrap items-center justify-between gap-3 py-5">
+        {/* Its own layer, so header popovers (progress, account) open above the planner toolbar and board. */}
+        <header className="relative z-50 flex shrink-0 flex-wrap items-center justify-between gap-3 py-5">
           <Link
             href="/"
             className="flex shrink-0 items-center gap-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--purple)]"

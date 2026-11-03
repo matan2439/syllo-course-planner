@@ -1,5 +1,6 @@
 'use client'
 
+import ChatText from './ChatText'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useAuth } from '../../auth/AuthProvider'
 import { AiAccessNotice, AiPaywall, useAiAccess } from '../../billing/ai_access'
@@ -397,10 +398,10 @@ export default function AcademicAgentConversation({
                   </ul>
                 </details>
               )}
-              <p className="whitespace-pre-line text-sm leading-relaxed"><span className="sr-only">העוזר: </span>{turn.text}</p>
+              <div><span className="sr-only">העוזר: </span><ChatText text={turn.text} /></div>
               {turnMeta[index]?.proposal && (
                 <section aria-label="הצעה מוכנה" className="rounded-xl border border-emerald-500/40 bg-emerald-500/5 p-3 text-sm">
-                  <p className="font-semibold text-emerald-800 dark:text-emerald-200">✓ ההצעה מוכנה ומוצגת בלוח</p>
+                  <p className="font-semibold text-emerald-800 dark:text-emerald-200">✓ ההצעה מוכנה — הלוח מציג תצוגה מקדימה</p>
                   <p className="mt-0.5 text-xs text-[var(--text-muted)]">
                     {turnMeta[index].proposal!.alternatives.length > 1 ? `${turnMeta[index].proposal!.alternatives.length} חלופות לבחירה · ` : ''}
                     עברו עליה ואשרו כדי להחיל — הלוח לא משתנה בלי אישורכם.
@@ -408,7 +409,7 @@ export default function AcademicAgentConversation({
                   {onShowProposal && (
                     <button type="button" onClick={onShowProposal}
                       className="mt-2 rounded-full bg-emerald-600 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700">
-                      הצג את ההצעה בלוח
+                      לפרטי ההצעה
                     </button>
                   )}
                 </section>
@@ -426,10 +427,10 @@ export default function AcademicAgentConversation({
                 {doneSteps > 0 && <span className="mr-1 opacity-70">({doneSteps} בדיקות הושלמו)</span>}
               </p>
               {live?.text && (
-                <p className="whitespace-pre-line text-sm leading-relaxed">
-                  {formatAssistantMessage(live.text, courseNameById)}
+                <div>
+                  <ChatText text={formatAssistantMessage(live.text, courseNameById)} />
                   <span aria-hidden="true" className="mr-0.5 inline-block h-4 w-1.5 animate-pulse bg-[var(--text-muted)] align-middle" />
-                </p>
+                </div>
               )}
             </div>
           </div>
@@ -456,6 +457,7 @@ export default function AcademicAgentConversation({
               <CourseClarificationAnswer
                 questionId={event.question_id}
                 courseNameById={courseNameById}
+                scopes={courseScopes}
                 disabled={blocked}
                 onConfirm={(ids, text) => void submit(text, { question_id: event.question_id as CourseQuestionId, value: ids })}
               />

@@ -112,6 +112,12 @@ function planSummary(session: PlanningSession) {
   }));
 }
 
+function committedCourseIds(session: PlanningSession): string[] {
+  return ((session.input.committedContext.semesters ?? []) as Array<{ courses?: Array<{ course_id?: string }> }>)
+    .flatMap((semester) => (semester?.courses ?? []).map((course) => course?.course_id))
+    .filter((id): id is string => typeof id === 'string');
+}
+
 function validationSummary(session: PlanningSession) {
   const report = session.worker.validateCandidate();
   return {
@@ -506,10 +512,10 @@ export function buildAgentTools() {
           policy: model.distributionPolicy ?? 'neutral',
           initialState,
           profileVersion: 0,
-          // ponytail: a quarter of the default search budget (best plan + one alternative):
+          // ponytail: under half the default search budget (best plan + two alternatives):
           // a chat turn must stay responsive and inside Vercel's 300s limit even if the
           // agent builds twice. Raise it when the planner gets faster.
-          maxRuns: 2,
+          maxRuns: 3,
         });
         const selected = selectCandidate(set);
         session.candidateSet = set;
@@ -657,11 +663,30 @@ export function buildAgentTools() {
       parameters: z.object({
         summary_he: z.string().trim().min(1).max(1500).describe('Short Hebrew explanation of the plan and how it answers the student'),
         tradeoffs_he: z.array(z.string().trim().min(1).max(300)).max(8).describe('Requests that could not be fully honored, and why'),
+        removals_requested_by_student: z.boolean().describe('true ONLY if the student explicitly asked to drop the board courses this draft removes'),
+        extra_hours_reason_he: z.string().trim().max(300).nullable().describe('Why the plan needs more weekly hours than the degree requires (null when it does not exceed)'),
       }),
-      execute: observed('submit_proposal', (session, { summary_he, tradeoffs_he }: { summary_he: string; tradeoffs_he: string[] }) => {
+      execute: observed('submit_proposal', (session, { summary_he, tradeoffs_he, removals_requested_by_student, extra_hours_reason_he }: {
+        summary_he: string; tradeoffs_he: string[]; removals_requested_by_student: boolean; extra_hours_reason_he: string | null }) => {
         const validation = validationSummary(session);
         if (!validation.valid) {
           return { accepted: false, reason: 'The draft is not valid yet. Fix these issues (or explain to the student why they cannot be fixed).', validation };
+        }
+        // The student's board is theirs: a proposal adds to it. Courses that leave it because they are now
+        // completed or avoided are fine; any other removal needs the student's own request.
+        const draftIds = new Set(Object.values(session.worker.getPlan().semesters).flat());
+        const dropped = committedCourseIds(session).filter((id) => !draftIds.has(id)
+          && !session.model.completedCourseIds.has(id) && !session.model.disallowedCourseIds.has(id));
+        if (dropped.length > 0 && !removals_requested_by_student) {
+          return { accepted: false,
+            reason: 'The draft removes courses the student placed on the board. Put them back (add_course), or ask the student with ask_student whether to drop them; only then submit with removals_requested_by_student true.',
+            removed_courses: dropped.map((id) => ({ course_id: id, name_he: nameOf(session, id) })) };
+        }
+        const required = session.model.degreeRequiredHours;
+        if (typeof required === 'number' && validation.degree_hours > required && !extra_hours_reason_he) {
+          return { accepted: false,
+            reason: `The plan reaches ${validation.degree_hours} weekly hours but the degree needs ${required}. Remove or swap electives that are not needed for any requirement (simulate_changes shows the effect), or give extra_hours_reason_he if a requirement forces the excess.`,
+            degree_hours: validation.degree_hours, degree_hours_required: required };
         }
         session.submission = { summaryHe: summary_he, tradeoffsHe: tradeoffs_he };
         return { accepted: true };

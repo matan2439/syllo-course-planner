@@ -435,6 +435,8 @@ describe('S5 — refresh reads the server’s board back', () => {
     })
     await build()
     fireEvent.click(applyBtn())
+    // This proposal drops courses from the restored board, so Apply asks first.
+    fireEvent.click(screen.getByRole('button', { name: 'כן, להסיר ולהחיל' }))
     await waitFor(() => expect(server.calls).toHaveLength(1))
     expect(server.calls[0].expected_board_version).toBe('bv_7')
   })

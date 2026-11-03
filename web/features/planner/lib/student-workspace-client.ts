@@ -1,4 +1,4 @@
-import { programWorkspaceSchema, weeklyScheduleSchema, type ProgramWorkspace } from '../../../../shared/planner/student-workspace';
+import { completedStudiesSchema, programWorkspaceSchema, weeklyScheduleSchema, type CompletedStudies, type ProgramWorkspace } from '../../../../shared/planner/student-workspace';
 import type { CommunityCourseNote, CourseNote, HiddenCommunityNote } from '../../../../shared/planner/course-notes';
 import type { BiddingDraft, BiddingHistory } from '../../../../shared/planner/bidding';
 import { createEmptyBiddingDraft } from '../../../../shared/planner/bidding';
@@ -44,3 +44,11 @@ export async function fetchHiddenNotes(): Promise<HiddenCommunityNote[]> { retur
 export const moderateCommunityNote = async (publicId: string, decision: 'restore' | 'remove') => {
   await request(URL, { action: 'moderate_note', public_id: publicId, decision });
 };
+// Profile facts per degree program (shared by all year-window boards).
+export async function loadCompletedStudies(programId: string): Promise<{ revision: number; data: CompletedStudies | null }> {
+  const result = await request(`${URL}?scope=studies&program_id=${encodeURIComponent(programId)}`);
+  return { revision: result.revision, data: result.data === null ? null : completedStudiesSchema.parse(result.data) };
+}
+export async function saveCompletedStudies(programId: string, revision: number, data: CompletedStudies): Promise<number> {
+  return (await request(URL, { scope: 'studies', program_id: programId, expected_revision: revision, data })).revision;
+}

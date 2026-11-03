@@ -620,7 +620,7 @@ describe('NativePlannerJourney — mounted preference conversation', () => {
     fireEvent.keyDown(composer, { key: 'Enter' })
     await waitFor(() => expect(screen.getByRole('region', { name: 'טיוטת תוכנית' })).toBeInTheDocument())
     expect(badge()).toHaveAttribute('aria-label', 'התקדמות בתוכנית — 6.5 מתוך 185 ש״ש')
-    const loads = screen.getByLabelText('עומס לפי סמסטר')
+    const loads = screen.getByLabelText('שינויים בהצעה') // per-semester load sits with each semester's changes
     expect(loads).toHaveTextContent('6.5 ש״ש')
     expect(loads).toHaveTextContent('מעל התקרה שהגדרת')
 

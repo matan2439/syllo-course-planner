@@ -203,7 +203,7 @@ test('the header opens the profile with the student facts; planning answers live
   expect(within(context).getByRole('textbox', { name: 'מגבלת שעות שבועיות', hidden: true })).toBeInTheDocument()
 })
 
-test('profile hours outside the list load from the saved workspace and edits are saved back', async () => {
+test('profile hours outside the list load from the program studies document and edits are saved back', async () => {
   const posts: any[] = []
   const realFetch = global.fetch
   global.fetch = jest.fn(async (url: any, init?: any) => {
@@ -213,7 +213,12 @@ test('profile hours outside the list load from the saved workspace and edits are
         posts.push(body)
         return { ok: true, json: async () => ({ ok: true, revision: body.expected_revision + 1, data: body.data }) } as any
       }
-      return { ok: true, json: async () => ({ ok: true, revision: 3, data: { completedStudies: { priorHours: 12, categoryCounts: {} } } }) } as any
+      // One studies document per degree program, separate from each board's plans document.
+      if (String(url).includes('scope=studies')) {
+        expect(String(url)).toContain('program_id=mechanical_engineering_2027')
+        return { ok: true, json: async () => ({ ok: true, revision: 3, data: { priorHours: 12, categoryCounts: {} } }) } as any
+      }
+      return { ok: true, json: async () => ({ ok: true, revision: 0, data: {} }) } as any
     }
     return { ok: false, json: async () => ({ ok: false }) } as any
   }) as any
@@ -225,11 +230,11 @@ test('profile hours outside the list load from the saved workspace and edits are
     const hours = within(screen.getByRole('dialog', { name: 'הפרופיל שלי' })).getByRole('textbox', { name: 'שעות שהושלמו' })
     await act(async () => { await Promise.resolve() })
     expect(hours).toHaveValue('12')
-    // Loading never overwrites the saved value (the first-plan save keeps it intact).
-    expect(posts.every((post) => post.data.completedStudies?.priorHours === 12)).toBe(true)
+    expect(posts.filter((post) => post.scope === 'studies')).toHaveLength(0) // loading is not an edit
     fireEvent.change(hours, { target: { value: '20' } })
     await act(async () => { jest.advanceTimersByTime(1000); await Promise.resolve() })
-    expect(posts.at(-1).data.completedStudies).toEqual({ priorHours: 20, categoryCounts: {} })
+    expect(posts.filter((post) => post.scope === 'studies').at(-1)).toEqual({
+      scope: 'studies', program_id: 'mechanical_engineering_2027', expected_revision: 3, data: { priorHours: 20, categoryCounts: {} } })
   } finally {
     jest.useRealTimers()
     global.fetch = realFetch

@@ -393,7 +393,7 @@ export default function NativePlannerJourney({
           current={current}
           previewBoard={previewBoard}
           diffMarkers={diffMarkers}
-          alternatives={proposal?.alternatives}
+          alternatives={undefined /* the switcher lives with the proposal, in the assistant panel */}
           selectedAlternativeId={selectedAlternativeId}
           onSelectAlternative={setSelectedAlternativeId}
           stale={stale}
@@ -426,23 +426,6 @@ export default function NativePlannerJourney({
           getStudentContext={courseChatContext}
         />
         {manualEditPhase === 'saving' && <p role="status" aria-live="polite" className="text-sm text-[var(--text-muted)]">{t('שומר ומאמת…', 'Saving and validating…')}</p>}
-        {genPhase === 'done' && proposal && (
-          <>
-          <ProposalView
-            draft={draft ?? buildDraftVM(proposal, current)}
-            intentOutcome={proposal.intentOutcome}
-            semesterLoads={selectedAlternative?.semesterLoads}
-            removed={removed}
-            stale={stale}
-            staleReason={staleReason}
-            canApply={canApply && applyPhase === 'idle'}
-            applying={applyPhase === 'applying'}
-            applyError={applyError}
-            onApply={apply}
-            onReject={clearProposal}
-          />
-          </>
-        )}
       </div>
 
       {/* Profile = facts about the student; the planning answers live with the assistant that asks for them. */}
@@ -504,8 +487,7 @@ export default function NativePlannerJourney({
           }}
           onProposalReady={acceptConversationProposal}
           onShowProposal={() => {
-            // The rail floats over the board below 1280px; get it out of the way first.
-            if (typeof window !== 'undefined' && window.matchMedia?.('(max-width: 1279px)').matches) onCloseAgent?.()
+            // The proposal sits right under the conversation, in this same panel.
             document.getElementById('plan-proposal')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
           }}
           courseNameById={Object.fromEntries([
@@ -514,6 +496,25 @@ export default function NativePlannerJourney({
           ])}
           preferenceContent={preferenceContent(profilePortalTarget === undefined ? 'all' : 'planning')}
         />
+        {genPhase === 'done' && proposal && (
+          <ProposalView
+            draft={draft ?? buildDraftVM(proposal, current)}
+            intentOutcome={proposal.intentOutcome}
+            semesterLoads={selectedAlternative?.semesterLoads}
+            removed={removed}
+            stale={stale}
+            staleReason={staleReason}
+            canApply={canApply && applyPhase === 'idle'}
+            applying={applyPhase === 'applying'}
+            applyError={applyError}
+            onApply={apply}
+            onReject={clearProposal}
+            alternatives={proposal.alternatives}
+            selectedAlternativeId={selectedAlternativeId}
+            onSelectAlternative={setSelectedAlternativeId}
+            courseNameById={Object.fromEntries(Object.entries(current.courseCatalog).map(([id, course]) => [id, course.nameHe || null]))}
+          />
+        )}
 
         <AgentContextStatus messages={messages} academicContextPhase={academicContextPhase} />
       </aside>)}

@@ -16,6 +16,7 @@ import type { PlannerDragPayload } from '../../../lib/planner/drag-payload'
 import { LAST_PROGRAM_KEY } from '../../shell/last-program'
 import { scheduleSlotsForBoard, semesterWindowForDegreeYear, semesterWindowSlots, withAddedSemesters, type SemesterWindow } from '../../../lib/planner/semester-window'
 import { useCurrentDegreeYear } from '../hooks/use-current-degree-year'
+import { useCompletedStudies } from '../hooks/use-completed-studies'
 import { useAuth } from '../../auth/AuthProvider'
 import { useLocale } from '../../locale/LocaleProvider'
 import StudentWorkspaceTools, { type CompletedStudiesStore, type CourseSearchLibrary } from './StudentWorkspaceTools'
@@ -152,6 +153,11 @@ export default function UnifiedPlannerWorkspace({
   const onStudiesStore = useCallback((value: CompletedStudiesStore | null) => {
     setStudiesStore((old) => value ? { scope: scopeKey, value } : old?.scope === scopeKey ? null : old)
   }, [scopeKey])
+  // Profile facts live per degree program; the board document's copy (older saves) seeds it once.
+  const programStudies = useCompletedStudies(programId, ownerId === undefined ? null : `${programId}:${ownerId ?? 'guest'}`)
+  const legacyStudies = studiesStore?.scope === scopeKey ? studiesStore.value : null
+  const completedStudies = programStudies && legacyStudies?.ready
+    ? { ...programStudies, value: programStudies.value ?? legacyStudies.value } : null
   const restorePreparer = useRef<{ scope: string; prepare: () => Promise<void> } | null>(null)
   const onPrepareRestore = useCallback((prepare: (() => Promise<void>) | null) => {
     if (prepare) restorePreparer.current = { scope: scopeKey, prepare }
@@ -275,15 +281,24 @@ export default function UnifiedPlannerWorkspace({
   }, [railTab])
 
   const tourSteps: TourStep[] = [
-    { title: ['ברוכים הבאים ל־Syllo', 'Welcome to Syllo'], body: ['סיור קצר בכל הכלים. אפשר לדלג ולהפעיל אותו שוב מתפריט הפרופיל.', 'A short tour of every tool. Skip it anytime and relaunch it from the profile menu.'] },
-    { target: '[data-tour="main-tabs"]', prepare: () => { setMainTab('board'); setRailTab(null) }, title: ['שלוש תצוגות', 'Three views'], body: ['לוח סמסטרים לשיבוץ קורסים, מערכת שעות לבחירת קבוצות, ותכנון בידינג לניקוד ולמועדי המבחנים. כולן עובדות על אותה תוכנית.', 'The semester board places courses, the timetable picks groups, and the bidding planner handles points and exam dates. All three share one plan.'] },
-    { target: '#workspace-panel-journey', title: ['לוח הסמסטרים', 'The semester board'], body: ['גררו קורסים בין סמסטרים או הסירו אותם. כל שינוי נבדק מול דרישות הקדם וחוקי התואר, והתקדמות התואר מתעדכנת.', 'Drag courses between semesters or remove them. Every change is checked against prerequisites and degree rules, and your progress updates.'] },
-    { target: '[data-tour="saved-plans"]', title: ['חלופות ממוספרות', 'Numbered alternatives'], body: ['כל מספר הוא תוכנית שמורה. "+" יוצר עותק של השילוב הנוכחי; הערות, שכפול, השוואה ומחיקה נמצאים באותה שורה.', 'Each number is a saved plan. "+" copies the current combination; notes, duplicate, compare and delete sit in the same row.'] },
-    { target: '[data-tour="tools-toggle"]', prepare: () => setRailTab('courses'), title: ['מאגר הקורסים', 'The course catalog'], body: ['חיפוש וסינון לפי קטגוריה, סמסטר, הערכה וטווח ממוצעים. גררו קורס ללוח או השתמשו ב״הוסף לסמסטר״. לחיצה על קורס פותחת פרטים והערות אישיות.', 'Search and filter by category, semester, assessment and grade range. Drag a course to the board or use “Add to semester”. Open a course for details and your private notes.'] },
-    { target: '#workspace-rail', prepare: () => setRailTab('agent'), title: ['עוזר ה־AI', 'The AI assistant'], body: ['ספרו לעוזר מה חשוב לכם והוא יציע תוכנית. הוא שואל רק את מה שחסר לו, וזוכר את התשובות; אפשר לשנות אותן תחת ״התשובות ששמרתי לעוזר״.', 'Tell the assistant what matters and it proposes a plan. It asks only for what it is missing and remembers your answers; change them under “My saved answers”.'] },
-    { target: '#workspace-panel-weekly', prepare: () => { setRailTab(null); setMainTab('schedule') }, title: ['מערכת שעות', 'The timetable'], body: ['בחרו קבוצות, סמנו ימים פנויים ושעות חסומות, הזינו מועדי מבחנים וייצאו ליומן.', 'Pick groups, mark free days and busy times, enter exam dates and export to your calendar.'] },
-    { target: '#workspace-panel-bidding', prepare: () => setMainTab('bidding'), title: ['תכנון בידינג', 'Bidding planner'], body: ['חלקו נקודות, תעדו תוצאות לכל מקצה, וראו התנגשויות ומרווחים קצרים בין מבחנים — כולל לוח חודשי.', 'Allocate points, record results per round, and see exam collisions and short gaps — including a month view.'] },
-    { target: '[data-tour="header-tools"]', prepare: () => setMainTab('board'), title: ['פרופיל, נושא ונגישות', 'Profile, theme and accessibility'], body: ['כפתור הפרופיל פותח את החשבון, הפרטים האישיים והקורסים שהשלמתם. כאן גם מצב יום/לילה, ניגודיות גבוהה ושפה.', 'The profile button opens your account, details and completed courses. Day/night, high contrast and language live here too.'] },
+    { title: ['ברוכים הבאים ל־Syllo', 'Welcome to Syllo'], body: ['שתי דקות על כל מה שצריך כדי לתכנן את התואר. אפשר לדלג ולהפעיל שוב מהפרופיל.', 'Two minutes on everything you need to plan your degree. Skip anytime and relaunch it from your profile.'],
+      points: [['תכנון סמסטרים, מערכת שעות ובידינג במקום אחד', 'Semesters, timetable and bidding in one place'], ['עוזר AI שמציע — ואתם מחליטים', 'An AI assistant that proposes — you decide'], ['הכול נשמר אוטומטית', 'Everything saves automatically']] },
+    { target: '[data-tour="main-tabs"]', prepare: () => { setMainTab('board'); setRailTab(null) }, title: ['שלוש תצוגות, תוכנית אחת', 'Three views, one plan'], body: ['עוברים בין התצוגות בסרגל העליון. כולן עובדות על אותה תוכנית.', 'Switch views in the top bar. All of them work on the same plan.'],
+      points: [['לוח סמסטרים — שיבוץ קורסים', 'Semester board — place courses'], ['מערכת שעות — בחירת קבוצות וימים פנויים', 'Timetable — groups and free days'], ['תכנון בידינג — ניקוד ומועדי מבחנים', 'Bidding — points and exam dates']] },
+    { target: '#workspace-panel-journey', title: ['לוח הסמסטרים', 'The semester board'], body: ['כל שינוי נבדק מול דרישות הקדם וחוקי התואר, וההתקדמות בראש העמוד מתעדכנת.', 'Every change is checked against prerequisites and degree rules, and the progress at the top updates.'],
+      points: [['גררו קורס בין סמסטרים או הסירו אותו', 'Drag a course between semesters or remove it'], ['בחרו שנים להצגה: א׳–ב׳, ג׳ ואילך או כל התואר', 'Pick the years to show: 1–2, 3+ or the whole degree'], ['"+" מוסיף סמסטר למי שמאריך את התואר', '"+" adds a semester if you extend your degree']] },
+    { target: '[data-tour="saved-plans"]', title: ['חלופות ממוספרות', 'Numbered alternatives'], body: ['כל מספר הוא תוכנית שמורה משלה — לוח, מערכת ובידינג.', 'Each number is its own saved plan — board, timetable and bidding.'],
+      points: [['"+" יוצר עותק של השילוב הנוכחי', '"+" copies the current combination'], ['"⋯" — הערות, שכפול, השוואה ומחיקה', '"⋯" — notes, duplicate, compare and delete']] },
+    { target: '[data-tour="tools-toggle"]', prepare: () => setRailTab('courses'), title: ['מאגר הקורסים', 'The course catalog'], body: ['חיפוש וסינון לפי קטגוריה, סמסטר, הערכה וטווח ממוצעים.', 'Search and filter by category, semester, assessment and grade range.'],
+      points: [['גררו קורס ללוח או "הוסף לסמסטר"', 'Drag a course to the board or use "Add to semester"'], ['בפרטי הקורס: ציונים, סילבוס והערות של סטודנטים', 'Course details: grades, syllabus and students\' notes'], ['שתפו הערה משלכם באופן אנונימי', 'Share a note of your own anonymously']] },
+    { target: '#workspace-rail', prepare: () => setRailTab('agent'), title: ['עוזר ה־AI', 'The AI assistant'], body: ['ספרו מה חשוב לכם והעוזר יבנה הצעה. ההצעה מוצגת כאן, בצ׳אט, והלוח רק מציג תצוגה מקדימה.', 'Say what matters and the assistant builds a proposal. It appears here in the chat; the board only previews it.'],
+      points: [['השוו בין חלופות לפני שמחליטים', 'Compare alternatives before you decide'], ['"החל תוכנית" שומר; "דחה" משאיר את הלוח כמו שהוא', '"Apply" saves; "Reject" leaves your board as it is'], ['העוזר מוסיף קורסים — הסרה תמיד דורשת אישור שלכם', 'The assistant adds courses — removing always needs your approval']] },
+    { target: '#workspace-panel-weekly', prepare: () => { setRailTab(null); setMainTab('schedule') }, title: ['מערכת שעות', 'The timetable'], body: ['בונים שבוע נוח מהקבוצות של הקורסים בלוח.', 'Build a comfortable week from the groups of your board\'s courses.'],
+      points: [['סמנו ימים פנויים ושעות חסומות', 'Mark free days and busy times'], ['"בחירת הקבוצות הטובות ביותר" בלחיצה', '"Best groups" in one click'], ['הזינו מבחנים וייצאו ליומן', 'Enter exams and export to your calendar']] },
+    { target: '#workspace-panel-bidding', prepare: () => setMainTab('bidding'), title: ['תכנון בידינג', 'Bidding planner'], body: ['מכינים ניקוד להזנה באתר הרשמי ומתעדים תוצאות לכל מקצה.', 'Prepare points for the official site and record results per round.'],
+      points: [['חלוקת תקציב לפי סדר עדיפויות', 'Split your budget by priority'], ['תרחיש "מה יקרה אם אדחה?"', '"What if I am rejected?" scenarios'], ['התנגשויות ומרווחים קצרים בין מבחנים', 'Exam collisions and short gaps']] },
+    { target: '[data-tour="header-tools"]', prepare: () => setMainTab('board'), title: ['הפרופיל שלכם', 'Your profile'], body: ['כפתור הפרופיל פותח חלונית מתחתיו: חשבון, שנה בתואר וקורסים שהשלמתם.', 'The profile button opens a panel under it: account, degree year and completed courses.'],
+      points: [['ש״ש מחוץ לרשימה ושער רוח נשמרים לכל התואר', 'Outside hours and Shaar Ruach save for the whole degree'], ['מצב יום/לילה, ניגודיות גבוהה ושפה', 'Day/night, high contrast and language']] },
   ]
 
   return (
@@ -393,7 +408,7 @@ export default function UnifiedPlannerWorkspace({
             agentOpen={railTab === 'agent'}
             agentPortalTarget={agentSlot}
             profilePortalTarget={profileSlot}
-            completedStudies={studiesStore?.scope === scopeKey ? studiesStore.value : null}
+            completedStudies={completedStudies}
             currentDegreeYear={currentDegreeYear}
             onCurrentDegreeYearChange={setCurrentDegreeYear}
             activeDrag={activeDrag}

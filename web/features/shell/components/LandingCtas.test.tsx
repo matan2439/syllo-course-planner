@@ -6,7 +6,7 @@ beforeEach(() => localStorage.clear())
 
 test('a first visit starts with program choice and offers the default plan as the secondary link', () => {
   render(<LandingCtas />)
-  expect(screen.getByRole('link', { name: 'בנו תוכנית' })).toHaveAttribute('href', '/programs')
+  expect(screen.getByRole('link', { name: 'בנו תוכנית' })).toHaveAttribute('href', '/universities')
   expect(screen.getByRole('link', { name: 'המשך לתוכנית שלי' })).toHaveAttribute('href', '/planner')
 })
 

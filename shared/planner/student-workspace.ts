@@ -51,6 +51,8 @@ export const preferencesSchema = z.object({ locale: z.enum(['he', 'en']) }).stri
 export const workspaceWriteSchema = z.discriminatedUnion('scope', [
   z.object({ scope: z.literal('preferences'), expected_revision: z.number().int().nonnegative(), data: preferencesSchema }).strict(),
   z.object({ scope: z.literal('program'), program_id: programIdSchema, expected_revision: z.number().int().nonnegative(), data: programWorkspaceSchema }).strict(),
+  // One per degree program, shared by every year window's board (each window has its own program document).
+  z.object({ scope: z.literal('studies'), program_id: programIdSchema, expected_revision: z.number().int().nonnegative(), data: completedStudiesSchema }).strict(),
 ]);
 export const restorePlanSchema = z.object({
   action: z.literal('restore'), program_id: programIdSchema, plan_id: identifier,

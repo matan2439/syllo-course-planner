@@ -13,6 +13,8 @@ export type TourStep = {
   target?: string
   title: [he: string, en: string]
   body: [he: string, en: string]
+  /** What the student can do here, one short line each. */
+  points?: ReadonlyArray<[he: string, en: string]>
   /** Runs before the step is shown (switch a tab, open a panel). */
   prepare?: () => void
 }
@@ -107,9 +109,21 @@ export default function SiteTour({ steps, autoStart = false }: { steps: readonly
           else if (e.key === back && index > 0) setIndex(index - 1)
         }}
       >
-        <p className="text-[11px] text-[var(--text-muted)]">{t(`שלב ${index + 1} מתוך ${steps.length}`, `Step ${index + 1} of ${steps.length}`)}</p>
-        <h2 id="site-tour-title" className="mt-1 text-sm font-bold">{t(...step.title)}</h2>
+        <div className="flex items-center gap-2">
+          <div aria-hidden="true" className="h-1 flex-1 overflow-hidden rounded-full bg-[var(--border)]">
+            <div className="h-full rounded-full bg-[var(--purple-strong)] transition-[width] duration-300" style={{ width: `${((index + 1) / steps.length) * 100}%` }} />
+          </div>
+          <p className="text-[11px] tabular-nums text-[var(--text-muted)]">{t(`${index + 1} מתוך ${steps.length}`, `${index + 1} of ${steps.length}`)}</p>
+        </div>
+        <h2 id="site-tour-title" className="mt-2 text-base font-bold">{t(...step.title)}</h2>
         <p className="mt-1 text-xs leading-5">{t(...step.body)}</p>
+        {step.points && step.points.length > 0 && (
+          <ul className="mt-2 flex flex-col gap-1 text-xs leading-5">
+            {step.points.map((point, i) => (
+              <li key={i} className="flex gap-1.5"><span aria-hidden="true" className="text-[var(--purple-strong)]">✓</span><span>{t(...point)}</span></li>
+            ))}
+          </ul>
+        )}
         <div className="mt-3 flex items-center gap-2">
           <button type="button" onClick={finish} className="site-tour-skip">{t('דלג', 'Skip')}</button>
           <span className="flex-1" />

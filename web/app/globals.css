@@ -215,9 +215,8 @@ body {
 .planner-rail {
   position: fixed;
   z-index: 40;
-  top: 9rem;
+  top: 6rem;
   bottom: 1rem;
-  /* Opens just under the sticky toolbar. */
   inset-inline-start: 1rem;
   width: min(24rem, calc(100vw - 2rem));
   display: flex;
@@ -259,7 +258,7 @@ body {
 }
 .planner-rail-tab:focus-visible { outline: 2px solid var(--purple); outline-offset: 2px; }
 .planner-toolbar {
-  position: sticky; z-index: 50; top: 4.5rem;
+  /* Part of the board's frame: it scrolls with the board instead of floating over it. */
   display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .75rem;
   padding: .5rem .75rem; border: 1px solid var(--border); border-radius: 1rem;
   background: color-mix(in srgb, var(--surface) 94%, transparent); backdrop-filter: blur(14px);
@@ -521,7 +520,6 @@ body {
 
 /* Phones and small tablets: tools are a separate view above the bottom nav. */
 @media (max-width: 1023px) {
-  .planner-toolbar { top: 4rem; }
   .planner-workbench[data-rail-open="true"] .planner-main { display: none; }
   .planner-rail-header { gap: .3rem; padding: .6rem .65rem; }
   .planner-rail-header [role="tablist"] { flex: 1; min-width: 0; gap: 0; }

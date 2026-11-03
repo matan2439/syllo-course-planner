@@ -11,7 +11,7 @@ export default function ProductOverview() {
         <p className="text-base">Syllo is a digital software product for students planning courses and semesters at Tel Aviv University. Open the web app, choose a supported degree program, and work with your course repository, semester board, degree requirements, and AI assistant.</p>
         <p className="text-[var(--text-muted)]">The interface is primarily in Hebrew. Syllo is independently operated by {PUBLIC_SITE.operatorName}, a sole trader in Israel, and has no official affiliation with the university.</p>
         <div className="flex flex-wrap gap-4 pt-2">
-          <Link href="/programs" className="rounded-full bg-[var(--purple-strong)] px-6 py-3 font-semibold text-white hover:bg-[var(--purple)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--purple)]">Open the software</Link>
+          <Link href="/universities" className="rounded-full bg-[var(--purple-strong)] px-6 py-3 font-semibold text-white hover:bg-[var(--purple)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--purple)]">Open the software</Link>
           <Link href="/pricing" className={`${LINK_STYLE} self-center`}>View proposed packages and pricing</Link>
         </div>
       </section>
@@ -64,7 +64,7 @@ export default function ProductOverview() {
         <h2 id="hebrew-product-heading" className="text-lg font-bold">מה מקבלים ב־Syllo?</h2>
         <p>Syllo הוא מוצר תוכנה דיגיטלי לשימוש בדפדפן. בוחרים תוכנית לימודים, מעיינים במאגר הקורסים, מארגנים לוח סמסטרים ובודקים את דרישות התואר הזמינות. עוזר ה־AI מסייע בבחינת שאלות והצעות לתכנון.</p>
         <p>חבילות השימוש המוצעות יאפשרו לקבל תשובות והצעות של עוזר ה־AI בתוך היישום. החבילות והמחירים עדיין בפיתוח ואינם זמינים לרכישה. כל תשובה שנמסרה נחשבת שימוש אחד; שיחה יכולה לכלול כמה שימושים.</p>
-        <Link href="/programs" className={`${LINK_STYLE} inline-block`}>פתחו את התוכנה ובחרו תוכנית לימודים</Link>
+        <Link href="/universities" className={`${LINK_STYLE} inline-block`}>פתחו את התוכנה ובחרו תוכנית לימודים</Link>
       </section>
     </div>
   )

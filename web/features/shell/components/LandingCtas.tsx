@@ -33,7 +33,7 @@ export default function LandingCtas() {
   }
   return (
     <>
-      <Link href="/programs" className={PRIMARY}>בנו תוכנית</Link>
+      <Link href="/universities" className={PRIMARY}>בנו תוכנית</Link>
       <Link href="/planner" className={SECONDARY}>המשך לתוכנית שלי</Link>
     </>
   )
