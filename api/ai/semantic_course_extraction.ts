@@ -14,9 +14,14 @@
  *    (resolveModel + AI SDK generateObject with the schema) — NOT implemented live here.
  */
 import type { SyllabusSnapshot } from './syllabus_snapshot';
+import { getProgramEntry } from '../../shared/programs';
 
 /** Supported capability ontology for this slice (extensible; only mechanical_design has data). */
 export const CAPABILITY_ONTOLOGY = ['mechanical_design'] as const;
+/** Capabilities a program declares in the degree registry (unknown program: none). */
+export function capabilitiesFor(programId: string): readonly string[] {
+  return getProgramEntry(programId)?.capabilities ?? [];
+}
 export type OntologyCapability = (typeof CAPABILITY_ONTOLOGY)[number];
 export const ONTOLOGY_VERSION = '1';
 export const EXTRACTION_SCHEMA_VERSION = '1';

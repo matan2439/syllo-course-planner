@@ -14,8 +14,10 @@
 import {
   extractCatalogCourses,
   loadMechanicalEngineering2027Catalog,
+  loadProgramCatalog,
   MECHANICAL_ENGINEERING_2027_PROGRAM_ID,
 } from '../../api/ai/course_catalog';
+import { capabilitiesFor } from '../../api/ai/semantic_course_extraction';
 
 describe('extractCatalogCourses', () => {
   test('extracts repository courses with courseId, nameHe and categoryId', () => {
@@ -121,5 +123,24 @@ describe('loadMechanicalEngineering2027Catalog', () => {
 
   test('program id constant matches the committed board filename', () => {
     expect(MECHANICAL_ENGINEERING_2027_PROGRAM_ID).toBe('mechanical_engineering_2027');
+  });
+});
+
+describe('loadProgramCatalog', () => {
+  it('matches the ME 2027 alias for the ME program', () => {
+    expect(loadProgramCatalog('mechanical_engineering_2027')).toEqual(loadMechanicalEngineering2027Catalog());
+  });
+
+  it('loads a non-registry test board from data/boards', () => {
+    const catalog = loadProgramCatalog('test_program_2027');
+    expect(catalog.length).toBeGreaterThan(0);
+    expect(catalog.every((c) => typeof c.courseId === 'string')).toBe(true);
+  });
+});
+
+describe('capabilitiesFor', () => {
+  it('reads capabilities from the registry', () => {
+    expect(capabilitiesFor('mechanical_engineering_2027')).toEqual(['mechanical_design']);
+    expect(capabilitiesFor('no_such_program')).toEqual([]);
   });
 });
