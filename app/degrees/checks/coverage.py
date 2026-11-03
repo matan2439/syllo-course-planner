@@ -12,6 +12,8 @@ def _aware(value: datetime) -> datetime:
 
 def check_coverage(items: list[EvidenceItem], spec: DegreeSpec) -> CheckResult:
     problems: list[tuple[str, str]] = []
+    if not items:
+        problems.append(("", "no evidence collected"))
     seen: set[str] = set()
     for item in items:
         seen.add(item.id)
@@ -34,6 +36,8 @@ def check_coverage(items: list[EvidenceItem], spec: DegreeSpec) -> CheckResult:
 def check_freshness(items: list[EvidenceItem], run_started_at: datetime) -> CheckResult:
     start = _aware(run_started_at)
     problems: list[tuple[str, str]] = []
+    if not items:
+        problems.append(("", "no evidence collected"))
     for item in items:
         if item.from_cache or item.data.get("not_fetched") or _aware(item.fetched_at) < start:
             problems.append((

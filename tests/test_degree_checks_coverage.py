@@ -49,7 +49,8 @@ def test_blank_reason_fails():
 
 def test_stale_coverage_key_fails():
     result = check_coverage([], _spec({"gone": {"not_planning_rule": "ok"}}))
-    assert not result.passed and "stale coverage key" in result.problems[0] and "gone" in result.problems[0]
+    assert not result.passed
+    assert any("stale coverage key" in p and "gone" in p for p in result.problems)
 
 
 def test_problems_sorted_by_id():
@@ -73,3 +74,18 @@ def test_freshness_passes_live():
 def test_freshness_treats_naive_as_utc():
     naive = NOW.replace(tzinfo=None)
     assert check_freshness([_item("a", fetched_at=naive)], NOW).passed
+
+
+def test_coverage_fails_on_empty_evidence():
+    result = check_coverage([], _spec({}))
+    assert not result.passed and result.problems == ["no evidence collected"]
+
+
+def test_freshness_fails_on_empty_evidence():
+    result = check_freshness([], NOW)
+    assert not result.passed and result.problems == ["no evidence collected"]
+
+
+def test_blank_mapped_to_fails():
+    result = check_coverage([_item("a")], _spec({"a": {"mapped_to": ""}}))
+    assert not result.passed and "unresolved mapping: a" in result.problems[0]
