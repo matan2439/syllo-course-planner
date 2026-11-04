@@ -200,7 +200,10 @@ code PR, not a skill run. `init --institution <other>` refuses with the same mes
    live degree `--offline` into a scratch dir and refuses (exit 1, registry unchanged, listing
    degree, files and courses) if any of their committed boards would change — the refreshed
    official facts are course-wide; report that to the owner, never commit the other degree's
-   diff alongside. Then a full live check: any FAIL or SKIPPED refuses (registry unchanged).
+   diff alongside. The fix: `python scripts/degree.py refresh --program <other> --live --apply`,
+   review and commit that degree's diff on its own, then run publish again. Expect this often
+   until ME is refreshed against current TAU data.
+   Then a full live check: any FAIL or SKIPPED refuses (registry unchanged).
    On success it writes `RELEASE.md` beside `spec.json`, sets the registry status to `live`,
    rewrites the early-year index (now including the degree), and PRINTS the owner steps (DB
    board sync — 0 rows = not seeded yet; the board is served from the committed file after
