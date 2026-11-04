@@ -104,7 +104,10 @@ All models forbid unknown keys.
   `min_distinct_categories`, `category_members` {category_id: [course ids]} — keys must be spec
   categories and `course_ids` must equal the union of the members), `mutually_exclusive` (the
   source says the courses overlap and cannot both be taken), `language_requirement` (a
-  degree-wide language-of-instruction requirement, e.g. N courses in English).
+  degree-wide language-of-instruction requirement, e.g. N courses in English), `load_limit`
+  (bounds on a semester's load, e.g. under 75% needs approval, at most N graduate courses),
+  `study_duration` (standard length / extension of the degree), `prerequisite_policy` (how
+  prerequisites are read degree-wide, e.g. "before or in parallel").
   `enforced_by: "board"` only with the board field cited in `note`; `"none"` fails
   `rules_enforced` until the planner enforces it.
 - `known_gaps[]`: `gap_id`, `description`, `source_ids`. Fails `known_gaps` while present;
@@ -160,25 +163,30 @@ a new year needs an atomic flip of both entries' `isFamilyDefault` / `status` in
 
 `mechanical_engineering_2027`, tcid 8715, shana 2026, `data/degrees/tau/mechanical_engineering/2027/`.
 
-- Evidence: 584 items — course_fact 195 (87 timetable + 108 IMS), course_listing 179,
-  rule_text 166, section 30, policy_text 11, program_text 3.
-- Coverage: 584 entries = 330 auto-suggested / 119 hand-mapped / 13 to course_rules /
-  122 not-a-rule. The 330 suggestions are all course items (0 sections). Hand-mapped 119 =
-  categories 97 + mandatory_courses 14 + general_requirement 4 + group_minimums 3 +
-  total_required_credits 1. The 122 = 121 `not_planning_rule` + 1 mapped to
-  `known_gaps[unread-regulations-pdf]` (the unread PDF link).
-- course_rules: 7 (one `annual` enforced by the board — note cites `is_annual=true,
-  spans_semesters=[...], count_hours_once=true`; 6 `enforced_by: "none"`).
-- known_gaps: `unread-regulations-pdf` (the faculty regulations PDF linked from
-  `T:body:terms:8026588cd798`, not read).
+- Evidence: 948 items — course_fact 195 (87 timetable + 108 IMS), course_listing 179,
+  rule_text 530 (166 program page + 364 sentences of the regulations PDF `pdf:b6a7c762f8db:*`),
+  section 30, policy_text 11, program_text 3.
+- Coverage: 948 entries = 330 auto-suggested / 121 hand-mapped / 29 to course_rules /
+  468 `not_planning_rule`. The 330 suggestions are all course items (0 sections). Hand-mapped
+  121 = categories 97 + mandatory_courses 14 + general_requirement 4 + group_minimums 3 +
+  catalog_year_policy 2 + total_required_credits 1. The regulations PDF (Terms_BA.pdf, 364
+  sentence items): 16 to course_rules, 2 to catalog_year_policy, 346 not-a-rule (grading,
+  exams, appeals, status, accommodations, procedures; 58 headings).
+- course_rules: 14 — two enforced by the boards (`annual-0542-3792`, note cites
+  `is_annual=true, spans_semesters=[...], count_hours_once=true`; `duration-8-semesters`, note
+  cites both boards' `semester_id`s), 12 `enforced_by: "none"` (6 from the program page, 6
+  degree-wide from the regulations: load, extension, prerequisite semantics, year progression,
+  graduate-course cap).
+- known_gaps: none. `unread-regulations-pdf` (the PDF linked from `T:body:terms:8026588cd798`)
+  was retired by reading the PDF with the `tau_pdf` adapter and mapping every item.
 - source_conflicts: 10 recorded, not applied (e.g. total credits 185 in the spec vs. 184 /
   185.5 on the program page; 0542-2500 listed in both Y2/B and Y3/A).
 - curation.json: 802 entries — 768 tagged `retire: "post_migration"` (to retire with the first
   real update) and 34 `retire: null` (durable hand corrections, e.g. the 0542-3792 annual lab:
   `is_annual`, `spans_semesters`, `placement`). The ME boards are plannable only with it: a
   clone of the spec without it fails `plannable` (`annual_not_represented: 0542-3792`).
-- Current state (as of 2026-11-04): `check --live` red only on `rules_enforced` (the 6 rules)
-  and `known_gaps` (the unread PDF) — the same red a new degree should expect. It is `live`
+- Current state (as of 2026-11-04): `check --live` red only on `rules_enforced` (the 12
+  rules) — the same red a new degree should expect. It is `live`
   (pre-pipeline), so `publish` refuses it; `degree_length` passes (mandatory years 1-4).
 - general_requirement: 88 שער רוח `course_ids`, migrated from the legacy program
   (`data/programs/mechanical_engineering_2027_enriched.json`) and identical, in order, to

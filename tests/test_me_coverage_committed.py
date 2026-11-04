@@ -51,8 +51,16 @@ def test_course_rules_unenforced_set_is_pinned():
         "prereq-sub-0512-4362-0542-3243",
         "window-0542-2500",
         "year-0509-4010",
+        # faculty regulations (Terms_BA.pdf), read and mapped item by item
+        "duration-extension",
+        "graduate-courses-max-2-per-semester",
+        "load-min-75pct-approval",
+        "prereq-before-or-concurrent",
+        "prereq-conditional-reserve-or-eligible-student",
+        "year-progression",
     }
-    assert {r.rule_id for r in spec.course_rules if r.enforced_by == "board"} == {"annual-0542-3792"}
+    assert {r.rule_id for r in spec.course_rules if r.enforced_by == "board"} == {
+        "annual-0542-3792", "duration-8-semesters"}
 
 
 def test_every_course_rule_is_backed_by_mapped_evidence():
@@ -64,15 +72,23 @@ def test_every_course_rule_is_backed_by_mapped_evidence():
             assert spec.coverage[sid].mapped_to == f"course_rules[{rule.rule_id}]"
 
 
-def test_failing_checks_are_exactly_the_recorded_gaps_and_unenforced_rules():
-    """Honest gate: of the spec-only checks, only these fail, with exactly these entries."""
+def test_failing_checks_are_exactly_the_unenforced_rules():
+    """Honest gate: of the spec-only checks, only rules_enforced fails (the regulations PDF was
+    read and mapped, so no known gap remains)."""
     from app.degrees.checks import check_known_gaps, check_rules_enforced
 
     _, spec = _load()
     gaps = check_known_gaps(spec)
-    assert not gaps.passed
-    assert {p.split(":")[0] for p in gaps.problems} == {"known gap unread-regulations-pdf"}
-    assert not check_rules_enforced(spec).passed and len(check_rules_enforced(spec).problems) == 6
+    assert gaps.passed, gaps.problems
+    assert not check_rules_enforced(spec).passed and len(check_rules_enforced(spec).problems) == 12
+
+
+def test_regulations_pdf_is_fully_mapped():
+    """Every Terms_BA.pdf item has a coverage entry, and the program-page link to it is no gap."""
+    items, spec = _load()
+    pdf_ids = {i.id for i in items if i.id.startswith("pdf:b6a7c762f8db:")}
+    assert len(pdf_ids) == 364 and pdf_ids <= set(spec.coverage)
+    assert spec.coverage["tau:8715:2026:body:terms:8026588cd798"].not_planning_rule
 
 
 def test_known_gaps_are_backed_by_mapped_evidence():
@@ -109,3 +125,17 @@ def test_board_enforced_rules_hold_in_committed_board():
     for c in records:
         assert c["is_annual"] is True and c["count_hours_once"] is True
         assert c["spans_semesters"] == ["year_3_semester_a", "year_3_semester_b"]
+
+
+def test_duration_rule_holds_in_committed_boards():
+    """duration-8-semesters claims board enforcement: the two boards hold exactly 8 semesters."""
+    from pathlib import Path
+
+    _, spec = _load()
+    (rule,) = [r for r in spec.course_rules if r.rule_id == "duration-8-semesters"]
+    assert rule.enforced_by == "board" and rule.params["semesters"] == 8
+    boards = Path(__file__).resolve().parents[1] / "data/boards"
+    ids = [s["semester_id"]
+           for name in ("mechanical_engineering_years_1_2_2027.json", "mechanical_engineering_2027.json")
+           for s in json.loads((boards / name).read_text(encoding="utf-8"))["semesters"]]
+    assert ids == [f"year_{y}_semester_{s}" for y in (1, 2, 3, 4) for s in ("a", "b")]
