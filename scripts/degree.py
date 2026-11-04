@@ -472,7 +472,8 @@ def run_checks(entry: ProgramEntry, live: bool, offline: bool) -> CheckRun:
     """run_check with the per-check results exposed (publish refuses on any FAIL or SKIPPED)."""
     from app.degrees.checks import (
         check_board_carries_requirements, check_courses_known, check_coverage, check_degree_length,
-        check_double_counting, check_freshness, check_known_gaps, check_mandatory_offered, check_plannable, check_rules_enforced, check_totals,
+        check_double_counting, check_freshness, check_known_gaps, check_mandatory_offered, check_plannable,
+        check_rules_enforced, check_totals,
     )
 
     started = datetime.now(timezone.utc)

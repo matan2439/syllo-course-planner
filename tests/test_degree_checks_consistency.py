@@ -362,6 +362,42 @@ def test_board_carries_fails_on_category_the_board_never_receives():
     assert any("categories[t1]" in p for p in result.problems)
 
 
+
+def test_board_carries_names_shadowed_keyed_category():
+    # a keyed category is dropped once a plain category makes spec_to_program emit elective_categories
+    data = _spec(categories=[("labs", ["A"], {"min_courses": 1}), ("e1", ["B"], {})]).model_dump()
+    data["legacy"] = {"requirement_category_keys": {"advanced_labs": "labs"}}
+    result = check_board_carries_requirements(DegreeSpec.model_validate(data))
+    assert not result.passed
+    assert len(result.problems) == 1
+    assert "categories[labs]" in result.problems[0] and "requirements.advanced_labs" in result.problems[0]
+    assert "shadowed" in result.problems[0] and "elective_categories" in result.problems[0]
+
+
+def _general(credits_required, min_courses=3):
+    return {"category_id": "g", "name_he": "g", "min_courses": min_courses,
+            "credits_required": credits_required, "course_ids": ["G1"]}
+
+
+def test_board_carries_general_credits_matching_course_count_passes():
+    assert check_board_carries_requirements(_spec(general=_general(6))).passed  # TAU: 3 x 2
+
+
+def test_board_carries_general_credits_mismatch_fails():
+    result = check_board_carries_requirements(_spec(general=_general(8)))
+    assert not result.passed
+    assert len(result.problems) == 1
+    assert "general_requirement.credits_required" in result.problems[0] and "8" in result.problems[0]
+
+
+def test_board_carries_general_credits_unverifiable_fails(monkeypatch):
+    from app.degrees.checks import consistency
+    monkeypatch.setattr(consistency, "load_institution", lambda _id: {"id": "tau", "generalRequirement": {}})
+    result = check_board_carries_requirements(_spec(general=_general(6)))
+    assert not result.passed
+    assert "general_requirement.credits_required" in result.problems[0]
+    assert "creditsPerCourse" in result.problems[0]
+
 # ---------------------------------------------------------------- ME
 
 
