@@ -139,6 +139,43 @@ def test_course_rule_rejects_invalid(me_spec, bad):
         DegreeSpec.model_validate(data)
 
 
+def _distinct(**params) -> dict:
+    base = {"min_courses": 2, "min_distinct_categories": 2,
+            "category_members": {"fluids": ["0542-4120"], "solids": ["X-2"]}}
+    return _rule(rule_id="distinct-x", kind="distinct_categories", course_ids=["0542-4120", "X-2"],
+                 params={**base, **params})
+
+
+@pytest.mark.parametrize("kind", ["mutually_exclusive", "language_requirement"])
+def test_course_rule_accepts_new_kinds(me_spec, kind):
+    data = me_spec.model_dump(mode="json")
+    data["course_rules"] = [_rule(kind=kind, params={})]
+    spec = DegreeSpec.model_validate(data)
+    assert spec_to_program(spec) == _enriched()
+
+
+def test_distinct_categories_rule_validates_and_stays_spec_only(me_spec):
+    data = me_spec.model_dump(mode="json")
+    data["course_rules"] = [_distinct()]
+    spec = DegreeSpec.model_validate(data)
+    assert resolve_spec_path(spec, "course_rules[distinct-x]")
+    assert spec_to_program(spec) == _enriched()
+
+
+@pytest.mark.parametrize("bad, match", [
+    ({"category_members": {"nope": ["0542-4120", "X-2"]}}, "unknown categories"),
+    ({"category_members": {"fluids": ["0542-4120"]}}, "union of category_members"),
+    ({"category_members": {}}, "needs category_members"),
+    ({"min_courses": "2"}, "integer"),
+    ({"min_distinct_categories": None}, "integer"),
+])
+def test_distinct_categories_rule_rejects_invalid(me_spec, bad, match):
+    data = me_spec.model_dump(mode="json")
+    data["course_rules"] = [_distinct(**bad)]
+    with pytest.raises(ValueError, match=match):
+        DegreeSpec.model_validate(data)
+
+
 def test_known_gaps_resolve_validate_and_stay_spec_only(me_spec):
     data = me_spec.model_dump(mode="json")
     data["known_gaps"] = [{"gap_id": "unread-x", "description": "doc not read", "source_ids": ["tau:1"]}]

@@ -55,6 +55,13 @@ CoverageEntry = Union[MappedTo, NotPlanningRule]
 RuleKind = Literal[
     "equivalent_to", "prerequisite_substitute", "year_restriction", "cohort_restriction",
     "offering_window", "annual", "general_requirement_exemption",
+    # "N courses from K different categories" (e.g. TAU EE: 4 core courses from 4 tracks).
+    # params: min_courses, min_distinct_categories, category_members {category_id: [course ids]}.
+    "distinct_categories",
+    # The source says the courses overlap and cannot both be taken.
+    "mutually_exclusive",
+    # A degree-wide requirement on the language of instruction (e.g. N courses in English).
+    "language_requirement",
 ]
 
 
@@ -124,6 +131,27 @@ class DegreeSpec(_Strict):
     source_conflicts: list[SourceConflict] = []
     course_rules: list[CourseRule] = []
     known_gaps: list[KnownGap] = []
+
+    @model_validator(mode="after")
+    def _distinct_category_rules(self):
+        category_ids = {c.category_id for c in self.categories}
+        for r in self.course_rules:
+            if r.kind != "distinct_categories":
+                continue
+            p = r.params
+            members = p.get("category_members")
+            if not isinstance(p.get("min_courses"), int) or not isinstance(p.get("min_distinct_categories"), int):
+                raise ValueError(f"rule {r.rule_id}: distinct_categories needs integer min_courses and "
+                                 f"min_distinct_categories")
+            if not isinstance(members, dict) or not members:
+                raise ValueError(f"rule {r.rule_id}: distinct_categories needs category_members")
+            unknown = sorted(set(members) - category_ids)
+            if unknown:
+                raise ValueError(f"rule {r.rule_id}: category_members names unknown categories {unknown}")
+            listed = {c for ids in members.values() for c in ids}
+            if listed != set(r.course_ids):
+                raise ValueError(f"rule {r.rule_id}: course_ids must equal the union of category_members")
+        return self
 
     @model_validator(mode="after")
     def _unique_rule_ids(self):

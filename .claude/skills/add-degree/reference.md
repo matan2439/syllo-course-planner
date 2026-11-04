@@ -99,7 +99,12 @@ Course ids are dashed (`0542-3792`). Anything else, or a target missing from the
 All models forbid unknown keys.
 
 - `course_rules[].kind`: `equivalent_to`, `prerequisite_substitute`, `year_restriction`,
-  `cohort_restriction`, `offering_window`, `annual`, `general_requirement_exemption`.
+  `cohort_restriction`, `offering_window`, `annual`, `general_requirement_exemption`,
+  `distinct_categories` ("N courses from K different categories"; params `min_courses`,
+  `min_distinct_categories`, `category_members` {category_id: [course ids]} — keys must be spec
+  categories and `course_ids` must equal the union of the members), `mutually_exclusive` (the
+  source says the courses overlap and cannot both be taken), `language_requirement` (a
+  degree-wide language-of-instruction requirement, e.g. N courses in English).
   `enforced_by: "board"` only with the board field cited in `note`; `"none"` fails
   `rules_enforced` until the planner enforces it.
 - `known_gaps[]`: `gap_id`, `description`, `source_ids`. Fails `known_gaps` while present;
