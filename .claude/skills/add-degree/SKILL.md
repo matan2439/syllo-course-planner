@@ -23,10 +23,13 @@ it is the source of truth for flags.
 ## Tell the owner up front: expect a parked draft
 
 Before step 1, say plainly: an honest run will most likely end **red**, as a parked draft,
-not a published degree. The program page links the faculty regulations PDF, and there is no
-PDF adapter yet, so those items become `known_gaps` and `known_gaps` fails; course rules the
-board cannot encode (`enforced_by: "none"`) fail `rules_enforced` too. Neither is fixed by
-editing entries away (Hard rules). A green check is the exception until those land.
+not a published degree. The program page links the faculty regulations PDF; the `tau_pdf`
+adapter reads it, so its sentences become `pdf:*` evidence items you map one by one like any
+other item (hundreds of them: budget for it). A page or document that was not read (fetch
+failed, a scanned page with no text layer, a document the adapter does not follow) is still a
+known gap: a `known_gaps` entry, and `known_gaps` fails until it is read. Course rules the
+board cannot encode (`enforced_by: "none"`) fail `rules_enforced`. Neither is fixed by editing
+entries away (Hard rules). A green check is the exception until the board enforces those rules.
 
 What to do with a parked draft — ask the owner, recommending the default:
 
@@ -56,14 +59,25 @@ academic year starts (2026-2027 -> `2026`; the registry id ends in `shana + 1`, 
 `--level` from the degree (bachelor `1`, master `2`); `--school` and the `tcid` from the
 official index (see step 1).
 
-## Not a 4-year degree: stop
+## Degree length: set `degree_years`
 
-Degree length is not modelled yet: the boards cover Years 1-2 and Years 3-4 only. If the
-official program is not a 4-year degree (its mandatory courses are not spread over exactly
-years 1-4 — e.g. a 3-year BA or a 5-year double degree), stop and report it to the owner
-before writing the spec. `build` refuses such a spec (exit 2, "refusing to build ... no board
-window covers" / "expected exactly 1-4") and `check` fails `degree_length`; never move
-courses to another year to get past it.
+Degree length is data: `spec.json` `degree_years` (3..6, default 4). Set it from the program
+page's year sections (שנה א' .. שנה ה': the last year section the program lists is N; a
+section like "שנים ג'+ד'" covers both years). The boards follow it: the early window board is
+always Years 1-2, the program board Years 3..N (N=3: Year 3 only; N=5: Years 3-5). Map the
+year-section item(s) that set it to `{"mapped_to": "degree_years"}`.
+
+Cross-check it with the regulations' duration sentence (e.g. "8 semesters"): map that sentence
+to a `study_duration` course rule whose `params.semesters` / `params.years` state the length —
+`check` fails `degree_length` when they disagree with `degree_years`. When the two official
+sources really differ (the program page shows 4 years, the regulations say 9 semesters for this
+program), keep `degree_years` from the program page and record a `source_conflicts` entry
+naming both item ids; never edit the rule's params to make them agree.
+
+`build` refuses (exit 2, "refusing to build ... outside the degree's years 1-N") and `check`
+fails `degree_length` when a mandatory course's year is outside 1..N. A year with no mandatory
+course (e.g. an electives-only final year) is fine. Never move courses to another year to get
+past a refusal: fix the course's year or `degree_years` from the official page.
 
 ## New university: stop
 
@@ -96,8 +110,8 @@ code PR, not a skill run. `init --institution <other>` refuses with the same mes
 
 2. **Write the structure from the evidence.** Run `python scripts/degree.py todo --program <id>`
    and read `todo.md` (beside `evidence.json`). From the `program_text`, `section`, `rule_text`
-   and `course_listing` items, fill in `spec.json`: `total_required_credits`,
-   `mandatory_courses` (every year), `categories` (+ `group`, `min_courses`/`min_credits`),
+   and `course_listing` items, fill in `spec.json`: `total_required_credits`, `degree_years`
+   (Degree length above), `mandatory_courses` (every year), `categories` (+ `group`, `min_courses`/`min_credits`),
    `group_minimums`, `general_requirement` (incl. `credits_required` when stated; where its
    `course_ids` come from: below). Leave `coverage` alone for now. Suggestions in step 3 only work once the courses have a home here:
    on the empty skeleton `--apply-suggestions` applies 0 entries.
@@ -252,8 +266,8 @@ facts snapshot and the mismatch report; show `git diff data/official/` and the m
 - Never run the DB sync, a deploy, or any `vercel`/prod command: print them for the owner.
 - Record every disagreement between sources in `source_conflicts`; never resolve it silently.
 - Never delete a `known_gaps` or `course_rules` entry to make check pass.
-- Not a 4-year degree (mandatory years not exactly 1-4): stop and report — until degree length
-  is modelled. Never re-year courses to fit.
+- `degree_years` comes from the program page's year sections; a different length in the
+  regulations is a `source_conflicts` entry, not a silent override. Never re-year courses to fit.
 - A red run is a parked draft: commit it on a separate branch (default) or not at all; never
   merge a draft to `main` to "save" it.
 

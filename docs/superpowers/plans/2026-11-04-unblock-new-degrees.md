@@ -14,7 +14,7 @@
 
 ## Facts found while drafting (2026-11-04)
 
-- ME's regulations PDF (`Terms_BA.pdf`, 769 KB, ~730 text lines) states: BSc = 8 semesters, **except mechanical engineering (and two others): 9 semesters (4.5 years)**; "digital sciences for hi-tech" ≈ 3 years. So ME's own boards (Years 3-4 window) already disagree with its regulations — record as a `source_conflict` when the PDF is read; do not re-year ME in this plan.
+- ME's regulations PDF (`Terms_BA.pdf`, 769 KB, ~730 text lines) states: BSc = 8 semesters; the 9-semester (4.5-year) exception covers three **double programs** — mechanical engineering + marine biotechnology, mechanical engineering + earth sciences (environmental emphasis), and materials science & engineering + chemistry — not single-major ME, so ME's 4-year boards agree with its regulations (spec rule `duration-8-semesters`); "digital sciences for hi-tech" ≈ 3 years. (Corrected 2026-11-04 when the PDF was read; earlier drafts of this bullet wrongly said single-major ME is 9 semesters.)
 - PDF text comes out as visual-order RTL; `app/parsing/tau_curriculum_document.py:restore_rtl_pdf_line` already restores it.
 - UI supports degree years up to `MAX_DEGREE_YEAR = 6` (`shared/planner/window_board.ts`) and fits tabs to the board's real length (`web/lib/planner/semester-window.ts: scheduleSlotsForBoard`).
 
@@ -31,7 +31,7 @@
 1. **Scanned PDF with no text layer** → zero paragraphs → the item stays unread (known gap), check stays red.
 2. **Same document linked from two programs** (faculty-wide regulations) → identical ids for identical text in both evidence sets, so one reading is reusable.
 3. **3-year degree** (e.g. "תוכנית דו-חוגית במדעים דיגיטליים להיי-טק") → late window = Year 3 only; no empty Year 4 semesters on the board.
-4. **ME** → still Years 1-2 + 3-4 boards byte-identical; the 9-semester regulations statement surfaces as a source conflict, not a board change.
+4. **ME** → still Years 1-2 + 3-4 boards byte-identical; its regulations' 8-semester statement agrees with `degree_years` 4 (the 9-semester exception is for double programs only — see Facts found).
 5. **PDF download fails live** → raises like the other adapters (no degraded evidence).
 
 ### Task 1: PDF evidence adapter

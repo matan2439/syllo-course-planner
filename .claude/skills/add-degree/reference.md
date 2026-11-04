@@ -75,7 +75,7 @@ The same course in two sections gives two listing ids (and two note ids).
 
 A `mapped_to` value must be one of:
 
-- `total_required_credits`, `general_requirement`, `catalog_year_policy`
+- `total_required_credits`, `general_requirement`, `catalog_year_policy`, `degree_years`
 - `mandatory_courses[<course_id>]`
 - `categories[<category_id>]`
 - `categories[<category_id>].course_ids[<course_id>]`
@@ -88,8 +88,9 @@ Course ids are dashed (`0542-3792`). Anything else, or a target missing from the
 
 ## DegreeSpec fields
 
-`program_id`, `institution`, `source_year`, `total_required_credits`, `catalog_year_policy`,
-`mandatory_courses` (`course_id`, `year`, `semester` A/B/either, `placement_rule`),
+`program_id`, `institution`, `source_year`, `total_required_credits`, `degree_years` (3..6,
+default 4; spec-only: the early board is Years 1-2, the program board Years 3..N),
+`catalog_year_policy`, `mandatory_courses` (`course_id`, `year`, `semester` A/B/either, `placement_rule`),
 `categories` (`category_id`, `name_he`, `min_courses`, `min_credits`, `course_ids`, `group`),
 `group_minimums` (`{"core": 6}`), `general_requirement` (free dict: `category_id`,
 `min_courses`, `credits_required`, `course_ids`, ...; `credits_required` is spec-only),
@@ -106,7 +107,9 @@ All models forbid unknown keys.
   source says the courses overlap and cannot both be taken), `language_requirement` (a
   degree-wide language-of-instruction requirement, e.g. N courses in English), `load_limit`
   (bounds on a semester's load, e.g. under 75% needs approval, at most N graduate courses),
-  `study_duration` (standard length / extension of the degree), `prerequisite_policy` (how
+  `study_duration` (standard length / extension of the degree; `params.semesters` /
+  `params.years`, when present, must equal `degree_years` * 2 / `degree_years`, else
+  `degree_length` fails), `prerequisite_policy` (how
   prerequisites are read degree-wide, e.g. "before or in parallel").
   `enforced_by: "board"` only with the board field cited in `note`; `"none"` fails
   `rules_enforced` until the planner enforces it.
@@ -187,7 +190,8 @@ a new year needs an atomic flip of both entries' `isFamilyDefault` / `status` in
   clone of the spec without it fails `plannable` (`annual_not_represented: 0542-3792`).
 - Current state (as of 2026-11-04): `check --live` red only on `rules_enforced` (the 12
   rules) — the same red a new degree should expect. It is `live`
-  (pre-pipeline), so `publish` refuses it; `degree_length` passes (mandatory years 1-4).
+  (pre-pipeline), so `publish` refuses it; `degree_length` passes (`degree_years` 4 by default; mandatory
+  years 1-4; `duration-8-semesters` says 8 semesters / 4 years).
 - general_requirement: 88 שער רוח `course_ids`, migrated from the legacy program
   (`data/programs/mechanical_engineering_2027_enriched.json`) and identical, in order, to
   `data/general_courses_shaar_ruach.json` `courses[]` — the file a new TAU degree copies them
