@@ -3,7 +3,8 @@ Single enrichment command for the 2027 Mechanical Engineering board.
 
 Runs the full pipeline in sequence:
   1. Load mechanical_engineering_2027_enriched.json (with mandatory courses reference).
-  2. build_semester_board() — places 12 mandatory Y3/Y4 courses, builds 56-course repo.
+  2. build_semester_board() — places the mandatory courses of the board's years (Years 3..N,
+     ``years``), builds the repository from the program's elective data.
   3. enrich_board_links — fetch/parse IMS detail pages for REPO courses (from cache).
   4. enrich_board_links — fetch/parse IMS detail pages for PLACED MANDATORY courses.
   5. Fill missing name_he / weekly_hours from TAU GraphQL cache.

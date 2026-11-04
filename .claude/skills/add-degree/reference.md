@@ -109,7 +109,9 @@ All models forbid unknown keys.
   (bounds on a semester's load, e.g. under 75% needs approval, at most N graduate courses),
   `study_duration` (standard length / extension of the degree; `params.semesters` /
   `params.years`, when present, must equal `degree_years` * 2 / `degree_years`, else
-  `degree_length` fails), `prerequisite_policy` (how
+  `degree_length` fails — even with the disagreement recorded in `source_conflicts`: it stays
+  red, naming the rule and the conflict, until the owner rules which source governs; a
+  non-whole length such as 9 semesters / 4.5 years cannot be expressed by `degree_years` yet), `prerequisite_policy` (how
   prerequisites are read degree-wide, e.g. "before or in parallel").
   `enforced_by: "board"` only with the board field cited in `note`; `"none"` fails
   `rules_enforced` until the planner enforces it.

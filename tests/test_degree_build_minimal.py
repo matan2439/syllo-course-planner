@@ -213,6 +213,13 @@ def test_build_follows_degree_years(tmp_path, monkeypatch, capsys, degree_years,
     # board's own semesters.
     for c in main["metadata"]["program_repository_courses"]:
         assert set(c.get("effective_allowed_semesters") or []) <= set(expected), c["course_id"]
+    general = [c for c in main["metadata"]["program_repository_courses"]
+               if c.get("category_id") == GENERAL["category_id"]]
+    offered = [c for c in general if set(c.get("offered_semesters") or []) & {"A", "B"}]
+    assert offered  # (courses not offered this year have no allowed semesters at all)
+    for c in offered:
+        assert c["effective_allowed_semesters"], c["course_id"]
+        assert set(c["effective_allowed_semesters"]) <= set(expected), c["course_id"]
     early = boards["early_years"]
     placed_early = {c["course_id"] for s in early["semesters"] for c in s.get("courses", [])}
     assert placed_early == {cid for cid, y in mandatory if y <= 2}

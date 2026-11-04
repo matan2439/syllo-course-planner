@@ -43,7 +43,7 @@ def _fact(credits=4, semesters=("A", "B"), status="offered", hours=4):
 # ---------------------------------------------------------------- degree_length
 
 
-def _years_spec(*years, degree_years=None, rules=()) -> DegreeSpec:
+def _years_spec(*years, degree_years=None, rules=(), conflicts=()) -> DegreeSpec:
     data = {
         "program_id": "p", "institution": "tau", "source_year": 2027, "total_required_credits": 20,
         "mandatory_courses": [{"course_id": f"M-{i}", "year": y, "semester": "A", "placement_rule": "r"}
@@ -52,6 +52,7 @@ def _years_spec(*years, degree_years=None, rules=()) -> DegreeSpec:
         "course_rules": [{"rule_id": f"dur-{i}", "kind": "study_duration", "course_ids": [], "params": params,
                           "source_ids": ["s"], "enforced_by": "board", "note": "n"}
                          for i, params in enumerate(rules)],
+        "source_conflicts": list(conflicts),
     }
     if degree_years is not None:
         data["degree_years"] = degree_years
@@ -89,9 +90,29 @@ def test_degree_length_cross_checks_study_duration_rules():
     bad = _years_spec(1, 2, 3, degree_years=3, rules=[{"semesters": 8, "years": 4}])
     result = check_degree_length(bad)
     assert not result.passed
+    ask = "; record a source_conflicts entry and ask the owner which source governs"
     assert result.problems == [
-        "study_duration rule dur-0 says 4 years, but degree_years is 3",
-        "study_duration rule dur-0 says 8 semesters, but degree_years 3 is 6 semesters",
+        "study_duration rule dur-0 says 4 years, but degree_years is 3" + ask,
+        "study_duration rule dur-0 says 8 semesters, but degree_years 3 is 6 semesters" + ask,
+    ]
+
+
+def test_degree_length_duration_conflict_stays_red_and_names_the_conflict():
+    """A 4.5-year (9-semester) program whose page shows 4 years: recorded as a source conflict,
+    still red (the owner decides which source governs; whole years cannot express 4.5 yet)."""
+    spec = _years_spec(1, 2, 3, 4, rules=[{"semesters": 9, "years": 4.5}], conflicts=[
+        {"course_id": None, "description": "page shows 4 years; regulations say 9 semesters",
+         "sources": ["T:body:years", "s"]},
+        {"course_id": None, "description": "unrelated", "sources": ["other"]},
+    ])
+    result = check_degree_length(spec)
+    assert not result.passed
+    tail = ("; recorded as source_conflicts[0] ('page shows 4 years; regulations say 9 semesters')"
+            " — the owner decides which source governs")
+    assert result.problems == [
+        "study_duration rule dur-0 says 4.5 years, but degree_years is 4" + tail,
+        "study_duration rule dur-0 says 9 semesters (not whole years: degree_years cannot express it yet), "
+        "but degree_years 4 is 8 semesters" + tail,
     ]
 
 

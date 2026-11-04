@@ -5,8 +5,8 @@ enriched 2027 program JSON, then restore URL enrichments from cache.
 Steps:
   1. Load mechanical_engineering_2027_enriched.json (includes mandatory courses
      reference and richer other_specialization_electives data).
-  2. Call build_semester_board({}, program) — places 12 mandatory Y3/Y4 courses,
-     builds 56-course repository from enriched program data.
+  2. Call build_semester_board({}, program) — places the mandatory courses of the
+     board's years (Years 3..N, ``years``), builds the repository from the program data.
   3. Re-run enrich_board_links to restore syllabus/exam/prereq/moodle URLs
      from data/raw_html/course_details/ cache.
   4. Re-run name/hours enrichment from TAU GraphQL cache for any still-null fields.

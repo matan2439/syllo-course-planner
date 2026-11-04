@@ -6,7 +6,9 @@ in visual order (pypdf turns those back into logical order); ``logical_stream=Tr
 logical order instead, which pypdf then returns reversed - the case the adapter must restore.
 """
 import hashlib
+import sys
 from datetime import datetime, timezone
+from pathlib import Path
 
 import pytest
 import requests
@@ -364,3 +366,14 @@ def test_tochniot_policy_items_record_their_list(program):
     assert lists <= {"terms", "prev_newsletters"} and "terms" in lists
     assert all(pdf.is_current_regulations_pdf(i.data) == (i.data["list"] == "terms" and i.data["url"].endswith(".pdf"))
                for i in items)
+
+
+def test_adapters_import_without_pypdf():
+    """pypdf is imported only when a PDF is read: every degree.py command imports the adapters,
+    so an interpreter without pypdf can still build/check."""
+    import subprocess
+    code = ("import sys; import app.degrees.adapters, app.degrees.adapters.pdf; "
+            "assert 'pypdf' not in sys.modules, 'pypdf imported eagerly'; print('ok')")
+    root = Path(__file__).resolve().parents[1]
+    out = subprocess.run([sys.executable, "-c", code], cwd=root, capture_output=True, text=True)
+    assert out.returncode == 0 and out.stdout.strip() == "ok", out.stderr

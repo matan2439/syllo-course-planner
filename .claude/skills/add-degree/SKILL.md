@@ -70,9 +70,14 @@ year-section item(s) that set it to `{"mapped_to": "degree_years"}`.
 Cross-check it with the regulations' duration sentence (e.g. "8 semesters"): map that sentence
 to a `study_duration` course rule whose `params.semesters` / `params.years` state the length —
 `check` fails `degree_length` when they disagree with `degree_years`. When the two official
-sources really differ (the program page shows 4 years, the regulations say 9 semesters for this
-program), keep `degree_years` from the program page and record a `source_conflicts` entry
-naming both item ids; never edit the rule's params to make them agree.
+sources really differ, keep `degree_years` from the program page, record a `source_conflicts`
+entry naming both item ids (the rule's `source_ids` among them), and **stop and report it to the
+owner**: the degree is a parked draft with `degree_length` red until the owner rules which source
+governs. The conflict entry does not turn the check green; the problem text names the rule and
+the conflict so the owner sees the decision. Never edit the rule's params (or `degree_years`) to
+make them agree. Example: the program page lists years א'-ד' but the regulations say 9 semesters
+(4.5 years) for this program — `degree_years` is whole years, so 4.5 cannot be expressed yet
+either; it stays red ("says 9 semesters (not whole years ...)") and goes to the owner.
 
 `build` refuses (exit 2, "refusing to build ... outside the degree's years 1-N") and `check`
 fails `degree_length` when a mandatory course's year is outside 1..N. A year with no mandatory
@@ -267,7 +272,9 @@ facts snapshot and the mismatch report; show `git diff data/official/` and the m
 - Record every disagreement between sources in `source_conflicts`; never resolve it silently.
 - Never delete a `known_gaps` or `course_rules` entry to make check pass.
 - `degree_years` comes from the program page's year sections; a different length in the
-  regulations is a `source_conflicts` entry, not a silent override. Never re-year courses to fit.
+  regulations is a `source_conflicts` entry plus a report to the owner (the draft stays parked,
+  `degree_length` red, until they rule), never a silent override or bent rule params. Never
+  re-year courses to fit.
 - A red run is a parked draft: commit it on a separate branch (default) or not at all; never
   merge a draft to `main` to "save" it.
 

@@ -34,8 +34,6 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 import requests
-from pypdf import PdfReader
-from pypdf.errors import PdfReadError
 
 from app.degrees.adapters import tau
 from app.degrees.evidence import EvidenceFetchError, EvidenceItem, text_id
@@ -103,8 +101,18 @@ def _download(url: str, cache: Path, live: bool, offline: bool) -> bytes:
 
 
 def extract_pages(data: bytes) -> list[str]:
-    """Raw pypdf text per page (no RTL handling)."""
-    return [page.extract_text() or "" for page in PdfReader(io.BytesIO(data)).pages]
+    """Raw pypdf text per page (no RTL handling).
+
+    pypdf is imported here, not at module level: the adapters are imported by every
+    ``degree.py`` command, and only reading a PDF needs it. An unreadable PDF raises
+    ``ValueError`` (pypdf's ``PdfReadError`` is re-raised as one)."""
+    from pypdf import PdfReader
+    from pypdf.errors import PdfReadError
+
+    try:
+        return [page.extract_text() or "" for page in PdfReader(io.BytesIO(data)).pages]
+    except PdfReadError as exc:
+        raise ValueError(str(exc)) from exc
 
 
 def _visually_reversed(text: str) -> bool:
@@ -216,7 +224,7 @@ def pdf_evidence(program: ProgramEntry, live: bool, offline: bool) -> list[Evide
         data = _download(url, cache, live, offline)
         try:
             raw_pages = extract_pages(data)
-        except (PdfReadError, ValueError) as exc:
+        except ValueError as exc:
             raise EvidenceFetchError(SOURCE, url, f"unreadable PDF: {exc}") from exc
         pages = [page_lines(t) for t in raw_pages]
 
