@@ -10,17 +10,26 @@ def _aware(value: datetime) -> datetime:
     return value.replace(tzinfo=timezone.utc) if value.tzinfo is None else value
 
 
+UNREAD_NOT_GAP = "unread page not in known_gaps"
+
+
 def coverage_gaps(items: list[EvidenceItem], spec: DegreeSpec) -> tuple[list[tuple[EvidenceItem, str]], list[str]]:
     """The one coverage predicate: ([(item, reason)], stale keys).
 
-    reason is "unaccounted" (no entry), "unresolved mapping" (``mapped_to`` names no spec node)
-    or "blank reason" (``not_planning_rule`` is empty). A stale key names no evidence item.
+    reason is "unaccounted" (no entry), "unresolved mapping" (``mapped_to`` names no spec node),
+    "blank reason" (``not_planning_rule`` is empty) or "unread page not in known_gaps" (an item
+    with ``data.unread`` - a PDF page without a text layer - whose entry is anything but
+    ``mapped_to: known_gaps[...]``: nobody read that page, so it can only be a known gap).
+    A stale key names no evidence item.
     """
     open_items: list[tuple[EvidenceItem, str]] = []
     for item in items:
         entry = spec.coverage.get(item.id)
         if entry is None:
             open_items.append((item, "unaccounted"))
+        elif item.data.get("unread") and not (
+                isinstance(entry, MappedTo) and entry.mapped_to.startswith("known_gaps[")):
+            open_items.append((item, UNREAD_NOT_GAP))
         elif isinstance(entry, MappedTo):
             if not resolve_spec_path(spec, entry.mapped_to):
                 open_items.append((item, "unresolved mapping"))
@@ -36,8 +45,9 @@ def check_coverage(items: list[EvidenceItem], spec: DegreeSpec) -> CheckResult:
         problems.append(("", "no evidence collected"))
     open_items, stale = coverage_gaps(items, spec)
     for item, reason in open_items:
-        if reason == "unresolved mapping":
-            detail = f"{item.id} -> {spec.coverage[item.id].mapped_to} ({item.source_url})"
+        entry = spec.coverage.get(item.id)
+        if isinstance(entry, MappedTo):  # unresolved, or an unread page mapped outside known_gaps
+            detail = f"{item.id} -> {entry.mapped_to} ({item.source_url})"
         else:
             detail = f"{item.id} ({item.source_url})"
         problems.append((item.id, f"{reason}: {detail}"))

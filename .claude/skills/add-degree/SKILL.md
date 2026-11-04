@@ -158,6 +158,16 @@ code PR, not a skill run. `init --institution <other>` refuses with the same mes
    - `{"not_planning_rule": "<reason>"}` — the text is not a planning rule; the reason says
      what the text says (e.g. "Link to a previous year's booklet (archive)").
 
+   A `pdf:<doc>:unread-page-<n>` item (`data.unread`: a page with no text layer) can only go to
+   `known_gaps`: any other entry is reported as `(unread page not in known_gaps)` by `todo` and
+   fails `coverage`.
+
+   A regulations PDF already mapped in another degree (same `pdf:<doc>:*` ids, e.g. ME's
+   Terms_BA.pdf `b6a7c762f8db`): copy its coverage entries as a starting point, then review
+   program-specific sentences (e.g. the 9-semester exception list names specific programs);
+   retire an `unread-regulations-pdf` known gap only once every item of that document is
+   mapped.
+
    Where two sources disagree (program page vs. timetable vs. IMS, or two sections), add a
    `source_conflicts` entry naming the item ids. Rerun `todo` until it prints
    `0 unaccounted ... 0 stale keys` and exits 0. The header count includes items flagged
@@ -240,7 +250,14 @@ python scripts/degree.py check    --program <id> --live
 ```
 
 New or changed official text shows up as unaccounted items and stale keys in `todo`; map them
-as in step 4 and delete the stale keys. `refresh --apply` is the board write path (curation
+as in step 4 and delete the stale keys.
+
+A regulations PDF already mapped in another degree (same `pdf:<doc>:*` ids, e.g. ME's
+Terms_BA.pdf `b6a7c762f8db`): copy its coverage entries as a starting point, then review
+program-specific sentences (e.g. the 9-semester exception list names specific programs); retire
+an `unread-regulations-pdf` known gap only once every item of that document is mapped.
+
+`refresh --apply` is the board write path (curation
 overlay, byte-stable writer); `refresh --apply --syllabi` is accepted for compatibility (build
 always rebuilds stale syllabus summaries). Review `git diff data/`. A `draft` degree then goes through
 `publish`; a `live` degree cannot be republished yet (`publish` refuses; `--update` is not

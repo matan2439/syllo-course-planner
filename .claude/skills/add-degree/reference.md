@@ -71,6 +71,14 @@ Program page items' `source_url` is `https://tochniot.tau.ac.il/graphql`; the ti
 `https://www.tau.ac.il/study-program?safa=1&shana=<shana>&tab=schedule&tcid=<tcid>`.
 The same course in two sections gives two listing ids (and two note ids).
 
+Regulations PDFs (`tau_pdf`): `pdf:<doc>:<sha12>` (rule_text, one per sentence or heading;
+`<doc>` = first 12 hex of sha1 of the PDF URL) and `pdf:<doc>:unread-page-<n>` (a page with no
+text layer, `data.unread`; `coverage` fails unless it is `mapped_to: known_gaps[...]`).
+A regulations PDF already mapped in another degree (same `pdf:<doc>:*` ids, e.g. ME's
+Terms_BA.pdf `b6a7c762f8db`): copy its coverage entries as a starting point, then review
+program-specific sentences (e.g. the 9-semester exception list names specific programs); retire
+an `unread-regulations-pdf` known gap only once every item of that document is mapped.
+
 ## Spec paths (`resolve_spec_path`)
 
 A `mapped_to` value must be one of:
