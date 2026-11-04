@@ -678,8 +678,9 @@ TODO_NAME = "todo.md"
 
 def run_todo(entry: ProgramEntry, apply_suggestions: bool) -> int:
     """Print (and write to todo.md beside evidence.json) the coverage worklist; 0 iff nothing is left."""
-    from app.degrees.checks.coverage import coverage_gaps
+    from app.degrees.checks.coverage import coverage_gaps, unresolved_targets
     from app.degrees.coverage_suggest import suggest_coverage
+    from app.degrees.spec import MappedTo
     from app.degrees.evidence import EvidenceItem, strip_html
     from app.degrees.spec import write_spec
 
@@ -714,7 +715,14 @@ def run_todo(entry: ProgramEntry, apply_suggestions: bool) -> int:
             last_kind = kind
         lines += ["", f"### {path or '(no path)'}"]
         for item in group:
-            lines += [f"- id: {item.id}" + ("" if reasons[item.id] == "unaccounted" else f" ({reasons[item.id]})"),
+            mapped = spec.coverage.get(item.id)
+            where = ""
+            if isinstance(mapped, MappedTo):
+                where = " -> " + (", ".join(mapped.targets) or "(no targets)")
+                bad = unresolved_targets(mapped, spec)
+                if bad and len(mapped.targets) > 1:
+                    where += f" [unresolved: {', '.join(bad)}]"
+            lines += [f"- id: {item.id}" + ("" if reasons[item.id] == "unaccounted" else f" ({reasons[item.id]})") + where,
                       f"  source_url: {item.source_url}", f"  text: {strip_html(item.raw_text)}"]
     if stale:
         lines += ["", "## stale coverage keys (not in evidence; remove from the spec)"]

@@ -58,7 +58,7 @@ def check_coverage(items: list[EvidenceItem], spec: DegreeSpec) -> CheckResult:
             targets = ", ".join(entry.targets) or "(no targets)"
             detail = f"{item.id} -> {targets} ({item.source_url})"
             bad = unresolved_targets(entry, spec)
-            if reason == "unresolved mapping" and len(entry.targets) != 1:
+            if reason == "unresolved mapping" and len(entry.targets) > 1:
                 detail += f" [unresolved: {', '.join(bad)}]"
         else:
             detail = f"{item.id} ({item.source_url})"

@@ -39,7 +39,7 @@ def env(tmp_path, monkeypatch):
 
 def set_coverage(spec_file, coverage):
     spec = load_spec(spec_file)
-    parsed = {k: NotPlanningRule(**v) for k, v in coverage.items()}
+    parsed = {k: MappedTo(**v) if "mapped_to" in v else NotPlanningRule(**v) for k, v in coverage.items()}
     write_spec(spec.model_copy(update={"coverage": parsed}), spec_file)
 
 
@@ -143,3 +143,15 @@ def test_unread_page_must_go_to_known_gaps(env, capfd):
     code, out = run(capfd)
     assert code == 1
     assert "- id: pdf:d:unread-page-2 (unread page not in known_gaps)" in out and "1 unaccounted" in out
+
+
+def test_todo_names_every_target_and_the_unresolved_ones(env, capfd):
+    _, spec_file, put = env
+    put([item("rule:1"), item("rule:2")])
+    set_coverage(spec_file, {"rule:1": {"mapped_to": ["categories[nope]", "mandatory_courses[0512-1204]"]},
+                             "rule:2": {"mapped_to": "categories[gone]"}})
+    code, out = run(capfd)
+    assert code == 1
+    assert ("- id: rule:1 (unresolved mapping) -> categories[nope], mandatory_courses[0512-1204] "
+            "[unresolved: categories[nope]]") in out
+    assert "- id: rule:2 (unresolved mapping) -> categories[gone]" in out
