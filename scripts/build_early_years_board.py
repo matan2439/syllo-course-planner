@@ -240,12 +240,20 @@ def write_early_year_index(boards_dir: Path = BOARDS_DIR, path: Path = EARLY_YEA
     The official Years 1–2 mandatory courses of every program that has an early window
     board, keyed by program id — shared/planner/early_year_courses.ts reads it (client and
     server), so "which courses are Years 1–2" never lives in code.
+
+    The index ships in the frontend bundle, so a registry DRAFT's window board is never indexed
+    (drafts are never served); live, archived and unregistered ids are.
     """
+    from app.degrees.registry import load_registry
+
+    drafts = {e.id for e in load_registry() if e.status == "draft"}
     index: dict[str, list[dict]] = {}
     for board_file in sorted(boards_dir.glob("*_years_*_*.json")):
         board = json.loads(board_file.read_text(encoding="utf-8"))
         meta = board.get("metadata") or {}
         if meta.get("start_year") != 1 or not meta.get("window_of_program_id"):
+            continue
+        if meta["window_of_program_id"] in drafts:
             continue
         index[meta["window_of_program_id"]] = [
             {

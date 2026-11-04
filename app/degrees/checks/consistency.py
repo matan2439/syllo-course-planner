@@ -93,6 +93,27 @@ def check_double_counting(spec: DegreeSpec) -> CheckResult:
     return _result("double_counting", problems)
 
 
+def check_degree_length(spec: DegreeSpec, window_years: list[int]) -> CheckResult:
+    """Syllo models 4-year degrees only: the boards cover fixed windows (Years 1-2, Years 3-4).
+
+    Fails for every mandatory course whose year no board window covers (the build would
+    otherwise drop it silently), and when the spec's mandatory years are not exactly the
+    windows' years (a 3- or 5-year degree, or a year with no mandatory course at all).
+    """
+    covered = sorted(set(window_years))
+    span = f"{covered[0]}-{covered[-1]}" if covered else "none"
+    problems: list[str] = []
+    for m in spec.mandatory_courses:
+        if m.year not in covered:
+            problems.append(f"mandatory {m.course_id} is in year {m.year}, which no board window covers "
+                            f"(windows cover years {span})")
+    years = sorted({m.year for m in spec.mandatory_courses})
+    if years != covered:
+        problems.append(f"mandatory courses span years {years or '[]'}, expected exactly {span}: "
+                        f"degree length is not modelled yet (4-year degrees only)")
+    return _result("degree_length", problems)
+
+
 def check_mandatory_offered(spec: DegreeSpec, facts: dict) -> CheckResult:
     problems: list[str] = []
     for m in spec.mandatory_courses:

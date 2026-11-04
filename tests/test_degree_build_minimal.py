@@ -22,6 +22,8 @@ SHANA = 2026
 PROGRAM_ID = "synthetic_degree_2027"
 COURSES = {
     "0599-1001": ("מבוא סינתטי", "A", 4, 3.5),
+    "0599-2001": ("המשך סינתטי", "B", 3, 3.0),
+    "0599-4001": ("סמינר סינתטי", "A", 2, 2.0),
     "0599-3002": ("פרויקט סינתטי", "B", 3, 3.0),
     "0599-4101": ("בחירה סינתטית א", "A", 3, 3.0),
     "0599-4102": ("בחירה סינתטית ב", "B", 2, 2.0),
@@ -95,7 +97,9 @@ def test_build_minimal_synthetic_degree(tmp_path, monkeypatch, capsys, page_cach
         catalog_year_policy="start_year",
         mandatory_courses=[
             MandatoryCourse(course_id="0599-1001", year=1, semester="A", placement_rule="fixed_semester"),
+            MandatoryCourse(course_id="0599-2001", year=2, semester="B", placement_rule="fixed_semester"),
             MandatoryCourse(course_id="0599-3002", year=3, semester="B", placement_rule="fixed_semester"),
+            MandatoryCourse(course_id="0599-4001", year=4, semester="A", placement_rule="fixed_semester"),
         ],
         categories=[Category(category_id="electives", name_he="בחירה", min_courses=1,
                              course_ids=["0599-4101", "0599-4102"])],
@@ -121,6 +125,7 @@ def test_build_minimal_synthetic_degree(tmp_path, monkeypatch, capsys, page_cach
     main = json.loads(paths["board"].read_text(encoding="utf-8"))
     placed = {c["course_id"]: s["semester_id"] for s in main["semesters"] for c in s.get("courses", [])}
     assert placed.get("0599-3002") == "year_3_semester_b"
+    assert placed.get("0599-4001") == "year_4_semester_a"
     pool = {c["course_id"] for c in main["metadata"]["program_repository_courses"]}
     assert {"0599-4101", "0599-4102"} <= pool
 
@@ -133,5 +138,41 @@ def test_build_minimal_synthetic_degree(tmp_path, monkeypatch, capsys, page_cach
     early = json.loads(paths["early_years"].read_text(encoding="utf-8"))
     placed_early = {c["course_id"]: s["semester_id"] for s in early["semesters"] for c in s.get("courses", [])}
     assert placed_early.get("0599-1001") == "year_1_semester_a"
+    assert placed_early.get("0599-2001") == "year_2_semester_b"
+    # A draft's window board never enters the early-year index (it ships in the frontend bundle) ...
     index = json.loads(degree.early_index_path(out).read_text(encoding="utf-8"))
-    assert [r["courseId"] for r in index[PROGRAM_ID]] == ["0599-1001"]
+    assert PROGRAM_ID not in index
+    # ... and does once the degree is live.
+    import build_early_years_board as early
+    registry.set_status(PROGRAM_ID, "live", path=registry_file)
+    early.write_early_year_index(boards_dir=paths["early_years"].parent, path=degree.early_index_path(out))
+    index = json.loads(degree.early_index_path(out).read_text(encoding="utf-8"))
+    assert [r["courseId"] for r in index[PROGRAM_ID]] == ["0599-1001", "0599-2001"]
+
+
+@pytest.mark.parametrize("years, message", [
+    ((1, 2, 3, 4, 5), "year 5, which no board window covers"),  # a 5-year degree
+    ((1, 2, 3), "expected exactly 1-4"),  # a 3-year degree
+    ((1, 3, 4), "expected exactly 1-4"),  # a year with no mandatory course
+])
+def test_build_refuses_a_degree_that_is_not_four_years(tmp_path, monkeypatch, capsys, years, message):
+    registry_file = tmp_path / "programs.json"
+    registry_file.write_text(json.dumps({"programs": [_entry()]}, ensure_ascii=False), encoding="utf-8")
+    monkeypatch.setattr(registry, "DEFAULT_PATH", registry_file)
+    monkeypatch.setattr(spec_mod, "DEGREES_DIR", tmp_path / "degrees")
+    entry = registry.get_program(PROGRAM_ID)
+    ids = ["0599-1001", "0599-2001", "0599-3002", "0599-4001", "0599-4101"]
+    spec = DegreeSpec(
+        program_id=PROGRAM_ID, institution="tau", source_year=SHANA, total_required_credits=11.5,
+        catalog_year_policy="start_year",
+        mandatory_courses=[MandatoryCourse(course_id=ids[i], year=y, semester="A", placement_rule="fixed_semester")
+                           for i, y in enumerate(years)],
+        categories=[Category(category_id="electives", name_he="בחירה", min_courses=1, course_ids=["0599-4102"])],
+        group_minimums={}, general_requirement=None, ui={}, legacy={},
+    )
+    write_spec(spec, spec_mod.spec_path(entry))
+    out = tmp_path / "out"
+    assert degree.main(["build", "--program", PROGRAM_ID, "--offline", "--out-dir", str(out)]) == 2
+    err = capsys.readouterr().err
+    assert "refusing to build" in err and message in err
+    assert not out.exists()  # refused before anything was written

@@ -3,6 +3,7 @@ from pathlib import Path
 
 from app.degrees.checks import (
     check_courses_known,
+    check_degree_length,
     check_double_counting,
     check_known_gaps,
     check_mandatory_offered,
@@ -37,6 +38,38 @@ def _fact(credits=4, semesters=("A", "B"), status="offered", hours=4):
         "program": {"credits": credits, "weekly_hours": hours} if credits is not None else None,
         "offering": {"offered_semesters": list(semesters), "status": status},
     }
+
+
+# ---------------------------------------------------------------- degree_length
+
+
+def _years_spec(*years) -> DegreeSpec:
+    return DegreeSpec.model_validate({
+        "program_id": "p", "institution": "tau", "source_year": 2027, "total_required_credits": 20,
+        "mandatory_courses": [{"course_id": f"M-{i}", "year": y, "semester": "A", "placement_rule": "r"}
+                              for i, y in enumerate(years)],
+        "categories": [], "group_minimums": {}, "ui": {}, "legacy": {},
+    })
+
+
+def test_degree_length_passes_a_four_year_degree():
+    result = check_degree_length(_years_spec(1, 1, 2, 3, 4), [1, 2, 3, 4])
+    assert result.passed and result.problems == []
+
+
+def test_degree_length_fails_a_mandatory_course_outside_the_windows():
+    result = check_degree_length(_years_spec(1, 2, 3, 4, 5), [1, 2, 3, 4])
+    assert not result.passed
+    assert any("M-4 is in year 5, which no board window covers" in p for p in result.problems)
+    assert any("expected exactly 1-4" in p for p in result.problems)
+
+
+def test_degree_length_fails_a_three_year_degree_and_a_gap_year():
+    for years in [(1, 2, 3), (1, 3, 4)]:
+        result = check_degree_length(_years_spec(*years), [1, 2, 3, 4])
+        assert not result.passed
+        assert result.problems == [f"mandatory courses span years {sorted(set(years))}, expected exactly 1-4: "
+                                   "degree length is not modelled yet (4-year degrees only)"]
 
 
 # ---------------------------------------------------------------- courses_known
@@ -252,6 +285,7 @@ def test_me_spec_passes_all():
         check_mandatory_offered(spec, facts),
         check_totals(spec, facts),
         check_plannable(board),
+        check_degree_length(spec, [1, 2, 3, 4]),
     ]
     failed = {r.name: r.problems for r in results if not r.passed}
     assert not failed, failed

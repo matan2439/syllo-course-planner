@@ -38,12 +38,19 @@ refresh   official facts for every course the spec or boards reference + a misma
           (data/official/tau_course_facts_<year>.json); --apply then runs `build` into data/
           (the only board write path: curation overlay, byte-stable writer, board_data_version)
           after keeping the general-requirement catalog in step.
-publish   the gate a new degree passes before it goes live: refuses a degree already "live"
-          (--update is Plan 3's impact flow: not built yet, exit 1); `build --live` into data/;
-          `check --live` — any FAIL or SKIPPED check: exit 1, registry unchanged (the built files
-          stay in the working tree); all PASS: registry status "live", RELEASE.md beside spec.json
-          (date, evidence counts by kind, check summary, sources with fetch times), and prints —
-          never runs — the owner's DB board sync command and "commit, open a PR, deploy".
+publish   the gate a new degree passes before it goes live: refuses anything not "draft" (a live
+          degree's --update is Plan 3's impact flow: not built yet, exit 1); `build --live` into
+          data/; rebuilds every OTHER live degree `--offline` into a scratch dir — any byte change
+          to its committed boards (the refreshed facts are course-wide): exit 1, listing degree,
+          files and courses; `check --live` — any FAIL or SKIPPED check: exit 1, registry
+          unchanged (the built files stay in the working tree); all PASS: RELEASE.md beside
+          spec.json (date, evidence counts by kind, check summary, sources with fetch times), then
+          registry status "live" and the early-year index rewritten, and prints — never runs —
+          the owner's DB board sync command and "commit, open a PR, deploy".
+
+build/check refuse a degree that is not 4 years long (mandatory years must be exactly 1-4: the
+boards cover Years 1-2 and 3-4 only) — build exits 2, check fails `degree_length`. A draft's
+boards (window board included) are never served and never enter the early-year index.
 """
 from __future__ import annotations
 
@@ -77,6 +84,28 @@ SHAAR_RUACH_SOURCE = DATA / "general_courses_shaar_ruach.json"
 # Years 1-2 window board is built next to it by build_early_years_board.
 MAIN_BOARD_START_YEAR = 3
 EARLY_START_YEAR = 1
+# The degree years the boards cover: the early window (Years 1-2) + the main board (Years 3-4).
+# Degree length is not modelled: a degree whose mandatory years are not exactly these is refused.
+WINDOW_YEARS = sorted({EARLY_START_YEAR, EARLY_START_YEAR + 1, MAIN_BOARD_START_YEAR, MAIN_BOARD_START_YEAR + 1})
+
+
+class DegreeCliError(Exception):
+    """A refusal main() reports as a clear message with exit code 2 (no traceback)."""
+
+
+class DegreeLengthError(DegreeCliError):
+    """The spec has mandatory courses outside the board windows, or is not a 4-year degree."""
+
+
+def degree_length_guard(entry: ProgramEntry, spec: DegreeSpec) -> None:
+    """Refuse (DegreeLengthError) a spec the fixed board windows would silently truncate."""
+    from app.degrees.checks import check_degree_length
+
+    result = check_degree_length(spec, WINDOW_YEARS)
+    if not result.passed:
+        raise DegreeLengthError(
+            f"{entry.id}: refusing to build — " + "; ".join(result.problems)
+            + ". Boards cover years 1-2 and 3-4 only; a degree of another length needs the length modelled first.")
 # BIDIT current-year schedule evidence copied from the general-requirement catalog onto its
 # board records (the offline half of scripts/enrich_shaar_ruach_bidit.ts).
 BIDIT_FIELDS = ("weekly_hours", "weekly_hours_source", "weekly_hours_verified_from_bidit")
@@ -321,13 +350,14 @@ def build(entry: ProgramEntry, out_dir: Path = DATA, offline: bool = False, live
     import build_early_years_board as early
 
     rcd = _refresh_module()
+    spec_file = spec_path(entry)
+    spec = load_spec(spec_file)
+    degree_length_guard(entry, spec)  # never drop mandatory courses outside the board windows
     facts_file = build_facts_path(entry, out_dir)
     if live and refresh:  # build from freshly fetched official facts (writes the facts snapshot, not the boards)
         rcd.refresh(entry, None, offline=False, live=True, facts_file=facts_file)
     if not facts_file.exists():
         facts_file = rcd.facts_path(entry.source_year)
-    spec_file = spec_path(entry)
-    spec = load_spec(spec_file)
     curation = load_curation(curation_path(spec_file))
     tcid, shana = entry.source_ids["tcid"], entry.source_year
     facts = load_program_facts(shana, tcid, facts_file)
@@ -434,14 +464,18 @@ def run_check(entry: ProgramEntry, live: bool, offline: bool) -> tuple[bool, str
 def run_checks(entry: ProgramEntry, live: bool, offline: bool) -> CheckRun:
     """run_check with the per-check results exposed (publish refuses on any FAIL or SKIPPED)."""
     from app.degrees.checks import (
-        check_courses_known, check_coverage, check_double_counting, check_freshness, check_known_gaps,
-        check_mandatory_offered, check_plannable, check_rules_enforced, check_totals,
+        check_courses_known, check_coverage, check_degree_length, check_double_counting, check_freshness,
+        check_known_gaps, check_mandatory_offered, check_plannable, check_rules_enforced, check_totals,
     )
 
     started = datetime.now(timezone.utc)
     spec = load_spec(spec_path(entry))
     facts = load_program_facts(entry.source_year, entry.source_ids["tcid"])
-    board = json.loads(board_paths(entry)["board"].read_text(encoding="utf-8"))
+    board_file = board_paths(entry)["board"]
+    if not board_file.exists():
+        raise DegreeCliError(f"{entry.id}: no built board at {_show(board_file)} — build first: "
+                             f"python scripts/degree.py build --program {entry.id} --offline")
+    board = json.loads(board_file.read_text(encoding="utf-8"))
     items = collect(entry, live=live, offline=offline)
 
     results = [check_coverage(items, spec)]
@@ -451,6 +485,7 @@ def run_checks(entry: ProgramEntry, live: bool, offline: bool) -> CheckRun:
         check_courses_known(spec, facts),
         check_double_counting(spec),
         check_mandatory_offered(spec, facts),
+        check_degree_length(spec, WINDOW_YEARS),
         check_totals(spec, facts),
         check_plannable(board),
         check_rules_enforced(spec),
@@ -496,6 +531,75 @@ def release_note(entry: ProgramEntry, run: CheckRun, today: str) -> str:
     return "\n".join(lines) + "\n"
 
 
+def _board_courses(board) -> dict[str, str]:
+    """course_id -> its records (semesters + repository), serialized, for a cheap per-course diff."""
+    out: dict[str, list] = {}
+    if not isinstance(board, dict):
+        return {}
+    for sem in board.get("semesters") or []:
+        for c in sem.get("courses") or []:
+            if isinstance(c, dict) and "course_id" in c:
+                out.setdefault(c["course_id"], []).append(c)
+    for c in (board.get("metadata") or {}).get("program_repository_courses") or []:
+        if isinstance(c, dict) and "course_id" in c:
+            out.setdefault(c["course_id"], []).append(c)
+    return {cid: json.dumps(v, sort_keys=True, ensure_ascii=False) for cid, v in out.items()}
+
+
+def other_degree_drift(entry: ProgramEntry) -> dict[str, list[str]]:
+    """Rebuild every OTHER live registry degree offline into a scratch dir and compare it
+    byte-for-byte with its committed boards. Publishing degree #2 refreshes course-wide official
+    facts (IMS offerings, names, hours) that other degrees' boards are built from too: any change
+    to another degree's committed boards must go through its own update, never ride along.
+
+    The scratch dir is seeded with the committed boards, so the byte-stable writer applies exactly
+    as it does in data/ (an unchanged board rebuilds byte-identical). Returns
+    {other_id: ["<file>: changed (courses: …)", …]} for every degree that drifted."""
+    from app.degrees.registry import load_registry
+
+    drift: dict[str, list[str]] = {}
+    for other in load_registry():
+        if other.id == entry.id or other.status != "live":
+            continue
+        if not spec_path(other).exists():  # a legacy registry entry degree.py does not build (no spec.json)
+            print(f"[publish] {entry.id}: {other.id} has no spec.json (not built by degree.py) — not rebuilt")
+            continue
+        committed = board_paths(other)
+        with tempfile.TemporaryDirectory(prefix=f"degree_drift_{other.id}_") as tmp:
+            scratch = board_paths(other, Path(tmp))
+            for key, src in committed.items():
+                if src.exists():
+                    scratch[key].parent.mkdir(parents=True, exist_ok=True)
+                    scratch[key].write_bytes(src.read_bytes())
+            print(f"[publish] {entry.id}: rebuilding live {other.id} offline to verify it is unchanged")
+            build(other, Path(tmp), offline=True)
+            changed = []
+            for key, src in committed.items():
+                new = scratch[key].read_bytes() if scratch[key].exists() else None
+                old = src.read_bytes() if src.exists() else None
+                if new == old:
+                    continue
+                try:
+                    a = _board_courses(json.loads(old)) if old else {}
+                    b = _board_courses(json.loads(new)) if new else {}
+                    ids = sorted(c for c in a.keys() | b.keys() if a.get(c) != b.get(c))
+                except ValueError:
+                    ids = []
+                shown = ", ".join(ids[:20]) + (f", … {len(ids) - 20} more" if len(ids) > 20 else "")
+                changed.append(f"{src.relative_to(ROOT).as_posix() if src.is_relative_to(ROOT) else src}: changed"
+                               + (f" (courses: {shown})" if ids else ""))
+            if changed:
+                drift[other.id] = changed
+    return drift
+
+
+def refresh_early_index() -> Path:
+    """Rewrite data/config/early_year_courses.json from data/boards/ (drafts excluded)."""
+    import build_early_years_board as early
+
+    return early.write_early_year_index(boards_dir=DATA / "boards", path=early_index_path())
+
+
 def run_publish(entry: ProgramEntry, update: bool) -> int:
     """build --live into data/ -> a full live check -> (all PASS, none SKIPPED) status "live" +
     RELEASE.md + the owner's commands, printed, never run."""
@@ -509,8 +613,23 @@ def run_publish(entry: ProgramEntry, update: bool) -> int:
             print(f"[publish] {entry.id} is already live — refusing; republishing a live degree needs --update",
                   file=sys.stderr)
         return 1
+    if entry.status != "draft":
+        print(f"[publish] {entry.id} is {entry.status} — refusing; only a draft degree can be published",
+              file=sys.stderr)
+        return 1
     print(f"[publish] {entry.id}: build --live into data/")
     build(entry, DATA, offline=False, live=True)
+    drift = other_degree_drift(entry)
+    if drift:
+        print(f"[publish] {entry.id}: refused — the refreshed official facts change other live degrees' "
+              f"committed boards (each needs its own update first):", file=sys.stderr)
+        for other_id, files in sorted(drift.items()):
+            print(f"  {other_id}:", file=sys.stderr)
+            for line in files:
+                print(f"    - {line}", file=sys.stderr)
+        print(f"[publish] registry unchanged ({entry.id} stays {entry.status}); the built files remain in the "
+              f"working tree (data/) — review or discard them.", file=sys.stderr)
+        return 1
     # The build's live run refreshes the official facts, not the evidence: the check fetches evidence itself.
     print(f"[publish] {entry.id}: check --live")
     run = run_checks(entry, live=True, offline=False)
@@ -527,15 +646,18 @@ def run_publish(entry: ProgramEntry, update: bool) -> int:
               f"working tree (data/) — review or discard them. Full report: "
               f"{_show(REPORT_DIR / f'degree_check_{entry.id}.md')}", file=sys.stderr)
         return 1
-    registry.set_status(entry.id, "live")
     release = spec_path(entry).with_name(RELEASE_NAME)
     release.parent.mkdir(parents=True, exist_ok=True)
     today = datetime.now(timezone.utc).date().isoformat()
-    release.write_bytes(release_note(entry, run, today).encode("utf-8"))
+    release.write_bytes(release_note(entry, run, today).encode("utf-8"))  # before the status flip
+    registry.set_status(entry.id, "live")
+    index = refresh_early_index()  # a draft's window board was kept out of the index; now it is live
     board = board_paths(entry)["board"].relative_to(ROOT).as_posix()
-    print(f"[publish] {entry.id}: every check passed; registry status -> live; release note -> {_show(release)}")
+    print(f"[publish] {entry.id}: every check passed; release note -> {_show(release)}; registry status -> live; "
+          f"early-year index -> {_show(index)}")
     print("[publish] owner steps (not run):")
     print(f"  1. ENV_FILE=.env.local node scripts/update-board-json.mjs {entry.base} {entry.year} {board}")
+    print("     (the sync reporting 0 rows = not seeded yet; the board is served from the committed file after deploy)")
     print("  2. commit, open a PR, deploy")
     return 0
 
@@ -752,6 +874,14 @@ def main(argv: list[str] | None = None) -> int:
     args.out_dir = args.out_dir.resolve()
     os.chdir(ROOT)  # the legacy builders resolve data/... relative to the repo root
     entry = get_program(args.program)
+    try:
+        return _run_command(args, entry)
+    except DegreeCliError as err:
+        print(str(err), file=sys.stderr)
+        return 2
+
+
+def _run_command(args, entry: ProgramEntry) -> int:
 
     if args.command == "evidence":
         items = collect(entry, live=args.live, offline=args.offline)

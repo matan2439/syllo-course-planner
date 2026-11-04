@@ -171,7 +171,7 @@ def build_semester_board(
     board = _annotate_validation(board, completed_course_ids or [])
     if program and program.get("requirements"):
         _annotate_program_requirements(board, program, completed_course_ids or [], db_path=db_path,
-                                           shana=shana)
+                                       shana=shana)
     return board
 
 
