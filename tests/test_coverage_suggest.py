@@ -79,7 +79,7 @@ def test_section_mapped_only_when_legacy_names_its_ramaid():
 def _core_note(id_, course_id, track="אופטיקה ופוטוניקה") -> EvidenceItem:
     return EvidenceItem(id=id_, source_url="https://example.test", fetched_at=NOW, from_cache=False,
                         kind="rule_text", path=["x"], raw_text=f"קורס ליבה במסלול {track}", course_id=course_id,
-                        data={"core_of_track": track})
+                        data={"core_of_track": [track]})
 
 
 def _spec_with_rules(*rules) -> DegreeSpec:

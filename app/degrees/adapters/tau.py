@@ -114,23 +114,24 @@ def _note_entries(field: str, value) -> list[tuple[str, dict]]:
     return out
 
 
-_CORE_OF_TRACK_RE = re.compile(r"קורס ליבה במסלול\s+(.+)")
+_CORE_OF_TRACK_RE = re.compile(r"קורס ליבה (?:ב)?מסלול\s+(.+)")
 _LINE_BREAK_RE = re.compile(r"<br\s*/?>|[\r\n]+", re.IGNORECASE)
 
 
-def core_of_track(text: str) -> str | None:
-    """The track a course note calls this course the core of ("קורס ליבה במסלול <X>"), or None.
+def core_of_track(text: str) -> list[str]:
+    """Every track a course note calls this course the core of ("קורס ליבה במסלול <X>"), in order.
 
-    The track name runs to the end of the line the phrase sits on, so a following line (language,
-    prerequisites) is not part of it.
+    Track names are verbatim (typos kept); later matching to spec tracks must be alias/fuzzy.
+    A track name runs to the end of its line, so following lines (language, prerequisites) are
+    not part of it.
     """
+    tracks: list[str] = []
     for line in _LINE_BREAK_RE.split(text or ""):
         m = _CORE_OF_TRACK_RE.search(strip_html(line))
-        if m:
-            track = m.group(1).strip(" .,;:")
-            if track:
-                return track
-    return None
+        track = m.group(1).strip(" .,;:") if m else ""
+        if track and track not in tracks:
+            tracks.append(track)
+    return tracks
 
 
 def tochniot_evidence(program: ProgramEntry, live: bool, offline: bool) -> list[EvidenceItem]:
@@ -189,9 +190,9 @@ def tochniot_evidence(program: ProgramEntry, live: bool, offline: bool) -> list[
                         if nid in seen_notes:
                             continue
                         seen_notes.add(nid)
-                        track = core_of_track(text)
-                        if track:
-                            entry = dict(entry, core_of_track=track)
+                        tracks = core_of_track(text)
+                        if tracks:
+                            entry = dict(entry, core_of_track=tracks)
                         add(nid, "rule_text", rpath, text, course_id=dashed(show), data=entry)
             walk(r, rpath)
 

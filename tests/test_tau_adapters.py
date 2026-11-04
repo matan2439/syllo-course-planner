@@ -357,12 +357,12 @@ EE_CORE_NOTES = [
 
 @pytest.mark.parametrize("text,track", EE_CORE_NOTES)
 def test_core_of_track_parsed_from_real_note_text(text, track):
-    assert tau.core_of_track(text) == track
+    assert track in tau.core_of_track(text)
 
 
-@pytest.mark.parametrize("text", ["נלמד בסמסטר 6/8<br />קורס ליבה במערכות", "choose one of courses 3 or 4", "", "קורס ליבה במסלול"])
+@pytest.mark.parametrize("text", ["נלמד בסמסטר 6/8<br />קורס ליבה במערכות", "נלמד בסמסטר 5/7&nbsp;<br />קורס ליבה זורמים", "choose one of courses 3 or 4", "", "קורס ליבה במסלול"])
 def test_core_of_track_absent_for_other_notes(text):
-    assert tau.core_of_track(text) is None
+    assert tau.core_of_track(text) == []
 
 
 def test_core_note_item_carries_core_of_track_without_changing_ids(program, env):
@@ -372,6 +372,12 @@ def test_core_note_item_carries_core_of_track_without_changing_ids(program, env)
     items = tau.tochniot_evidence(program, False, False)
     notes = [i for i in items if i.kind == "rule_text" and ":kurs:" in i.id]
     core = [i for i in notes if ":hearakurs:" in i.id and i.data.get("teurhearakurs") == EE_CORE_NOTES[1][0]]
-    assert len(core) == 1 and core[0].data["core_of_track"] == "אופטיקה ופוטוניקה"
+    assert len(core) == 1 and core[0].data["core_of_track"] == ["אופטיקה ופוטוניקה"]
     assert core[0].id.endswith(":" + text_id(EE_CORE_NOTES[1][0]))
     assert not any("core_of_track" in i.data for i in notes if i is not core[0])
+
+
+def test_core_of_track_lists_every_track_and_tolerates_missing_bet():
+    two = "קורס ליבה מסלול אופטיקה ופוטוניקה<br />קורס ליבה במסלול ביו אלקטורניקה"
+    assert tau.core_of_track(two) == ["אופטיקה ופוטוניקה", "ביו אלקטורניקה"]
+    assert tau.core_of_track("קורס ליבה מסלול חומרים") == ["חומרים"]
