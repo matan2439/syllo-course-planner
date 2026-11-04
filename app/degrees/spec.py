@@ -113,6 +113,8 @@ _GENERIC_PROGRAM_KEYS = {"program_id", "total_required_hours", "ui", "requiremen
 _GENERIC_REQUIREMENT_KEYS = {"core_courses_total_min", "core_categories", "general_requirements"}
 _LEGACY_CATEGORY_KEYS = {"category_id", "name_he", "min_courses", "min_credits", "course_ids"}
 _CORE = "core"
+# general_requirement keys the legacy program has no equivalent for (never emitted to it)
+_SPEC_ONLY_GENERAL_KEYS = {"credits_required"}
 
 
 def _number(value: float):
@@ -147,7 +149,9 @@ def spec_to_program(spec: DegreeSpec) -> dict:
     for key, category_id in legacy.get("requirement_category_keys", {}).items():
         requirements[key] = _category_to_legacy(cats[category_id])
     if spec.general_requirement is not None:
-        requirements["general_requirements"] = spec.general_requirement
+        requirements["general_requirements"] = {
+            k: v for k, v in spec.general_requirement.items() if k not in _SPEC_ONLY_GENERAL_KEYS
+        }
 
     program: dict = dict(legacy.get("program", {}))
     program["program_id"] = spec.program_id

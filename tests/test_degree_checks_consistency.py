@@ -150,6 +150,23 @@ def test_totals_general_requirement_counts_when_credits_known():
     assert not result.passed and "general 4" in result.problems[0]
 
 
+def test_totals_general_requirement_uses_stated_credits_without_warning():
+    general = {"category_id": "g", "min_courses": 3, "credits_required": 6, "course_ids": ["G-1", "G-2"]}
+    spec = _spec(total=10, mandatory=[("A-1", "A")], general=general)
+    result = check_totals(spec, {"A-1": _fact(8)})  # G-* have no credits; 8 + 6 = 14 > 10
+    assert not result.passed and "general 6" in result.problems[0]
+    assert not any(p.startswith("warn:") for p in result.problems)
+    ok = check_totals(_spec(total=14, mandatory=[("A-1", "A")], general=general), {"A-1": _fact(8)})
+    assert ok.passed and ok.problems == []
+
+
+def test_totals_general_requirement_without_credits_warns():
+    general = {"category_id": "g", "min_courses": 3, "course_ids": ["G-1"]}
+    result = check_totals(_spec(total=8, mandatory=[("A-1", "A")], general=general), {"A-1": _fact(8)})
+    assert result.passed
+    assert result.problems == ["warn: general requirement credits unknown (3 courses); excluded from totals"]
+
+
 def test_totals_extra_credits_never_override_facts():
     spec = _spec(total=8, mandatory=[("A-1", "A")])
     assert not check_totals(spec, {"A-1": _fact(12)}, {"A-1": 1.0}).passed  # 12 from facts, not 1

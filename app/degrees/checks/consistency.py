@@ -120,7 +120,8 @@ def check_totals(
 
     required = all mandatory credits + per category the larger of (its ``min_courses``
     smallest courses, ``min_credits``) + extra group-minimum courses (smallest remaining
-    in the group) + the general requirement's credits when determinable.
+    in the group) + the general requirement's credits when determinable (its official
+    ``credits_required`` when stated, else from its courses' credits).
     reachable = mandatory + every category course + the general requirement's capped amount.
     """
     extra = extra_credits or {}
@@ -173,7 +174,8 @@ def check_totals(
     if gen:
         gen_credits = sorted(c for c in (credit(i) for i in gen.get("course_ids", [])) if c is not None)
         n = gen.get("min_courses") or 0
-        gen_min = float(gen.get("min_credits") or 0.0)
+        stated = gen.get("credits_required")
+        gen_min = max(float(gen.get("min_credits") or 0.0), float(stated or 0.0))
         if n and len(gen_credits) >= n:
             gen_min = max(gen_min, sum(gen_credits[:n]))
             gen_max = max(gen_min, sum(gen_credits[-n:]))

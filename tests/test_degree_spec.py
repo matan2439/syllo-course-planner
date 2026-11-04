@@ -36,6 +36,12 @@ def test_round_trip_survives_json_serialization(me_spec):
     assert spec_to_program(reloaded) == _enriched()
 
 
+def test_credits_required_is_spec_only(me_spec):
+    spec = me_spec.model_copy(deep=True)
+    spec.general_requirement = {**spec.general_requirement, "credits_required": 6}
+    assert spec_to_program(spec) == _enriched()
+
+
 def test_spec_path_layout():
     path = spec_path(get_program(ME_ID))
     assert path == ROOT / "data" / "degrees" / "tau" / "mechanical_engineering" / "2027" / "spec.json"
