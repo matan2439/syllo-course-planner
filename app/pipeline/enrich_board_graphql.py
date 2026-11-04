@@ -26,22 +26,17 @@ from app.scraping.tau_program_scraper import fetch_program_data
 _BOARD_PATH    = Path("data/parsed_json/mechanical_semester_board_2027.json")
 _ENRICHED_PATH = Path("data/programs/mechanical_engineering_2027_enriched.json")
 _DB_PATH       = Path("data/database.sqlite")
-_TCID          = "8715"
-_SHANA         = "2026"  # TAU year code for תשפ"ז (2026-2027)
 
 
-def graphql_cache_path(tcid: str = _TCID, shana: str = _SHANA) -> Path:
+def graphql_cache_path(tcid: str, shana: str) -> Path:
     return Path(f"data/raw_html/tau_program_{tcid}_{shana}.json")
-
-
-_GQL_CACHE     = graphql_cache_path()
 
 
 # ---------------------------------------------------------------------------
 # GraphQL helpers (name / hours enrichment)
 # ---------------------------------------------------------------------------
 
-def _load_graphql_body(cache: Path = _GQL_CACHE) -> list[dict]:
+def _load_graphql_body(cache: Path) -> list[dict]:
     for enc in ("utf-8-sig", "utf-8"):
         try:
             raw = json.loads(cache.read_text(encoding=enc))
@@ -51,7 +46,7 @@ def _load_graphql_body(cache: Path = _GQL_CACHE) -> list[dict]:
     return []
 
 
-def _fetch_or_load_graphql(force_refresh: bool = False, tcid: str = _TCID, shana: str = _SHANA,
+def _fetch_or_load_graphql(force_refresh: bool, tcid: str, shana: str,
                            offline: bool = False) -> list[dict]:
     cache = graphql_cache_path(tcid, shana)
     if cache.exists() and not force_refresh:
@@ -144,14 +139,17 @@ def enrich_board(
     *,
     program: dict | None = None,
     db_path: Path = _DB_PATH,
-    tcid: str = _TCID,
-    shana: str = _SHANA,
+    tcid: str,
+    shana: str,
     offline: bool = False,
+    offerings: dict | None = None,
 ) -> dict:
-    """Run the full board enrichment pipeline for one program (default: ME 2027).
+    """Run the full board enrichment pipeline for one program.
 
     ``program`` is the enriched-program dict (``spec_to_program`` output); when omitted
-    the committed ME enriched program file is read. Returns final board stats dict.
+    the committed ME enriched program file is read. ``tcid``/``shana``: the program's
+    registry sourceIds.tcid / sourceYear; ``offerings``: its official offerings
+    (``semester_board.official_offerings``). Returns final board stats dict.
     """
 
     # Step 1: Build board from enriched program
@@ -164,6 +162,7 @@ def enrich_board(
         plan={"selected_courses": []},
         program=program,
         db_path=db_path,
+        offerings=offerings,
     )
     if not dry_run:
         board_path.write_text(
@@ -271,7 +270,12 @@ def main() -> None:
     ap.add_argument("--force-refresh", action="store_true")
     args = ap.parse_args()
 
-    stats = enrich_board(force_refresh=args.force_refresh, dry_run=args.dry_run)
+    from app.analysis.semester_board import program_offerings
+    from app.degrees.registry import get_program
+
+    me = get_program("mechanical_engineering_2027")  # this legacy CLI's program
+    stats = enrich_board(force_refresh=args.force_refresh, dry_run=args.dry_run, tcid=me.source_ids["tcid"],
+                         shana=str(me.source_year), offerings=program_offerings(me.id))
     _print_report(stats)
 
     if args.dry_run:

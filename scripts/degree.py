@@ -60,7 +60,13 @@ MAIN_BOARD_START_YEAR = 3
 EARLY_START_YEAR = 1
 # BIDIT current-year schedule evidence copied from the general-requirement catalog onto its
 # board records (the offline half of scripts/enrich_shaar_ruach_bidit.ts).
-BIDIT_FIELDS = ("weekly_hours", "weekly_hours_source", "weekly_hours_verified_from_bidit", "bidit_schedule_2027")
+BIDIT_FIELDS = ("weekly_hours", "weekly_hours_source", "weekly_hours_verified_from_bidit")
+
+
+def bidit_fields(source_year: int) -> tuple[str, ...]:
+    """The BIDIT fields for TAU year ``source_year``: the schedule field is named for the
+    academic year it ends (shana 2026 == 2026-2027 -> ``bidit_schedule_2027``)."""
+    return (*BIDIT_FIELDS, f"bidit_schedule_{source_year + 1}")
 TIMESTAMP_FIELDS = frozenset({"syllabus_last_fetched_at"})
 
 
@@ -136,7 +142,7 @@ def mandatory_courses_file(spec: DegreeSpec, start_year: int, facts: dict) -> di
     return {"program_id": spec.program_id, "generated_from": "spec.json mandatory_courses", "courses": rows}
 
 
-def copy_bidit_schedule(board: dict, source: Path = SHAAR_RUACH_SOURCE) -> int:
+def copy_bidit_schedule(board: dict, source_year: int, source: Path = SHAAR_RUACH_SOURCE) -> int:
     if not source.exists():
         return 0
     by_id = {c["course_id"]: c for c in json.loads(source.read_text(encoding="utf-8")).get("courses", [])}
@@ -145,7 +151,7 @@ def copy_bidit_schedule(board: dict, source: Path = SHAAR_RUACH_SOURCE) -> int:
         src = by_id.get(course.get("course_id"))
         if not src:
             continue
-        for field in BIDIT_FIELDS:
+        for field in bidit_fields(source_year):
             if field in src:
                 course[field] = src[field]
         n += 1
@@ -282,7 +288,7 @@ def build(entry: ProgramEntry, out_dir: Path = DATA, offline: bool = False, live
             board = json.loads(path.read_text(encoding="utf-8"))
             changed = rcd.apply(board, facts, shana)
             summaries = rcd.refresh_syllabi(board, offline)
-            bidit = copy_bidit_schedule(board) if "general_requirements" in variant["requirements"] else 0
+            bidit = copy_bidit_schedule(board, shana) if "general_requirements" in variant["requirements"] else 0
             n = apply_curation(board, curation, key)
             write_board(path, board, previous[key], keep_timestamps=not live)
             print(f"[build] {key}: facts patched {changed} records, {summaries} summaries, "

@@ -1163,13 +1163,12 @@ def _flex_program(cid):
     }]}}}
 
 
-def test_build_semester_board_uses_the_offerings_passed_in(no_db, monkeypatch):
+def test_build_semester_board_uses_the_offerings_passed_in(no_db):
     import app.analysis.semester_board as sb
 
     cid = "0542-9999"
-    # The legacy default (the 2026 snapshot) says semester A; the facts passed in say B.
-    monkeypatch.setattr(sb, "OFFERED_SEMESTERS_OVERRIDES", {cid: {
-        "offered_semesters": ["A"], "offering_source_url": "default", "offering_source_confidence": "high"}})
+    # No program default exists to fall back on: offerings are only what the caller passes.
+    assert not hasattr(sb, "OFFERED_SEMESTERS_OVERRIDES") and not hasattr(sb, "_load_official_offerings")
     passed = {cid: {"offered_semesters": ["B"], "offering_source_url": "passed",
                     "offering_source_confidence": "high"}}
     board = build_semester_board(_plan(), program=_flex_program(cid), db_path=no_db, offerings=passed)
@@ -1179,11 +1178,12 @@ def test_build_semester_board_uses_the_offerings_passed_in(no_db, monkeypatch):
     assert course["offered_semesters"] == ["B"]
     assert course["offering_source_url"] == "passed"
 
-    # An empty mapping means "no official offering known", not "use the default file".
-    board = build_semester_board(_plan(), program=_flex_program(cid), db_path=no_db, offerings={})
-    course = next(c for s in board["semesters"] for c in s["courses"] if c["course_id"] == cid)
-    assert course["offering_source_confidence"] == "unverified"
-    assert course["offered_semesters"] is None
+    # An empty mapping or None means "no official offering known", never a program's default file.
+    for none in ({}, None):
+        board = build_semester_board(_plan(), program=_flex_program(cid), db_path=no_db, offerings=none)
+        course = next(c for s in board["semesters"] for c in s["courses"] if c["course_id"] == cid)
+        assert course["offering_source_confidence"] == "unverified"
+        assert course["offered_semesters"] is None
 
 
 def test_official_offerings_keeps_only_offered_courses():

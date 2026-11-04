@@ -55,7 +55,7 @@ def test_live_forces_refresh_program(monkeypatch, tmp_path):
 
     monkeypatch.setattr(rcd, "fetch_program_data", fake)
     with pytest.raises(RuntimeError, match="refusing to write degraded facts"):
-        rcd.read_program(2026, offline=False, live=True)  # an empty response fails closed
+        rcd.read_program(2026, offline=False, live=True, tcid="8715")  # an empty response fails closed
     assert seen["force_refresh"] is True
 
 
@@ -69,7 +69,7 @@ def test_live_forces_refresh_timetable(monkeypatch, tmp_path):
 
     monkeypatch.setattr(rcd, "fetch_schedule_data", fake)
     with pytest.raises(RuntimeError, match="refusing to write degraded facts"):
-        rcd.read_timetable(2026, offline=False, live=True)  # an empty response fails closed
+        rcd.read_timetable(2026, offline=False, live=True, tcid="8715")  # an empty response fails closed
     assert seen["force_refresh"] is True
 
 
@@ -81,10 +81,10 @@ def test_failed_fetch_raises_instead_of_returning_no_facts(monkeypatch, tmp_path
     monkeypatch.setattr(rcd, fetcher, lambda *a, **k: [])
     for live in (True, False):
         with pytest.raises(RuntimeError, match="refusing to write degraded facts"):
-            getattr(rcd, reader)(2026, offline=False, live=live)
+            getattr(rcd, reader)(2026, offline=False, live=live, tcid="8715")
 
 
 def test_offline_without_cache_is_no_data_not_an_error(monkeypatch, tmp_path):
     _point_caches_at(monkeypatch, tmp_path)
-    assert rcd.read_program(2026, offline=True) == {}
-    assert rcd.read_timetable(2026, offline=True) == {}
+    assert rcd.read_program(2026, offline=True, live=False, tcid="8715") == {}
+    assert rcd.read_timetable(2026, offline=True, live=False, tcid="8715") == {}

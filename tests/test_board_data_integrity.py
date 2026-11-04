@@ -8,10 +8,14 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from app.degrees.facts import load_program_facts  # noqa: E402
+from app.degrees.registry import get_program  # noqa: E402
 from refresh_course_data import (  # noqa: E402
-    ACADEMIC_YEAR, BOARDS, PROGRAM_TCID, board_courses, compare, resolve_offering, semesters_from_groups, timetable_semesters,
+    board_courses, compare, program_boards, resolve_offering, semesters_from_groups, timetable_semesters,
 )
 
+ME = get_program("mechanical_engineering_2027")
+ACADEMIC_YEAR, PROGRAM_TCID = ME.source_year, ME.source_ids["tcid"]
+BOARDS = program_boards(ME)
 FACTS = load_program_facts(ACADEMIC_YEAR, PROGRAM_TCID)
 
 
@@ -34,9 +38,9 @@ def test_timetable_semkvutza_mapping():
 
 def test_program_timetable_beats_ims():
     ims = {"status": "offered", "offered_semesters": ["A"], "url": "ims"}
-    assert resolve_offering(ims, ["A", "B"], 2026)["offered_semesters"] == ["A", "B"]
-    assert resolve_offering(ims, ["A", "B"], 2026)["source"] == "program_timetable"
-    assert resolve_offering(ims, None, 2026)["source"] == "ims"
+    assert resolve_offering(ims, ["A", "B"], 2026, "8715")["offered_semesters"] == ["A", "B"]
+    assert resolve_offering(ims, ["A", "B"], 2026, "8715")["source"] == "program_timetable"
+    assert resolve_offering(ims, None, 2026, "8715")["source"] == "ims"
 
 
 def test_boards_match_official_facts():

@@ -48,7 +48,7 @@ def build_semester_board(
     Distribute selected_courses from a plan JSON into a 4-semester board.
 
     *offerings* is this year's official offering per course (``official_offerings`` of the
-    program's facts); None uses the legacy default snapshot.
+    program's facts); None means no official offering is known for any course.
 
     If *program* is provided, mandatory courses defined per-semester in the
     program JSON are placed first (locked, source="program") before electives.
@@ -263,9 +263,9 @@ def _placement_policy_from_rule(placement_rule: str) -> str:
 # "unverified"; effective == program allowed semesters).
 #
 # degree.py build passes ``offerings=official_offerings(<the program's facts>)`` into
-# build_semester_board. Callers that pass nothing get the legacy default below: the
-# default program's (mechanical_engineering_2027) view of its sourceYear snapshot, loaded
-# on first use.
+# build_semester_board. There is no program default here: a caller that passes nothing
+# gets no official offerings (every course "unverified"); a CLI resolves its default
+# program's facts in its own main().
 # ---------------------------------------------------------------------------
 
 
@@ -282,23 +282,14 @@ def official_offerings(facts: dict[str, dict]) -> dict[str, dict[str, Any]]:
     }
 
 
-def _load_official_offerings() -> dict[str, dict[str, Any]]:
+def program_offerings(program_id: str) -> dict[str, dict[str, Any]]:
+    """A registry program's official offerings (its sourceYear facts snapshot), for CLIs."""
     from app.degrees.facts import load_program_facts
     from app.degrees.registry import get_program
 
-    entry = get_program("mechanical_engineering_2027")
+    entry = get_program(program_id)
     return official_offerings(load_program_facts(entry.source_year, entry.source_ids["tcid"]))
 
-
-# Legacy default (None until first use); tests may assign a dict here.
-OFFERED_SEMESTERS_OVERRIDES: dict[str, dict[str, Any]] | None = None
-
-
-def _default_offerings() -> dict[str, dict[str, Any]]:
-    global OFFERED_SEMESTERS_OVERRIDES
-    if OFFERED_SEMESTERS_OVERRIDES is None:
-        OFFERED_SEMESTERS_OVERRIDES = _load_official_offerings()
-    return OFFERED_SEMESTERS_OVERRIDES
 
 _PART_TO_SUFFIX = {"A": "_semester_a", "B": "_semester_b"}
 
@@ -307,7 +298,7 @@ def _offering_fields(
     course_id: str, allowed_sems: list[str], offerings: dict[str, dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Compute Layer-1/Layer-2/effective allowed-semester fields for a course."""
-    override = (offerings if offerings is not None else _default_offerings()).get(course_id)
+    override = (offerings or {}).get(course_id)
     program_allowed = list(allowed_sems)
     if override:
         offered = list(override["offered_semesters"])
@@ -1433,6 +1424,9 @@ if __name__ == "__main__":
                      help="Save board to JSON")
     cli.add_argument("--db",                       default=str(_DB_PATH), metavar="PATH",
                      help=f"Database path (default: {_DB_PATH})")
+    cli.add_argument("--offerings-program",        default="mechanical_engineering_2027", metavar="ID",
+                     help="registry program whose official offerings place the courses "
+                          "(default: mechanical_engineering_2027)")
     args = cli.parse_args()
 
     plan_path = Path(args.plan_json)
@@ -1471,6 +1465,7 @@ if __name__ == "__main__":
         start_year                    = args.start_year,
         completed_course_ids          = completed,
         db_path                       = Path(args.db),
+        offerings                     = program_offerings(args.offerings_program),
     )
 
     n_total = board["metadata"]["total_courses"]

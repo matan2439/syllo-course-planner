@@ -13,8 +13,9 @@ INSTITUTIONS_PATH = CONFIG_DIR / "institutions.json"
 class ProgramEntry(BaseModel):
     model_config = ConfigDict(populate_by_name=True, extra="forbid")
 
-    id: str
-    institution: str
+    # ``<base>_<year>`` ids, optionally ``<institution>:``-prefixed (shared/programs.ts: same rule).
+    id: str = Field(pattern=r"^(?:[a-z0-9_]+:)?[a-z0-9_]+$")
+    institution: str = Field(pattern=r"^[a-z0-9_]+$")
     base: str
     year: int
     source_year: int = Field(alias="sourceYear")
@@ -35,9 +36,26 @@ class ProgramEntry(BaseModel):
     )
 
 
-def load_registry(path: Path = DEFAULT_PATH) -> list[ProgramEntry]:
-    raw = json.loads(Path(path).read_text(encoding="utf-8"))
-    return [ProgramEntry.model_validate(p) for p in raw["programs"]]
+def validate_registry(entries: list[ProgramEntry]) -> list[ProgramEntry]:
+    """Registry-wide rules (shared/programs.ts parseRegistry: same rules): ids are unique and
+    every family has exactly one default entry."""
+    ids = [e.id for e in entries]
+    dups = sorted({i for i in ids if ids.count(i) > 1})
+    if dups:
+        raise ValueError(f"duplicate program ids: {dups}")
+    defaults: dict[str, int] = {}
+    for e in entries:
+        defaults[e.family_id] = defaults.get(e.family_id, 0) + int(e.is_family_default)
+    bad = {f: n for f, n in sorted(defaults.items()) if n != 1}
+    if bad:
+        raise ValueError(f"every family needs exactly one isFamilyDefault entry: {bad}")
+    return entries
+
+
+def load_registry(path: Path | None = None) -> list[ProgramEntry]:
+    """The validated registry (default: data/config/programs.json, resolved at call time)."""
+    raw = json.loads(Path(path or DEFAULT_PATH).read_text(encoding="utf-8"))
+    return validate_registry([ProgramEntry.model_validate(p) for p in raw["programs"]])
 
 
 def get_program(program_id: str) -> ProgramEntry:

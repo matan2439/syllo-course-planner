@@ -37,16 +37,17 @@ def generate(
     program: dict | None = None,
     board_path: Path = _BOARD_PATH,
     db_path: Path = _DB_PATH,
-    tcid: str = "8715",
-    shana: str = "2026",
+    tcid: str,
+    shana: str,
     offline: bool = False,
     offerings: dict | None = None,
 ) -> dict:
-    """Generate a program's semester board JSON and return it (defaults: ME 2027).
+    """Generate a program's semester board JSON and return it.
 
     ``program`` is the enriched-program dict (``spec_to_program`` output); when omitted
-    the committed ME enriched program file is read. ``offerings``: this year's official
-    offerings for the program (``semester_board.official_offerings``); None = legacy default.
+    the committed ME enriched program file is read. ``tcid``/``shana``: the program's
+    registry sourceIds.tcid / sourceYear. ``offerings``: this year's official offerings for
+    the program (``semester_board.official_offerings``); None = none known.
     """
     if program is None:
         print("[generate] Loading enriched 2027 program…")
@@ -86,7 +87,7 @@ def generate(
         # Step 3: fill still-missing names/hours from GraphQL cache
         print("[generate] Running name/hours enrichment from GraphQL cache…")
         stats = enrich_graphql(board_path=board_path, program=program, db_path=db_path,
-                               tcid=tcid, shana=shana, offline=offline)
+                               tcid=tcid, shana=shana, offline=offline, offerings=offerings)
         print(f"  enriched {stats.get('enriched_name', 0)} names, "
               f"{stats.get('enriched_hours', 0)} hours")
         if stats.get("still_missing_name"):
@@ -134,7 +135,12 @@ def main() -> None:
                     help="Compute but do not write files")
     args = ap.parse_args()
 
-    board = generate(dry_run=args.dry_run)
+    from app.analysis.semester_board import program_offerings
+    from app.degrees.registry import get_program
+
+    me = get_program("mechanical_engineering_2027")  # this legacy CLI's program
+    board = generate(dry_run=args.dry_run, tcid=me.source_ids["tcid"], shana=str(me.source_year),
+                     offerings=program_offerings(me.id))
     _print_summary(board)
 
     if args.dry_run:

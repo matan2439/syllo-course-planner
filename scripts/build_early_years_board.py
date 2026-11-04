@@ -157,7 +157,7 @@ def build(program_id: str, start_year: int, tcid: str, shana: int,
           offerings: dict | None = None) -> Path:
     """Read ``<boards_dir>/<program_id>.json``; write the window board into ``out_dir``
     (default: ``boards_dir``). ``offline`` never touches the network; ``offerings`` is the
-    program's official offerings (``semester_board.official_offerings``; None = legacy default)."""
+    program's official offerings (``semester_board.official_offerings``; None = none known)."""
     base, year = re.fullmatch(r"(.+)_(\d{4})", program_id).groups()
     late = json.loads((boards_dir / f"{program_id}.json").read_text(encoding="utf-8"))
     late_meta = late["metadata"]
@@ -253,7 +253,11 @@ def main() -> int:
     entry = get_program(args.program)
     tcid = args.tcid or entry.source_ids["tcid"]
     shana = args.shana or entry.source_year
-    out = build(args.program, args.start_year, tcid, shana)
+    from app.analysis.semester_board import official_offerings
+    from app.degrees.facts import load_program_facts
+
+    offerings = official_offerings(load_program_facts(shana, tcid))
+    out = build(args.program, args.start_year, tcid, shana, offerings=offerings)
     board = json.loads(out.read_text(encoding="utf-8"))
     print(f"[early-board] wrote {out.relative_to(ROOT)}")
     print(f"[early-board] wrote {write_early_year_index().relative_to(ROOT)}")

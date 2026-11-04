@@ -11,7 +11,7 @@ Sources (TAU year code: 2026 == תשפ"ז / 2026-2027):
   * IMS course search  ims.tau.ac.il/tal/kr/search_l.aspx?course_num=..&year=..
       -> syllabus link, and offerings for courses the program timetable doesn't
          list (שער רוח / general courses)
-  * tochniot GraphQL ydtochnit (tcid 8715, shana=year)
+  * tochniot GraphQL ydtochnit (the program's tcid, shana=year)
       -> weekly hours (shaotuni), credits (mishkal), teaching format
 
 Usage:
@@ -47,12 +47,12 @@ from app.parsing.course_search_parser import parse_course_search_result  # noqa:
 from app.scraping.tau_client import build_course_search_url, fetch_url  # noqa: E402
 from app.scraping.tau_program_scraper import fetch_program_data, fetch_schedule_data  # noqa: E402
 
-from app.degrees.facts import load_stored, program_view  # noqa: E402
+from app.degrees.facts import facts_path, load_stored, program_view  # noqa: E402
 from app.degrees.registry import ProgramEntry, get_program  # noqa: E402
 
-DEFAULT_PROGRAM = "mechanical_engineering_2027"
-ACADEMIC_YEAR = get_program(DEFAULT_PROGRAM).source_year  # TAU year code 2026 == תשפ"ז (2026-2027)
-PROGRAM_TCID = get_program(DEFAULT_PROGRAM).source_ids["tcid"]  # Mechanical Engineering: 8715
+# Nothing here resolves a program at import: every reader takes the program's ProgramEntry
+# (or its tcid). The CLI default program lives only in main().
+CLI_DEFAULT_PROGRAM = "mechanical_engineering_2027"
 SCHEDULE_URL = "https://www.tau.ac.il/study-program?safa=1&shana={year}&tab=schedule&tcid={tcid}"
 
 
@@ -77,10 +77,8 @@ def spec_course_ids(entry: ProgramEntry) -> list[str]:
     return list(dict.fromkeys(ids))
 
 
-BOARDS = program_boards(get_program(DEFAULT_PROGRAM))
 SHAAR_RUACH_SOURCE = ROOT / "data" / "general_courses_shaar_ruach.json"
 IMS_CACHE = ROOT / "data" / "raw_html" / "course_details"
-OFFICIAL_DIR = ROOT / "data" / "official"
 REPORT_DIR = ROOT / "data" / "import_reports"
 
 NOT_OFFERED_MARKER = "אין נתונים מתאימים"
@@ -147,7 +145,7 @@ def read_ims(course_id: str, year: int, offline: bool, live: bool = False) -> di
     }
 
 
-def read_program(year: int, offline: bool, live: bool = False, tcid: str = PROGRAM_TCID) -> dict[str, dict]:
+def read_program(year: int, offline: bool, live: bool, tcid: str) -> dict[str, dict]:
     """course_id -> {weekly_hours, credits, teaching_format} from ydtochnit."""
     cache = ROOT / "data" / "raw_html" / f"tau_program_{tcid}_{year}.json"
     if offline and not cache.exists():
@@ -191,7 +189,7 @@ def timetable_semesters(kurs: dict) -> list[str]:
     return sorted(out)
 
 
-def read_timetable(year: int, offline: bool, live: bool = False, tcid: str = PROGRAM_TCID) -> dict[str, list[str]]:
+def read_timetable(year: int, offline: bool, live: bool, tcid: str) -> dict[str, list[str]]:
     """course_id -> offered semesters from the program's official timetable."""
     cache = ROOT / "data" / "raw_html" / f"tau_schedule_{tcid}_{year}.json"
     if offline and not cache.exists():
@@ -219,7 +217,7 @@ def read_timetable(year: int, offline: bool, live: bool = False, tcid: str = PRO
     return out
 
 
-def resolve_offering(ims: dict, timetable: list[str] | None, year: int, tcid: str = PROGRAM_TCID) -> dict:
+def resolve_offering(ims: dict, timetable: list[str] | None, year: int, tcid: str) -> dict:
     """The program timetable wins; IMS only covers courses the timetable doesn't list."""
     if timetable:
         return {"status": "offered", "offered_semesters": timetable,
@@ -252,8 +250,7 @@ def board_courses(board: dict):
         yield "pool", c
 
 
-def official_facts(course_ids: list[str], year: int, offline: bool, live: bool = False,
-                   tcid: str = PROGRAM_TCID) -> dict[str, dict]:
+def official_facts(course_ids: list[str], year: int, offline: bool, live: bool, tcid: str) -> dict[str, dict]:
     program = read_program(year, offline, live, tcid)
     timetable = read_timetable(year, offline, live, tcid)
     print(f"[timetable] {len(timetable)} program courses with groups in {year}")
@@ -471,10 +468,6 @@ def _fmt(v) -> str:
     return json.dumps(v, ensure_ascii=False) if not isinstance(v, str) else v
 
 
-def facts_path(year: int) -> Path:
-    return OFFICIAL_DIR / f"tau_course_facts_{year}.json"
-
-
 SOURCES_READ = "_sources_read"  # transient marker set by official_facts, never stored
 
 
@@ -504,7 +497,7 @@ def merge_fact(old: dict | None, new: dict, year: int, tcid: str) -> dict:
     return {"ims": ims, "program": program, "timetable": timetable, "offering": offering}
 
 
-def write_facts(facts: dict, year: int, tcid: str = PROGRAM_TCID, path: Path | None = None,
+def write_facts(facts: dict, year: int, tcid: str, path: Path | None = None,
                 seed: Path | None = None) -> Path:
     """Merge this run's flat facts (one program, ``tcid``) into the per-year snapshot every
     program shares (layout: app/degrees/facts.py). IMS is course-wide; program/timetable/offering
@@ -561,7 +554,7 @@ def refresh(entry: ProgramEntry, year: int | None = None, offline: bool = False,
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--program", default=DEFAULT_PROGRAM, help="registry program id")
+    ap.add_argument("--program", default=CLI_DEFAULT_PROGRAM, help="registry program id")
     ap.add_argument("--year", type=int, default=None, help="TAU year code (default: the program's sourceYear)")
     ap.add_argument("--apply", action="store_true",
                     help="refresh the facts, then rebuild the boards (= degree.py refresh --apply)")
