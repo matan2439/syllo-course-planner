@@ -89,6 +89,32 @@ def test_good_new_values_still_replace_old_ones(monkeypatch, tmp_path):
     assert fact["program"]["credits"] == 6 and fact["timetable"] == ["B"] and fact["ims"]["url"] == "ims:new"
 
 
+def test_course_that_left_the_timetable_is_dropped_after_a_full_read(monkeypatch, tmp_path):
+    monkeypatch.setattr(rcd, "OFFICIAL_DIR", tmp_path / "official")
+    rcd.write_facts({"C-1": _full(4, ("A",), tag="old")}, 2026)
+
+    # A successful run that read both sources: the course is gone from both, IMS says not offered.
+    gone = {"ims": {"status": "not_offered", "url": "ims:gone", "offered_semesters": []},
+            "program": None, "timetable": None,
+            "offering": {"status": "not_offered", "offered_semesters": [], "url": "ims:gone", "source": "ims"},
+            rcd.SOURCES_READ: True}
+    rcd.write_facts({"C-1": gone}, 2026)
+    fact = load_program_facts(2026, "8715", rcd.facts_path(2026))["C-1"]
+    assert fact["program"] is None and fact["timetable"] is None
+    assert fact["offering"]["status"] == "not_offered"
+    assert rcd.SOURCES_READ not in json.loads(rcd.facts_path(2026).read_text(encoding="utf-8"))["C-1"]
+
+
+def test_official_facts_marks_sources_read_only_when_both_were_read(monkeypatch):
+    monkeypatch.setattr(rcd, "read_ims", lambda *a, **k: {"status": "offered", "url": "u", "offered_semesters": ["A"]})
+    monkeypatch.setattr(rcd, "read_program", lambda *a, **k: {"X-1": {"credits": 3}})
+    monkeypatch.setattr(rcd, "read_timetable", lambda *a, **k: {"X-1": ["A"]})
+    assert rcd.official_facts(["X-1"], 2026, offline=False)["X-1"][rcd.SOURCES_READ] is True
+
+    monkeypatch.setattr(rcd, "read_timetable", lambda *a, **k: {})  # offline, no cache
+    assert rcd.official_facts(["X-1"], 2026, offline=True)["X-1"][rcd.SOURCES_READ] is False
+
+
 def test_refresh_into_another_facts_file_leaves_the_committed_one_alone(monkeypatch, tmp_path):
     monkeypatch.setattr(rcd, "OFFICIAL_DIR", tmp_path / "official")
     monkeypatch.setattr(rcd, "REPORT_DIR", tmp_path / "reports")

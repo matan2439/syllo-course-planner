@@ -257,12 +257,15 @@ def official_facts(course_ids: list[str], year: int, offline: bool, live: bool =
     program = read_program(year, offline, live, tcid)
     timetable = read_timetable(year, offline, live, tcid)
     print(f"[timetable] {len(timetable)} program courses with groups in {year}")
+    # Both sources really read this run: a course missing from them has left the program/timetable.
+    sources_read = bool(program) and bool(timetable)
     facts: dict[str, dict] = {}
     for i, cid in enumerate(sorted(course_ids), 1):
         print(f"[{i}/{len(course_ids)}] {cid}", flush=True)
         ims = read_ims(cid, year, offline, live)
         facts[cid] = {"ims": ims, "program": program.get(cid), "timetable": timetable.get(cid),
-                      "offering": resolve_offering(ims, timetable.get(cid), year, tcid)}
+                      "offering": resolve_offering(ims, timetable.get(cid), year, tcid),
+                      SOURCES_READ: sources_read}
     return facts
 
 
@@ -472,20 +475,27 @@ def facts_path(year: int) -> Path:
     return OFFICIAL_DIR / f"tau_course_facts_{year}.json"
 
 
+SOURCES_READ = "_sources_read"  # transient marker set by official_facts, never stored
+
+
 def merge_fact(old: dict | None, new: dict, year: int, tcid: str) -> dict:
     """``new`` (a flat fact from this run) over ``old`` (this program's previous flat fact).
 
-    Fail-closed: an "unknown" IMS result (not cached / fetch failed / unparseable) and a
-    missing program row or timetable never replace what the snapshot already holds; the
-    offering is then re-resolved from the values actually kept.
+    Fail-closed: an "unknown" IMS result (not cached / fetch failed / unparseable) never
+    replaces what the snapshot already holds, and neither does a missing program row or
+    timetable — unless this run really read both sources (``SOURCES_READ``), in which case
+    "missing" means the course left them and the old value is dropped. The offering is then
+    re-resolved from the values actually kept.
     """
+    authoritative = bool(new.get(SOURCES_READ))
+    new = {k: v for k, v in new.items() if k != SOURCES_READ}
     if not old:
         return new
     ims = new["ims"]
     if ims.get("status") == "unknown" and old.get("ims"):
         ims = old["ims"]
-    program = new["program"] if new["program"] is not None else old.get("program")
-    timetable = new["timetable"] if new["timetable"] is not None else old.get("timetable")
+    keep = lambda k: new[k] if new[k] is not None or authoritative else old.get(k)  # noqa: E731
+    program, timetable = keep("program"), keep("timetable")
     if ims is new["ims"] and program is new["program"] and timetable is new["timetable"]:
         return new
     offering = resolve_offering(ims, timetable, year, tcid)
