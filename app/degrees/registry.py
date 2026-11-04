@@ -83,3 +83,17 @@ def load_institution(institution_id: str) -> dict:
         if inst["id"] == institution_id:
             return inst
     raise KeyError(institution_id)
+
+
+def add_program(entry: ProgramEntry, path: Path | None = None) -> None:
+    """Append ``entry`` to the registry file (default: data/config/programs.json), keeping the
+    existing entries, their order and the file's layout (indent 2, UTF-8, trailing newline).
+    The whole registry, new entry included, is validated before anything is written."""
+    path = Path(path or DEFAULT_PATH)
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    validate_registry([ProgramEntry.model_validate(p) for p in raw["programs"]] + [entry])
+    row = entry.model_dump(mode="json", by_alias=True)
+    if row.get("catalogYearPolicy") is None:
+        row.pop("catalogYearPolicy", None)  # absent = the institution default
+    raw["programs"].append(row)
+    path.write_bytes((json.dumps(raw, ensure_ascii=False, indent=2) + "\n").encode("utf-8"))

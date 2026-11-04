@@ -1,0 +1,88 @@
+{
+  "_note": "Trimmed shape of TAU's getPrograms program-index GraphQL response (tochniot.tau.ac.il), constructed for tests: no real index payload is cached. 4441/4442 share one title/level/school (ambiguous); 1111 is listed for two years.",
+  "data": {
+    "getPrograms": {
+      "total": 6,
+      "results": [
+        {
+          "tclongkey": "key-1111",
+          "shana": "2026",
+          "teurshana": "תשפ\"ז (2026-2027)",
+          "teur": "הנדסת חשמל",
+          "title": "הנדסת חשמל",
+          "toar": "1",
+          "tcid": "1111",
+          "faculta": "0500",
+          "betsefer": "0510",
+          "pail": "1",
+          "showtochnit": "1"
+        },
+        {
+          "tclongkey": "key-1111",
+          "shana": "2025",
+          "teurshana": "תשפ\"ו (2025-2026)",
+          "teur": "הנדסת חשמל",
+          "title": "הנדסת חשמל",
+          "toar": "1",
+          "tcid": "1111",
+          "faculta": "0500",
+          "betsefer": "0510",
+          "pail": "1",
+          "showtochnit": "1"
+        },
+        {
+          "tclongkey": "key-2222",
+          "shana": "2026",
+          "teurshana": "תשפ\"ז (2026-2027)",
+          "teur": "הנדסת חשמל ופיזיקה",
+          "title": "הנדסת חשמל ופיזיקה",
+          "toar": "1",
+          "tcid": "2222",
+          "faculta": "0500",
+          "betsefer": "0510",
+          "pail": "1",
+          "showtochnit": "1"
+        },
+        {
+          "tclongkey": "key-3333",
+          "shana": "2026",
+          "teurshana": "תשפ\"ז (2026-2027)",
+          "teur": "הנדסת חשמל",
+          "title": "הנדסת חשמל",
+          "toar": "2",
+          "tcid": "3333",
+          "faculta": "0500",
+          "betsefer": "0510",
+          "pail": "1",
+          "showtochnit": "1"
+        },
+        {
+          "tclongkey": "key-4441",
+          "shana": "2026",
+          "teurshana": "תשפ\"ז (2026-2027)",
+          "teur": "הנדסה ביו-רפואית",
+          "title": "הנדסה ביו-רפואית",
+          "toar": "1",
+          "tcid": "4441",
+          "faculta": "0500",
+          "betsefer": "0510",
+          "pail": "1",
+          "showtochnit": "1"
+        },
+        {
+          "tclongkey": "key-4442",
+          "shana": "2026",
+          "teurshana": "תשפ\"ז (2026-2027)",
+          "teur": "הנדסה ביו-רפואית",
+          "title": "הנדסה ביו-רפואית",
+          "toar": "1",
+          "tcid": "4442",
+          "faculta": "0500",
+          "betsefer": "0510",
+          "pail": "1",
+          "showtochnit": "1"
+        }
+      ]
+    }
+  }
+}

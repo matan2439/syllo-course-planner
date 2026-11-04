@@ -2,11 +2,16 @@
 """
 One CLI for every registered degree (data/config/programs.json):
 
+    python scripts/degree.py init     --institution tau --title-he "<official title>" --level <toar>
+                                      --school <betsefer> --shana <year> [--base <slug>] [--track-he <text>]
     python scripts/degree.py evidence --program <id> [--live|--offline]
     python scripts/degree.py build    --program <id> [--live|--offline] [--out-dir DIR]
     python scripts/degree.py check    --program <id>  --live|--offline
     python scripts/degree.py refresh  --program <id> [--live|--offline] [--apply [--syllabi]]
 
+init      resolves the program in TAU's official program index (fails listing the candidates on
+          zero or several matches), appends a status "draft" registry entry <base>_<shana+1>,
+          writes an empty spec.json skeleton, then runs `evidence --live`.
 evidence  writes data/degrees/<inst>/<base>/<year>/evidence.json and prints counts by kind.
 build     spec.json -> spec_to_program -> the legacy generate path (board + course-detail links
           + GraphQL names/hours) -> official facts (refresh apply + syllabus summaries) ->
@@ -438,13 +443,112 @@ def run_check(entry: ProgramEntry, live: bool, offline: bool) -> tuple[bool, str
     return passed, report
 
 
+# ---------------------------------------------------------------- init
+
+# Institutions ``init`` can resolve and fetch evidence for (a program index + evidence adapters).
+INIT_INSTITUTIONS = ("tau",)
+
+
+def _show(path: Path) -> str:
+    try:
+        return str(Path(path).resolve().relative_to(ROOT))
+    except ValueError:
+        return str(path)
+
+
+def _print_evidence_counts(items, path: Path) -> None:
+    for kind, n in sorted(Counter(i.kind for i in items).items()):
+        print(f"  {kind:15s} {n}")
+    print(f"[evidence] {len(items)} items -> {_show(path)}")
+
+
+def _index_candidates(results, shana: int):
+    """The index rows ``init`` chooses from: one per tcid (the index lists a program once per
+    year), preferring the requested year's row."""
+    by_tcid = {}
+    for r in results:
+        if r.tcid not in by_tcid or (r.academic_year == str(shana) and by_tcid[r.tcid].academic_year != str(shana)):
+            by_tcid[r.tcid] = r
+    return list(by_tcid.values())
+
+
+def run_init(args) -> int:
+    from app.degrees import registry, scaffold
+    from app.degrees.spec import write_spec
+    from app.scraping.tau_program_scraper import ProgramSelectionError, find_unique_program, search_program_index
+
+    if args.institution not in INIT_INSTITUTIONS:
+        print(f"{args.institution}: init supports {', '.join(INIT_INSTITUTIONS)} only — a new university "
+              f"needs adapters (a program index, evidence adapters and an institutions.json entry)",
+              file=sys.stderr)
+        return 2
+    missing = [f"--{k.replace('_', '-')}" for k in ("title_he", "level", "school", "shana") if getattr(args, k) is None]
+    if missing:
+        print(f"init needs {' '.join(missing)}", file=sys.stderr)
+        return 2
+
+    results = search_program_index({"betsefer": [args.school], "toar": [args.level], "safa": "1"}, size=500)
+    candidates = _index_candidates(results, args.shana)
+    try:
+        found = find_unique_program(candidates, title_he=args.title_he, degree_level=args.level,
+                                    school_code=args.school)
+    except ProgramSelectionError as exc:
+        title = " ".join(args.title_he.split())
+        exact = [c for c in candidates if " ".join(c.title_he.split()) == title]
+        shown = exact or candidates
+        print(f"[init] {exc}", file=sys.stderr)
+        print(f"[init] {'matching' if exact else 'all'} candidates from the official index "
+              f"(school {args.school}, level {args.level}):", file=sys.stderr)
+        for c in shown:
+            print(f"  tcid={c.tcid}  title={c.title_he}  level={c.degree_level}  school={c.school_code}  "
+                  f"year={c.academic_year}", file=sys.stderr)
+        if not shown:
+            print("  (the index returned nothing: check the school code / level, or the network)", file=sys.stderr)
+        return 2
+
+    base = args.base or f"tau_program_{found.tcid}"
+    try:
+        entry = scaffold.registry_entry(found, args.shana, base, args.track_he)
+    except ValueError as exc:
+        print(f"[init] invalid entry: {exc}", file=sys.stderr)
+        return 2
+    existing = {e.id for e in registry.load_registry()}
+    if entry.id in existing:
+        print(f"[init] {entry.id} is already registered — pick another --base or edit the existing degree",
+              file=sys.stderr)
+        return 2
+    spec_file = spec_path(entry)
+    if spec_file.exists():
+        print(f"[init] {_show(spec_file)} already exists — refusing to overwrite it", file=sys.stderr)
+        return 2
+    try:
+        registry.add_program(entry)
+    except ValueError as exc:
+        print(f"[init] the registry would be invalid: {exc}", file=sys.stderr)
+        return 2
+    print(f"[init] registered {entry.id} (draft, tcid {found.tcid}: {found.title_he})")
+    write_spec(scaffold.new_spec(entry), spec_file)
+    print(f"[init] spec skeleton -> {_show(spec_file)}")
+
+    from app.degrees.evidence import EvidenceFetchError
+
+    try:
+        items = collect(entry, live=True, offline=False)
+    except EvidenceFetchError as exc:
+        print(f"[init] evidence fetch failed: {exc}; rerun `degree.py evidence --program {entry.id} --live`",
+              file=sys.stderr)
+        return 1
+    _print_evidence_counts(items, write_evidence(entry, items))
+    return 0
+
+
 # ---------------------------------------------------------------- cli
 
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("command", choices=["evidence", "build", "check", "refresh"])
-    ap.add_argument("--program", required=True, help="registry program id, e.g. mechanical_engineering_2027")
+    ap.add_argument("command", choices=["init", "evidence", "build", "check", "refresh"])
+    ap.add_argument("--program", help="registry program id, e.g. mechanical_engineering_2027 (all but init)")
     mode = ap.add_mutually_exclusive_group()
     mode.add_argument("--live", action="store_true",
                       help="re-fetch every official source (build: also rewrites the facts snapshot first)")
@@ -454,7 +558,19 @@ def main(argv: list[str] | None = None) -> int:
                     help="refresh: then rebuild the committed boards with `build` into data/")
     ap.add_argument("--syllabi", action="store_true",
                     help="accepted for compatibility: build always rebuilds stale syllabus summaries")
+    init = ap.add_argument_group("init (scaffold a draft degree from the official program index)")
+    init.add_argument("--institution", default="tau")
+    init.add_argument("--title-he", help="the program's official Hebrew title, exactly as the index lists it")
+    init.add_argument("--level", help="degree level code (toar), e.g. 1 = bachelor")
+    init.add_argument("--school", help="school code (betsefer), e.g. 0510")
+    init.add_argument("--shana", type=int, help="TAU year code (catalog year - 1), e.g. 2026")
+    init.add_argument("--base", help="the degree's slug (default tau_program_<tcid>)")
+    init.add_argument("--track-he", help="the track's Hebrew name, when the program is a track")
     args = ap.parse_args(argv)
+    if args.command == "init":
+        return run_init(args)
+    if not args.program:
+        ap.error(f"{args.command} needs --program")
     if ":" in args.program:  # board/spec/report paths are named after the id: no id->path mapping yet
         print(f"{args.program}: prefixed ids need a filesystem slug — not supported yet", file=sys.stderr)
         return 2
@@ -464,10 +580,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "evidence":
         items = collect(entry, live=args.live, offline=args.offline)
-        path = write_evidence(entry, items)
-        for kind, n in sorted(Counter(i.kind for i in items).items()):
-            print(f"  {kind:15s} {n}")
-        print(f"[evidence] {len(items)} items -> {path.relative_to(ROOT)}")
+        _print_evidence_counts(items, write_evidence(entry, items))
         return 0
     if args.command == "build":
         out = build(entry, args.out_dir, offline=args.offline, live=args.live)
