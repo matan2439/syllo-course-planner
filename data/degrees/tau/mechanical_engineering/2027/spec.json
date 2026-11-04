@@ -1659,7 +1659,7 @@
       "not_planning_rule": "Link to a previous year's program booklet (archive); this spec follows the current תשפ\"ז program tree."
     },
     "tau:8715:2026:body:terms:8026588cd798": {
-      "not_planning_rule": "Link to the faculty's general undergraduate regulations PDF; the document is not fetched as evidence, and this program's requirements are taken from the program tree."
+      "mapped_to": "known_gaps[unread-regulations-pdf]"
     },
     "tau:8715:2026:body:terms:94a41bd710ac": {
       "not_planning_rule": "Link to a previous year's program booklet (archive); this spec follows the current תשפ\"ז program tree."
@@ -3395,11 +3395,92 @@
   },
   "source_conflicts": [
     {
-      "course_id": "0542-2500",
-      "description": "listed Y2/B in data/config/early_year_courses.json and Y3/A in data/programs/mechanical_engineering_mandatory_2027.json; both current boards place it. mandatory_courses keeps Y3/A.",
+      "course_id": null,
+      "description": "Total degree hours: the spec has total_required_credits 185, but TAU says at least 184 (hesbernosaf; rama 23: \"184 שעות החל משנת הלימודים תשפ\"ו, 185 שעות למי שהתחילו לפני\") and rama 5 says 185.5. Not applied (post-migration update).",
       "sources": [
-        "data/config/early_year_courses.json",
-        "data/programs/mechanical_engineering_mandatory_2027.json"
+        "tau:8715:2026:body:hesbernosaf:cf8fe7bb7bf8",
+        "tau:8715:2026:rama:23:hesber:cc8bc091a581",
+        "tau:8715:2026:rama:5:hesber:e5faba27ac2f"
+      ]
+    },
+    {
+      "course_id": "0542-2500",
+      "description": "listed Y2/B in data/config/early_year_courses.json and Y3/A in data/programs/mechanical_engineering_mandatory_2027.json; both current boards place it. mandatory_courses keeps Y3/A. TAU (live program, תשפ\"ז) lists it under both Y2/B and Y3/A with the note \"יש לקחת את הקורס בסמסטר 4 או 5\"; see course_rules[window-0542-2500].",
+      "sources": [
+        "tau:8715:2026:rama:10:kurs:0542-2500:hearakurs:ada3ac27701b",
+        "tau:8715:2026:rama:11:kurs:0542-2500:hearakurs:ada3ac27701b",
+        "tau:8715:2026:rama:10:kurs:0542-2500",
+        "tau:8715:2026:rama:11:kurs:0542-2500"
+      ]
+    },
+    {
+      "course_id": "0542-2200",
+      "description": "TAU lists it under Y2/A and Y2/B with the note \"יש לקחת את הקורס בסמסטר 3 או 4\"; the spec fixes it at Y2/A. Not applied (post-migration update).",
+      "sources": [
+        "tau:8715:2026:rama:10:kurs:0542-2200:hearakurs:27f39efc4dbf",
+        "tau:8715:2026:rama:9:kurs:0542-2200:hearakurs:27f39efc4dbf",
+        "tau:8715:2026:rama:10:kurs:0542-2200",
+        "tau:8715:2026:rama:9:kurs:0542-2200"
+      ]
+    },
+    {
+      "course_id": "0542-2600",
+      "description": "TAU lists it under Y2/A and Y2/B with the note \"יש לקחת את הקורס בסמסטר 3 או 4\"; the spec fixes it at Y2/B. Not applied (post-migration update).",
+      "sources": [
+        "tau:8715:2026:rama:10:kurs:0542-2600:hearakurs:27f39efc4dbf",
+        "tau:8715:2026:rama:9:kurs:0542-2600:hearakurs:27f39efc4dbf",
+        "tau:8715:2026:rama:10:kurs:0542-2600",
+        "tau:8715:2026:rama:9:kurs:0542-2600"
+      ]
+    },
+    {
+      "course_id": "0542-4135",
+      "description": "TAU program note says it is not taught in תשפ\"ז (\"לא נלמד\"), but the live program timetable offers it in semester B (as do the committed facts). Not applied.",
+      "sources": [
+        "tau:8715:2026:rama:18:kurs:0542-4135:hearakurs:1416a249152d",
+        "tau:8715:2026:timetable:0542-4135"
+      ]
+    },
+    {
+      "course_id": "0542-4132",
+      "description": "TAU program note says it is not taught in תשפ\"ז (\"לא נלמד\"), but the live program timetable offers it in semester B (as do the committed facts). Not applied.",
+      "sources": [
+        "tau:8715:2026:rama:15:kurs:0542-4132:hearakurs:74f9fbd7074f",
+        "tau:8715:2026:rama:28:kurs:0542-4132:hearakurs:74f9fbd7074f",
+        "tau:8715:2026:timetable:0542-4132"
+      ]
+    },
+    {
+      "course_id": "0542-4010",
+      "description": "TAU note says it is taught in semester 7 only (Y4/A; the timetable agrees), but the spec places it Y4 \"either\". Not applied (post-migration update).",
+      "sources": [
+        "tau:8715:2026:rama:13:kurs:0542-4010:hearakurs:800dc8086d55",
+        "tau:8715:2026:timetable:0542-4010"
+      ]
+    },
+    {
+      "course_id": "0542-4092",
+      "description": "TAU note says it is taught in semester 7 only (Y4/A; the timetable agrees), but the spec places it Y4 \"either\". Not applied (post-migration update).",
+      "sources": [
+        "tau:8715:2026:rama:13:kurs:0542-4092:hearakurs:7dbe9f9ad1c8",
+        "tau:8715:2026:timetable:0542-4092"
+      ]
+    },
+    {
+      "course_id": "0542-4020",
+      "description": "TAU note says it is taught in semester 8 only (Y4/B; the timetable agrees), but the spec places it Y4 \"either\". Not applied (post-migration update).",
+      "sources": [
+        "tau:8715:2026:rama:13:kurs:0542-4020:hearakurs:ed357c516aed",
+        "tau:8715:2026:timetable:0542-4020"
+      ]
+    },
+    {
+      "course_id": "0542-4456",
+      "description": "TAU program note says it is taught in semester B, but IMS 2026 says not_offered and the program timetable has no groups for it; it is not in the spec elective pool. Not applied.",
+      "sources": [
+        "tau:8715:2026:rama:20:kurs:0542-4456",
+        "tau:8715:2026:rama:20:kurs:0542-4456:hearakurs:4a461d2ede66",
+        "tau:ims:2026:0542-4456"
       ]
     }
   ],
@@ -3456,7 +3537,7 @@
         "tau:8715:2026:rama:7:kurs:0542-1510:idkunkurs:cb672092a516"
       ],
       "enforced_by": "none",
-      "note": "TAU: 0542-1510 is identical to 0509-1510 (\"קורס זהה לקורס מספר 0509.1510\"); either satisfies the mandatory course and they must not be credited twice. The board has no equivalence data."
+      "note": "TAU: 0542-1510 is identical to 0509-1510 (\"קורס זהה לקורס מספר 0509.1510\"); the source states only that the courses are identical. The board has no equivalence data."
     },
     {
       "rule_id": "exempt-music-tech-shaar-ruach",
@@ -3527,6 +3608,15 @@
       ],
       "enforced_by": "none",
       "note": "TAU: 0509-4010 is for 4th-year students only (admission interview after registration). The board allows it in year 3 too (effective_allowed_semesters includes year_3_semester_b)."
+    }
+  ],
+  "known_gaps": [
+    {
+      "gap_id": "unread-regulations-pdf",
+      "description": "The faculty undergraduate regulations (תקנון הלימודים לתואר ראשון, https://engineering.tau.ac.il/sites/engineering.tau.ac.il/files/media_server/Engineering/yedion/Terms_BA.pdf) are only linked from the program page and were not read; they may hold planning rules (e.g. semester load limits, repeat or exemption rules) the spec does not express.",
+      "source_ids": [
+        "tau:8715:2026:body:terms:8026588cd798"
+      ]
     }
   ]
 }

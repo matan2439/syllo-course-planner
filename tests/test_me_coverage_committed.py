@@ -62,3 +62,50 @@ def test_every_course_rule_is_backed_by_mapped_evidence():
         assert rule.source_ids and set(rule.source_ids) <= ids, rule.rule_id
         for sid in rule.source_ids:
             assert spec.coverage[sid].mapped_to == f"course_rules[{rule.rule_id}]"
+
+
+def test_failing_checks_are_exactly_the_recorded_gaps_and_unenforced_rules():
+    """Honest gate: of the spec-only checks, only these fail, with exactly these entries."""
+    from app.degrees.checks import check_known_gaps, check_rules_enforced
+
+    _, spec = _load()
+    gaps = check_known_gaps(spec)
+    assert not gaps.passed
+    assert {p.split(":")[0] for p in gaps.problems} == {"known gap unread-regulations-pdf"}
+    assert not check_rules_enforced(spec).passed and len(check_rules_enforced(spec).problems) == 6
+
+
+def test_known_gaps_are_backed_by_mapped_evidence():
+    _, spec = _load()
+    for gap in spec.known_gaps:
+        assert gap.source_ids
+        for sid in gap.source_ids:
+            assert spec.coverage[sid].mapped_to == f"known_gaps[{gap.gap_id}]"
+
+
+def test_source_conflict_sources_are_covered_evidence():
+    items, spec = _load()
+    ids = {i.id for i in items}
+    assert {c.course_id for c in spec.source_conflicts} == {
+        None, "0542-2500", "0542-2200", "0542-2600", "0542-4135", "0542-4132",
+        "0542-4010", "0542-4092", "0542-4020", "0542-4456",
+    }
+    for conflict in spec.source_conflicts:
+        assert conflict.sources, conflict
+        assert set(conflict.sources) <= ids and set(conflict.sources) <= set(spec.coverage), conflict
+
+
+def test_board_enforced_rules_hold_in_committed_board():
+    """annual-0542-3792 claims board enforcement: the committed board must actually encode it."""
+    from pathlib import Path
+
+    _, spec = _load()
+    (rule,) = [r for r in spec.course_rules if r.rule_id == "annual-0542-3792"]
+    assert rule.enforced_by == "board"
+    board_file = Path(__file__).resolve().parents[1] / "data/boards/mechanical_engineering_2027.json"
+    board = json.loads(board_file.read_text(encoding="utf-8"))
+    records = [c for s in board["semesters"] for c in s["courses"] if c["course_id"] == "0542-3792"]
+    assert records
+    for c in records:
+        assert c["is_annual"] is True and c["count_hours_once"] is True
+        assert c["spans_semesters"] == ["year_3_semester_a", "year_3_semester_b"]

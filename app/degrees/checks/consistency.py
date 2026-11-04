@@ -212,6 +212,12 @@ def check_rules_enforced(spec: DegreeSpec) -> CheckResult:
     return _result("rules_enforced", problems)
 
 
+def check_known_gaps(spec: DegreeSpec) -> CheckResult:
+    """Official sources not yet read: one failing problem per recorded gap."""
+    problems = [f"known gap {g.gap_id}: {g.description}" for g in spec.known_gaps]
+    return _result("known_gaps", problems)
+
+
 def check_plannable(board: dict[str, Any]) -> CheckResult:
     problems = [
         f"{i.check}: {i.course_id or '-'}: {i.message}"

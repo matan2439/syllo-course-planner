@@ -75,10 +75,23 @@ class CourseRule(_Strict):
     note: str = Field(min_length=1, pattern=r"\S")
 
 
-class SourceConflict(_Strict):
-    """Official sources disagree about a course; recorded instead of silently resolved."""
+class KnownGap(_Strict):
+    """An official source that was not read, so it may hold rules the spec does not have.
 
-    course_id: str
+    ``check_known_gaps`` fails while any gap is recorded: a gap is closed by reading the
+    source and mapping what it says, never by deleting the entry.
+    """
+
+    gap_id: str = Field(min_length=1)
+    description: str = Field(min_length=1, pattern=r"\S")
+    source_ids: list[str]
+
+
+class SourceConflict(_Strict):
+    """Official sources disagree (about a course, or program-wide when ``course_id`` is None);
+    recorded instead of silently resolved."""
+
+    course_id: Optional[str] = None
     description: str
     sources: list[str]
 
@@ -110,6 +123,7 @@ class DegreeSpec(_Strict):
     coverage: dict[str, CoverageEntry] = {}
     source_conflicts: list[SourceConflict] = []
     course_rules: list[CourseRule] = []
+    known_gaps: list[KnownGap] = []
 
     @model_validator(mode="after")
     def _unique_rule_ids(self):
@@ -117,6 +131,10 @@ class DegreeSpec(_Strict):
         dups = sorted({i for i in ids if ids.count(i) > 1})
         if dups:
             raise ValueError(f"duplicate course rule ids: {dups}")
+        gaps = [g.gap_id for g in self.known_gaps]
+        dups = sorted({i for i in gaps if gaps.count(i) > 1})
+        if dups:
+            raise ValueError(f"duplicate known gap ids: {dups}")
         return self
 
 
@@ -337,6 +355,7 @@ _PATHS = {
     "category_course": re.compile(rf"^categories{_BRACKET}\.course_ids{_BRACKET}$"),
     "group": re.compile(r"^group_minimums\.([^.\[\]]+)$"),
     "rule": re.compile(rf"^course_rules{_BRACKET}$"),
+    "gap": re.compile(rf"^known_gaps{_BRACKET}$"),
 }
 
 
@@ -357,6 +376,8 @@ def resolve_spec_path(spec: DegreeSpec, path: str) -> bool:
             return any(c.category_id == m.group(1) for c in spec.categories)
         if m := _PATHS["category_course"].match(path):
             return any(c.category_id == m.group(1) and m.group(2) in c.course_ids for c in spec.categories)
+        if m := _PATHS["gap"].match(path):
+            return any(g.gap_id == m.group(1) for g in spec.known_gaps)
         if m := _PATHS["rule"].match(path):
             return any(r.rule_id == m.group(1) for r in spec.course_rules)
         if m := _PATHS["group"].match(path):

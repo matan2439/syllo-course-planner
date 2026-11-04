@@ -4,6 +4,7 @@ from pathlib import Path
 from app.degrees.checks import (
     check_courses_known,
     check_double_counting,
+    check_known_gaps,
     check_mandatory_offered,
     check_plannable,
     check_rules_enforced,
@@ -224,6 +225,15 @@ def test_rules_enforced_fails_per_unenforced_rule():
     result = check_rules_enforced(_with_rules(("r1", "board"), ("r2", "none"), ("r3", "none")))
     assert not result.passed and result.name == "rules_enforced"
     assert result.problems == ["unenforced rule r2: note r2", "unenforced rule r3: note r3"]
+
+
+def test_known_gaps_fail_one_problem_per_gap():
+    assert check_known_gaps(_spec()).passed
+    data = _spec().model_dump(mode="json")
+    data["known_gaps"] = [{"gap_id": "g1", "description": "unread pdf", "source_ids": ["e"]}]
+    result = check_known_gaps(DegreeSpec.model_validate(data))
+    assert not result.passed and result.name == "known_gaps"
+    assert result.problems == ["known gap g1: unread pdf"]
 
 
 # ---------------------------------------------------------------- ME

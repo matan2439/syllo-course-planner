@@ -17,7 +17,7 @@ build     spec.json -> spec_to_program -> the legacy generate path (board + cour
           (otherwise the previous files' syllabus_last_fetched_at values are kept);
           --live first re-fetches every official source and REWRITES the facts snapshot
           (data/official/tau_course_facts_<year>.json) before building.
-check     coverage + freshness + consistency + plannability + course-rule enforcement; report in
+check     coverage + freshness + consistency + plannability + course-rule enforcement + known gaps; report in
           data/import_reports/degree_check_<id>.md; exit 0 only if every check passes.
           Requires --live (freshness needs a live fetch) or --offline (freshness SKIPPED, exit 1).
 refresh   official facts for every course the spec or boards reference + a mismatch report
@@ -303,7 +303,7 @@ def write_evidence(entry: ProgramEntry, items) -> Path:
 def run_check(entry: ProgramEntry, live: bool, offline: bool) -> tuple[bool, str]:
     """All Task 5/6 checks. Offline: freshness is SKIPPED and the run never passes."""
     from app.degrees.checks import (
-        check_courses_known, check_coverage, check_double_counting, check_freshness,
+        check_courses_known, check_coverage, check_double_counting, check_freshness, check_known_gaps,
         check_mandatory_offered, check_plannable, check_rules_enforced, check_totals,
     )
 
@@ -323,6 +323,7 @@ def run_check(entry: ProgramEntry, live: bool, offline: bool) -> tuple[bool, str
         check_totals(spec, facts),
         check_plannable(board),
         check_rules_enforced(spec),
+        check_known_gaps(spec),
     ]
     lines = [f"# Degree check — {entry.id}", "",
              f"Mode: {'offline (cached sources)' if offline else 'live'}; evidence items: {len(items)}", ""]

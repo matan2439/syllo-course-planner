@@ -13,6 +13,7 @@ from app.degrees.checks.coverage import check_coverage, check_freshness  # noqa:
 from app.degrees.checks.consistency import (  # noqa: E402
     check_courses_known,
     check_double_counting,
+    check_known_gaps,
     check_mandatory_offered,
     check_plannable,
     check_rules_enforced,
@@ -25,6 +26,7 @@ __all__ = [
     "check_freshness",
     "check_courses_known",
     "check_double_counting",
+    "check_known_gaps",
     "check_mandatory_offered",
     "check_plannable",
     "check_rules_enforced",

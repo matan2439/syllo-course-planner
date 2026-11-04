@@ -56,8 +56,12 @@ def test_committed_me_spec_matches_migration(me_spec):
     general = dict(committed.general_requirement)
     assert general.pop("credits_required") == 6
     assert committed.course_rules  # tests/test_me_coverage_committed.py pins them
-    fresh = me_spec.model_dump(exclude={"coverage", "course_rules"})
-    assert {**committed.model_dump(exclude={"coverage", "course_rules"}), "general_requirement": general} == fresh
+    # source_conflicts / known_gaps are reviewed from the official evidence (Task 8 fix round);
+    # every conflict the migration found is still recorded.
+    assert {c.course_id for c in me_spec.source_conflicts} <= {c.course_id for c in committed.source_conflicts}
+    reviewed = {"coverage", "course_rules", "source_conflicts", "known_gaps"}
+    fresh = me_spec.model_dump(exclude=reviewed)
+    assert {**committed.model_dump(exclude=reviewed), "general_requirement": general} == fresh
 
 
 def test_committed_me_spec_round_trips_to_enriched_program():
@@ -132,6 +136,23 @@ def test_course_rule_rejects_invalid(me_spec, bad):
     data = me_spec.model_dump(mode="json")
     data["course_rules"] = [_rule(**bad)]
     with pytest.raises(ValueError):
+        DegreeSpec.model_validate(data)
+
+
+def test_known_gaps_resolve_validate_and_stay_spec_only(me_spec):
+    data = me_spec.model_dump(mode="json")
+    data["known_gaps"] = [{"gap_id": "unread-x", "description": "doc not read", "source_ids": ["tau:1"]}]
+    data["source_conflicts"].append({"course_id": None, "description": "program-wide", "sources": ["tau:1"]})
+    spec = DegreeSpec.model_validate(data)
+    assert resolve_spec_path(spec, "known_gaps[unread-x]")
+    assert not resolve_spec_path(spec, "known_gaps[nope]")
+    assert spec_to_program(spec) == _enriched()
+    for bad in ({"description": " "}, {"extra": 1}):
+        data["known_gaps"] = [{"gap_id": "g", "description": "d", "source_ids": [], **bad}]
+        with pytest.raises(ValueError):
+            DegreeSpec.model_validate(data)
+    data["known_gaps"] = [{"gap_id": "g", "description": "d", "source_ids": []}] * 2
+    with pytest.raises(ValueError, match="duplicate known gap ids"):
         DegreeSpec.model_validate(data)
 
 
