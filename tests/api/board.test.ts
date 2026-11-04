@@ -16,6 +16,7 @@ jest.mock('postgres', () => jest.fn().mockReturnValue(mockSql));
 
 // ── imports ───────────────────────────────────────────────────────────────────
 
+import { PROGRAM_REGISTRY, getProgramEntry, type ProgramEntry } from '../../shared/programs';
 import { boardResponseSchema } from '../../shared/planner/wire';
 import handler, {
   parseProgramVersionId,
@@ -269,5 +270,53 @@ describe('GET /api/board/[programId] handler', () => {
     const res = makeRes();
     await handler(makeReq('mechanical_engineering_2027', 'POST'), res);
     expect((res.status as jest.Mock).mock.calls[0][0]).toBe(405);
+  });
+});
+
+// ── drafts are never served ───────────────────────────────────────────────────
+
+describe('draft degrees are not served', () => {
+  const live = getProgramEntry('mechanical_engineering_2027')!;
+  // A registered DRAFT whose committed board file exists on disk (the draft/test_program share a file).
+  const draft: ProgramEntry = { ...live, id: 'test_program_2027', base: 'test_program', year: 2027, sourceYear: 2026, status: 'draft', isFamilyDefault: false };
+
+  beforeEach(() => { (PROGRAM_REGISTRY as ProgramEntry[]).push(draft); });
+  afterEach(() => {
+    (PROGRAM_REGISTRY as ProgramEntry[]).splice((PROGRAM_REGISTRY as ProgramEntry[]).indexOf(draft), 1);
+    delete process.env.DATABASE_URL;
+  });
+
+  it('returns 404 NOT_FOUND for a draft id without DATABASE_URL (no local-file leak)', async () => {
+    delete process.env.DATABASE_URL;
+    const res = makeRes();
+    await handler(makeReq('test_program_2027'), res);
+    expect((res.status as jest.Mock).mock.calls[0][0]).toBe(404);
+    expect((res.json as jest.Mock).mock.calls[0][0].code).toBe('NOT_FOUND');
+  });
+
+  it('returns 404 for a draft id even when the DB has a row, and never queries the DB', async () => {
+    process.env.DATABASE_URL = 'postgres://x';
+    mockSql.mockClear();
+    mockSql.mockResolvedValueOnce([{ board_json: MOCK_BOARD }]);
+    const res = makeRes();
+    await handler(makeReq('test_program_2027'), res);
+    expect((res.status as jest.Mock).mock.calls[0][0]).toBe(404);
+    expect(mockSql).not.toHaveBeenCalled();
+  });
+
+  it('serves a live registry id', async () => {
+    delete process.env.DATABASE_URL;
+    const res = makeRes();
+    await handler(makeReq('mechanical_engineering_2027'), res);
+    expect((res.status as jest.Mock).mock.calls[0][0]).toBe(200);
+  });
+
+  it('serves an unregistered test board', async () => {
+    (PROGRAM_REGISTRY as ProgramEntry[]).splice((PROGRAM_REGISTRY as ProgramEntry[]).indexOf(draft), 1);
+    delete process.env.DATABASE_URL;
+    const res = makeRes();
+    await handler(makeReq('test_program_2027'), res);
+    expect((res.status as jest.Mock).mock.calls[0][0]).toBe(200);
+    (PROGRAM_REGISTRY as ProgramEntry[]).push(draft); // restored for afterEach
   });
 });

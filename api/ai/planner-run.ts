@@ -17,6 +17,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { randomUUID } from 'crypto';
 import { z } from 'zod';
 import { parseProgramVersionId, queryBoardJson } from '../board';
+import { isServableProgramId } from '../../shared/programs';
 import { buildConstraintModel } from './planner_model';
 import { PlannerWorker } from './planner_worker';
 import { createRun, markRunFinal, type PlannerRunStatus } from './_planner_runs';
@@ -125,6 +126,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   if (persist) {
     const pv = parseProgramVersionId(body.program_id);
     if (!pv) { sendError(res, 400, `Invalid program_id: ${body.program_id}`, 'INVALID_PROGRAM_ID'); return; }
+    if (!isServableProgramId(body.program_id)) { sendError(res, 404, `Program "${body.program_id}" not found.`, 'NOT_FOUND'); return; }
     try {
       boardJson = await queryBoardJson(dbUrl, pv.base, pv.year);
     } catch {

@@ -17,6 +17,8 @@ import {
   loadProgramCatalog,
   MECHANICAL_ENGINEERING_2027_PROGRAM_ID,
 } from '../../api/ai/course_catalog';
+import { PROGRAM_REGISTRY, getProgramEntry, type ProgramEntry } from '../../shared/programs';
+import { loadLocalBoardJson } from '../../api/ai/board_loader';
 import { capabilitiesFor } from '../../api/ai/semantic_course_extraction';
 
 describe('extractCatalogCourses', () => {
@@ -135,6 +137,26 @@ describe('loadProgramCatalog', () => {
     const catalog = loadProgramCatalog('test_program_2027');
     expect(catalog.length).toBeGreaterThan(0);
     expect(catalog.every((c) => typeof c.courseId === 'string')).toBe(true);
+  });
+});
+
+describe('draft degrees are not served by the loaders', () => {
+  const live = getProgramEntry('mechanical_engineering_2027')!;
+  const draft: ProgramEntry = { ...live, id: 'test_program_2027', base: 'test_program', year: 2027, sourceYear: 2026, status: 'draft', isFamilyDefault: false };
+  const registry = PROGRAM_REGISTRY as ProgramEntry[];
+  beforeEach(() => { registry.push(draft); });
+  afterEach(() => { registry.splice(registry.indexOf(draft), 1); });
+
+  it('returns no catalog and no board for a draft id', () => {
+    expect(loadProgramCatalog('test_program_2027')).toEqual([]);
+    expect(loadLocalBoardJson('test_program_2027')).toBeNull();
+  });
+
+  it('still serves live and unregistered ids', () => {
+    expect(loadProgramCatalog('mechanical_engineering_2027').length).toBeGreaterThan(0);
+    registry.splice(registry.indexOf(draft), 1);
+    expect(loadProgramCatalog('test_program_2027').length).toBeGreaterThan(0);
+    registry.push(draft);
   });
 });
 

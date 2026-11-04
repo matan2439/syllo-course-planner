@@ -9,10 +9,12 @@
 
 import { readFileSync } from 'fs';
 import { join } from 'path';
+import { isServableProgramId } from '../../shared/programs';
 
 const BOARDS_DIR = join(__dirname, '..', '..', 'data', 'boards');
 
 export function loadLocalBoardJson(programId: string): any | null {
+  if (!isServableProgramId(programId)) return null; // drafts are never served
   const filePath = join(BOARDS_DIR, `${programId}.json`);
   try {
     return JSON.parse(readFileSync(filePath, 'utf8'));

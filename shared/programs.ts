@@ -65,3 +65,11 @@ export function getProgramEntry(id: string): ProgramEntry | null {
 export function livePrograms(): ProgramEntry[] {
   return PROGRAM_REGISTRY.filter((p) => p.status === 'live');
 }
+
+/**
+ * Whether the API may serve a board/catalog for this program id. Drafts are never served;
+ * ids unknown to the registry (committed test boards) stay servable; live/archived are served.
+ */
+export function isServableProgramId(id: string): boolean {
+  return getProgramEntry(id)?.status !== 'draft';
+}

@@ -20,6 +20,7 @@ import { databaseUrl } from './db_env';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import postgres from 'postgres';
 import { loadLocalBoardJson } from './ai/board_loader';
+import { isServableProgramId } from '../shared/programs';
 
 // ── Parsing ───────────────────────────────────────────────────────────────────
 
@@ -165,6 +166,14 @@ async function _handle(req: VercelRequest, res: VercelResponse): Promise<void> {
     res.status(400).json({
       error: `Invalid programId: "${rawId}". Expected format: {program_id}_{year}, e.g. mechanical_engineering_2027`,
       code: 'INVALID_PROGRAM_ID',
+    });
+    return;
+  }
+
+  if (!isServableProgramId(rawId)) {
+    res.status(404).json({
+      error: `Program "${rawId}" not found or board data not yet populated.`,
+      code: 'NOT_FOUND',
     });
     return;
   }
