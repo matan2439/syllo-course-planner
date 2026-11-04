@@ -20,6 +20,23 @@ it is the source of truth for flags.
 - "refresh <degree>" / "update <degree>" -> **Refresh a degree** below.
 - "is <degree> up to date" -> **Is it up to date** below.
 
+## Tell the owner up front: expect a parked draft
+
+Before step 1, say plainly: an honest run will most likely end **red**, as a parked draft,
+not a published degree. The program page links the faculty regulations PDF, and there is no
+PDF adapter yet, so those items become `known_gaps` and `known_gaps` fails; course rules the
+board cannot encode (`enforced_by: "none"`) fail `rules_enforced` too. Neither is fixed by
+editing entries away (Hard rules). A green check is the exception until those land.
+
+What to do with a parked draft — ask the owner, recommending the default:
+
+- **Default (recommended): commit it on a separate branch / draft PR, and do not merge it to
+  `main` until it is publishable.** The branch keeps the spec, coverage map, evidence and
+  built boards reviewable and resumable. Even if it reached `main`, a draft is never served:
+  its boards — the `<base>_years_1_2_<year>` window board included — return 404, and it is
+  kept out of `data/config/early_year_courses.json` (the frontend bundle).
+- Or don't commit it: leave the files untracked (or discard them) and rerun later.
+
 ## Inputs to confirm with the owner first
 
 Confirm exactly these four, then ask nothing else (everything else comes from the sources):
@@ -29,11 +46,24 @@ Confirm exactly these four, then ask nothing else (everything else comes from th
 3. the track, if any,
 4. the academic year (e.g. 2026-2027 = תשפ"ז).
 
+In the same message, propose the two names the sources cannot give and let the owner correct
+them: `--name-en` (the program's official English name, or a plain translation you say you
+chose) and `--base` (a snake_case slug of the English name; it becomes the registry id
+`<base>_<shana+1>` and every file path, so it is hard to change later).
+
 Derive the rest yourself and state it in the report: TAU year code `--shana` = the year the
 academic year starts (2026-2027 -> `2026`; the registry id ends in `shana + 1`, here `2027`);
 `--level` from the degree (bachelor `1`, master `2`); `--school` and the `tcid` from the
-official index (see step 1); `--name-en` = the program's official English name, or a plain
-translation you say you chose; `--base` = a snake_case slug of the English name.
+official index (see step 1).
+
+## Not a 4-year degree: stop
+
+Degree length is not modelled yet: the boards cover Years 1-2 and Years 3-4 only. If the
+official program is not a 4-year degree (its mandatory courses are not spread over exactly
+years 1-4 — e.g. a 3-year BA or a 5-year double degree), stop and report it to the owner
+before writing the spec. `build` refuses such a spec (exit 2, "refusing to build ... no board
+window covers" / "expected exactly 1-4") and `check` fails `degree_length`; never move
+courses to another year to get past it.
 
 ## New university: stop
 
@@ -68,9 +98,22 @@ code PR, not a skill run. `init --institution <other>` refuses with the same mes
    and read `todo.md` (beside `evidence.json`). From the `program_text`, `section`, `rule_text`
    and `course_listing` items, fill in `spec.json`: `total_required_credits`,
    `mandatory_courses` (every year), `categories` (+ `group`, `min_courses`/`min_credits`),
-   `group_minimums`, `general_requirement` (incl. `credits_required` when stated). Leave
-   `coverage` alone for now. Suggestions in step 3 only work once the courses have a home here:
+   `group_minimums`, `general_requirement` (incl. `credits_required` when stated; where its
+   `course_ids` come from: below). Leave `coverage` alone for now. Suggestions in step 3 only work once the courses have a home here:
    on the empty skeleton `--apply-suggestions` applies 0 entries.
+
+   **`general_requirement`** (TAU: the שער רוח requirement, `data/config/institutions.json`
+   `generalRequirement`). Only its rule comes from this program's evidence: whether it applies,
+   `min_courses`, `credits_required`, any note. The course list is NOT in the program's sources
+   (TAU publishes it on the שער רוח site); take `course_ids` from
+   `data/general_courses_shaar_ruach.json` (`courses[].course_id`, in file order) — the same 88
+   ids ME's spec carries (migrated from its legacy program; identical to that file). Use
+   `category_id: "shaar_ruach"` and `name_he: "קורסי שער רוח"`. `refresh --apply` keeps that
+   catalog in step with the official facts (offerings of every listed course) and `build`
+   copies its BIDIT schedule onto the board; refresh fetches facts for the general pool too.
+   If the program has no general requirement (the evidence states none, or an exemption),
+   set `general_requirement` to `null` and map the item(s) that say so (or record a
+   `known_gaps` entry if the answer is in a document you did not read) — never copy ME's.
 
 3. **todo --apply-suggestions**:
 
@@ -153,10 +196,15 @@ code PR, not a skill run. `init --institution <other>` refuses with the same mes
    python scripts/degree.py publish --program <id>
    ```
 
-   It builds live into `data/`, runs a full live check, and refuses on any FAIL or SKIPPED
-   (registry unchanged). On success it sets the registry status to `live`, writes `RELEASE.md`
-   beside `spec.json`, and PRINTS the owner steps (DB board sync + "commit, open a PR, deploy").
-   Do not run them; copy them into the report.
+   It refuses anything not `draft`. It builds live into `data/`, then rebuilds every OTHER
+   live degree `--offline` into a scratch dir and refuses (exit 1, registry unchanged, listing
+   degree, files and courses) if any of their committed boards would change — the refreshed
+   official facts are course-wide; report that to the owner, never commit the other degree's
+   diff alongside. Then a full live check: any FAIL or SKIPPED refuses (registry unchanged).
+   On success it writes `RELEASE.md` beside `spec.json`, sets the registry status to `live`,
+   rewrites the early-year index (now including the degree), and PRINTS the owner steps (DB
+   board sync — 0 rows = not seeded yet; the board is served from the committed file after
+   deploy — and "commit, open a PR, deploy"). Do not run them; copy them into the report.
 
 ## Refresh a degree
 
@@ -171,7 +219,8 @@ python scripts/degree.py check    --program <id> --live
 
 New or changed official text shows up as unaccounted items and stale keys in `todo`; map them
 as in step 4 and delete the stale keys. `refresh --apply` is the board write path (curation
-overlay, byte-stable writer). Review `git diff data/`. A `draft` degree then goes through
+overlay, byte-stable writer); `refresh --apply --syllabi` is accepted for compatibility (build
+always rebuilds stale syllabus summaries). Review `git diff data/`. A `draft` degree then goes through
 `publish`; a `live` degree cannot be republished yet (`publish` refuses; `--update` is not
 built) — hand the owner the diff and the commands to run.
 
@@ -200,6 +249,10 @@ facts snapshot and the mismatch report; show `git diff data/official/` and the m
 - Never run the DB sync, a deploy, or any `vercel`/prod command: print them for the owner.
 - Record every disagreement between sources in `source_conflicts`; never resolve it silently.
 - Never delete a `known_gaps` or `course_rules` entry to make check pass.
+- Not a 4-year degree (mandatory years not exactly 1-4): stop and report — until degree length
+  is modelled. Never re-year courses to fit.
+- A red run is a parked draft: commit it on a separate branch (default) or not at all; never
+  merge a draft to `main` to "save" it.
 
 ## Report to the owner
 

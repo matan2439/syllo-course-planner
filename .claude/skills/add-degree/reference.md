@@ -172,8 +172,13 @@ a new year needs an atomic flip of both entries' `isFamilyDefault` / `status` in
   real update) and 34 `retire: null` (durable hand corrections, e.g. the 0542-3792 annual lab:
   `is_annual`, `spans_semesters`, `placement`). The ME boards are plannable only with it: a
   clone of the spec without it fails `plannable` (`annual_not_represented: 0542-3792`).
-- Current state: `check --live` red only on `rules_enforced` (the 6 rules) and `known_gaps`
-  (the unread PDF). It is `live` (pre-pipeline), so `publish` refuses it.
+- Current state (as of 2026-11-04): `check --live` red only on `rules_enforced` (the 6 rules)
+  and `known_gaps` (the unread PDF) — the same red a new degree should expect. It is `live`
+  (pre-pipeline), so `publish` refuses it; `degree_length` passes (mandatory years 1-4).
+- general_requirement: 88 שער רוח `course_ids`, migrated from the legacy program
+  (`data/programs/mechanical_engineering_2027_enriched.json`) and identical, in order, to
+  `data/general_courses_shaar_ruach.json` `courses[]` — the file a new TAU degree copies them
+  from. `min_courses` 3 / `credits_required` 6 come from ME's own program text.
 
 Example not-a-rule reason: "Link to a previous year's program booklet (archive); this spec
 follows the current תשפ"ז program tree."
