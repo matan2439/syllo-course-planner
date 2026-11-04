@@ -7,6 +7,8 @@ import json
 import sys
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 
@@ -54,7 +56,34 @@ def _facts() -> dict:
     return out
 
 
-def test_build_minimal_synthetic_degree(tmp_path, monkeypatch, capsys):
+# A cached official program page with NO single-year ("שנה א") sections.
+YEARLESS_PAGE = {"data": {"results": {"body": [{"rama": [{
+    "teurrama": "קורסי חובה", "rama": [],
+    "kurs": [{"kursshow": "0599-1001", "teurkurs": "מבוא סינתטי", "shaotuni": "4", "mishkal": "3.5",
+              "mevutal": "0", "hidekurs": "0"}],
+}]}]}}}
+GENERAL = {"category_id": "shaar_ruach", "name_he": "קורסי שער רוח", "min_courses": 1, "credits_required": 2,
+           "course_ids": ["0609-1005"]}
+
+
+@pytest.fixture
+def page_cache():
+    """data/raw_html/tau_program_<synthetic tcid>_<shana>.json (gitignored), removed afterwards."""
+    path = ROOT / "data" / "raw_html" / f"tau_program_{TCID}_{SHANA}.json"
+    assert not path.exists()
+    yield path
+    path.unlink(missing_ok=True)
+
+
+@pytest.mark.parametrize("legacy, cached_page", [
+    ({}, False),  # spec-native, nothing cached
+    ({}, True),  # spec-native: the page is not consulted
+    ({"program": {"program_name_he": "תואר סינתטי"}}, True),  # legacy path, page without year sections
+])
+def test_build_minimal_synthetic_degree(tmp_path, monkeypatch, capsys, page_cache, legacy, cached_page):
+    if cached_page:
+        page_cache.parent.mkdir(parents=True, exist_ok=True)
+        page_cache.write_text(json.dumps(YEARLESS_PAGE, ensure_ascii=False), encoding="utf-8")
     registry_file = tmp_path / "programs.json"
     registry_file.write_text(json.dumps({"programs": [_entry()]}, ensure_ascii=False), encoding="utf-8")
     monkeypatch.setattr(registry, "DEFAULT_PATH", registry_file)
@@ -70,7 +99,7 @@ def test_build_minimal_synthetic_degree(tmp_path, monkeypatch, capsys):
         ],
         categories=[Category(category_id="electives", name_he="בחירה", min_courses=1,
                              course_ids=["0599-4101", "0599-4102"])],
-        group_minimums={}, ui={}, legacy={},
+        group_minimums={}, general_requirement=GENERAL, ui={}, legacy=legacy,
     )
     write_spec(spec, spec_mod.spec_path(entry))
     assert not (spec_mod.spec_path(entry).with_name("curation.json")).exists()
@@ -94,6 +123,12 @@ def test_build_minimal_synthetic_degree(tmp_path, monkeypatch, capsys):
     assert placed.get("0599-3002") == "year_3_semester_b"
     pool = {c["course_id"] for c in main["metadata"]["program_repository_courses"]}
     assert {"0599-4101", "0599-4102"} <= pool
+
+    # The general requirement survives the classic elective_categories format (main board only).
+    main_cats = [c["category_id"] for c in main["metadata"]["program_requirements_categories"]["categories"]]
+    assert main_cats == ["electives", "shaar_ruach"]
+    sem = json.loads(paths["semester_board"].read_text(encoding="utf-8"))
+    assert [c["category_id"] for c in sem["metadata"]["program_requirements_categories"]["categories"]] == ["electives"]
 
     early = json.loads(paths["early_years"].read_text(encoding="utf-8"))
     placed_early = {c["course_id"]: s["semester_id"] for s in early["semesters"] for c in s.get("courses", [])}

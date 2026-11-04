@@ -3,7 +3,8 @@
 One CLI for every registered degree (data/config/programs.json):
 
     python scripts/degree.py init     --institution tau --title-he "<official title>" --level <toar>
-                                      --school <betsefer> --shana <year> [--base <slug>] [--track-he <text>]
+                                      --school <betsefer> --shana <year> --name-en <text>
+                                      [--base <slug>] [--track-he <text>]
     python scripts/degree.py evidence --program <id> [--live|--offline]
     python scripts/degree.py build    --program <id> [--live|--offline] [--out-dir DIR]
     python scripts/degree.py check    --program <id>  --live|--offline
@@ -25,8 +26,9 @@ build     spec.json -> spec_to_program -> the legacy generate path (board + cour
           from the committed snapshot) before building. The build reads its facts from
           <out>/official/ when that file exists, else from data/official/.
           A degree with no curation.json and no legacy spec keys builds from spec + facts alone
-          (elective pool from the spec categories; offline without a cached program page, the
-          Years 1-2 mandatory courses come from the spec too).
+          (elective pool from the spec categories, Years 1-2 mandatory courses from the spec;
+          a spec with legacy keys reads those from the official program page, falling back to
+          the spec when the page has no single-year sections or offline was never cached).
 check     coverage + freshness + consistency + plannability + course-rule enforcement + known gaps; report in
           data/import_reports/degree_check_<id>.md; exit 0 only if every check passes.
           Requires --live (freshness needs a live fetch) or --offline (freshness SKIPPED, exit 1).
@@ -39,6 +41,7 @@ from __future__ import annotations
 
 import argparse
 import copy
+import dataclasses
 import json
 import os
 import sys
@@ -360,15 +363,18 @@ def build(entry: ProgramEntry, out_dir: Path = DATA, offline: bool = False, live
             print(f"[build] {key}: facts patched {changed} records, {summaries} summaries, "
                   f"{bidit} BIDIT records, {n} curation entries")
 
-    # The early window's mandatory courses come from the official program page; an offline
-    # build of a program whose page was never cached reads them from the spec instead.
-    early_mandatory = None
-    if offline and not early.program_page_cache(tcid, shana).exists():
-        early_mandatory = early_mandatory_from_spec(spec, EARLY_START_YEAR, facts, shana)
-        print(f"[build] early_years: no cached program page; {len(early_mandatory)} mandatory courses from the spec")
+    # The early window's mandatory courses: a spec-native degree (no legacy keys) takes them
+    # from its spec. The migrated ME keeps reading the official program page, falling back to
+    # the spec when the page has no single-year sections or (offline) was never cached.
+    spec_rows = early_mandatory_from_spec(spec, EARLY_START_YEAR, facts, shana)
+    native = not spec.legacy
+    if native:
+        print(f"[build] early_years: {len(spec_rows)} mandatory courses from the spec")
     early_out = early.build(entry.id, EARLY_START_YEAR, tcid, shana,
                             boards_dir=paths["board"].parent, out_dir=paths["early_years"].parent,
-                            offline=offline, offerings=offerings, mandatory=early_mandatory)
+                            offline=offline, offerings=offerings,
+                            mandatory=spec_rows if native else None,
+                            fallback_mandatory=None if native else spec_rows)
     if early_out != paths["early_years"]:
         raise RuntimeError(f"early board written to {early_out}, expected {paths['early_years']}")
     early_board = json.loads(early_out.read_text(encoding="utf-8"))
@@ -462,13 +468,19 @@ def _print_evidence_counts(items, path: Path) -> None:
     print(f"[evidence] {len(items)} items -> {_show(path)}")
 
 
-def _index_candidates(results, shana: int):
-    """The index rows ``init`` chooses from: one per tcid (the index lists a program once per
-    year), preferring the requested year's row."""
+# The index's ``toar`` is a Hebrew degree label; --level also takes these shorthands.
+LEVEL_ALIASES = {"1": "ראשון", "2": "שני"}
+INDEX_PAGE_SIZE = 100
+
+
+def _index_candidates(results):
+    """The index rows ``init`` chooses from: one per tcid. A program whose ``betsefer`` is empty
+    (e.g. materials science, 7843) is matched on its ``chug`` instead."""
     by_tcid = {}
     for r in results:
-        if r.tcid not in by_tcid or (r.academic_year == str(shana) and by_tcid[r.tcid].academic_year != str(shana)):
-            by_tcid[r.tcid] = r
+        if not r.school_code and r.chug_code:
+            r = dataclasses.replace(r, school_code=r.chug_code)
+        by_tcid.setdefault(r.tcid, r)
     return list(by_tcid.values())
 
 
@@ -482,53 +494,65 @@ def run_init(args) -> int:
               f"needs adapters (a program index, evidence adapters and an institutions.json entry)",
               file=sys.stderr)
         return 2
-    missing = [f"--{k.replace('_', '-')}" for k in ("title_he", "level", "school", "shana") if getattr(args, k) is None]
+    missing = [f"--{k.replace('_', '-')}" for k in ("title_he", "level", "school", "shana", "name_en")
+               if getattr(args, k) is None]
     if missing:
         print(f"init needs {' '.join(missing)}", file=sys.stderr)
         return 2
+    level = LEVEL_ALIASES.get(args.level, args.level)
+    title = " ".join(args.title_he.split())
 
-    results = search_program_index({"betsefer": [args.school], "toar": [args.level], "safa": "1"}, size=500)
-    candidates = _index_candidates(results, args.shana)
+    # The public site's search (verified live): free text, relevance-ranked, current year only.
+    results = search_program_index({"safa": "1", "freeSearch": title}, size=INDEX_PAGE_SIZE)
+    candidates = _index_candidates(results)
     try:
-        found = find_unique_program(candidates, title_he=args.title_he, degree_level=args.level,
-                                    school_code=args.school)
+        found = find_unique_program(candidates, title_he=title, degree_level=level, school_code=args.school)
     except ProgramSelectionError as exc:
-        title = " ".join(args.title_he.split())
         exact = [c for c in candidates if " ".join(c.title_he.split()) == title]
         shown = exact or candidates
         print(f"[init] {exc}", file=sys.stderr)
-        print(f"[init] {'matching' if exact else 'all'} candidates from the official index "
-              f"(school {args.school}, level {args.level}):", file=sys.stderr)
+        print(f"[init] {'title-matching' if exact else 'all'} candidates from the official index "
+              f"(wanted school {args.school}, level {level}):", file=sys.stderr)
         for c in shown:
             print(f"  tcid={c.tcid}  title={c.title_he}  level={c.degree_level}  school={c.school_code}  "
                   f"year={c.academic_year}", file=sys.stderr)
         if not shown:
-            print("  (the index returned nothing: check the school code / level, or the network)", file=sys.stderr)
+            print("  (the index returned nothing: check the title, or the network)", file=sys.stderr)
+        return 2
+    if found.academic_year != str(args.shana):
+        print(f"[init] the official index lists tcid {found.tcid} for shana {found.academic_year or '?'}, "
+              f"not {args.shana} (it serves the current catalog year only) — refusing", file=sys.stderr)
         return 2
 
     base = args.base or f"tau_program_{found.tcid}"
     try:
-        entry = scaffold.registry_entry(found, args.shana, base, args.track_he)
+        entry = scaffold.registry_entry(found, args.shana, base, args.track_he, name_en=args.name_en)
     except ValueError as exc:
         print(f"[init] invalid entry: {exc}", file=sys.stderr)
         return 2
-    existing = {e.id for e in registry.load_registry()}
-    if entry.id in existing:
+    current = registry.load_registry()
+    if entry.id in {e.id for e in current}:
         print(f"[init] {entry.id} is already registered — pick another --base or edit the existing degree",
               file=sys.stderr)
+        return 2
+    try:
+        registry.validate_registry([*current, entry])
+    except ValueError as exc:
+        print(f"[init] the registry would be invalid: {exc}", file=sys.stderr)
         return 2
     spec_file = spec_path(entry)
     if spec_file.exists():
         print(f"[init] {_show(spec_file)} already exists — refusing to overwrite it", file=sys.stderr)
         return 2
-    try:
-        registry.add_program(entry)
-    except ValueError as exc:
-        print(f"[init] the registry would be invalid: {exc}", file=sys.stderr)
-        return 2
-    print(f"[init] registered {entry.id} (draft, tcid {found.tcid}: {found.title_he})")
+    # Spec first: a registry entry is never left pointing at a degree with no spec.
     write_spec(scaffold.new_spec(entry), spec_file)
     print(f"[init] spec skeleton -> {_show(spec_file)}")
+    try:
+        registry.add_program(entry)
+    except Exception:
+        spec_file.unlink(missing_ok=True)
+        raise
+    print(f"[init] registered {entry.id} (draft, tcid {found.tcid}: {found.title_he})")
 
     from app.degrees.evidence import EvidenceFetchError
 
@@ -561,10 +585,11 @@ def main(argv: list[str] | None = None) -> int:
     init = ap.add_argument_group("init (scaffold a draft degree from the official program index)")
     init.add_argument("--institution", default="tau")
     init.add_argument("--title-he", help="the program's official Hebrew title, exactly as the index lists it")
-    init.add_argument("--level", help="degree level code (toar), e.g. 1 = bachelor")
-    init.add_argument("--school", help="school code (betsefer), e.g. 0510")
+    init.add_argument("--level", help="the index's degree label (toar): ראשון (bachelor; alias 1) or שני (alias 2)")
+    init.add_argument("--school", help="school code (betsefer; chug when the index has no betsefer), e.g. 0540")
     init.add_argument("--shana", type=int, help="TAU year code (catalog year - 1), e.g. 2026")
-    init.add_argument("--base", help="the degree's slug (default tau_program_<tcid>)")
+    init.add_argument("--base", help="the degree's slug, [a-z][a-z0-9_]* (default tau_program_<tcid>)")
+    init.add_argument("--name-en", help="the program's English name (the index has none)")
     init.add_argument("--track-he", help="the track's Hebrew name, when the program is a track")
     args = ap.parse_args(argv)
     if args.command == "init":

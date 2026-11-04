@@ -28,8 +28,8 @@ query getPrograms($search: JSON!,$from:Int,$size:Int) {
   getPrograms(search: $search, from: $from, size: $size) {
     total
     results {
-      tclongkey shana teurshana teur title toar tcid faculta betsefer
-      pail showtochnit
+      tclongkey shana teurshana teur title toar tcid egedid faculta betsefer
+      chug maslul pail showtochnit
     }
   }
 }
@@ -53,6 +53,7 @@ class ProgramIndexEntry:
     academic_year_he: str
     active: bool
     visible: bool
+    chug_code: str = ""
 
 
 class ProgramSelectionError(ValueError):
@@ -75,6 +76,7 @@ def _program_index_entry(raw: Mapping[str, object]) -> ProgramIndexEntry | None:
         academic_year_he=str(raw.get("teurshana") or "").strip(),
         active=str(raw.get("pail") or "") == "1",
         visible=str(raw.get("showtochnit") or "") == "1",
+        chug_code=str(raw.get("chug") or "").strip(),
     )
 
 
@@ -85,7 +87,17 @@ def search_program_index(
     size: int = 100,
     timeout: int = _TIMEOUT,
 ) -> list[ProgramIndexEntry]:
-    """Read TAU's official program index without guessing a ``tcid``."""
+    """Read TAU's official program index without guessing a ``tcid``.
+
+    ``search`` is the public site's (www.tau.ac.il/study-program, front.tochniot.tau.ac.il
+    react bundle) filter object, verified live 2026-11-04: ``{"safa": "1", "freeSearch":
+    "<text>"}`` returns relevance-ranked rows of the CURRENT catalog year only (a ``shana`` key
+    is ignored). Structured filters are lists of ``{"id": ...}`` objects (``toar: [{"id": "1"}]``
+    narrows; bare-string lists like ``{"toar": ["1"]}`` return nothing). Rows with an empty
+    ``tcid`` are program groups (``egedid``) and are dropped. In a row, ``teur`` is the title
+    (``title`` is null), ``toar`` the degree label (``ראשון`` / ``שני``), ``teurshana``
+    the Hebrew year only (``תשפ"ז``).
+    """
     payload = {
         "query": PROGRAM_INDEX_QUERY,
         "variables": {"search": dict(search), "from": start, "size": size},

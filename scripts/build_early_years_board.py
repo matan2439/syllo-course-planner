@@ -158,12 +158,15 @@ def early_board_path(program_id: str, start_year: int = 1, boards_dir: Path = BO
 
 def build(program_id: str, start_year: int, tcid: str, shana: int,
           boards_dir: Path = BOARDS_DIR, out_dir: Path | None = None, offline: bool = False,
-          offerings: dict | None = None, mandatory: list[dict] | None = None) -> Path:
+          offerings: dict | None = None, mandatory: list[dict] | None = None,
+          fallback_mandatory: list[dict] | None = None) -> Path:
     """Read ``<boards_dir>/<program_id>.json``; write the window board into ``out_dir``
     (default: ``boards_dir``). ``offline`` never touches the network; ``offerings`` is the
     program's official offerings (``semester_board.official_offerings``; None = none known).
     ``mandatory``: the window's mandatory courses (``mandatory_specs`` rows) supplied by the
-    caller (e.g. from a degree spec); the official program page is then not read."""
+    caller (e.g. from a degree spec); the official program page is then not read.
+    ``fallback_mandatory``: used instead when the page yields no window mandatory courses (no
+    single-year "שנה א" sections) or, offline, was never cached."""
     base, year = re.fullmatch(r"(.+)_(\d{4})", program_id).groups()
     late = json.loads((boards_dir / f"{program_id}.json").read_text(encoding="utf-8"))
     late_meta = late["metadata"]
@@ -171,9 +174,16 @@ def build(program_id: str, start_year: int, tcid: str, shana: int,
 
     window_years = [start_year, start_year + 1]
     if mandatory is None:
-        sections = read_official(tcid, shana, offline)
+        try:
+            sections = read_official(tcid, shana, offline)
+        except FileNotFoundError:
+            if fallback_mandatory is None:
+                raise
+            sections = []
         specs = mandatory_specs(sections, window_years)
         official_years = official_years_by_course(sections)
+        if not specs and fallback_mandatory is not None:
+            specs = [dict(s) for s in fallback_mandatory]
     else:
         specs, official_years = [dict(s) for s in mandatory], {}
     if not specs:

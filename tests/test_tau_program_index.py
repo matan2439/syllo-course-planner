@@ -35,7 +35,7 @@ def test_search_program_index_uses_the_official_get_programs_contract() -> None:
 
     with patch("app.scraping.tau_program_scraper.requests.post", return_value=response) as post:
         results = search_program_index(
-            {"faculta": ["0500"], "betsefer": ["0510"], "toar": ["1"], "safa": "1"},
+            {"safa": "1", "freeSearch": "הנדסת חשמל"},  # the public site's verified shape
             size=50,
         )
 
@@ -43,7 +43,7 @@ def test_search_program_index_uses_the_official_get_programs_contract() -> None:
     payload = post.call_args.kwargs["json"]
     assert "query getPrograms" in payload["query"]
     assert payload["variables"] == {
-        "search": {"faculta": ["0500"], "betsefer": ["0510"], "toar": ["1"], "safa": "1"},
+        "search": {"safa": "1", "freeSearch": "הנדסת חשמל"},
         "from": 0,
         "size": 50,
     }
