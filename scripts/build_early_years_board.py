@@ -70,9 +70,13 @@ def as_number(value) -> float | None:
         return None
 
 
+def program_page_cache(tcid: str, shana: int) -> Path:
+    return ROOT / "data" / "raw_html" / f"tau_program_{tcid}_{shana}.json"
+
+
 def read_official(tcid: str, shana: int, offline: bool = False) -> list[dict]:
     """The official program page (ydtochnit). ``offline``: the cache only, never the network."""
-    cache = ROOT / "data" / "raw_html" / f"tau_program_{tcid}_{shana}.json"
+    cache = program_page_cache(tcid, shana)
     if offline and not cache.exists():
         raise FileNotFoundError(f"offline build: no cached program page {cache} (run once without --offline)")
     body = fetch_program_data(tcid, str(shana), cache_path=cache)
@@ -154,21 +158,27 @@ def early_board_path(program_id: str, start_year: int = 1, boards_dir: Path = BO
 
 def build(program_id: str, start_year: int, tcid: str, shana: int,
           boards_dir: Path = BOARDS_DIR, out_dir: Path | None = None, offline: bool = False,
-          offerings: dict | None = None) -> Path:
+          offerings: dict | None = None, mandatory: list[dict] | None = None) -> Path:
     """Read ``<boards_dir>/<program_id>.json``; write the window board into ``out_dir``
     (default: ``boards_dir``). ``offline`` never touches the network; ``offerings`` is the
-    program's official offerings (``semester_board.official_offerings``; None = none known)."""
+    program's official offerings (``semester_board.official_offerings``; None = none known).
+    ``mandatory``: the window's mandatory courses (``mandatory_specs`` rows) supplied by the
+    caller (e.g. from a degree spec); the official program page is then not read."""
     base, year = re.fullmatch(r"(.+)_(\d{4})", program_id).groups()
     late = json.loads((boards_dir / f"{program_id}.json").read_text(encoding="utf-8"))
     late_meta = late["metadata"]
     late_block = late_meta["program_requirements_categories"]
 
     window_years = [start_year, start_year + 1]
-    sections = read_official(tcid, shana, offline)
-    specs = mandatory_specs(sections, window_years)
+    if mandatory is None:
+        sections = read_official(tcid, shana, offline)
+        specs = mandatory_specs(sections, window_years)
+        official_years = official_years_by_course(sections)
+    else:
+        specs, official_years = [dict(s) for s in mandatory], {}
     if not specs:
         raise SystemExit(f"No official mandatory courses for years {window_years} (tcid={tcid}, shana={shana}).")
-    categories = window_categories(late_block, official_years_by_course(sections), window_years)
+    categories = window_categories(late_block, official_years, window_years)
     kept_ids = {c["category_id"] for c in categories}
     repository = [c for c in late_meta.get("program_repository_courses", []) if c.get("category_id") in kept_ids]
 

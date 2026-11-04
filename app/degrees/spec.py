@@ -196,8 +196,17 @@ def spec_to_program(spec: DegreeSpec) -> dict:
     core = [_category_to_legacy(c) for c in spec.categories if c.group == _CORE]
     if core:
         requirements["core_categories"] = core
-    for key, category_id in legacy.get("requirement_category_keys", {}).items():
+    keyed = legacy.get("requirement_category_keys", {})
+    for key, category_id in keyed.items():
         requirements[key] = _category_to_legacy(cats[category_id])
+    # A category with no legacy key and no group (any degree but the migrated ME) goes to the
+    # builder's classic ``elective_categories`` list. That format is read INSTEAD of the PDF
+    # one, so it then lists every unkeyed category, core ones included.
+    keyed_ids = set(keyed.values())
+    if any(c.group is None and c.category_id not in keyed_ids for c in spec.categories):
+        requirements["elective_categories"] = [
+            _category_to_legacy(c) for c in spec.categories if c.category_id not in keyed_ids
+        ]
     if spec.general_requirement is not None:
         requirements["general_requirements"] = {
             k: v for k, v in spec.general_requirement.items() if k not in _SPEC_ONLY_GENERAL_KEYS

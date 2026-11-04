@@ -19,6 +19,9 @@ build     spec.json -> spec_to_program -> the legacy generate path (board + cour
           (data/official/tau_course_facts_<year>.json; with --out-dir: <out>/official/, seeded
           from the committed snapshot) before building. The build reads its facts from
           <out>/official/ when that file exists, else from data/official/.
+          A degree with no curation.json and no legacy spec keys builds from spec + facts alone
+          (elective pool from the spec categories; offline without a cached program page, the
+          Years 1-2 mandatory courses come from the spec too).
 check     coverage + freshness + consistency + plannability + course-rule enforcement + known gaps; report in
           data/import_reports/degree_check_<id>.md; exit 0 only if every check passes.
           Requires --live (freshness needs a live fetch) or --offline (freshness SKIPPED, exit 1).
@@ -142,6 +145,57 @@ def mandatory_courses_file(spec: DegreeSpec, start_year: int, facts: dict) -> di
             "placement_rule": m.placement_rule,
         })
     return {"program_id": spec.program_id, "generated_from": "spec.json mandatory_courses", "courses": rows}
+
+
+def _offered_in_year(fact: dict):
+    status = (fact.get("offering") or {}).get("status")
+    return True if status == "offered" else False if status == "not_offered" else None
+
+
+def elective_courses_from_spec(spec: DegreeSpec, facts: dict) -> list[dict]:
+    """The builder's ``elective_courses`` pool for a degree whose spec has no legacy copy of it:
+    every category course (spec order) that is not mandatory, described by the official facts."""
+    mandatory = {m.course_id for m in spec.mandatory_courses}
+    rows, seen = [], set()
+    for cat in spec.categories:
+        for cid in cat.course_ids:
+            if cid in mandatory or cid in seen:
+                continue
+            seen.add(cid)
+            fact = facts.get(cid) or {}
+            offering = fact.get("offering") or {}
+            rows.append({
+                "course_id": cid,
+                "name_he": (fact.get("ims") or {}).get("name_he"),
+                "hours": (fact.get("program") or {}).get("weekly_hours"),
+                "offered_semesters": list(offering.get("offered_semesters")
+                                          or (fact.get("ims") or {}).get("offered_semesters") or []),
+                "category_id": cat.category_id,
+                "offered_in_year": _offered_in_year(fact),
+            })
+    return rows
+
+
+def early_mandatory_from_spec(spec: DegreeSpec, start_year: int, facts: dict, shana: int) -> list[dict]:
+    """The early (Years ``start_year``..+1) board's mandatory rows from the spec + official facts,
+    in the shape ``build_early_years_board.mandatory_specs`` produces from the program page."""
+    rows = []
+    for m in spec.mandatory_courses:
+        if m.year not in (start_year, start_year + 1):
+            continue
+        fact = facts.get(m.course_id) or {}
+        program = fact.get("program") or {}
+        allowed = _semester_ids(m.year, m.semester)
+        rows.append({
+            "course_id": m.course_id,
+            "name_he": (fact.get("ims") or {}).get("name_he"),
+            "weekly_hours": program.get("weekly_hours"),
+            "credits": program.get("credits"),
+            "allowed_semesters": allowed,
+            "source_note": f"spec.json mandatory_courses + tau_course_facts_{shana}",
+            "recommended_semester": allowed[0],
+        })
+    return rows
 
 
 def copy_bidit_schedule(board: dict, source_year: int, source: Path = SHAAR_RUACH_SOURCE) -> int:
@@ -269,6 +323,11 @@ def build(entry: ProgramEntry, out_dir: Path = DATA, offline: bool = False, live
     previous = {key: p.read_text(encoding="utf-8") if p.exists() else None for key, p in paths.items()}
 
     program = spec_to_program(spec)
+    # A degree without the migrated ME's legacy program copy: its display name comes from the
+    # registry and its elective pool from the spec categories + official facts.
+    program.setdefault("program_name_he", entry.name_he)
+    if "elective_courses" not in program:
+        program["elective_courses"] = elective_courses_from_spec(spec, facts)
     with tempfile.TemporaryDirectory(prefix=f"degree_build_{entry.id}_") as tmp:
         mandatory_file = Path(tmp) / "mandatory_courses.json"
         mandatory_file.write_text(json.dumps(mandatory_courses_file(spec, MAIN_BOARD_START_YEAR, facts),
@@ -296,9 +355,15 @@ def build(entry: ProgramEntry, out_dir: Path = DATA, offline: bool = False, live
             print(f"[build] {key}: facts patched {changed} records, {summaries} summaries, "
                   f"{bidit} BIDIT records, {n} curation entries")
 
+    # The early window's mandatory courses come from the official program page; an offline
+    # build of a program whose page was never cached reads them from the spec instead.
+    early_mandatory = None
+    if offline and not early.program_page_cache(tcid, shana).exists():
+        early_mandatory = early_mandatory_from_spec(spec, EARLY_START_YEAR, facts, shana)
+        print(f"[build] early_years: no cached program page; {len(early_mandatory)} mandatory courses from the spec")
     early_out = early.build(entry.id, EARLY_START_YEAR, tcid, shana,
                             boards_dir=paths["board"].parent, out_dir=paths["early_years"].parent,
-                            offline=offline, offerings=offerings)
+                            offline=offline, offerings=offerings, mandatory=early_mandatory)
     if early_out != paths["early_years"]:
         raise RuntimeError(f"early board written to {early_out}, expected {paths['early_years']}")
     early_board = json.loads(early_out.read_text(encoding="utf-8"))
