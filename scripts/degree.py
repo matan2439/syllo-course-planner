@@ -13,7 +13,8 @@ build     spec.json -> spec_to_program -> the legacy generate path (board + cour
           the reviewed curation overlay (curation.json) -> the Years 1-2 window board. Writes
           <out>/parsed_json/<boardJsonFile>, <out>/boards/<id>.json,
           <out>/boards/<base>_years_1_2_<year>.json and <out>/config/early_year_courses.json.
-          --offline never touches the network and keeps the previous files' fetch timestamps;
+          --offline never touches the network; only --live stamps new fetch timestamps
+          (otherwise the previous files' syllabus_last_fetched_at values are kept);
           --live first re-fetches every official source and REWRITES the facts snapshot
           (data/official/tau_course_facts_<year>.json) before building.
 check     coverage + freshness + consistency + plannability; report in
@@ -200,13 +201,19 @@ def _strip_timestamps(node, keep_timestamps: bool):
     return node
 
 
-def write_board(path: Path, board: dict, previous: str | None, offline: bool) -> None:
-    """Write ``board`` so that unchanged content stays byte-identical to the previous file."""
+def write_board(path: Path, board: dict, previous: str | None, keep_timestamps: bool) -> None:
+    """Write ``board`` so that unchanged content stays byte-identical to the previous file.
+
+    ``keep_timestamps``: nothing was fetched live, so fetch times come from the previous file.
+    ``metadata.board_data_version`` is the hash of exactly the content written.
+    """
     path.parent.mkdir(parents=True, exist_ok=True)
     if previous is not None:
-        board = conform(board, json.loads(previous), keep_timestamps=offline)
-    elif offline:
+        board = conform(board, json.loads(previous), keep_timestamps=keep_timestamps)
+    elif keep_timestamps:
         board = _strip_timestamps(board, True)
+    if isinstance(board.get("metadata"), dict):
+        board["metadata"]["board_data_version"] = compute_board_hash(board)
     text = json.dumps(board, ensure_ascii=False, indent=2)
     if previous is not None and previous.endswith("\n"):
         text += "\n"
@@ -228,7 +235,8 @@ def build(entry: ProgramEntry, out_dir: Path = DATA, offline: bool = False, live
     tcid, shana = entry.source_ids["tcid"], entry.source_year
     paths = board_paths(entry, out_dir)
     # The files being replaced: unchanged content is written back byte-identical (key order,
-    # number spelling, and offline the previous fetch timestamps), so a rebuild diffs cleanly.
+    # number spelling and, unless this is a live build, the previous fetch timestamps: only a
+    # real live fetch stamps syllabus_last_fetched_at), so a rebuild diffs cleanly.
     previous = {key: p.read_text(encoding="utf-8") if p.exists() else None for key, p in paths.items()}
 
     program = spec_to_program(spec)
@@ -255,8 +263,7 @@ def build(entry: ProgramEntry, out_dir: Path = DATA, offline: bool = False, live
             summaries = rcd.refresh_syllabi(board, offline)
             bidit = copy_bidit_schedule(board) if "general_requirements" in variant["requirements"] else 0
             n = apply_curation(board, curation, key)
-            board["metadata"]["board_data_version"] = compute_board_hash(board)
-            write_board(path, board, previous[key], offline)
+            write_board(path, board, previous[key], keep_timestamps=not live)
             print(f"[build] {key}: facts patched {changed} records, {summaries} summaries, "
                   f"{bidit} BIDIT records, {n} curation entries")
 
@@ -265,9 +272,8 @@ def build(entry: ProgramEntry, out_dir: Path = DATA, offline: bool = False, live
     if early_out != paths["early_years"]:
         raise RuntimeError(f"early board written to {early_out}, expected {paths['early_years']}")
     early_board = json.loads(early_out.read_text(encoding="utf-8"))
-    if apply_curation(early_board, curation, "early_years"):
-        early_board["metadata"]["board_data_version"] = compute_board_hash(early_board)
-    write_board(early_out, early_board, previous["early_years"], offline)
+    apply_curation(early_board, curation, "early_years")
+    write_board(early_out, early_board, previous["early_years"], keep_timestamps=not live)
     index = early.write_early_year_index(boards_dir=paths["early_years"].parent, path=early_index_path(out_dir))
     print(f"[build] early_years -> {early_out}; index -> {index}")
     return {**paths, "early_year_index": index}
