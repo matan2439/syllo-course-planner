@@ -13,6 +13,13 @@ def _aware(value: datetime) -> datetime:
 UNREAD_NOT_GAP = "unread page not in known_gaps"
 
 
+def unresolved_targets(entry: MappedTo, spec: DegreeSpec) -> list[str]:
+    """The targets of ``entry`` that name no spec node; an empty target list is itself unresolved."""
+    if not entry.targets:
+        return ["(no targets)"]
+    return [t for t in entry.targets if not resolve_spec_path(spec, t)]
+
+
 def coverage_gaps(items: list[EvidenceItem], spec: DegreeSpec) -> tuple[list[tuple[EvidenceItem, str]], list[str]]:
     """The one coverage predicate: ([(item, reason)], stale keys).
 
@@ -28,10 +35,11 @@ def coverage_gaps(items: list[EvidenceItem], spec: DegreeSpec) -> tuple[list[tup
         if entry is None:
             open_items.append((item, "unaccounted"))
         elif item.data.get("unread") and not (
-                isinstance(entry, MappedTo) and entry.mapped_to.startswith("known_gaps[")):
+                isinstance(entry, MappedTo) and entry.targets
+                and all(t.startswith("known_gaps[") for t in entry.targets)):
             open_items.append((item, UNREAD_NOT_GAP))
         elif isinstance(entry, MappedTo):
-            if not resolve_spec_path(spec, entry.mapped_to):
+            if unresolved_targets(entry, spec):
                 open_items.append((item, "unresolved mapping"))
         elif isinstance(entry, NotPlanningRule) and not entry.not_planning_rule.strip():
             open_items.append((item, "blank reason"))
@@ -47,7 +55,11 @@ def check_coverage(items: list[EvidenceItem], spec: DegreeSpec) -> CheckResult:
     for item, reason in open_items:
         entry = spec.coverage.get(item.id)
         if isinstance(entry, MappedTo):  # unresolved, or an unread page mapped outside known_gaps
-            detail = f"{item.id} -> {entry.mapped_to} ({item.source_url})"
+            targets = ", ".join(entry.targets) or "(no targets)"
+            detail = f"{item.id} -> {targets} ({item.source_url})"
+            bad = unresolved_targets(entry, spec)
+            if reason == "unresolved mapping" and len(entry.targets) != 1:
+                detail += f" [unresolved: {', '.join(bad)}]"
         else:
             detail = f"{item.id} ({item.source_url})"
         problems.append((item.id, f"{reason}: {detail}"))

@@ -42,7 +42,15 @@ class Category(_Strict):
 
 
 class MappedTo(_Strict):
-    mapped_to: str
+    # One spec home, or several when a single evidence item states several rules.
+    mapped_to: Union[str, list[str]]
+
+    @property
+    def targets(self) -> list[str]:
+        return [self.mapped_to] if isinstance(self.mapped_to, str) else list(self.mapped_to)
+
+    def maps_to(self, path: str) -> bool:
+        return path in self.targets
 
 
 class NotPlanningRule(_Strict):

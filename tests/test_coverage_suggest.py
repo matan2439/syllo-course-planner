@@ -38,7 +38,7 @@ def test_course_listing_mapped_to_its_single_home():
         f"{T}:rama:2:kurs:F1": MappedTo(mapped_to="categories[fluids].course_ids[F-1]"),
         f"{T}:rama:2:kurs:G1": MappedTo(mapped_to="general_requirement"),
     }
-    assert all(resolve_spec_path(spec, e.mapped_to) for e in out.values())
+    assert all(resolve_spec_path(spec, t) for e in out.values() for t in e.targets)
 
 
 def test_course_facts_follow_the_course():

@@ -288,3 +288,21 @@ def test_category_membership_matches_elective_tags(me_spec):
 def test_legacy_holds_only_remainder(me_spec):
     assert set(me_spec.legacy["requirements"]) == {"mandatory_courses"}
     assert not {"requirements", "ui", "total_required_hours", "program_id"} & set(me_spec.legacy["program"])
+
+
+def test_string_mapped_to_round_trips_byte_identical(tmp_path):
+    """The committed ME spec loads, string mapped_to stays a string, and write_spec re-emits the
+    coverage block byte-for-byte (top-level key order of the committed file predates degree_years,
+    so the whole-file comparison is semantic and ignores that defaulted field)."""
+    from app.degrees.spec import write_spec
+
+    committed = spec_path(get_program(ME_ID))
+    spec = load_spec(committed)
+    out = tmp_path / "spec.json"
+    write_spec(spec, out)
+    old, new = json.loads(committed.read_text("utf-8")), json.loads(out.read_text("utf-8"))
+    new.pop("degree_years", None)  # defaulted field absent from the committed file
+    assert old == new
+    dump = lambda d: json.dumps(d["coverage"], ensure_ascii=False, indent=2)  # noqa: E731
+    assert dump(old) == dump(new)
+    assert all(isinstance(getattr(e, "mapped_to", ""), str) for e in spec.coverage.values())
