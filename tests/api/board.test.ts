@@ -320,3 +320,44 @@ describe('draft degrees are not served', () => {
     (PROGRAM_REGISTRY as ProgramEntry[]).push(draft); // restored for afterEach
   });
 });
+
+describe("a draft program's window board is not served", () => {
+  const registry = PROGRAM_REGISTRY as ProgramEntry[];
+  const windowId = 'mechanical_engineering_years_1_2_2027'; // committed file, not a registry id
+  let index = -1;
+  let original: ProgramEntry;
+  beforeEach(() => {
+    index = registry.findIndex((p) => p.id === 'mechanical_engineering_2027');
+    original = registry[index];
+    registry[index] = { ...original, status: 'draft' };
+  });
+  afterEach(() => {
+    registry[index] = original;
+    delete process.env.DATABASE_URL;
+  });
+
+  it('returns 404 without DATABASE_URL (no committed window-file leak)', async () => {
+    delete process.env.DATABASE_URL;
+    const res = makeRes();
+    await handler(makeReq(windowId), res);
+    expect((res.status as jest.Mock).mock.calls[0][0]).toBe(404);
+  });
+
+  it('returns 404 with a DB and never queries it (no file fallback for a missing row)', async () => {
+    process.env.DATABASE_URL = 'postgres://x';
+    mockSql.mockClear();
+    mockSql.mockResolvedValueOnce([]);
+    const res = makeRes();
+    await handler(makeReq(windowId), res);
+    expect((res.status as jest.Mock).mock.calls[0][0]).toBe(404);
+    expect(mockSql).not.toHaveBeenCalled();
+  });
+
+  it('serves the window board once its program is live again', async () => {
+    registry[index] = original;
+    delete process.env.DATABASE_URL;
+    const res = makeRes();
+    await handler(makeReq(windowId), res);
+    expect((res.status as jest.Mock).mock.calls[0][0]).toBe(200);
+  });
+});

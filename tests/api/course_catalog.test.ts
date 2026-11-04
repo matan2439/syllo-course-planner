@@ -17,7 +17,7 @@ import {
   loadProgramCatalog,
   MECHANICAL_ENGINEERING_2027_PROGRAM_ID,
 } from '../../api/ai/course_catalog';
-import { PROGRAM_REGISTRY, getProgramEntry, type ProgramEntry } from '../../shared/programs';
+import { PROGRAM_REGISTRY, getProgramEntry, isServableProgramId, type ProgramEntry } from '../../shared/programs';
 import { loadLocalBoardJson } from '../../api/ai/board_loader';
 import { capabilitiesFor } from '../../api/ai/semantic_course_extraction';
 
@@ -157,6 +157,25 @@ describe('draft degrees are not served by the loaders', () => {
     registry.splice(registry.indexOf(draft), 1);
     expect(loadProgramCatalog('test_program_2027').length).toBeGreaterThan(0);
     registry.push(draft);
+  });
+});
+
+describe("a draft program's window board is not served by the loaders", () => {
+  const registry = PROGRAM_REGISTRY as ProgramEntry[];
+  const windowId = 'mechanical_engineering_years_1_2_2027';
+  it('follows the owning program status', () => {
+    expect(isServableProgramId(windowId)).toBe(true);
+    expect(loadLocalBoardJson(windowId)).not.toBeNull();
+    const i = registry.findIndex((p) => p.id === 'mechanical_engineering_2027');
+    const original = registry[i];
+    registry[i] = { ...original, status: 'draft' };
+    try {
+      expect(isServableProgramId(windowId)).toBe(false);
+      expect(loadLocalBoardJson(windowId)).toBeNull();
+      expect(loadProgramCatalog(windowId)).toEqual([]);
+    } finally {
+      registry[i] = original;
+    }
   });
 });
 

@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import registry from '../data/config/programs.json';
 import { CATALOG_YEAR_POLICIES } from './institutions';
+import { programIdOfBoard } from './planner/window_board';
 
 /**
  * The single degree registry. data/config/programs.json is read by this module (TypeScript)
@@ -67,9 +68,11 @@ export function livePrograms(): ProgramEntry[] {
 }
 
 /**
- * Whether the API may serve a board/catalog for this program id. Drafts are never served;
- * ids unknown to the registry (committed test boards) stay servable; live/archived are served.
+ * Whether the API may serve a board/catalog for this program or window-board id. The owning
+ * program decides (a `<base>_years_1_2_<year>` window board belongs to `<base>_<year>`):
+ * drafts — and their window boards — are never served; ids unknown to the registry
+ * (committed test boards) stay servable; live/archived are served.
  */
 export function isServableProgramId(id: string): boolean {
-  return getProgramEntry(id)?.status !== 'draft';
+  return getProgramEntry(programIdOfBoard(id))?.status !== 'draft';
 }
