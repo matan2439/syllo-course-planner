@@ -121,4 +121,47 @@ test('years 5–6 are offered only once the board has a semester there, or one i
   expect(degreeYearsForBoard(['year_3_semester_a', 'year_4_semester_b'])).toEqual([1, 2, 3, 4])
   expect(degreeYearsForBoard(['year_4_semester_b', 'year_5_semester_a'])).toEqual([1, 2, 3, 4, 5])
   expect(degreeYearsForBoard([], 6)).toEqual([1, 2, 3, 4, 6])
+  expect(degreeYearsForBoard(['year_3_semester_a'], 4)).toEqual([1, 2, 3, 4])
+})
+
+describe('boards that are not four years long', () => {
+  const ids = (...pairs: Array<[number, 'a' | 'b']>) => pairs.map(([y, h]) => `year_${y}_semester_${h}`)
+  const oneYear = ids([3, 'a'], [3, 'b'])
+  const threeYear = ids([3, 'a'], [3, 'b'], [4, 'a'], [4, 'b'], [5, 'a'], [5, 'b'])
+  const fourYear = ids([3, 'a'], [3, 'b'], [4, 'a'], [4, 'b'])
+
+  test('a 1-year main board shows only its own tabs and can still add a semester', () => {
+    expect(scheduleSlotsForBoard('late', oneYear, oneYear).map((s) => s.id)).toEqual(oneYear)
+    expect(scheduleSlotsForBoard('late', oneYear, oneYear).some((s) => 'added' in s)).toBe(false)
+    expect(nextSemesterId(oneYear)).toBe('year_4_semester_a')
+  })
+
+  test('a 5-year board keeps Year 5 as a real tab, never flagged added', () => {
+    const slots = scheduleSlotsForBoard('late', threeYear, threeYear)
+    expect(slots.map((s) => s.id)).toEqual(threeYear)
+    expect(slots.some((s) => 'added' in s)).toBe(false)
+    expect(withAddedSemesters(semesterWindowSlots('late'), threeYear, threeYear).some((s) => 'added' in s)).toBe(false)
+    expect(nextSemesterId(threeYear)).toBe('year_6_semester_a')
+  })
+
+  test('a semester the student added past the published board is still flagged added', () => {
+    const grown = [...threeYear, 'year_6_semester_a']
+    expect(scheduleSlotsForBoard('late', grown, threeYear).at(-1))
+      .toEqual({ id: 'year_6_semester_a', label: 'שנה ו׳ — סמסטר א׳', added: true })
+    expect(scheduleSlotsForBoard('late', threeYear.slice(0, 4), threeYear.slice(0, 4)).some((s) => 'added' in s)).toBe(false)
+  })
+
+  test('a 4-year (ME-shaped) board is unchanged', () => {
+    expect(scheduleSlotsForBoard('late', fourYear, fourYear)).toEqual(semesterWindowSlots('late'))
+    expect(withAddedSemesters(semesterWindowSlots('late'), fourYear, fourYear)).toEqual(semesterWindowSlots('late'))
+  })
+
+  test('visible degree years follow the board, not a fixed 1-4', () => {
+    expect(degreeYearsForBoard(oneYear)).toEqual([1, 2, 3])
+    expect(degreeYearsForBoard(threeYear)).toEqual([1, 2, 3, 4, 5])
+    expect(degreeYearsForBoard(fourYear)).toEqual([1, 2, 3, 4])
+    expect(degreeYearsForBoard(['year_1_semester_a', 'year_2_semester_b'], null, threeYear)).toEqual([1, 2, 3, 4, 5])
+    expect(degreeYearsForBoard(['year_6_semester_b'])).toEqual([1, 2, 3, 4, 5, 6])
+    expect(degreeYearsForBoard(['year_9_semester_a'])).toEqual([1, 2, 3, 4, 5, 6])
+  })
 })

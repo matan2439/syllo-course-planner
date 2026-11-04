@@ -41,26 +41,32 @@ const plansWindow = (slots: readonly { id: string }[], boardSemesterIds: readonl
  * (e.g. year_5_semester_a): a 3-year degree's board has no Year 4, so those tabs go, and Year 4 comes
  * back once the student adds it. A board that does not plan the window leaves it as is.
  */
-export function scheduleSlotsForBoard(window: SemesterWindow, boardSemesterIds: readonly string[]) {
+export function scheduleSlotsForBoard(
+  window: SemesterWindow, boardSemesterIds: readonly string[], publishedSemesterIds: readonly string[] = [],
+) {
   const slots = semesterWindowSlots(window)
   if (!plansWindow(slots, boardSemesterIds)) return slots
-  return withAddedSemesters(slots.filter((slot) => boardSemesterIds.includes(slot.id)), boardSemesterIds)
+  return withAddedSemesters(slots.filter((slot) => boardSemesterIds.includes(slot.id)), boardSemesterIds, publishedSemesterIds)
 }
 
 /**
  * `slots`, then the board's columns past the last one (semesters the student added, e.g.
- * year_5_semester_a) in rank order, flagged `added`. Without such columns this is `slots` itself.
+ * year_5_semester_a) in rank order, flagged `added`. Columns the board itself publishes
+ * (`publishedSemesterIds`, e.g. Year 5 of a 5-year degree) are real semesters: appended, never flagged.
+ * Without such columns this is `slots` itself.
  */
 export function withAddedSemesters<T extends { id: string; label: string }>(
-  slots: readonly T[], boardSemesterIds: readonly string[],
-): Array<T | { id: string; label: string; added: true }> {
+  slots: readonly T[], boardSemesterIds: readonly string[], publishedSemesterIds: readonly string[] = [],
+): Array<T | { id: string; label: string; added?: true }> {
   // Only a board that plans these slots (shares a column with them) extends them.
   if (!plansWindow(slots, boardSemesterIds)) return [...slots]
   const last = Math.max(-1, ...slots.map((slot) => semesterRank(slot.id) ?? -1))
   const added = boardSemesterIds
     .filter((id) => (semesterRank(id) ?? -1) > last)
     .sort((a, b) => semesterRank(a)! - semesterRank(b)!)
-    .map((id) => ({ id, label: semesterTitleHe(id), added: true as const }))
+    .map((id) => publishedSemesterIds.includes(id)
+      ? { id, label: semesterTitleHe(id) }
+      : { id, label: semesterTitleHe(id), added: true as const })
   return added.length ? [...slots, ...added] : [...slots]
 }
 
@@ -86,10 +92,19 @@ export const DEGREE_YEAR_LABELS: Record<DegreeYear, string> = {
   1: 'שנה א׳', 2: 'שנה ב׳', 3: 'שנה ג׳', 4: 'שנה ד׳', 5: 'שנה ה׳', 6: 'שנה ו׳',
 }
 
-/** Years 1–4 always; a later year only once the board has a semester in it (or it is the chosen year). */
-export function degreeYearsForBoard(semesterIds: readonly string[], chosen?: DegreeYear | null): DegreeYear[] {
-  const added = new Set(semesterIds.map((id) => Number(/^year_(\d+)_/.exec(id)?.[1])))
-  return DEGREE_YEARS.filter((year) => year <= 4 || added.has(year) || year === chosen)
+/**
+ * The years the degree has: 1 up to the latest year any known semester sits in (the board's own,
+ * `knownSemesterIds` such as the other window's board, and student-added ones), capped at MAX_DEGREE_YEAR.
+ * The chosen year is always offered. With no semesters to go by, the classic four.
+ */
+export function degreeYearsForBoard(
+  semesterIds: readonly string[], chosen?: DegreeYear | null, knownSemesterIds: readonly string[] = [],
+): DegreeYear[] {
+  const years = [...semesterIds, ...knownSemesterIds]
+    .map((id) => Number(/^year_(\d+)_/.exec(id)?.[1]))
+    .filter((year) => Number.isInteger(year) && year >= 1)
+  const last = Math.min(MAX_DEGREE_YEAR, years.length ? Math.max(...years) : 4)
+  return DEGREE_YEARS.filter((year) => year <= last || year === chosen)
 }
 
 /** The one place that maps the student's year to the visible window. Unknown year → the default. */

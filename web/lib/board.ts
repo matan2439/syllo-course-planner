@@ -14,12 +14,13 @@ export const SEMESTER_ORDER = [
 
 // The data ships English display_name; the product is Hebrew-first
 // (same localization the canonical planner applies itself).
-const SEMESTER_TITLES_HE: Record<string, string> = {
-  year_3_semester_a: 'שנה ג׳ — סמסטר א׳',
-  year_3_semester_b: 'שנה ג׳ — סמסטר ב׳',
-  year_4_semester_a: 'שנה ד׳ — סמסטר א׳',
-  year_4_semester_b: 'שנה ד׳ — סמסטר ב׳',
-}
+const YEAR_LETTERS_HE = ['א׳', 'ב׳', 'ג׳', 'ד׳', 'ה׳', 'ו׳']
+const SEMESTER_TITLES_HE: Record<string, string> = Object.fromEntries(
+  YEAR_LETTERS_HE.flatMap((year, i) => (['a', 'b'] as const).map((half) => [
+    `year_${i + 1}_semester_${half}`,
+    `שנה ${year} — סמסטר ${half === 'a' ? 'א׳' : 'ב׳'}`,
+  ])),
+)
 
 type RawCourse = {
   course_id: string

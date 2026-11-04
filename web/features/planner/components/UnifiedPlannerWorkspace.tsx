@@ -97,10 +97,15 @@ export default function UnifiedPlannerWorkspace({
   // The board's columns as the journey reports them, including semesters the student added past the window.
   const [semesterCourses, setSemesterCourses] = useState<Array<{ semesterId: string; courseIds: string[] }>>([])
   const boardSemesterIds = useMemo(() => semesterCourses.map((s) => s.semesterId), [semesterCourses])
-  const scheduleSemesters = useMemo(
-    () => scheduleSlotsForBoard(semesterWindow, boardSemesterIds), [semesterWindow, boardSemesterIds])
   const { boardId, repo: boardRepo, semesterDestinations: catalogDestinations } =
     windowBoards[semesterWindow] ?? { boardId: programId, repo, semesterDestinations: programDestinations }
+  // Every semester the degree's published boards hold, so the year picker spans the whole degree.
+  const degreeSemesterIds = useMemo(
+    () => [...programDestinations, ...Object.values(windowBoards).flatMap((w) => w?.semesterDestinations ?? [])].map((d) => d.id),
+    [programDestinations, windowBoards])
+  const scheduleSemesters = useMemo(
+    () => scheduleSlotsForBoard(semesterWindow, boardSemesterIds, catalogDestinations.map((d) => d.id)),
+    [semesterWindow, boardSemesterIds, catalogDestinations])
   const semesterDestinations = useMemo(
     () => withAddedSemesters(catalogDestinations, boardSemesterIds), [catalogDestinations, boardSemesterIds])
   // One rail, one open tab. `null` = closed, board only.
@@ -396,6 +401,7 @@ export default function UnifiedPlannerWorkspace({
               ? { placement: companionPlacement, node: <CompanionWindowBoard key={`${companionBoardId}:${owner.epoch}`} boardId={companionBoardId} placement={companionPlacement} /> }
               : undefined}
             programId={boardId}
+            degreeSemesterIds={degreeSemesterIds}
             onAcademicContextMissing={reloadForOwner}
             initializePlanningContext
             manualAddIntent={manualAddIntent}
