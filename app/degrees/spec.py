@@ -213,9 +213,9 @@ def _number(value: float):
 
 
 def _category_to_legacy(cat: Category) -> dict:
-    out: dict = {"category_id": cat.category_id, "name_he": cat.name_he}
-    if cat.min_courses is not None:
-        out["min_courses"] = cat.min_courses
+    # min_courses is always explicit: an unstated minimum is "no minimum" (0), never the board's
+    # old implicit "at least 1". (Every migrated legacy category states it, so ME round-trips.)
+    out: dict = {"category_id": cat.category_id, "name_he": cat.name_he, "min_courses": cat.min_courses or 0}
     if cat.min_credits is not None:
         out["min_credits"] = _number(cat.min_credits)
     out["course_ids"] = list(cat.course_ids)

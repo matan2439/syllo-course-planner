@@ -8,8 +8,9 @@
 from typing import Any, Optional
 
 from app.analysis.board_audit import audit_board
+from app.analysis.program_requirements import _get_unified_categories
 from app.degrees.checks import CheckResult
-from app.degrees.spec import DegreeSpec
+from app.degrees.spec import DegreeSpec, spec_to_program
 
 WARN = "warn:"
 
@@ -257,6 +258,35 @@ def check_known_gaps(spec: DegreeSpec) -> CheckResult:
     """Official sources not yet read: one failing problem per recorded gap."""
     problems = [f"known gap {g.gap_id}: {g.description}" for g in spec.known_gaps]
     return _result("known_gaps", problems)
+
+
+def check_board_carries_requirements(spec: DegreeSpec) -> CheckResult:
+    """Every spec requirement reaches the board; one failing problem per one that cannot.
+
+    The board consumes only what ``spec_to_program`` emits, read the way the builder reads it
+    (``_get_unified_categories``). Today that drops: a group minimum other than ``core`` (only
+    ``core`` becomes ``core_courses_total_min``), a category the builder never reads (e.g. an
+    unkeyed category in a non-core group with no plain category beside it), and a category's
+    ``min_credits`` (emitted, but no board or validation code reads it). A dropped requirement
+    stays red until the board carries it -- never a silent drop.
+    """
+    problems: list[str] = []
+    program = spec_to_program(spec)
+    reqs = program["requirements"]
+    for group, minimum in sorted(spec.group_minimums.items()):
+        if group == "core" and reqs.get("core_courses_total_min") == minimum:
+            continue
+        problems.append(f"group_minimums.{group} ({minimum} courses) cannot reach the board: "
+                        f"it only carries the core group minimum (core_courses_total_min)")
+    read = {c.get("category_id") for c in _get_unified_categories(program)}
+    for cat in spec.categories:
+        if cat.category_id not in read:
+            problems.append(f"categories[{cat.category_id}] never reaches the board's category list "
+                            f"(group {cat.group!r}, no requirement key)")
+        if cat.min_credits is not None:
+            problems.append(f"categories[{cat.category_id}].min_credits ({_fmt(cat.min_credits)}) cannot reach "
+                            f"the board: it enforces min_courses only")
+    return _result("board_carries_requirements", problems)
 
 
 def check_plannable(board: dict[str, Any]) -> CheckResult:
