@@ -67,22 +67,3 @@ def suggest_coverage(items: list[EvidenceItem], spec: DegreeSpec) -> dict[str, C
             if len(cats) == 1:
                 out[item.id] = MappedTo(mapped_to=f"categories[{cats.pop()}]")
     return out
-
-
-def coverage_gaps(items: list[EvidenceItem], spec: DegreeSpec) -> tuple[list[EvidenceItem], list[str]]:
-    """(items still needing a coverage decision, stale coverage keys), mirroring ``check_coverage``.
-
-    An item is open when it has no entry, its ``mapped_to`` path does not resolve, or its
-    ``not_planning_rule`` reason is blank. A stale key names no evidence item.
-    """
-    from app.degrees.spec import NotPlanningRule, resolve_spec_path
-
-    open_items = []
-    for item in items:
-        entry = spec.coverage.get(item.id)
-        if (entry is None
-                or (isinstance(entry, MappedTo) and not resolve_spec_path(spec, entry.mapped_to))
-                or (isinstance(entry, NotPlanningRule) and not entry.not_planning_rule.strip())):
-            open_items.append(item)
-    seen = {i.id for i in items}
-    return open_items, sorted(k for k in spec.coverage if k not in seen)

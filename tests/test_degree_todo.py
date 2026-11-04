@@ -106,3 +106,31 @@ def test_missing_evidence_is_an_error(env, capfd):
 
 def test_todo_md_is_gitignored():
     assert "data/degrees/**/todo.md" in (ROOT / ".gitignore").read_text(encoding="utf-8")
+
+
+def test_empty_evidence_fails_like_check_coverage(env, capfd):
+    _, _, put = env
+    put([])
+    code, out = run(capfd)
+    assert code == 1 and "no evidence collected" in out
+
+
+def test_coverage_gaps_match_check_coverage():
+    from app.degrees.checks import check_coverage
+    from app.degrees.checks.coverage import coverage_gaps
+    from app.degrees.evidence import EvidenceItem
+
+    items = [EvidenceItem.model_validate(item(f"rule:{n}")) for n in ("none", "bad", "blank", "ok", "map")]
+    spec = new_spec(ME).model_copy(update={"coverage": {
+        "rule:bad": MappedTo(mapped_to="categories[nope]"),
+        "rule:blank": NotPlanningRule(not_planning_rule=" "),
+        "rule:ok": NotPlanningRule(not_planning_rule="n/a"),
+        "rule:map": MappedTo(mapped_to="categories[nope]"),
+        "rule:gone": NotPlanningRule(not_planning_rule="x"),
+    }})
+    gaps, stale = coverage_gaps(items, spec)
+    flagged = {i.id for i, _ in gaps} | set(stale)
+    problems = check_coverage(items, spec).problems
+    assert flagged == {"rule:none", "rule:bad", "rule:blank", "rule:map", "rule:gone"}
+    assert len(problems) == len(flagged)
+    assert all(any(k in p for p in problems) for k in flagged)

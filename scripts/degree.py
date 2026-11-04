@@ -457,7 +457,8 @@ TODO_NAME = "todo.md"
 
 def run_todo(entry: ProgramEntry, apply_suggestions: bool) -> int:
     """Print (and write to todo.md beside evidence.json) the coverage worklist; 0 iff nothing is left."""
-    from app.degrees.coverage_suggest import coverage_gaps, suggest_coverage
+    from app.degrees.checks.coverage import coverage_gaps
+    from app.degrees.coverage_suggest import suggest_coverage
     from app.degrees.evidence import EvidenceItem, strip_html
     from app.degrees.spec import write_spec
 
@@ -475,9 +476,13 @@ def run_todo(entry: ProgramEntry, apply_suggestions: bool) -> int:
             spec = spec.model_copy(update={"coverage": {**spec.coverage, **fresh}})
             write_spec(spec, spec_file)
         lines.append(f"applied {len(fresh)} suggested coverage entries to {_show(spec_file)}")
-    open_items, stale = coverage_gaps(items, spec)
+    gaps, stale = coverage_gaps(items, spec)
+    open_items = [i for i, _ in gaps]
+    reasons = {i.id: r for i, r in gaps}
     lines.append(f"# Coverage worklist — {entry.id}: {len(open_items)} unaccounted of {len(items)} evidence items, "
                  f"{len(stale)} stale keys")
+    if not items:
+        lines.append("no evidence collected")
     groups: dict[tuple[str, str], list] = {}
     for item in open_items:
         groups.setdefault((item.kind, " > ".join(item.path)), []).append(item)
@@ -488,7 +493,8 @@ def run_todo(entry: ProgramEntry, apply_suggestions: bool) -> int:
             last_kind = kind
         lines += ["", f"### {path or '(no path)'}"]
         for item in group:
-            lines += [f"- id: {item.id}", f"  source_url: {item.source_url}", f"  text: {strip_html(item.raw_text)}"]
+            lines += [f"- id: {item.id}" + ("" if reasons[item.id] == "unaccounted" else f" ({reasons[item.id]})"),
+                      f"  source_url: {item.source_url}", f"  text: {strip_html(item.raw_text)}"]
     if stale:
         lines += ["", "## stale coverage keys (not in evidence; remove from the spec)"]
         lines += [f"- {k}" for k in stale]
@@ -496,7 +502,7 @@ def run_todo(entry: ProgramEntry, apply_suggestions: bool) -> int:
     ev_path.with_name(TODO_NAME).write_text(text, encoding="utf-8")
     sys.stdout.buffer.write(text.encode("utf-8"))
     sys.stdout.flush()
-    return 0 if not open_items and not stale else 1
+    return 0 if items and not open_items and not stale else 1
 
 
 # ---------------------------------------------------------------- init
