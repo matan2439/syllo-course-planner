@@ -15,6 +15,7 @@ from app.degrees.checks.consistency import (  # noqa: E402
     check_double_counting,
     check_mandatory_offered,
     check_plannable,
+    check_rules_enforced,
     check_totals,
 )
 
@@ -26,5 +27,6 @@ __all__ = [
     "check_double_counting",
     "check_mandatory_offered",
     "check_plannable",
+    "check_rules_enforced",
     "check_totals",
 ]

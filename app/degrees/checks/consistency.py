@@ -204,6 +204,14 @@ def check_totals(
     return _result("totals", problems)
 
 
+def check_rules_enforced(spec: DegreeSpec) -> CheckResult:
+    """Every recorded course rule is enforced somewhere; ``enforced_by: none`` fails."""
+    problems = [
+        f"unenforced rule {r.rule_id}: {r.note}" for r in spec.course_rules if r.enforced_by == "none"
+    ]
+    return _result("rules_enforced", problems)
+
+
 def check_plannable(board: dict[str, Any]) -> CheckResult:
     problems = [
         f"{i.check}: {i.course_id or '-'}: {i.message}"

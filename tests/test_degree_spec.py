@@ -98,6 +98,38 @@ def test_resolve_spec_path(me_spec):
     assert not resolve_spec_path(spec.model_copy(update={"catalog_year_policy": None}), "catalog_year_policy")
 
 
+def _rule(**kw) -> dict:
+    return {"rule_id": "annual-x", "kind": "annual", "course_ids": ["X-1"], "params": {"semesters": [5, 6]},
+            "source_ids": ["tau:1"], "enforced_by": "none", "note": "annual course", **kw}
+
+
+def test_course_rules_resolve_and_stay_spec_only(me_spec):
+    data = me_spec.model_dump(mode="json")
+    data["course_rules"] = [_rule()]
+    spec = DegreeSpec.model_validate(data)
+    assert resolve_spec_path(spec, "course_rules[annual-x]")
+    assert not resolve_spec_path(spec, "course_rules[nope]")
+    assert not resolve_spec_path(me_spec, "course_rules[annual-x]")
+    assert spec_to_program(spec) == _enriched()
+
+
+@pytest.mark.parametrize("bad", [
+    {"kind": "mutual_exclusion"}, {"enforced_by": "planner"}, {"note": ""}, {"note": "   "}, {"extra": 1},
+])
+def test_course_rule_rejects_invalid(me_spec, bad):
+    data = me_spec.model_dump(mode="json")
+    data["course_rules"] = [_rule(**bad)]
+    with pytest.raises(ValueError):
+        DegreeSpec.model_validate(data)
+
+
+def test_course_rule_ids_unique(me_spec):
+    data = me_spec.model_dump(mode="json")
+    data["course_rules"] = [_rule(), _rule()]
+    with pytest.raises(ValueError, match="duplicate course rule ids"):
+        DegreeSpec.model_validate(data)
+
+
 @pytest.mark.parametrize(
     "bad",
     ["", "nope", "mandatory_courses", "mandatory_courses[]", "categories[fluids].course_ids",

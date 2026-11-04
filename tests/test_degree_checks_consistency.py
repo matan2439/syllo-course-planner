@@ -6,6 +6,7 @@ from app.degrees.checks import (
     check_double_counting,
     check_mandatory_offered,
     check_plannable,
+    check_rules_enforced,
     check_totals,
 )
 from app.degrees.registry import get_program
@@ -199,6 +200,30 @@ def test_plannable_passes_clean_board_and_fails_on_error():
     bad = {"semesters": [{"semester_id": "s1", "courses": [{"name_he": "x"}]}]}
     result = check_plannable(bad)
     assert not result.passed and "missing_course_id" in result.problems[0]
+
+
+# ---------------------------------------------------------------- rules_enforced
+
+
+def _with_rules(*rules) -> DegreeSpec:
+    data = _spec().model_dump(mode="json")
+    data["course_rules"] = [
+        {"rule_id": rid, "kind": "annual", "course_ids": ["A-1"], "source_ids": ["e"],
+         "enforced_by": by, "note": f"note {rid}"} for rid, by in rules
+    ]
+    return DegreeSpec.model_validate(data)
+
+
+def test_rules_enforced_passes_when_board_enforces_or_no_rules():
+    assert check_rules_enforced(_spec()).passed
+    result = check_rules_enforced(_with_rules(("r1", "board")))
+    assert result.passed and result.problems == []
+
+
+def test_rules_enforced_fails_per_unenforced_rule():
+    result = check_rules_enforced(_with_rules(("r1", "board"), ("r2", "none"), ("r3", "none")))
+    assert not result.passed and result.name == "rules_enforced"
+    assert result.problems == ["unenforced rule r2: note r2", "unenforced rule r3: note r3"]
 
 
 # ---------------------------------------------------------------- ME

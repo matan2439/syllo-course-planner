@@ -9,7 +9,7 @@ import re
 from pathlib import Path
 from typing import Literal, Optional, Union
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.degrees.registry import ProgramEntry, load_institution
 
@@ -52,6 +52,29 @@ class NotPlanningRule(_Strict):
 CoverageEntry = Union[MappedTo, NotPlanningRule]
 
 
+RuleKind = Literal[
+    "equivalent_to", "prerequisite_substitute", "year_restriction", "cohort_restriction",
+    "offering_window", "annual", "general_requirement_exemption",
+]
+
+
+class CourseRule(_Strict):
+    """An official course-level rule the generic requirement fields cannot hold.
+
+    ``enforced_by`` says honestly where it is enforced today: ``board`` only when the built
+    board demonstrably encodes it (the ``note`` names the board field), otherwise ``none``
+    (``check_rules_enforced`` then fails until something enforces it).
+    """
+
+    rule_id: str = Field(min_length=1)
+    kind: RuleKind
+    course_ids: list[str]
+    params: dict = {}
+    source_ids: list[str]
+    enforced_by: Literal["board", "none"]
+    note: str = Field(min_length=1, pattern=r"\S")
+
+
 class SourceConflict(_Strict):
     """Official sources disagree about a course; recorded instead of silently resolved."""
 
@@ -86,6 +109,15 @@ class DegreeSpec(_Strict):
     legacy: dict
     coverage: dict[str, CoverageEntry] = {}
     source_conflicts: list[SourceConflict] = []
+    course_rules: list[CourseRule] = []
+
+    @model_validator(mode="after")
+    def _unique_rule_ids(self):
+        ids = [r.rule_id for r in self.course_rules]
+        dups = sorted({i for i in ids if ids.count(i) > 1})
+        if dups:
+            raise ValueError(f"duplicate course rule ids: {dups}")
+        return self
 
 
 # ---------------------------------------------------------------- io
@@ -304,6 +336,7 @@ _PATHS = {
     "category": re.compile(rf"^categories{_BRACKET}$"),
     "category_course": re.compile(rf"^categories{_BRACKET}\.course_ids{_BRACKET}$"),
     "group": re.compile(r"^group_minimums\.([^.\[\]]+)$"),
+    "rule": re.compile(rf"^course_rules{_BRACKET}$"),
 }
 
 
@@ -324,6 +357,8 @@ def resolve_spec_path(spec: DegreeSpec, path: str) -> bool:
             return any(c.category_id == m.group(1) for c in spec.categories)
         if m := _PATHS["category_course"].match(path):
             return any(c.category_id == m.group(1) and m.group(2) in c.course_ids for c in spec.categories)
+        if m := _PATHS["rule"].match(path):
+            return any(r.rule_id == m.group(1) for r in spec.course_rules)
         if m := _PATHS["group"].match(path):
             return m.group(1) in spec.group_minimums
         return False
