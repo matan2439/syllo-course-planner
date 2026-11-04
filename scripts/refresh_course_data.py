@@ -458,6 +458,17 @@ def facts_path(year: int) -> Path:
     return OFFICIAL_DIR / f"tau_course_facts_{year}.json"
 
 
+def write_facts(facts: dict, year: int) -> Path:
+    """Merge this run's facts into the per-year snapshot that every program shares: this
+    program's courses are updated or inserted, other programs' courses are never dropped."""
+    path = facts_path(year)
+    merged = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+    merged.update(facts)
+    OFFICIAL_DIR.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(merged, ensure_ascii=False, indent=2, sort_keys=True), encoding="utf-8")
+    return path
+
+
 def refresh(entry: ProgramEntry, year: int | None = None, offline: bool = False, live: bool = False,
             apply_boards: bool = False, syllabi: bool = False, boards: list[Path] | None = None) -> dict:
     """Facts for every course the program's spec or boards reference, a review report, and
@@ -472,8 +483,7 @@ def refresh(entry: ProgramEntry, year: int | None = None, offline: bool = False,
     spec_ids = set(spec_course_ids(entry))
     facts = official_facts(sorted(board_ids | spec_ids), year, offline, live, tcid)
 
-    OFFICIAL_DIR.mkdir(parents=True, exist_ok=True)
-    facts_path(year).write_text(json.dumps(facts, ensure_ascii=False, indent=2, sort_keys=True), encoding="utf-8")
+    write_facts(facts, year)
 
     rows = [r for b in loaded.values() for r in compare(b, facts, year)]
     write_report(rows, year, facts)

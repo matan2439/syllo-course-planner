@@ -70,6 +70,18 @@ def test_offline_build_reproduces_committed_me_boards(tmp_path):
         nb, ne = degree.normalize_board(built), degree.normalize_board(expected)
         assert nb == ne, f"{name} differs:\n" + "\n".join(_first_diffs(nb, ne))
 
+        # Byte-level: a rebuild into data/ must leave `git diff` empty except board_data_version
+        # (same key order, number spelling and, offline, the same fetch timestamps).
+        built_lines = [ln for ln in out_paths[name].read_text(encoding="utf-8").splitlines()
+                       if '"board_data_version"' not in ln]
+        committed_lines = [ln for ln in src.read_text(encoding="utf-8").splitlines()
+                           if '"board_data_version"' not in ln]
+        assert out_paths[name].read_bytes().endswith(b"\n") == src.read_bytes().endswith(b"\n"), name
+        if built_lines != committed_lines:
+            first = next(i for i, (a, b) in enumerate(zip(built_lines + [None], committed_lines + [None])) if a != b)
+            pytest.fail(f"{name}: text differs at line {first + 1}:\n  build:     {built_lines[first:first + 1]}\n"
+                        f"  committed: {committed_lines[first:first + 1]}")
+
     # The Years 1-2 course index is regenerated from the built window board, byte-for-byte.
     built_index = degree.early_index_path(tmp_path).read_text(encoding="utf-8")
     assert built_index == degree.early_index_path().read_text(encoding="utf-8")

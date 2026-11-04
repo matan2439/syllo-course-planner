@@ -44,13 +44,18 @@ python scripts/degree.py evidence --program mechanical_engineering_2027 --offlin
 spec) → the legacy generate path (board, course-detail links, GraphQL names/hours) →
 official facts (`refresh` apply + syllabus summaries) → the reviewed overlay
 `data/degrees/<inst>/<base>/<year>/curation.json` → the Years 1–2 window board and its
-course index. Each overlay entry names the board, course, field and the reason the committed
-board differs from what the builder derives; a stale entry (course gone, or a value the build
-already produces) fails the build. `tests/test_degree_build_golden.py` proves an offline build
-reproduces the committed ME boards (it skips when the gitignored `data/raw_html/` or
-`data/database.sqlite` are absent). `refresh` covers every course the spec references (all
-mandatory years, every category, the general-requirement pool) and never touches boards
-without `--apply`.
+course index. Each overlay entry names the board, course, field, the value the builder produced
+when it was written (`built`), a `retire` tag (`post_migration` = history to drop with the first
+real update, `null` = durable hand correction) and the reason. The build fails if an entry's
+target is gone, if the build now produces the overlay's value, or if it produces anything other
+than `built` (so fresh official data is never silently masked). Files are written in the
+previous file's layout (key order, number spelling; offline also its fetch timestamps), so an
+offline rebuild into `data/` changes only `board_data_version`.
+`tests/test_degree_build_golden.py` proves that byte-for-byte for the ME boards (it skips when
+the gitignored `data/raw_html/` or `data/database.sqlite` are absent). `refresh` covers every
+course the spec references (all mandatory years, every category, the general-requirement pool),
+merges into the per-year facts snapshot shared by all programs, and never touches boards
+without `--apply`. `build --live` re-fetches every source and rewrites the facts snapshot first.
 
 ## Audit-only workflow (safe, no writes)
 

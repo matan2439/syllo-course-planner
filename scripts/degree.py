@@ -13,7 +13,9 @@ build     spec.json -> spec_to_program -> the legacy generate path (board + cour
           the reviewed curation overlay (curation.json) -> the Years 1-2 window board. Writes
           <out>/parsed_json/<boardJsonFile>, <out>/boards/<id>.json,
           <out>/boards/<base>_years_1_2_<year>.json and <out>/config/early_year_courses.json.
-          --offline never touches the network; --live first refreshes the facts snapshot live.
+          --offline never touches the network and keeps the previous files' fetch timestamps;
+          --live first re-fetches every official source and REWRITES the facts snapshot
+          (data/official/tau_course_facts_<year>.json) before building.
 check     coverage + freshness + consistency + plannability; report in
           data/import_reports/degree_check_<id>.md; exit 0 only if every check passes.
           Requires --live (freshness needs a live fetch) or --offline (freshness SKIPPED, exit 1).
@@ -144,9 +146,71 @@ def copy_bidit_schedule(board: dict, source: Path = SHAAR_RUACH_SOURCE) -> int:
     return n
 
 
-def _write(path: Path, board: dict) -> None:
+def _item_key(item) -> str | None:
+    if isinstance(item, dict):
+        for k in ("course_id", "semester_id", "category_id"):
+            if k in item:
+                return f"{k}={item[k]}"
+    return None
+
+
+def conform(new, old, keep_timestamps: bool):
+    """``new`` laid out like the previous file ``old``, without changing any value.
+
+    Keys keep the previous file's order (new keys follow), a number keeps its previous
+    int/float spelling when the value is equal, and list items are matched by their id. With
+    ``keep_timestamps`` (an offline build: nothing was fetched) the generated timestamp fields
+    are the previous file's values, and are absent where the previous record had none.
+    """
+    if isinstance(new, dict) and isinstance(old, dict):
+        out = {}
+        for k in [k for k in old if k in new] + [k for k in new if k not in old]:
+            if keep_timestamps and k in TIMESTAMP_FIELDS:
+                continue
+            out[k] = conform(new[k], old[k], keep_timestamps) if k in old else new[k]
+        if keep_timestamps:
+            order = list(old) + [k for k in out if k not in old]
+            for k in TIMESTAMP_FIELDS:
+                if k in old:
+                    out[k] = old[k]
+            out = {k: out[k] for k in order if k in out}
+        return out
+    if isinstance(new, list) and isinstance(old, list):
+        old_by_key = {_item_key(i): i for i in old if _item_key(i) is not None}
+        if old_by_key and all(_item_key(i) is not None for i in new):
+            return [conform(i, old_by_key[_item_key(i)], keep_timestamps) if _item_key(i) in old_by_key
+                    else _strip_timestamps(i, keep_timestamps) for i in new]
+        if len(new) == len(old):
+            return [conform(a, b, keep_timestamps) for a, b in zip(new, old)]
+        return [_strip_timestamps(i, keep_timestamps) for i in new]
+    if (isinstance(new, (int, float)) and isinstance(old, (int, float)) and not isinstance(new, bool)
+            and not isinstance(old, bool) and type(new) is not type(old) and new == old):
+        return old
+    return _strip_timestamps(new, keep_timestamps)
+
+
+def _strip_timestamps(node, keep_timestamps: bool):
+    """A record with no previous counterpart: offline, it has no real fetch time to carry."""
+    if not keep_timestamps:
+        return node
+    if isinstance(node, dict):
+        return {k: _strip_timestamps(v, True) for k, v in node.items() if k not in TIMESTAMP_FIELDS}
+    if isinstance(node, list):
+        return [_strip_timestamps(v, True) for v in node]
+    return node
+
+
+def write_board(path: Path, board: dict, previous: str | None, offline: bool) -> None:
+    """Write ``board`` so that unchanged content stays byte-identical to the previous file."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(board, ensure_ascii=False, indent=2), encoding="utf-8")
+    if previous is not None:
+        board = conform(board, json.loads(previous), keep_timestamps=offline)
+    elif offline:
+        board = _strip_timestamps(board, True)
+    text = json.dumps(board, ensure_ascii=False, indent=2)
+    if previous is not None and previous.endswith("\n"):
+        text += "\n"
+    path.write_text(text, encoding="utf-8")
 
 
 def build(entry: ProgramEntry, out_dir: Path = DATA, offline: bool = False, live: bool = False) -> dict[str, Path]:
@@ -163,6 +227,9 @@ def build(entry: ProgramEntry, out_dir: Path = DATA, offline: bool = False, live
     facts = json.loads(facts_file.read_text(encoding="utf-8"))
     tcid, shana = entry.source_ids["tcid"], entry.source_year
     paths = board_paths(entry, out_dir)
+    # The files being replaced: unchanged content is written back byte-identical (key order,
+    # number spelling, and offline the previous fetch timestamps), so a rebuild diffs cleanly.
+    previous = {key: p.read_text(encoding="utf-8") if p.exists() else None for key, p in paths.items()}
 
     program = spec_to_program(spec)
     with tempfile.TemporaryDirectory(prefix=f"degree_build_{entry.id}_") as tmp:
@@ -189,7 +256,7 @@ def build(entry: ProgramEntry, out_dir: Path = DATA, offline: bool = False, live
             bidit = copy_bidit_schedule(board) if "general_requirements" in variant["requirements"] else 0
             n = apply_curation(board, curation, key)
             board["metadata"]["board_data_version"] = compute_board_hash(board)
-            _write(path, board)
+            write_board(path, board, previous[key], offline)
             print(f"[build] {key}: facts patched {changed} records, {summaries} summaries, "
                   f"{bidit} BIDIT records, {n} curation entries")
 
@@ -200,7 +267,7 @@ def build(entry: ProgramEntry, out_dir: Path = DATA, offline: bool = False, live
     early_board = json.loads(early_out.read_text(encoding="utf-8"))
     if apply_curation(early_board, curation, "early_years"):
         early_board["metadata"]["board_data_version"] = compute_board_hash(early_board)
-        _write(early_out, early_board)
+    write_board(early_out, early_board, previous["early_years"], offline)
     index = early.write_early_year_index(boards_dir=paths["early_years"].parent, path=early_index_path(out_dir))
     print(f"[build] early_years -> {early_out}; index -> {index}")
     return {**paths, "early_year_index": index}
@@ -276,7 +343,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("command", choices=["evidence", "build", "check", "refresh"])
     ap.add_argument("--program", required=True, help="registry program id, e.g. mechanical_engineering_2027")
     mode = ap.add_mutually_exclusive_group()
-    mode.add_argument("--live", action="store_true", help="re-fetch every official source")
+    mode.add_argument("--live", action="store_true",
+                      help="re-fetch every official source (build: also rewrites the facts snapshot first)")
     mode.add_argument("--offline", action="store_true", help="cached sources only; never touch the network")
     ap.add_argument("--out-dir", type=Path, default=DATA, help="build: data directory to write boards into")
     ap.add_argument("--apply", action="store_true", help="refresh: also patch the committed boards")
