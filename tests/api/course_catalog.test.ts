@@ -14,8 +14,12 @@
 import {
   extractCatalogCourses,
   loadMechanicalEngineering2027Catalog,
+  loadProgramCatalog,
   MECHANICAL_ENGINEERING_2027_PROGRAM_ID,
 } from '../../api/ai/course_catalog';
+import { PROGRAM_REGISTRY, getProgramEntry, isServableProgramId, type ProgramEntry } from '../../shared/programs';
+import { loadLocalBoardJson } from '../../api/ai/board_loader';
+import { capabilitiesFor } from '../../api/ai/semantic_course_extraction';
 
 describe('extractCatalogCourses', () => {
   test('extracts repository courses with courseId, nameHe and categoryId', () => {
@@ -121,5 +125,63 @@ describe('loadMechanicalEngineering2027Catalog', () => {
 
   test('program id constant matches the committed board filename', () => {
     expect(MECHANICAL_ENGINEERING_2027_PROGRAM_ID).toBe('mechanical_engineering_2027');
+  });
+});
+
+describe('loadProgramCatalog', () => {
+  it('matches the ME 2027 alias for the ME program', () => {
+    expect(loadProgramCatalog('mechanical_engineering_2027')).toEqual(loadMechanicalEngineering2027Catalog());
+  });
+
+  it('loads a non-registry test board from data/boards', () => {
+    const catalog = loadProgramCatalog('test_program_2027');
+    expect(catalog.length).toBeGreaterThan(0);
+    expect(catalog.every((c) => typeof c.courseId === 'string')).toBe(true);
+  });
+});
+
+describe('draft degrees are not served by the loaders', () => {
+  const live = getProgramEntry('mechanical_engineering_2027')!;
+  const draft: ProgramEntry = { ...live, id: 'test_program_2027', base: 'test_program', year: 2027, sourceYear: 2026, status: 'draft', isFamilyDefault: false };
+  const registry = PROGRAM_REGISTRY as ProgramEntry[];
+  beforeEach(() => { registry.push(draft); });
+  afterEach(() => { registry.splice(registry.indexOf(draft), 1); });
+
+  it('returns no catalog and no board for a draft id', () => {
+    expect(loadProgramCatalog('test_program_2027')).toEqual([]);
+    expect(loadLocalBoardJson('test_program_2027')).toBeNull();
+  });
+
+  it('still serves live and unregistered ids', () => {
+    expect(loadProgramCatalog('mechanical_engineering_2027').length).toBeGreaterThan(0);
+    registry.splice(registry.indexOf(draft), 1);
+    expect(loadProgramCatalog('test_program_2027').length).toBeGreaterThan(0);
+    registry.push(draft);
+  });
+});
+
+describe("a draft program's window board is not served by the loaders", () => {
+  const registry = PROGRAM_REGISTRY as ProgramEntry[];
+  const windowId = 'mechanical_engineering_years_1_2_2027';
+  it('follows the owning program status', () => {
+    expect(isServableProgramId(windowId)).toBe(true);
+    expect(loadLocalBoardJson(windowId)).not.toBeNull();
+    const i = registry.findIndex((p) => p.id === 'mechanical_engineering_2027');
+    const original = registry[i];
+    registry[i] = { ...original, status: 'draft' };
+    try {
+      expect(isServableProgramId(windowId)).toBe(false);
+      expect(loadLocalBoardJson(windowId)).toBeNull();
+      expect(loadProgramCatalog(windowId)).toEqual([]);
+    } finally {
+      registry[i] = original;
+    }
+  });
+});
+
+describe('capabilitiesFor', () => {
+  it('reads capabilities from the registry', () => {
+    expect(capabilitiesFor('mechanical_engineering_2027')).toEqual(['mechanical_design']);
+    expect(capabilitiesFor('no_such_program')).toEqual([]);
   });
 });

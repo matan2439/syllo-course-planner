@@ -1,0 +1,122 @@
+{
+  "_note": "Live TAU program-index payload, trimmed: POST https://tochniot.tau.ac.il/graphql getPrograms, variables {search: {safa: '1', freeSearch: 'הנדסה מכנית'}, from: 0, size: 20}, fetched 2026-11-04 (total 98). Kept 7 of the 20 rows (one egedid group row without tcid; 8715 is the ME program) and the fields PROGRAM_INDEX_QUERY requests.",
+  "data": {
+    "getPrograms": {
+      "total": 98,
+      "results": [
+        {
+          "tclongkey": null,
+          "shana": "2026",
+          "teurshana": "תשפ\"ז",
+          "teur": "תואר כפול בהנדסה מכנית ובמדעי כדור הארץ עם הדגש בלימודי סביבה",
+          "title": null,
+          "toar": null,
+          "tcid": null,
+          "egedid": "80",
+          "faculta": null,
+          "betsefer": null,
+          "chug": null,
+          "maslul": null,
+          "pail": "1",
+          "showtochnit": null
+        },
+        {
+          "tclongkey": "054030202001",
+          "shana": "2026",
+          "teurshana": "תשפ\"ז",
+          "teur": "תוכנית לתואר שני בהנדסה מכנית -חטיבת הנדסת חלל במסלול מחקרי",
+          "title": null,
+          "toar": "שני",
+          "tcid": "8648",
+          "egedid": "",
+          "faculta": "0500",
+          "betsefer": "0540",
+          "chug": "0540",
+          "maslul": "2001",
+          "pail": "1",
+          "showtochnit": "1"
+        },
+        {
+          "tclongkey": "054211010000",
+          "shana": "2026",
+          "teurshana": "תשפ\"ז",
+          "teur": "תוכנית חד-חוגית בהנדסה מכנית",
+          "title": null,
+          "toar": "ראשון",
+          "tcid": "8715",
+          "egedid": "",
+          "faculta": "0500",
+          "betsefer": "0540",
+          "chug": "0542",
+          "maslul": "0000",
+          "pail": "1",
+          "showtochnit": "1"
+        },
+        {
+          "tclongkey": "054211010400",
+          "shana": "2026",
+          "teurshana": "תשפ\"ז",
+          "teur": "תוכנית חד-חוגית בהנדסה מכנית עם חטיבה בביומכניקה",
+          "title": null,
+          "toar": "ראשון",
+          "tcid": "8701",
+          "egedid": "",
+          "faculta": "0500",
+          "betsefer": "0540",
+          "chug": "0542",
+          "maslul": "0400",
+          "pail": "1",
+          "showtochnit": "1"
+        },
+        {
+          "tclongkey": "054211010842",
+          "shana": "2026",
+          "teurshana": "תשפ\"ז",
+          "teur": "תוכנית לימודים לתואר ראשון בהנדסה מכנית עם מקבץ במוזיקה וטכנולוגיה",
+          "title": null,
+          "toar": "ראשון",
+          "tcid": "8805",
+          "egedid": "",
+          "faculta": "0500",
+          "betsefer": "0540",
+          "chug": "0542",
+          "maslul": "0842",
+          "pail": "1",
+          "showtochnit": "1"
+        },
+        {
+          "tclongkey": "058111010000",
+          "shana": "2026",
+          "teurshana": "תשפ\"ז",
+          "teur": "תוכנית חד-חוגית במדע והנדסה של חומרים",
+          "title": null,
+          "toar": "ראשון",
+          "tcid": "7843",
+          "egedid": "",
+          "faculta": "0500",
+          "betsefer": "",
+          "chug": "0581",
+          "maslul": "0000",
+          "pail": "1",
+          "showtochnit": "1"
+        },
+        {
+          "tclongkey": "055511010000",
+          "shana": "2026",
+          "teurshana": "תשפ\"ז",
+          "teur": "תוכנית חד-חוגית בהנדסה ביו-רפואית",
+          "title": null,
+          "toar": "ראשון",
+          "tcid": "7623",
+          "egedid": "",
+          "faculta": "0500",
+          "betsefer": "0553",
+          "chug": "0555",
+          "maslul": "0000",
+          "pail": "1",
+          "showtochnit": "1"
+        }
+      ]
+    }
+  }
+}

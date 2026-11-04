@@ -1,0 +1,74 @@
+{
+  "_note": "Single degree registry read by shared/programs.ts and app/degrees/registry.py. sourceYear is the TAU shana code (catalog year - 1). sourceIds.tcid for 2025 and the biomedical track is copied from 2027 and unverified.",
+  "programs": [
+    {
+      "id": "mechanical_engineering_2027",
+      "institution": "tau",
+      "base": "mechanical_engineering",
+      "year": 2027,
+      "sourceYear": 2026,
+      "nameHe": "הנדסה מכנית",
+      "nameEn": "Mechanical Engineering",
+      "track": null,
+      "familyId": "mechanical_engineering",
+      "familyDescriptionHe": "תוכנית חד-חוגית בהנדסה מכנית",
+      "descriptionHe": "קורסי בחירה וליבה לפי קובץ תשפ״ז — המקור העדכני ביותר",
+      "yearLabelHe": "2027 (תשפ״ז)",
+      "boardJsonFile": "mechanical_semester_board_2027.json",
+      "sourceIds": {
+        "tcid": "8715"
+      },
+      "status": "live",
+      "isFamilyDefault": true,
+      "capabilities": [
+        "mechanical_design"
+      ]
+    },
+    {
+      "id": "mechanical_engineering_2025",
+      "institution": "tau",
+      "base": "mechanical_engineering",
+      "year": 2025,
+      "sourceYear": 2024,
+      "nameHe": "הנדסה מכנית",
+      "nameEn": "Mechanical Engineering",
+      "track": null,
+      "familyId": "mechanical_engineering",
+      "familyDescriptionHe": "תוכנית חד-חוגית בהנדסה מכנית",
+      "descriptionHe": "תכנון קורסי חובה ובחירה בהנדסה מכנית",
+      "yearLabelHe": "2025",
+      "boardJsonFile": "mechanical_semester_board.json",
+      "sourceIds": {
+        "tcid": "8715"
+      },
+      "status": "live",
+      "isFamilyDefault": false,
+      "capabilities": [
+        "mechanical_design"
+      ]
+    },
+    {
+      "id": "mechanical_engineering_biomedical_track_2025",
+      "institution": "tau",
+      "base": "mechanical_engineering_biomedical_track",
+      "year": 2025,
+      "sourceYear": 2024,
+      "nameHe": "הנדסה מכנית",
+      "nameEn": "Mechanical Engineering — Biomedical Engineering Track",
+      "track": "מגמה בהנדסה ביו-רפואית",
+      "familyId": "mechanical_engineering_biomedical",
+      "familyDescriptionHe": "תכנון קורסים להנדסה מכנית עם דגש ביו-רפואי",
+      "descriptionHe": "תכנון קורסים להנדסה מכנית עם דגש ביו-רפואי",
+      "yearLabelHe": "2025",
+      "boardJsonFile": "mechanical_semester_board.json",
+      "sourceIds": {
+        "tcid": "8715"
+      },
+      "status": "live",
+      "isFamilyDefault": true,
+      "capabilities": [
+        "mechanical_design"
+      ]
+    }
+  ]
+}

@@ -143,8 +143,13 @@ def _get_unified_categories(program_requirements: dict[str, Any]) -> list[dict[s
         return []
 
     # --- Classic format -------------------------------------------------------
+    # (plus the general requirement, which both formats keep under its own key)
     if "elective_categories" in reqs:
-        return list(reqs["elective_categories"])
+        cats = list(reqs["elective_categories"])
+        general = reqs.get("general_requirements")
+        if isinstance(general, dict) and general.get("category_id") not in {c.get("category_id") for c in cats}:
+            cats.append(dict(general))
+        return cats
 
     # --- PDF format -----------------------------------------------------------
     cats: list[dict[str, Any]] = []

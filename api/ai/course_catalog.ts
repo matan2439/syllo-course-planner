@@ -76,8 +76,11 @@ export function extractCatalogCourses(board: any): CatalogCourse[] {
   return [...byId.values()].sort((a, b) => a.courseId.localeCompare(b.courseId));
 }
 
-/** Load the full TAU Mechanical Engineering 2027 catalog universe from the committed local board. */
-export function loadMechanicalEngineering2027Catalog(): CatalogCourse[] {
-  const board = loadLocalBoardJson(MECHANICAL_ENGINEERING_2027_PROGRAM_ID);
-  return extractCatalogCourses(board);
+/** Load a program's catalog universe from its committed local board. */
+export function loadProgramCatalog(programId: string): CatalogCourse[] {
+  return extractCatalogCourses(loadLocalBoardJson(programId));
 }
+
+/** Load the full TAU Mechanical Engineering 2027 catalog universe from the committed local board. */
+export const loadMechanicalEngineering2027Catalog = (): CatalogCourse[] =>
+  loadProgramCatalog(MECHANICAL_ENGINEERING_2027_PROGRAM_ID);

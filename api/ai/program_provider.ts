@@ -15,6 +15,7 @@ import { parseProgramVersionId, queryBoardJson, type ParsedProgramId } from '../
 import { loadLocalBoardJson } from './board_loader';
 import { buildConstraintModel, type BuildModelOptions } from './planner_model';
 import type { ConstraintModel } from './planner_types';
+import { isServableProgramId } from '../../shared/programs';
 import { institutionForProgram, type Institution } from '../../shared/institutions';
 
 export interface ProgramProvider {
@@ -30,6 +31,7 @@ export class TauProgramProvider implements ProgramProvider {
   }
 
   async loadBoard(programId: string, dbUrl?: string): Promise<Record<string, unknown> | null> {
+    if (!isServableProgramId(programId)) return null; // drafts are never served
     let board: Record<string, unknown> | null = null;
     if (dbUrl) {
       const pv = this.parseProgramId(programId);

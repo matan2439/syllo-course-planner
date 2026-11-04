@@ -38,9 +38,11 @@ def enrich_board(
     year: int        = _YEAR,
     force_refresh: bool = False,
     dry_run: bool    = False,
+    offline: bool    = False,
 ) -> dict:
     """Fetch and parse course-detail links for all repo courses.
 
+    ``offline`` uses cached pages only (a course with no cached page is skipped).
     Returns a dict: {course_id: {new_fields}} for courses that were enriched.
     """
     board = json.loads(board_path.read_text(encoding="utf-8"))
@@ -66,6 +68,9 @@ def enrich_board(
         digits     = "".join(c for c in cid if c.isdigit())
         cache_path = cache_dir / f"course_{digits}_{year}.html"
 
+        if offline and not cache_path.exists():
+            print(f"[skip] {cid}: not cached (offline)")
+            continue
         try:
             html  = fetch_url(detail_url, cache_path, force_refresh)
             links = parse_course_details_links(html)
@@ -105,6 +110,9 @@ def enrich_board(
                 continue
             digits     = "".join(c for c in cid if c.isdigit())
             cache_path = cache_dir / f"course_{digits}_{year}.html"
+            if offline and not cache_path.exists():
+                print(f"[skip placed] {cid}: not cached (offline)")
+                continue
             try:
                 html  = fetch_url(detail_url, cache_path, force_refresh)
                 links = parse_course_details_links(html)

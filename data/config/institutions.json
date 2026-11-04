@@ -20,8 +20,11 @@
       "sources": {
         "catalog": "https://tochniot.tau.ac.il",
         "schedule": "http://www.bid-it.appspot.com/ajax/chosen-courses-info/",
-        "grades": "data/config/grade_sources.json"
-      }
+        "grades": "data/config/grade_sources.json",
+        "adapters": ["tau_tochniot", "tau_timetable", "tau_ims"]
+      },
+      "catalogYearPolicy": "start_year",
+      "_needsVerification": true
     }
   ]
 }

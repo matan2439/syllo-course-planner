@@ -1,0 +1,801 @@
+{
+ "data": {
+  "results": {
+   "body": [
+    {
+     "teurshana": "תשפ\"ז (2026-2027)",
+     "tclongkey": "054211010000",
+     "prev_newsletters": [
+      {
+       "shana": "תשפ\"ו - 2025",
+       "url": "https://www.tau.ac.il/tochniot/pdf/2025/heb/054211010000.pdf"
+      },
+      {
+       "shana": "תשפ\"ה - 2024",
+       "url": "https://www.tau.ac.il/tochniot/pdf/2024/heb/054211010000.pdf"
+      },
+      {
+       "shana": "תשפ\"ד - 2023",
+       "url": "https://www.tau.ac.il/tochniot/pdf/2023/heb/054211010000.pdf"
+      },
+      {
+       "shana": "תשפ\"ג - 2022",
+       "url": "https://www.tau.ac.il/tochniot/pdf/2022/heb/054211010000.pdf"
+      },
+      {
+       "shana": "תשפ\"ב - 2021",
+       "url": "https://engineering.tau.ac.il/yedion/2021-22"
+      },
+      {
+       "shana": "תשפ\"א - 2020",
+       "url": "https://engineering.tau.ac.il/yedion/2020-21"
+      },
+      {
+       "shana": "תש\"פ - 2019",
+       "url": "https://engineering.tau.ac.il/yedion/2019-20"
+      },
+      {
+       "shana": "תשע\"ט - 2018",
+       "url": "https://engineering.tau.ac.il/yedion/2018-19"
+      },
+      {
+       "shana": "תשע\"ח - 2017",
+       "url": "https://engineering.tau.ac.il/yedion/2017-18"
+      },
+      {
+       "shana": "תשע\"ז - 2016",
+       "url": "https://engineering.tau.ac.il/yedion/2016-17"
+      }
+     ],
+     "terms": [
+      {
+       "Title": "תקנון הלימודים לתואר ראשון",
+       "url": "https://engineering.tau.ac.il/sites/engineering.tau.ac.il/files/media_server/Engineering/yedion/Terms_BA.pdf"
+      }
+     ],
+     "teurtochnit": "תוכנית חד-חוגית בהנדסה מכנית",
+     "teurtoar": "B.Sc. בהנדסה מכנית",
+     "disclaimerletoar": "",
+     "hesbernosaf": "<p dir=\"rtl\"><strong>זכאות לתואר</strong></p><p dir=\"rtl\">על מנת להיות זכאי לתואר, נדרש.ת&nbsp;התלמיד.ה לצבור לפחות 184 שעות לימודי מגמה, מתוכן&nbsp;6 שעות קורסי &quot;שאר&nbsp;רוח&quot; - קורסים הומניים.</p><p dir=\"rtl\">בוגר.ת התוכנית יקבלו:</p><p dir=\"rtl\"><strong>תואר ראשון&nbsp;</strong><strong>(B.Sc.)</strong><strong>&nbsp;בהנדסה מכנית</strong></p>",
+     "sugshaot": "01",
+     "teurshaot": "ש\"ס",
+     "showmaarechet": "1",
+     "pail": "1",
+     "rama": [
+      {
+       "ramaid": "1",
+       "teurrama": "שנה א",
+       "ramanum": "30",
+       "avid": "",
+       "zitut_tochnit": "",
+       "zitut_siduri": "",
+       "meshulevet_tochnit": "",
+       "meshulevet_siduri": "",
+       "tavnit": "51",
+       "hesber": "<br />&nbsp;",
+       "shaot": "סה\"כ 50 ש\"ס",
+       "mishkal": "סה\"כ 46 ש\"ס משוקלל",
+       "indshaot": "1",
+       "indmishkal": "",
+       "indofenhoraa": "1",
+       "indmishkalbetziun": "1",
+       "indtziunmaavar": "0",
+       "indmisshavuot": "0",
+       "indshiyuch": "0",
+       "nokursim": "",
+       "miyun": "1",
+       "rama": [
+        {
+         "ramaid": "7",
+         "teurrama": "סמסטר א",
+         "ramanum": "40",
+         "avid": "1",
+         "zitut_tochnit": "",
+         "zitut_siduri": "",
+         "meshulevet_tochnit": "",
+         "meshulevet_siduri": "",
+         "tavnit": "51",
+         "hesber": "",
+         "shaot": "סה\"כ 25 ש\"ס",
+         "mishkal": "סה\"כ 21.50 ש\"ס משוקלל",
+         "indshaot": "1",
+         "indmishkal": "",
+         "indofenhoraa": "1",
+         "indmishkalbetziun": "1",
+         "indtziunmaavar": "0",
+         "indmisshavuot": "0",
+         "indshiyuch": "0",
+         "nokursim": "",
+         "miyun": "1",
+         "kurs": [
+          {
+           "kursid": "05421510",
+           "kursshow": "0542-1510",
+           "teurkurs": "גרפיקה הנדסית",
+           "kursavid": "7",
+           "orginaltcid": "8715",
+           "shaotuni": "5",
+           "mishkal": "4",
+           "tziunmaavar": "",
+           "shiyuch": "",
+           "ofenhoraa1": "שיעור ותרגיל",
+           "shaot1": "3",
+           "ofenhoraa2": "מעבדה",
+           "shaot2": "2",
+           "ofenhoraa3": "",
+           "shaot3": "",
+           "misgeret": "0542101",
+           "drishotkedem": "0",
+           "drishotmakbilot": "0",
+           "kursindmisshavuot": "0",
+           "anglit": "",
+           "mevutal": "1",
+           "shakul": "",
+           "hidekurs": "0",
+           "idkunkurs": [
+            {
+             "misheara": "120",
+             "teuridkun": "קורס זהה לקורס מספר 0509.1510",
+             "taarichidkun": "08/06/2026 13:43:27"
+            }
+           ]
+          },
+          {
+           "kursid": "05091624",
+           "kursshow": "0509-1624",
+           "teurkurs": "אלגברה ליניארית להנדסה מכנית",
+           "kursavid": "7",
+           "orginaltcid": "8715",
+           "shaotuni": "7",
+           "mishkal": "6.5",
+           "tziunmaavar": "",
+           "shiyuch": "",
+           "ofenhoraa1": "שיעור",
+           "shaot1": "5",
+           "ofenhoraa2": "תרגיל",
+           "shaot2": "2",
+           "ofenhoraa3": "",
+           "shaot3": "",
+           "misgeret": "0542101",
+           "drishotkedem": "0",
+           "drishotmakbilot": "0",
+           "kursindmisshavuot": "0",
+           "anglit": "",
+           "mevutal": "0",
+           "shakul": "",
+           "hidekurs": "",
+           "hearakurs": [
+            {
+             "teurhearakurs": "&nbsp;הקורס נלמד בשפה האנגלית"
+            }
+           ]
+          },
+          {
+           "kursid": "05091646",
+           "kursshow": "0509-1646",
+           "teurkurs": "חשבון דיפרנציאלי ואינטגרלי 1ב' להנדסה מכנית ומדע והנדסה של חומרים",
+           "kursavid": "7",
+           "orginaltcid": "8715",
+           "shaotuni": "6",
+           "mishkal": "5.5",
+           "tziunmaavar": "",
+           "shiyuch": "",
+           "ofenhoraa1": "שיעור",
+           "shaot1": "4",
+           "ofenhoraa2": "תרגיל",
+           "shaot2": "2",
+           "ofenhoraa3": "",
+           "shaot3": "",
+           "misgeret": "0542101",
+           "drishotkedem": "0",
+           "drishotmakbilot": "0",
+           "kursindmisshavuot": "0",
+           "anglit": "",
+           "mevutal": "0",
+           "shakul": "",
+           "hidekurs": "",
+           "idkunkurs": [
+            {
+             "misheara": "120",
+             "teuridkun": "קורס זהה לקורס מספר 0509.1510",
+             "taarichidkun": "08/06/2026 13:43:27"
+            }
+           ]
+          }
+         ]
+        },
+        {
+         "ramaid": "8",
+         "teurrama": "סמסטר ב",
+         "ramanum": "40",
+         "avid": "1",
+         "zitut_tochnit": "",
+         "zitut_siduri": "",
+         "meshulevet_tochnit": "",
+         "meshulevet_siduri": "",
+         "tavnit": "51",
+         "hesber": "",
+         "shaot": "סה\"כ 25 ש\"ס",
+         "mishkal": "סה\"כ 24.50 ש\"ס משוקלל",
+         "indshaot": "1",
+         "indmishkal": "",
+         "indofenhoraa": "1",
+         "indmishkalbetziun": "1",
+         "indtziunmaavar": "0",
+         "indmisshavuot": "0",
+         "indshiyuch": "0",
+         "nokursim": "",
+         "miyun": "2",
+         "kurs": [
+          {
+           "kursid": "05091645",
+           "kursshow": "0509-1645",
+           "teurkurs": "משוואות דיפרנציאליות רגילות להנדסה מכנית",
+           "kursavid": "8",
+           "orginaltcid": "8715",
+           "shaotuni": "4",
+           "mishkal": "4",
+           "tziunmaavar": "",
+           "shiyuch": "",
+           "ofenhoraa1": "שיעור",
+           "shaot1": "3",
+           "ofenhoraa2": "תרגיל",
+           "shaot2": "1",
+           "ofenhoraa3": "",
+           "shaot3": "",
+           "misgeret": "0542101",
+           "drishotkedem": "1",
+           "drishotmakbilot": "1",
+           "kursindmisshavuot": "0",
+           "anglit": "",
+           "mevutal": "0",
+           "shakul": "",
+           "hidekurs": ""
+          },
+          {
+           "kursid": "05091647",
+           "kursshow": "0509-1647",
+           "teurkurs": "חשבון  דיפרנציאלי ואינטגרלי 2ב' למכנית",
+           "kursavid": "8",
+           "orginaltcid": "8715",
+           "shaotuni": "6",
+           "mishkal": "5.5",
+           "tziunmaavar": "",
+           "shiyuch": "",
+           "ofenhoraa1": "שיעור",
+           "shaot1": "4",
+           "ofenhoraa2": "תרגיל",
+           "shaot2": "2",
+           "ofenhoraa3": "",
+           "shaot3": "",
+           "misgeret": "0542101",
+           "drishotkedem": "1",
+           "drishotmakbilot": "0",
+           "kursindmisshavuot": "0",
+           "anglit": "",
+           "mevutal": "0",
+           "shakul": "",
+           "hidekurs": ""
+          },
+          {
+           "kursid": "05091834",
+           "kursshow": "0509-1834",
+           "teurkurs": "מעבדה בפיזיקה",
+           "kursavid": "8",
+           "orginaltcid": "8715",
+           "shaotuni": "2",
+           "mishkal": "2",
+           "tziunmaavar": "",
+           "shiyuch": "",
+           "ofenhoraa1": "מעבדה",
+           "shaot1": "2",
+           "ofenhoraa2": "",
+           "shaot2": "",
+           "ofenhoraa3": "",
+           "shaot3": "",
+           "misgeret": "0542101",
+           "drishotkedem": "0",
+           "drishotmakbilot": "0",
+           "kursindmisshavuot": "0",
+           "anglit": "",
+           "mevutal": "0",
+           "shakul": "",
+           "hidekurs": ""
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "ramaid": "23",
+       "teurrama": "שנים ג'+ד' קורסי ליבה/בחירה/מעבדות מתקדמות",
+       "ramanum": "30",
+       "avid": "",
+       "zitut_tochnit": "",
+       "zitut_siduri": "",
+       "meshulevet_tochnit": "",
+       "meshulevet_siduri": "",
+       "tavnit": "51",
+       "hesber": "<p dir=\"RTL\">בנוסף לקורסי החובה המשותפים לכל התלמידות והתלמידים, הלימודים בשנים ג&#39; ו-ד&#39; כוללים גם קורסי ליבה והתמחות, שניתן לבחור לפי על פי תחומי עניין אישיים על מנת להשלים את מכסת השעות לתואר (184&nbsp;שעות החל משנת הלימודים תשפ&quot;ו, 185 שעות למי שהתחילו לפני). כאשר:</p><p dir=\"RTL\"><strong>-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </strong>יש <strong><u>ללמוד לפחות 6 קורסי ליבה ומתוכם לפחות קורס אחד מכל תת-קבוצה (זורמים, מוצקים ומערכות)</u></strong></p><p dir=\"RTL\"><strong>-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </strong><strong><u>יש ללמוד לפחות מעבדה מתקדמת אחת</u></strong></p><p dir=\"RTL\"><strong>-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </strong>על מנת להשלים את מכסת השעות ניתן<strong> <u>לבחור מכל רשימת קורסי הליבה וההתמחות ללא הגבלה</u>. כדי לעזור בבחירת לפי תחומי העניין האישיים של התלמידים והתלמידות, הקורסים מסווגים לתחומים מקצועיים שונים. כמו כן, במקרים מיוחדים ו</strong><strong>באישורי המרצה וראש המגמה</strong><strong> ניתן לבחור </strong><strong>קורסים מתקדמים ממחלקות אחרות בפקולטה או מרשימת הקורסים ללימודי תואר שני.</strong></p><p dir=\"RTL\"><strong>בבחירת הקורסים יש להתחשב בדרישות קדם לכל קורס.</strong></p>",
+       "shaot": "סה\"כ 29 ש\"ס",
+       "mishkal": "סה\"כ 29 ש\"ס משוקלל",
+       "indshaot": "1",
+       "indmishkal": "",
+       "indofenhoraa": "1",
+       "indmishkalbetziun": "1",
+       "indtziunmaavar": "0",
+       "indmisshavuot": "0",
+       "indshiyuch": "0",
+       "nokursim": "",
+       "miyun": "5",
+       "rama": [
+        {
+         "ramaid": "24",
+         "teurrama": "זורמים",
+         "ramanum": "40",
+         "avid": "23",
+         "zitut_tochnit": "",
+         "zitut_siduri": "",
+         "meshulevet_tochnit": "",
+         "meshulevet_siduri": "",
+         "tavnit": "51",
+         "hesber": "",
+         "shaot": "סה\"כ 4-24 ש\"ס",
+         "mishkal": "סה\"כ 24-4 ש\"ס משוקלל",
+         "indshaot": "1",
+         "indmishkal": "",
+         "indofenhoraa": "1",
+         "indmishkalbetziun": "1",
+         "indtziunmaavar": "0",
+         "indmisshavuot": "0",
+         "indshiyuch": "0",
+         "nokursim": "",
+         "miyun": "1",
+         "kurs": [
+          {
+           "kursid": "05424120",
+           "kursshow": "0542-4120",
+           "teurkurs": "תרמודינמיקה (2)",
+           "kursavid": "24",
+           "orginaltcid": "8715",
+           "shaotuni": "4",
+           "mishkal": "4",
+           "tziunmaavar": "",
+           "shiyuch": "",
+           "ofenhoraa1": "שיעור ותרגיל",
+           "shaot1": "4",
+           "ofenhoraa2": "",
+           "shaot2": "",
+           "ofenhoraa3": "",
+           "shaot3": "",
+           "misgeret": "0542310",
+           "drishotkedem": "1",
+           "drishotmakbilot": "0",
+           "kursindmisshavuot": "0",
+           "anglit": "",
+           "mevutal": "0",
+           "shakul": "",
+           "hidekurs": "",
+           "hearakurs": [
+            {
+             "teurhearakurs": "נלמד בסמסטר 5/7&nbsp;<br />קורס ליבה זורמים"
+            }
+           ]
+          },
+          {
+           "kursid": "05424123",
+           "kursshow": "0542-4123",
+           "teurkurs": "תהליכי מעבר חום וחומר",
+           "kursavid": "24",
+           "orginaltcid": "8715",
+           "shaotuni": "4",
+           "mishkal": "4",
+           "tziunmaavar": "",
+           "shiyuch": "",
+           "ofenhoraa1": "שיעור",
+           "shaot1": "3",
+           "ofenhoraa2": "תרגיל",
+           "shaot2": "1",
+           "ofenhoraa3": "",
+           "shaot3": "",
+           "misgeret": "0542310",
+           "drishotkedem": "1",
+           "drishotmakbilot": "0",
+           "kursindmisshavuot": "0",
+           "anglit": "",
+           "mevutal": "0",
+           "shakul": "",
+           "hidekurs": "",
+           "hearakurs": [
+            {
+             "teurhearakurs": "&nbsp;נלמד בסמסטר 6/8<br />קורס ליבה זורמים"
+            }
+           ]
+          },
+          {
+           "kursid": "05424320",
+           "kursshow": "0542-4320",
+           "teurkurs": "מכניקת הזורמים (2)",
+           "kursavid": "24",
+           "orginaltcid": "8715",
+           "shaotuni": "4",
+           "mishkal": "4",
+           "tziunmaavar": "",
+           "shiyuch": "",
+           "ofenhoraa1": "שיעור",
+           "shaot1": "3",
+           "ofenhoraa2": "תרגיל",
+           "shaot2": "1",
+           "ofenhoraa3": "",
+           "shaot3": "",
+           "misgeret": "0542310",
+           "drishotkedem": "1",
+           "drishotmakbilot": "0",
+           "kursindmisshavuot": "0",
+           "anglit": "",
+           "mevutal": "0",
+           "shakul": "",
+           "hidekurs": "",
+           "hearakurs": [
+            {
+             "teurhearakurs": "&nbsp;נלמד סמסטר 6/8"
+            }
+           ]
+          }
+         ]
+        },
+        {
+         "ramaid": "25",
+         "teurrama": "מוצקים",
+         "ramanum": "40",
+         "avid": "23",
+         "zitut_tochnit": "",
+         "zitut_siduri": "",
+         "meshulevet_tochnit": "",
+         "meshulevet_siduri": "",
+         "tavnit": "51",
+         "hesber": "",
+         "shaot": "סה\"כ 4-24 ש\"ס",
+         "mishkal": "סה\"כ 24-4 ש\"ס משוקלל",
+         "indshaot": "1",
+         "indmishkal": "",
+         "indofenhoraa": "1",
+         "indmishkalbetziun": "1",
+         "indtziunmaavar": "0",
+         "indmisshavuot": "0",
+         "indshiyuch": "0",
+         "nokursim": "",
+         "miyun": "2",
+         "kurs": [
+          {
+           "kursid": "05424220",
+           "kursshow": "0542-4220",
+           "teurkurs": "תורת התנודות",
+           "kursavid": "25",
+           "orginaltcid": "8715",
+           "shaotuni": "4",
+           "mishkal": "4",
+           "tziunmaavar": "",
+           "shiyuch": "",
+           "ofenhoraa1": "שיעור ותרגיל",
+           "shaot1": "4",
+           "ofenhoraa2": "",
+           "shaot2": "",
+           "ofenhoraa3": "",
+           "shaot3": "",
+           "misgeret": "0542310",
+           "drishotkedem": "1",
+           "drishotmakbilot": "0",
+           "kursindmisshavuot": "0",
+           "anglit": "",
+           "mevutal": "0",
+           "shakul": "",
+           "hidekurs": "",
+           "hearakurs": [
+            {
+             "teurhearakurs": "&nbsp;הקורס נלמד באנגלית, נלמד בסמסטר 5/7<br />קורס ליבה במוצקים."
+            }
+           ]
+          },
+          {
+           "kursid": "05424221",
+           "kursshow": "0542-4221",
+           "teurkurs": "מבוא לתורת האלסטיות",
+           "kursavid": "25",
+           "orginaltcid": "8715",
+           "shaotuni": "4",
+           "mishkal": "4",
+           "tziunmaavar": "",
+           "shiyuch": "",
+           "ofenhoraa1": "שיעור",
+           "shaot1": "3",
+           "ofenhoraa2": "תרגיל",
+           "shaot2": "1",
+           "ofenhoraa3": "",
+           "shaot3": "",
+           "misgeret": "0542310",
+           "drishotkedem": "1",
+           "drishotmakbilot": "0",
+           "kursindmisshavuot": "0",
+           "anglit": "",
+           "mevutal": "0",
+           "shakul": "",
+           "hidekurs": "",
+           "hearakurs": [
+            {
+             "teurhearakurs": "&nbsp;נלמד בסמסטר 6/8<br />קורס ליבה במוצקים"
+            }
+           ]
+          },
+          {
+           "kursid": "05424223",
+           "kursshow": "0542-4223",
+           "teurkurs": "מבוא לאלמנטים סופיים",
+           "kursavid": "25",
+           "orginaltcid": "8715",
+           "shaotuni": "4",
+           "mishkal": "3.5",
+           "tziunmaavar": "",
+           "shiyuch": "",
+           "ofenhoraa1": "שיעור",
+           "shaot1": "2",
+           "ofenhoraa2": "תרגיל",
+           "shaot2": "2",
+           "ofenhoraa3": "",
+           "shaot3": "",
+           "misgeret": "0542310",
+           "drishotkedem": "1",
+           "drishotmakbilot": "0",
+           "kursindmisshavuot": "0",
+           "anglit": "",
+           "mevutal": "0",
+           "shakul": "",
+           "hidekurs": "",
+           "hearakurs": [
+            {
+             "teurhearakurs": "&nbsp;נלמד בסמסטר 5/7<br />קורס ליבה במוצקים&nbsp;"
+            }
+           ]
+          }
+         ]
+        },
+        {
+         "ramaid": "26",
+         "teurrama": "מערכות",
+         "ramanum": "40",
+         "avid": "23",
+         "zitut_tochnit": "",
+         "zitut_siduri": "",
+         "meshulevet_tochnit": "",
+         "meshulevet_siduri": "",
+         "tavnit": "51",
+         "hesber": "",
+         "shaot": "סה\"כ 4-24 ש\"ס",
+         "mishkal": "סה\"כ 24-4 ש\"ס משוקלל",
+         "indshaot": "1",
+         "indmishkal": "",
+         "indofenhoraa": "1",
+         "indmishkalbetziun": "1",
+         "indtziunmaavar": "0",
+         "indmisshavuot": "0",
+         "indshiyuch": "0",
+         "nokursim": "",
+         "miyun": "3",
+         "kurs": [
+          {
+           "kursid": "05424420",
+           "kursshow": "0542-4420",
+           "teurkurs": "תורת המכונות",
+           "kursavid": "26",
+           "orginaltcid": "8715",
+           "shaotuni": "4",
+           "mishkal": "4",
+           "tziunmaavar": "",
+           "shiyuch": "",
+           "ofenhoraa1": "שיעור ותרגיל",
+           "shaot1": "4",
+           "ofenhoraa2": "",
+           "shaot2": "",
+           "ofenhoraa3": "",
+           "shaot3": "",
+           "misgeret": "0542310",
+           "drishotkedem": "1",
+           "drishotmakbilot": "0",
+           "kursindmisshavuot": "0",
+           "anglit": "",
+           "mevutal": "0",
+           "shakul": "",
+           "hidekurs": "",
+           "hearakurs": [
+            {
+             "teurhearakurs": "&nbsp;נלמד בסמסטר 5/7"
+            }
+           ]
+          },
+          {
+           "kursid": "05424422",
+           "kursshow": "0542-4422",
+           "teurkurs": "תכן הנדסי: מבוא ושיטות",
+           "kursavid": "26",
+           "orginaltcid": "8715",
+           "shaotuni": "4",
+           "mishkal": "4",
+           "tziunmaavar": "",
+           "shiyuch": "",
+           "ofenhoraa1": "שיעור ותרגיל",
+           "shaot1": "4",
+           "ofenhoraa2": "",
+           "shaot2": "",
+           "ofenhoraa3": "",
+           "shaot3": "",
+           "misgeret": "0542310",
+           "drishotkedem": "1",
+           "drishotmakbilot": "0",
+           "kursindmisshavuot": "0",
+           "anglit": "",
+           "mevutal": "0",
+           "shakul": "",
+           "hidekurs": "",
+           "hearakurs": [
+            {
+             "teurhearakurs": "נלמד בסמסטר 5/7<br />קורס ליבה במערכות"
+            }
+           ]
+          },
+          {
+           "kursid": "05424455",
+           "kursshow": "0542-4455",
+           "teurkurs": "בינה חישובית",
+           "kursavid": "26",
+           "orginaltcid": "8715",
+           "shaotuni": "4",
+           "mishkal": "4",
+           "tziunmaavar": "",
+           "shiyuch": "",
+           "ofenhoraa1": "שיעור",
+           "shaot1": "3",
+           "ofenhoraa2": "תרגיל",
+           "shaot2": "1",
+           "ofenhoraa3": "",
+           "shaot3": "",
+           "misgeret": "0542310",
+           "drishotkedem": "1",
+           "drishotmakbilot": "0",
+           "kursindmisshavuot": "0",
+           "anglit": "",
+           "mevutal": "0",
+           "shakul": "",
+           "hidekurs": "",
+           "hearakurs": [
+            {
+             "teurhearakurs": "נלמד בסמסטר 6/8<br />קורס ליבה במערכות"
+            }
+           ]
+          }
+         ]
+        },
+        {
+         "ramaid": "27",
+         "teurrama": "מעבדות מתקדמות",
+         "ramanum": "40",
+         "avid": "23",
+         "zitut_tochnit": "",
+         "zitut_siduri": "",
+         "meshulevet_tochnit": "",
+         "meshulevet_siduri": "",
+         "tavnit": "51",
+         "hesber": "",
+         "shaot": "סה\"כ 1-5 ש\"ס",
+         "mishkal": "סה\"כ 0.50-3.5 ש\"ס משוקלל",
+         "indshaot": "1",
+         "indmishkal": "",
+         "indofenhoraa": "1",
+         "indmishkalbetziun": "1",
+         "indtziunmaavar": "0",
+         "indmisshavuot": "0",
+         "indshiyuch": "0",
+         "nokursim": "",
+         "miyun": "4",
+         "kurs": [
+          {
+           "kursid": "05424624",
+           "kursshow": "0542-4624",
+           "teurkurs": "מעבדה ברובוטיקה ובקרה של מערכות",
+           "kursavid": "27",
+           "orginaltcid": "8715",
+           "shaotuni": "3",
+           "mishkal": "2.5",
+           "tziunmaavar": "",
+           "shiyuch": "",
+           "ofenhoraa1": "מעבדה",
+           "shaot1": "3",
+           "ofenhoraa2": "",
+           "shaot2": "",
+           "ofenhoraa3": "",
+           "shaot3": "",
+           "misgeret": "0542310",
+           "drishotkedem": "1",
+           "drishotmakbilot": "0",
+           "kursindmisshavuot": "0",
+           "anglit": "",
+           "mevutal": "0",
+           "shakul": "",
+           "hidekurs": "",
+           "hearakurs": [
+            {
+             "teurhearakurs": "&nbsp;נלמד בסמסטר 8<br />קורס מעבדה מתקדמת"
+            }
+           ]
+          },
+          {
+           "kursid": "05814131",
+           "kursshow": "0581-4131",
+           "teurkurs": "מעבדה בחומרים הנדסיים",
+           "kursavid": "27",
+           "orginaltcid": "8715",
+           "shaotuni": "1",
+           "mishkal": "0.5",
+           "tziunmaavar": "",
+           "shiyuch": "",
+           "ofenhoraa1": "מעבדה",
+           "shaot1": "1",
+           "ofenhoraa2": "",
+           "shaot2": "",
+           "ofenhoraa3": "",
+           "shaot3": "",
+           "misgeret": "0542310",
+           "drishotkedem": "1",
+           "drishotmakbilot": "0",
+           "kursindmisshavuot": "0",
+           "anglit": "",
+           "mevutal": "0",
+           "shakul": "",
+           "hidekurs": "",
+           "hearakurs": [
+            {
+             "teurhearakurs": "נלמד בסמסטר 7&nbsp;<br />מעבדה מתקדמת&nbsp;"
+            }
+           ]
+          },
+          {
+           "kursid": "05424093",
+           "kursshow": "0542-4093",
+           "teurkurs": "מעבדה במערכות אנרגיה",
+           "kursavid": "27",
+           "orginaltcid": "8715",
+           "shaotuni": "1",
+           "mishkal": "0.5",
+           "tziunmaavar": "",
+           "shiyuch": "",
+           "ofenhoraa1": "מעבדה",
+           "shaot1": "1",
+           "ofenhoraa2": "",
+           "shaot2": "",
+           "ofenhoraa3": "",
+           "shaot3": "",
+           "misgeret": "0542310",
+           "drishotkedem": "1",
+           "drishotmakbilot": "0",
+           "kursindmisshavuot": "0",
+           "anglit": "",
+           "mevutal": "0",
+           "shakul": "",
+           "hidekurs": "",
+           "idkunkurs": [
+            {
+             "misheara": "126",
+             "teuridkun": "לא נלמד בתשפ\"ז קורס מעבדה מתקדמת",
+             "taarichidkun": "15/06/2026 07:52:32"
+            }
+           ]
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  }
+ }
+}

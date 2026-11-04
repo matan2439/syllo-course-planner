@@ -1,0 +1,4246 @@
+{
+ "data": {
+  "results": {
+   "body": [
+    {
+     "teurshana": "תשפ\"ז",
+     "tclongkey": "054211010000",
+     "teurtochnit": "תוכנית חד-חוגית בהנדסה מכנית",
+     "teurtoar": "B.Sc. בהנדסה מכנית",
+     "disclaimerletoar": "",
+     "showtree": "1",
+     "indmanot": "1",
+     "pirsum": "1",
+     "menu": {
+      "sem": [
+       {
+        "semid": "20260",
+        "teursem": "שנתי"
+       },
+       {
+        "semid": "20261",
+        "teursem": "א"
+       },
+       {
+        "semid": "20262",
+        "teursem": "ב"
+       }
+      ],
+      "manot": [
+       {
+        "semmana": [
+         {
+          "semid": "20260",
+          "teursemmana": "שנתי",
+          "branchid": "1",
+          "manotsem": {
+           "mana": [
+            {
+             "manaid": "05420351-01",
+             "branchid": "2",
+             "teurmana": "ביומכניקה שנתי שנה ג'"
+            },
+            {
+             "manaid": "05420301-01",
+             "branchid": "3",
+             "teurmana": "מכנית ג' - 1 סמ 5+6"
+            },
+            {
+             "manaid": "05420301-06",
+             "branchid": "4",
+             "teurmana": "מכנית ג' - 6 סמ 5+6"
+            },
+            {
+             "manaid": "05420301-07",
+             "branchid": "5",
+             "teurmana": "מכנית ג' - 7 סמ 5+6"
+            },
+            {
+             "manaid": "05420301-03",
+             "branchid": "6",
+             "teurmana": "מכנית ג' - 3 סמ 5+6"
+            },
+            {
+             "manaid": "05420301-02",
+             "branchid": "7",
+             "teurmana": "מכנית ג' - 2 סמ 5+6"
+            },
+            {
+             "manaid": "05420301-05",
+             "branchid": "8",
+             "teurmana": "מכנית ג' - 5 סמ 5+6"
+            },
+            {
+             "manaid": "05420301-04",
+             "branchid": "9",
+             "teurmana": "מכנית ג' - 4 סמ 5+6"
+            },
+            {
+             "manaid": "05420341-01",
+             "branchid": "10",
+             "teurmana": "מכנית הכ\"ס ג' - סמ' 5+6"
+            }
+           ]
+          }
+         },
+         {
+          "semid": "20261",
+          "teursemmana": "א",
+          "branchid": "11",
+          "manotsem": {
+           "mana": [
+            {
+             "manaid": "05420141-01",
+             "branchid": "12",
+             "teurmana": "מכנית הכ\"ס א' - סמ' א'"
+            },
+            {
+             "manaid": "05420101-06",
+             "branchid": "13",
+             "teurmana": "מכנית א' - 6 סמ' א'"
+            },
+            {
+             "manaid": "05420101-01",
+             "branchid": "14",
+             "teurmana": "מכנית א' - 1 סמ' א'"
+            },
+            {
+             "manaid": "05420101-04",
+             "branchid": "15",
+             "teurmana": "מכנית א' - 4 סמ' א'"
+            },
+            {
+             "manaid": "05420101-05",
+             "branchid": "16",
+             "teurmana": "מכנית א' - 5 סמ' א'"
+            },
+            {
+             "manaid": "05420101-07",
+             "branchid": "17",
+             "teurmana": "מכנית א' - 7 סמ' א'"
+            },
+            {
+             "manaid": "05420101-03",
+             "branchid": "18",
+             "teurmana": "מכנית א' - 3 סמ' א'"
+            },
+            {
+             "manaid": "05420151-01",
+             "branchid": "19",
+             "teurmana": "ביומכניקה א' - סמ' א'"
+            },
+            {
+             "manaid": "05420101-02",
+             "branchid": "20",
+             "teurmana": "מכנית א' - 2 סמ' א'"
+            },
+            {
+             "manaid": "05420251-01",
+             "branchid": "21",
+             "teurmana": "ביומכניקה ב' - סמ' א'"
+            },
+            {
+             "manaid": "05420201-04",
+             "branchid": "22",
+             "teurmana": "מכנית ב' - 4 סמ' א'"
+            },
+            {
+             "manaid": "05420201-03",
+             "branchid": "23",
+             "teurmana": "מכנית ב' - 3 סמ' א'"
+            },
+            {
+             "manaid": "05420241-01",
+             "branchid": "24",
+             "teurmana": "מכנית הכ\"ס ב' - סמ' א'"
+            },
+            {
+             "manaid": "05420201-02",
+             "branchid": "25",
+             "teurmana": "מכנית ב' - 2 סמ' א'"
+            },
+            {
+             "manaid": "05420201-01",
+             "branchid": "26",
+             "teurmana": "מכנית ב' - 1 סמ' א'"
+            },
+            {
+             "manaid": "05420441-01",
+             "branchid": "27",
+             "teurmana": "מכנית הכ\"ס ד' - סמ' א'"
+            }
+           ]
+          }
+         },
+         {
+          "semid": "20262",
+          "teursemmana": "ב",
+          "branchid": "28",
+          "manotsem": {
+           "mana": [
+            {
+             "manaid": "05420102-02",
+             "branchid": "29",
+             "teurmana": "מכנית א' -  2 סמ' ב'"
+            },
+            {
+             "manaid": "05420152-01",
+             "branchid": "30",
+             "teurmana": "ביומכניקה א' - סמ' ב'"
+            },
+            {
+             "manaid": "05420102-05",
+             "branchid": "31",
+             "teurmana": "מכנית א' - 5 סמ' ב'"
+            },
+            {
+             "manaid": "05420102-06",
+             "branchid": "32",
+             "teurmana": "מכנית א' - 6 סמ' ב'"
+            },
+            {
+             "manaid": "05420102-01",
+             "branchid": "33",
+             "teurmana": "מכנית א' - 1 סמ' ב'"
+            },
+            {
+             "manaid": "05420102-03",
+             "branchid": "34",
+             "teurmana": "מכנית א' - 3 סמ' ב'"
+            },
+            {
+             "manaid": "05420102-04",
+             "branchid": "35",
+             "teurmana": "מכנית א' - 4 סמ' ב'"
+            },
+            {
+             "manaid": "05420102-07",
+             "branchid": "36",
+             "teurmana": "מכנית א' - 7 סמ'  ב'"
+            },
+            {
+             "manaid": "05420252-01",
+             "branchid": "37",
+             "teurmana": "ביומכניקה ב' - סמ' ב'"
+            },
+            {
+             "manaid": "05420202-01",
+             "branchid": "38",
+             "teurmana": "מכנית ב' -1 סמ' ב'"
+            },
+            {
+             "manaid": "05420202-03",
+             "branchid": "39",
+             "teurmana": "מכנית ב' -3 סמ' ב'"
+            },
+            {
+             "manaid": "05420202-02",
+             "branchid": "40",
+             "teurmana": "מכנית ב' -2 סמ' ב'"
+            },
+            {
+             "manaid": "05420202-04",
+             "branchid": "41",
+             "teurmana": "מכנית ב' -4 סמ' ב'"
+            },
+            {
+             "manaid": "05420242-01",
+             "branchid": "42",
+             "teurmana": "מכנית הכ\"ס ב' - סמ' ב'"
+            }
+           ]
+          }
+         }
+        ]
+       }
+      ]
+     },
+     "rama": [
+      {
+       "ramasiduri": "1",
+       "ramaid": "1",
+       "teurrama": "שנה א",
+       "ramanum": "30",
+       "avid": "",
+       "zitut_tochnit": "",
+       "zitut_siduri": "",
+       "meshulevet_tochnit": "",
+       "meshulevet_siduri": "",
+       "hesbershaot": "",
+       "nokursim": "",
+       "tavnit": "21",
+       "rama": [
+        {
+         "ramasiduri": "2",
+         "ramaid": "7",
+         "teurrama": "סמסטר א",
+         "ramanum": "40",
+         "avid": "1",
+         "zitut_tochnit": "",
+         "zitut_siduri": "",
+         "meshulevet_tochnit": "",
+         "meshulevet_siduri": "",
+         "hesbershaot": "",
+         "nokursim": "",
+         "tavnit": "21",
+         "kurs": [
+          {
+           "kursid": "05421510",
+           "kursshow": "0542-1510",
+           "teurkurs": "גרפיקה הנדסית",
+           "kursavid": "7",
+           "shiyuch": "",
+           "anglit": "",
+           "kursindmisshavuot": "0",
+           "kvutza": [
+            {
+             "kvutzaid": "01",
+             "semkvutza": "20261",
+             "semkurs": "20261",
+             "kvutzaofenhoraaid": "03",
+             "kvteurofenhoraa": "שיעור ותרגיל",
+             "kvmekuvan": "0",
+             "kvanglit": "0",
+             "kvmisshvuot": "0",
+             "kvsugzamak": "1",
+             "kvteursugzamak": "שבועי",
+             "manot": [
+              {
+               "mana": [
+                {
+                 "manaid": "05420141-01"
+                },
+                {
+                 "manaid": "05420101-06"
+                }
+               ]
+              }
+             ],
+             "semesters": [
+              {
+               "semzamak": "20261",
+               "teursemzamak": "א",
+               "zamak": [
+                {
+                 "teurzman": " א 13:00-16:00",
+                 "yom": "א",
+                 "meshaa": "13:00",
+                 "adshaa": "16:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "204",
+                   "teurbinyan": "בנין וולפסון להנדסת מחשבים ותוכנה",
+                   "cheder": "101"
+                  }
+                 ],
+                 "more": [
+                  {
+                   "shemmore": "ד\"ר יורם קוזק"
+                  },
+                  {
+                   "shemmore": "גב' אדריאנה הדדי"
+                  }
+                 ]
+                }
+               ]
+              }
+             ]
+            },
+            {
+             "kvutzaid": "02",
+             "semkvutza": "20261",
+             "semkurs": "20261",
+             "kvutzaofenhoraaid": "03",
+             "kvteurofenhoraa": "שיעור ותרגיל",
+             "kvmekuvan": "0",
+             "kvanglit": "0",
+             "kvmisshvuot": "0",
+             "kvsugzamak": "1",
+             "kvteursugzamak": "שבועי",
+             "manot": [
+              {
+               "mana": [
+                {
+                 "manaid": "05420101-01"
+                },
+                {
+                 "manaid": "05420101-04"
+                }
+               ]
+              }
+             ],
+             "semesters": [
+              {
+               "semzamak": "20261",
+               "teursemzamak": "א",
+               "zamak": [
+                {
+                 "teurzman": " א 16:00-19:00",
+                 "yom": "א",
+                 "meshaa": "16:00",
+                 "adshaa": "19:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "030",
+                   "teurbinyan": "בנין וולפסון - להנדסה מכנית",
+                   "cheder": "134"
+                  }
+                 ],
+                 "more": [
+                  {
+                   "shemmore": "ד\"ר יורם קוזק"
+                  },
+                  {
+                   "shemmore": "גב' אדריאנה הדדי"
+                  }
+                 ]
+                }
+               ]
+              }
+             ]
+            }
+           ]
+          },
+          {
+           "kursid": "05091624",
+           "kursshow": "0509-1624",
+           "teurkurs": "אלגברה ליניארית להנדסה מכנית",
+           "kursavid": "7",
+           "shiyuch": "",
+           "anglit": "",
+           "kursindmisshavuot": "0",
+           "kvutza": [
+            {
+             "kvutzaid": "01",
+             "semkvutza": "20261",
+             "semkurs": "20261",
+             "kvutzaofenhoraaid": "01",
+             "kvteurofenhoraa": "שיעור",
+             "kvmekuvan": "0",
+             "kvanglit": "0",
+             "kvmisshvuot": "0",
+             "kvsugzamak": "1",
+             "kvteursugzamak": "שבועי",
+             "manot": [
+              {
+               "mana": [
+                {
+                 "manaid": "05420141-01"
+                },
+                {
+                 "manaid": "05420101-01"
+                },
+                {
+                 "manaid": "05420101-06"
+                },
+                {
+                 "manaid": "05420101-04"
+                },
+                {
+                 "manaid": "05420101-05"
+                }
+               ]
+              }
+             ],
+             "semesters": [
+              {
+               "semzamak": "20261",
+               "teursemzamak": "א",
+               "zamak": [
+                {
+                 "teurzman": " ג 10:00-12:00",
+                 "yom": "ג",
+                 "meshaa": "10:00",
+                 "adshaa": "12:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "122",
+                   "teurbinyan": "בנין כיתות הנדסה",
+                   "cheder": "103"
+                  }
+                 ],
+                 "more": [
+                  {
+                   "shemmore": "ד\"ר לודמילה מרקוס"
+                  }
+                 ]
+                },
+                {
+                 "teurzman": " ד 10:00-13:00",
+                 "yom": "ד",
+                 "meshaa": "10:00",
+                 "adshaa": "13:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "201",
+                   "teurbinyan": "כיתות דן דוד",
+                   "cheder": "002"
+                  }
+                 ],
+                 "more": [
+                  {
+                   "shemmore": "ד\"ר לודמילה מרקוס"
+                  }
+                 ]
+                }
+               ]
+              }
+             ]
+            },
+            {
+             "kvutzaid": "02",
+             "semkvutza": "20261",
+             "semkurs": "20261",
+             "kvutzaofenhoraaid": "02",
+             "kvteurofenhoraa": "תרגיל",
+             "kvmekuvan": "0",
+             "kvanglit": "0",
+             "kvmisshvuot": "0",
+             "kvsugzamak": "1",
+             "kvteursugzamak": "שבועי",
+             "manot": [
+              {
+               "mana": [
+                {
+                 "manaid": "05420141-01"
+                },
+                {
+                 "manaid": "05420101-04"
+                },
+                {
+                 "manaid": "05420101-05"
+                }
+               ]
+              }
+             ],
+             "semesters": [
+              {
+               "semzamak": "20261",
+               "teursemzamak": "א",
+               "zamak": [
+                {
+                 "teurzman": " א 10:00-12:00",
+                 "yom": "א",
+                 "meshaa": "10:00",
+                 "adshaa": "12:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "030",
+                   "teurbinyan": "בנין וולפסון - להנדסה מכנית",
+                   "cheder": "238"
+                  }
+                 ],
+                 "more": [
+                  {
+                   "shemmore": "מר טל ארגוב"
+                  }
+                 ]
+                }
+               ]
+              }
+             ]
+            }
+           ]
+          },
+          {
+           "kursid": "05091646",
+           "kursshow": "0509-1646",
+           "teurkurs": "חשבון דיפרנציאלי ואינטגרלי 1ב' להנדסה מכנית ומדע והנדסה של חומרים",
+           "kursavid": "7",
+           "shiyuch": "",
+           "anglit": "",
+           "kursindmisshavuot": "0",
+           "kvutza": [
+            {
+             "kvutzaid": "01",
+             "semkvutza": "20261",
+             "semkurs": "20261",
+             "kvutzaofenhoraaid": "01",
+             "kvteurofenhoraa": "שיעור",
+             "kvmekuvan": "0",
+             "kvanglit": "0",
+             "kvmisshvuot": "0",
+             "kvsugzamak": "1",
+             "kvteursugzamak": "שבועי",
+             "manot": [
+              {
+               "mana": [
+                {
+                 "manaid": "05420101-05"
+                },
+                {
+                 "manaid": "05420151-01"
+                },
+                {
+                 "manaid": "05420101-04"
+                },
+                {
+                 "manaid": "05420101-06"
+                },
+                {
+                 "manaid": "05420101-01"
+                },
+                {
+                 "manaid": "05420141-01"
+                },
+                {
+                 "manaid": "05420101-02"
+                },
+                {
+                 "manaid": "05420101-03"
+                },
+                {
+                 "manaid": "05420101-07"
+                }
+               ]
+              }
+             ],
+             "semesters": [
+              {
+               "semzamak": "20261",
+               "teursemzamak": "א",
+               "zamak": [
+                {
+                 "teurzman": " ב 14:00-16:00",
+                 "yom": "ב",
+                 "meshaa": "14:00",
+                 "adshaa": "16:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "050",
+                   "teurbinyan": "הפקולטה למשפטים - בנין טרובוביץ",
+                   "cheder": "105"
+                  }
+                 ],
+                 "more": [
+                  {
+                   "shemmore": "ד\"ר סלע פריד"
+                  }
+                 ]
+                },
+                {
+                 "teurzman": " ד 08:00-10:00",
+                 "yom": "ד",
+                 "meshaa": "08:00",
+                 "adshaa": "10:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "030",
+                   "teurbinyan": "בנין וולפסון - להנדסה מכנית",
+                   "cheder": "001"
+                  }
+                 ],
+                 "more": [
+                  {
+                   "shemmore": "ד\"ר סלע פריד"
+                  }
+                 ]
+                }
+               ]
+              }
+             ]
+            },
+            {
+             "kvutzaid": "02",
+             "semkvutza": "20261",
+             "semkurs": "20261",
+             "kvutzaofenhoraaid": "02",
+             "kvteurofenhoraa": "תרגיל",
+             "kvmekuvan": "0",
+             "kvanglit": "0",
+             "kvmisshvuot": "0",
+             "kvsugzamak": "1",
+             "kvteursugzamak": "שבועי",
+             "manot": [
+              {
+               "mana": [
+                {
+                 "manaid": "05420101-06"
+                },
+                {
+                 "manaid": "05420101-01"
+                },
+                {
+                 "manaid": "05420101-02"
+                }
+               ]
+              }
+             ],
+             "semesters": [
+              {
+               "semzamak": "20261",
+               "teursemzamak": "א",
+               "zamak": [
+                {
+                 "teurzman": " ג 15:00-17:00",
+                 "yom": "ג",
+                 "meshaa": "15:00",
+                 "adshaa": "17:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "030",
+                   "teurbinyan": "בנין וולפסון - להנדסה מכנית",
+                   "cheder": "120"
+                  }
+                 ],
+                 "more": [
+                  {
+                   "shemmore": "מר עידו צדקה"
+                  }
+                 ]
+                }
+               ]
+              }
+             ]
+            }
+           ]
+          }
+         ],
+         "rama": []
+        },
+        {
+         "ramasiduri": "3",
+         "ramaid": "8",
+         "teurrama": "סמסטר ב",
+         "ramanum": "40",
+         "avid": "1",
+         "zitut_tochnit": "",
+         "zitut_siduri": "",
+         "meshulevet_tochnit": "",
+         "meshulevet_siduri": "",
+         "hesbershaot": "",
+         "nokursim": "",
+         "tavnit": "21",
+         "kurs": [
+          {
+           "kursid": "05091645",
+           "kursshow": "0509-1645",
+           "teurkurs": "משוואות דיפרנציאליות רגילות להנדסה מכנית",
+           "kursavid": "8",
+           "shiyuch": "",
+           "anglit": "",
+           "kursindmisshavuot": "0",
+           "kvutza": [
+            {
+             "kvutzaid": "01",
+             "semkvutza": "20262",
+             "semkurs": "20262",
+             "kvutzaofenhoraaid": "01",
+             "kvteurofenhoraa": "שיעור",
+             "kvmekuvan": "0",
+             "kvanglit": "0",
+             "kvmisshvuot": "0",
+             "kvsugzamak": "1",
+             "kvteursugzamak": "שבועי",
+             "manot": [
+              {
+               "mana": [
+                {
+                 "manaid": "05420102-02"
+                },
+                {
+                 "manaid": "05420152-01"
+                },
+                {
+                 "manaid": "05420102-05"
+                },
+                {
+                 "manaid": "05420102-06"
+                },
+                {
+                 "manaid": "05420102-01"
+                },
+                {
+                 "manaid": "05420102-03"
+                },
+                {
+                 "manaid": "05420102-04"
+                },
+                {
+                 "manaid": "05420102-07"
+                }
+               ]
+              }
+             ],
+             "semesters": [
+              {
+               "semzamak": "20262",
+               "teursemzamak": "ב",
+               "zamak": [
+                {
+                 "teurzman": " א 08:00-11:00",
+                 "yom": "א",
+                 "meshaa": "08:00",
+                 "adshaa": "11:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "",
+                   "teurbinyan": "",
+                   "cheder": ""
+                  }
+                 ],
+                 "more": [
+                  {
+                   "shemmore": "ד\"ר לודמילה מרקוס"
+                  }
+                 ]
+                }
+               ]
+              }
+             ]
+            },
+            {
+             "kvutzaid": "02",
+             "semkvutza": "20262",
+             "semkurs": "20262",
+             "kvutzaofenhoraaid": "02",
+             "kvteurofenhoraa": "תרגיל",
+             "kvmekuvan": "0",
+             "kvanglit": "0",
+             "kvmisshvuot": "0",
+             "kvsugzamak": "1",
+             "kvteursugzamak": "שבועי",
+             "manot": [
+              {
+               "mana": [
+                {
+                 "manaid": "05420102-01"
+                },
+                {
+                 "manaid": "05420102-04"
+                },
+                {
+                 "manaid": "05420102-07"
+                }
+               ]
+              }
+             ],
+             "semesters": [
+              {
+               "semzamak": "20262",
+               "teursemzamak": "ב",
+               "zamak": [
+                {
+                 "teurzman": " ב 13:00-14:00",
+                 "yom": "ב",
+                 "meshaa": "13:00",
+                 "adshaa": "14:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "",
+                   "teurbinyan": "",
+                   "cheder": ""
+                  }
+                 ],
+                 "more": [
+                  {
+                   "shemmore": "מר איתי לאבסקי"
+                  }
+                 ]
+                }
+               ]
+              }
+             ]
+            }
+           ]
+          },
+          {
+           "kursid": "05091647",
+           "kursshow": "0509-1647",
+           "teurkurs": "חשבון  דיפרנציאלי ואינטגרלי 2ב' למכנית",
+           "kursavid": "8",
+           "shiyuch": "",
+           "anglit": "",
+           "kursindmisshavuot": "0",
+           "kvutza": [
+            {
+             "kvutzaid": "01",
+             "semkvutza": "20262",
+             "semkurs": "20262",
+             "kvutzaofenhoraaid": "01",
+             "kvteurofenhoraa": "שיעור",
+             "kvmekuvan": "0",
+             "kvanglit": "0",
+             "kvmisshvuot": "0",
+             "kvsugzamak": "1",
+             "kvteursugzamak": "שבועי",
+             "manot": [
+              {
+               "mana": [
+                {
+                 "manaid": "05420102-03"
+                },
+                {
+                 "manaid": "05420102-05"
+                },
+                {
+                 "manaid": "05420102-06"
+                },
+                {
+                 "manaid": "05420102-01"
+                },
+                {
+                 "manaid": "05420102-04"
+                },
+                {
+                 "manaid": "05420152-01"
+                },
+                {
+                 "manaid": "05420102-02"
+                },
+                {
+                 "manaid": "05420102-07"
+                }
+               ]
+              }
+             ],
+             "semesters": [
+              {
+               "semzamak": "20262",
+               "teursemzamak": "ב",
+               "zamak": [
+                {
+                 "teurzman": " ה 16:00-18:00",
+                 "yom": "ה",
+                 "meshaa": "16:00",
+                 "adshaa": "18:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "",
+                   "teurbinyan": "",
+                   "cheder": ""
+                  }
+                 ],
+                 "more": [
+                  {
+                   "shemmore": "ד\"ר יוחאי יוסף מעין"
+                  }
+                 ]
+                },
+                {
+                 "teurzman": " א 14:00-16:00",
+                 "yom": "א",
+                 "meshaa": "14:00",
+                 "adshaa": "16:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "",
+                   "teurbinyan": "",
+                   "cheder": ""
+                  }
+                 ],
+                 "more": [
+                  {
+                   "shemmore": "ד\"ר יוחאי יוסף מעין"
+                  }
+                 ]
+                }
+               ]
+              }
+             ]
+            },
+            {
+             "kvutzaid": "02",
+             "semkvutza": "20262",
+             "semkurs": "20262",
+             "kvutzaofenhoraaid": "02",
+             "kvteurofenhoraa": "תרגיל",
+             "kvmekuvan": "0",
+             "kvanglit": "0",
+             "kvmisshvuot": "0",
+             "kvsugzamak": "1",
+             "kvteursugzamak": "שבועי",
+             "manot": [
+              {
+               "mana": [
+                {
+                 "manaid": "05420102-01"
+                },
+                {
+                 "manaid": "05420102-04"
+                },
+                {
+                 "manaid": "05420102-07"
+                }
+               ]
+              }
+             ],
+             "semesters": [
+              {
+               "semzamak": "20262",
+               "teursemzamak": "ב",
+               "zamak": [
+                {
+                 "teurzman": " ב 08:00-10:00",
+                 "yom": "ב",
+                 "meshaa": "08:00",
+                 "adshaa": "10:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "",
+                   "teurbinyan": "",
+                   "cheder": ""
+                  }
+                 ]
+                }
+               ]
+              }
+             ]
+            }
+           ]
+          },
+          {
+           "kursid": "05091834",
+           "kursshow": "0509-1834",
+           "teurkurs": "מעבדה בפיזיקה",
+           "kursavid": "8",
+           "shiyuch": "",
+           "anglit": "",
+           "kursindmisshavuot": "0",
+           "kvutza": [
+            {
+             "kvutzaid": "01",
+             "semkvutza": "20261",
+             "semkurs": "20261",
+             "kvutzaofenhoraaid": "06",
+             "kvteurofenhoraa": "מעבדה",
+             "kvmekuvan": "0",
+             "kvanglit": "0",
+             "kvmisshvuot": "0",
+             "kvsugzamak": "1",
+             "kvteursugzamak": "שבועי",
+             "semesters": [
+              {
+               "semzamak": "20261",
+               "teursemzamak": "א",
+               "zamak": [
+                {
+                 "teurzman": " ג 08:00-12:00",
+                 "yom": "ג",
+                 "meshaa": "08:00",
+                 "adshaa": "12:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "003",
+                   "teurbinyan": "בנין המחלקה לפיזיקה ע\"ש רבקה ואריה שנקר",
+                   "cheder": "201"
+                  }
+                 ]
+                }
+               ]
+              }
+             ]
+            },
+            {
+             "kvutzaid": "02",
+             "semkvutza": "20261",
+             "semkurs": "20261",
+             "kvutzaofenhoraaid": "06",
+             "kvteurofenhoraa": "מעבדה",
+             "kvmekuvan": "0",
+             "kvanglit": "0",
+             "kvmisshvuot": "0",
+             "kvsugzamak": "1",
+             "kvteursugzamak": "שבועי",
+             "semesters": [
+              {
+               "semzamak": "20261",
+               "teursemzamak": "א",
+               "zamak": [
+                {
+                 "teurzman": " ד 08:00-12:00",
+                 "yom": "ד",
+                 "meshaa": "08:00",
+                 "adshaa": "12:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "003",
+                   "teurbinyan": "בנין המחלקה לפיזיקה ע\"ש רבקה ואריה שנקר",
+                   "cheder": "201"
+                  }
+                 ]
+                }
+               ]
+              }
+             ]
+            }
+           ]
+          }
+         ],
+         "rama": []
+        }
+       ]
+      },
+      {
+       "ramasiduri": "14",
+       "ramaid": "23",
+       "teurrama": "שנים ג'+ד' קורסי ליבה/בחירה/מעבדות מתקדמות",
+       "ramanum": "30",
+       "avid": "",
+       "zitut_tochnit": "",
+       "zitut_siduri": "",
+       "meshulevet_tochnit": "",
+       "meshulevet_siduri": "",
+       "hesbershaot": "",
+       "nokursim": "",
+       "tavnit": "21",
+       "rama": [
+        {
+         "ramasiduri": "15",
+         "ramaid": "24",
+         "teurrama": "זורמים",
+         "ramanum": "40",
+         "avid": "23",
+         "zitut_tochnit": "",
+         "zitut_siduri": "",
+         "meshulevet_tochnit": "",
+         "meshulevet_siduri": "",
+         "hesbershaot": "",
+         "nokursim": "",
+         "tavnit": "21",
+         "kurs": [
+          {
+           "kursid": "05424120",
+           "kursshow": "0542-4120",
+           "teurkurs": "תרמודינמיקה (2)",
+           "kursavid": "24",
+           "shiyuch": "",
+           "anglit": "",
+           "kursindmisshavuot": "0",
+           "kvutza": [
+            {
+             "kvutzaid": "01",
+             "semkvutza": "20261",
+             "semkurs": "20261",
+             "kvutzaofenhoraaid": "03",
+             "kvteurofenhoraa": "שיעור ותרגיל",
+             "kvmekuvan": "0",
+             "kvanglit": "0",
+             "kvmisshvuot": "0",
+             "kvsugzamak": "1",
+             "kvteursugzamak": "שבועי",
+             "semesters": [
+              {
+               "semzamak": "20261",
+               "teursemzamak": "א",
+               "zamak": [
+                {
+                 "teurzman": " ג 17:00-19:00",
+                 "yom": "ג",
+                 "meshaa": "17:00",
+                 "adshaa": "19:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "030",
+                   "teurbinyan": "בנין וולפסון - להנדסה מכנית",
+                   "cheder": "238"
+                  }
+                 ],
+                 "more": [
+                  {
+                   "shemmore": "ד\"ר רועי קושניר"
+                  }
+                 ]
+                },
+                {
+                 "teurzman": " ב 14:00-16:00",
+                 "yom": "ב",
+                 "meshaa": "14:00",
+                 "adshaa": "16:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "122",
+                   "teurbinyan": "בנין כיתות הנדסה",
+                   "cheder": "205"
+                  }
+                 ],
+                 "more": [
+                  {
+                   "shemmore": "ד\"ר רועי קושניר"
+                  }
+                 ]
+                }
+               ]
+              }
+             ]
+            }
+           ]
+          },
+          {
+           "kursid": "05424123",
+           "kursshow": "0542-4123",
+           "teurkurs": "תהליכי מעבר חום וחומר",
+           "kursavid": "24",
+           "shiyuch": "",
+           "anglit": "",
+           "kursindmisshavuot": "0",
+           "kvutza": [
+            {
+             "kvutzaid": "01",
+             "semkvutza": "20262",
+             "semkurs": "20262",
+             "kvutzaofenhoraaid": "01",
+             "kvteurofenhoraa": "שיעור",
+             "kvmekuvan": "0",
+             "kvanglit": "0",
+             "kvmisshvuot": "0",
+             "kvsugzamak": "1",
+             "kvteursugzamak": "שבועי",
+             "semesters": [
+              {
+               "semzamak": "20262",
+               "teursemzamak": "ב",
+               "zamak": [
+                {
+                 "teurzman": " א 14:00-17:00",
+                 "yom": "א",
+                 "meshaa": "14:00",
+                 "adshaa": "17:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "",
+                   "teurbinyan": "",
+                   "cheder": ""
+                  }
+                 ],
+                 "more": [
+                  {
+                   "shemmore": "פרופ' אלכסנדר ליברזון"
+                  }
+                 ]
+                },
+                {
+                 "teurzman": " ג 10:00-11:00",
+                 "yom": "ג",
+                 "meshaa": "10:00",
+                 "adshaa": "11:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "",
+                   "teurbinyan": "",
+                   "cheder": ""
+                  }
+                 ],
+                 "more": [
+                  {
+                   "shemmore": "פרופ' אלכסנדר ליברזון"
+                  }
+                 ]
+                }
+               ]
+              }
+             ]
+            },
+            {
+             "kvutzaid": "02",
+             "semkvutza": "20262",
+             "semkurs": "20262",
+             "kvutzaofenhoraaid": "02",
+             "kvteurofenhoraa": "תרגיל",
+             "kvmekuvan": "0",
+             "kvanglit": "0",
+             "kvmisshvuot": "0",
+             "kvsugzamak": "1",
+             "kvteursugzamak": "שבועי",
+             "semesters": [
+              {
+               "semzamak": "20262",
+               "teursemzamak": "ב",
+               "zamak": [
+                {
+                 "teurzman": " ג 11:00-12:00",
+                 "yom": "ג",
+                 "meshaa": "11:00",
+                 "adshaa": "12:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "",
+                   "teurbinyan": "",
+                   "cheder": ""
+                  }
+                 ],
+                 "more": [
+                  {
+                   "shemmore": "עידו רכבוך"
+                  }
+                 ]
+                }
+               ]
+              }
+             ]
+            }
+           ]
+          },
+          {
+           "kursid": "05424320",
+           "kursshow": "0542-4320",
+           "teurkurs": "מכניקת הזורמים (2)",
+           "kursavid": "24",
+           "shiyuch": "",
+           "anglit": "",
+           "kursindmisshavuot": "0",
+           "kvutza": [
+            {
+             "kvutzaid": "01",
+             "semkvutza": "20262",
+             "semkurs": "20262",
+             "kvutzaofenhoraaid": "01",
+             "kvteurofenhoraa": "שיעור",
+             "kvmekuvan": "0",
+             "kvanglit": "0",
+             "kvmisshvuot": "",
+             "kvsugzamak": "1",
+             "kvteursugzamak": "שבועי",
+             "semesters": [
+              {
+               "semzamak": "20262",
+               "teursemzamak": "ב",
+               "zamak": [
+                {
+                 "teurzman": " ה 12:00-15:00",
+                 "yom": "ה",
+                 "meshaa": "12:00",
+                 "adshaa": "15:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "",
+                   "teurbinyan": "",
+                   "cheder": ""
+                  }
+                 ],
+                 "more": [
+                  {
+                   "shemmore": "פרופ' יצחק ירון טולדו"
+                  }
+                 ]
+                }
+               ]
+              }
+             ]
+            },
+            {
+             "kvutzaid": "02",
+             "semkvutza": "20262",
+             "semkurs": "20262",
+             "kvutzaofenhoraaid": "02",
+             "kvteurofenhoraa": "תרגיל",
+             "kvmekuvan": "0",
+             "kvanglit": "0",
+             "kvmisshvuot": "",
+             "kvsugzamak": "1",
+             "kvteursugzamak": "שבועי",
+             "semesters": [
+              {
+               "semzamak": "20262",
+               "teursemzamak": "ב",
+               "zamak": [
+                {
+                 "teurzman": " ה 15:00-16:00",
+                 "yom": "ה",
+                 "meshaa": "15:00",
+                 "adshaa": "16:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "",
+                   "teurbinyan": "",
+                   "cheder": ""
+                  }
+                 ],
+                 "more": [
+                  {
+                   "shemmore": "עמר הדר"
+                  }
+                 ]
+                }
+               ]
+              }
+             ]
+            }
+           ]
+          }
+         ],
+         "rama": []
+        },
+        {
+         "ramasiduri": "16",
+         "ramaid": "25",
+         "teurrama": "מוצקים",
+         "ramanum": "40",
+         "avid": "23",
+         "zitut_tochnit": "",
+         "zitut_siduri": "",
+         "meshulevet_tochnit": "",
+         "meshulevet_siduri": "",
+         "hesbershaot": "",
+         "nokursim": "",
+         "tavnit": "21",
+         "kurs": [
+          {
+           "kursid": "05424220",
+           "kursshow": "0542-4220",
+           "teurkurs": "תורת התנודות",
+           "kursavid": "25",
+           "shiyuch": "",
+           "anglit": "",
+           "kursindmisshavuot": "0",
+           "kvutza": [
+            {
+             "kvutzaid": "01",
+             "semkvutza": "20261",
+             "semkurs": "20261",
+             "kvutzaofenhoraaid": "03",
+             "kvteurofenhoraa": "שיעור ותרגיל",
+             "kvmekuvan": "0",
+             "kvanglit": "0",
+             "kvmisshvuot": "0",
+             "kvsugzamak": "1",
+             "kvteursugzamak": "שבועי",
+             "semesters": [
+              {
+               "semzamak": "20261",
+               "teursemzamak": "א",
+               "zamak": [
+                {
+                 "teurzman": " ד 16:00-18:00",
+                 "yom": "ד",
+                 "meshaa": "16:00",
+                 "adshaa": "18:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "030",
+                   "teurbinyan": "בנין וולפסון - להנדסה מכנית",
+                   "cheder": "120"
+                  }
+                 ],
+                 "more": [
+                  {
+                   "shemmore": "ד\"ר איגור ברינסקי"
+                  },
+                  {
+                   "shemmore": " גד בלום"
+                  }
+                 ]
+                },
+                {
+                 "teurzman": " ב 12:00-14:00",
+                 "yom": "ב",
+                 "meshaa": "12:00",
+                 "adshaa": "14:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "030",
+                   "teurbinyan": "בנין וולפסון - להנדסה מכנית",
+                   "cheder": "130"
+                  }
+                 ],
+                 "more": [
+                  {
+                   "shemmore": "ד\"ר איגור ברינסקי"
+                  },
+                  {
+                   "shemmore": " גד בלום"
+                  }
+                 ]
+                }
+               ]
+              }
+             ]
+            }
+           ]
+          },
+          {
+           "kursid": "05424221",
+           "kursshow": "0542-4221",
+           "teurkurs": "מבוא לתורת האלסטיות",
+           "kursavid": "25",
+           "shiyuch": "",
+           "anglit": "",
+           "kursindmisshavuot": "0",
+           "kvutza": [
+            {
+             "kvutzaid": "01",
+             "semkvutza": "20262",
+             "semkurs": "20262",
+             "kvutzaofenhoraaid": "01",
+             "kvteurofenhoraa": "שיעור",
+             "kvmekuvan": "0",
+             "kvanglit": "0",
+             "kvmisshvuot": "",
+             "kvsugzamak": "1",
+             "kvteursugzamak": "שבועי",
+             "semesters": [
+              {
+               "semzamak": "20262",
+               "teursemzamak": "ב",
+               "zamak": [
+                {
+                 "teurzman": " א 11:00-13:00",
+                 "yom": "א",
+                 "meshaa": "11:00",
+                 "adshaa": "13:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "",
+                   "teurbinyan": "",
+                   "cheder": ""
+                  }
+                 ],
+                 "more": [
+                  {
+                   "shemmore": "ד\"ר תומר מרקוביץ"
+                  }
+                 ]
+                },
+                {
+                 "teurzman": " ב 12:00-13:00",
+                 "yom": "ב",
+                 "meshaa": "12:00",
+                 "adshaa": "13:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "",
+                   "teurbinyan": "",
+                   "cheder": ""
+                  }
+                 ],
+                 "more": [
+                  {
+                   "shemmore": "ד\"ר תומר מרקוביץ"
+                  }
+                 ]
+                }
+               ]
+              }
+             ]
+            },
+            {
+             "kvutzaid": "02",
+             "semkvutza": "20262",
+             "semkurs": "20262",
+             "kvutzaofenhoraaid": "02",
+             "kvteurofenhoraa": "תרגיל",
+             "kvmekuvan": "0",
+             "kvanglit": "0",
+             "kvmisshvuot": "",
+             "kvsugzamak": "1",
+             "kvteursugzamak": "שבועי",
+             "semesters": [
+              {
+               "semzamak": "20262",
+               "teursemzamak": "ב",
+               "zamak": [
+                {
+                 "teurzman": " ב 13:00-14:00",
+                 "yom": "ב",
+                 "meshaa": "13:00",
+                 "adshaa": "14:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "",
+                   "teurbinyan": "",
+                   "cheder": ""
+                  }
+                 ],
+                 "more": [
+                  {
+                   "shemmore": "מר עידו צדקה"
+                  }
+                 ]
+                }
+               ]
+              }
+             ]
+            }
+           ]
+          },
+          {
+           "kursid": "05424223",
+           "kursshow": "0542-4223",
+           "teurkurs": "מבוא לאלמנטים סופיים",
+           "kursavid": "25",
+           "shiyuch": "",
+           "anglit": "",
+           "kursindmisshavuot": "0",
+           "kvutza": [
+            {
+             "kvutzaid": "01",
+             "semkvutza": "20261",
+             "semkurs": "20261",
+             "kvutzaofenhoraaid": "01",
+             "kvteurofenhoraa": "שיעור",
+             "kvmekuvan": "0",
+             "kvanglit": "0",
+             "kvmisshvuot": "0",
+             "kvsugzamak": "1",
+             "kvteursugzamak": "שבועי",
+             "semesters": [
+              {
+               "semzamak": "20261",
+               "teursemzamak": "א",
+               "zamak": [
+                {
+                 "teurzman": " א 12:00-14:00",
+                 "yom": "א",
+                 "meshaa": "12:00",
+                 "adshaa": "14:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "204",
+                   "teurbinyan": "בנין וולפסון להנדסת מחשבים ותוכנה",
+                   "cheder": "103"
+                  }
+                 ],
+                 "more": [
+                  {
+                   "shemmore": "פרופ' זהר יוסיבאש"
+                  }
+                 ]
+                }
+               ]
+              }
+             ]
+            },
+            {
+             "kvutzaid": "02",
+             "semkvutza": "20261",
+             "semkurs": "20261",
+             "kvutzaofenhoraaid": "02",
+             "kvteurofenhoraa": "תרגיל",
+             "kvmekuvan": "0",
+             "kvanglit": "0",
+             "kvmisshvuot": "0",
+             "kvsugzamak": "1",
+             "kvteursugzamak": "שבועי",
+             "semesters": [
+              {
+               "semzamak": "20261",
+               "teursemzamak": "א",
+               "zamak": [
+                {
+                 "teurzman": " ד 13:00-15:00",
+                 "yom": "ד",
+                 "meshaa": "13:00",
+                 "adshaa": "15:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "122",
+                   "teurbinyan": "בנין כיתות הנדסה",
+                   "cheder": "206"
+                  }
+                 ],
+                 "more": [
+                  {
+                   "shemmore": "מר טל סגל"
+                  }
+                 ]
+                }
+               ]
+              }
+             ]
+            }
+           ]
+          }
+         ],
+         "rama": []
+        },
+        {
+         "ramasiduri": "17",
+         "ramaid": "26",
+         "teurrama": "מערכות",
+         "ramanum": "40",
+         "avid": "23",
+         "zitut_tochnit": "",
+         "zitut_siduri": "",
+         "meshulevet_tochnit": "",
+         "meshulevet_siduri": "",
+         "hesbershaot": "",
+         "nokursim": "",
+         "tavnit": "21",
+         "kurs": [
+          {
+           "kursid": "05424420",
+           "kursshow": "0542-4420",
+           "teurkurs": "תורת המכונות",
+           "kursavid": "26",
+           "shiyuch": "",
+           "anglit": "",
+           "kursindmisshavuot": "0",
+           "kvutza": [
+            {
+             "kvutzaid": "01",
+             "semkvutza": "20261",
+             "semkurs": "20261",
+             "kvutzaofenhoraaid": "03",
+             "kvteurofenhoraa": "שיעור ותרגיל",
+             "kvmekuvan": "0",
+             "kvanglit": "0",
+             "kvmisshvuot": "0",
+             "kvsugzamak": "1",
+             "kvteursugzamak": "שבועי",
+             "semesters": [
+              {
+               "semzamak": "20261",
+               "teursemzamak": "א",
+               "zamak": [
+                {
+                 "teurzman": " ג 11:00-13:00",
+                 "yom": "ג",
+                 "meshaa": "11:00",
+                 "adshaa": "13:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "030",
+                   "teurbinyan": "בנין וולפסון - להנדסה מכנית",
+                   "cheder": "134"
+                  }
+                 ],
+                 "more": [
+                  {
+                   "shemmore": "ד\"ר יוסף גרונפלד"
+                  }
+                 ]
+                },
+                {
+                 "teurzman": " ד 11:00-13:00",
+                 "yom": "ד",
+                 "meshaa": "11:00",
+                 "adshaa": "13:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "204",
+                   "teurbinyan": "בנין וולפסון להנדסת מחשבים ותוכנה",
+                   "cheder": "104"
+                  }
+                 ],
+                 "more": [
+                  {
+                   "shemmore": "ד\"ר יוסף גרונפלד"
+                  }
+                 ]
+                }
+               ]
+              }
+             ]
+            }
+           ]
+          },
+          {
+           "kursid": "05424422",
+           "kursshow": "0542-4422",
+           "teurkurs": "תכן הנדסי: מבוא ושיטות",
+           "kursavid": "26",
+           "shiyuch": "",
+           "anglit": "",
+           "kursindmisshavuot": "0",
+           "kvutza": [
+            {
+             "kvutzaid": "01",
+             "semkvutza": "20261",
+             "semkurs": "20261",
+             "kvutzaofenhoraaid": "03",
+             "kvteurofenhoraa": "שיעור ותרגיל",
+             "kvmekuvan": "0",
+             "kvanglit": "0",
+             "kvmisshvuot": "0",
+             "kvsugzamak": "1",
+             "kvteursugzamak": "שבועי",
+             "semesters": [
+              {
+               "semzamak": "20261",
+               "teursemzamak": "א",
+               "zamak": [
+                {
+                 "teurzman": " ג 13:00-17:00",
+                 "yom": "ג",
+                 "meshaa": "13:00",
+                 "adshaa": "17:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "201",
+                   "teurbinyan": "כיתות דן דוד",
+                   "cheder": "111"
+                  }
+                 ],
+                 "more": [
+                  {
+                   "shemmore": "מר דני-משה ברקו"
+                  }
+                 ]
+                },
+                {
+                 "teurzman": " ג 15:00-17:00",
+                 "yom": "ג",
+                 "meshaa": "15:00",
+                 "adshaa": "17:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "201",
+                   "teurbinyan": "כיתות דן דוד",
+                   "cheder": "104"
+                  }
+                 ],
+                 "more": [
+                  {
+                   "shemmore": "מר דני-משה ברקו"
+                  }
+                 ]
+                },
+                {
+                 "teurzman": " ג 15:00-17:00",
+                 "yom": "ג",
+                 "meshaa": "15:00",
+                 "adshaa": "17:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "201",
+                   "teurbinyan": "כיתות דן דוד",
+                   "cheder": "202"
+                  }
+                 ],
+                 "more": [
+                  {
+                   "shemmore": "מר דני-משה ברקו"
+                  }
+                 ]
+                },
+                {
+                 "teurzman": " ג 15:00-17:00",
+                 "yom": "ג",
+                 "meshaa": "15:00",
+                 "adshaa": "17:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "201",
+                   "teurbinyan": "כיתות דן דוד",
+                   "cheder": "103"
+                  }
+                 ],
+                 "more": [
+                  {
+                   "shemmore": "מר דני-משה ברקו"
+                  }
+                 ]
+                }
+               ]
+              }
+             ]
+            }
+           ]
+          },
+          {
+           "kursid": "05424455",
+           "kursshow": "0542-4455",
+           "teurkurs": "בינה חישובית",
+           "kursavid": "26",
+           "shiyuch": "",
+           "anglit": "",
+           "kursindmisshavuot": "0",
+           "kvutza": [
+            {
+             "kvutzaid": "01",
+             "semkvutza": "20262",
+             "semkurs": "20262",
+             "kvutzaofenhoraaid": "01",
+             "kvteurofenhoraa": "שיעור",
+             "kvmekuvan": "0",
+             "kvanglit": "0",
+             "kvmisshvuot": "0",
+             "kvsugzamak": "1",
+             "kvteursugzamak": "שבועי",
+             "semesters": [
+              {
+               "semzamak": "20262",
+               "teursemzamak": "ב",
+               "zamak": [
+                {
+                 "teurzman": " ג 16:00-19:00",
+                 "yom": "ג",
+                 "meshaa": "16:00",
+                 "adshaa": "19:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "",
+                   "teurbinyan": "",
+                   "cheder": ""
+                  }
+                 ],
+                 "more": [
+                  {
+                   "shemmore": "פרופ' אבישי סינטוב"
+                  }
+                 ]
+                }
+               ]
+              }
+             ]
+            },
+            {
+             "kvutzaid": "02",
+             "semkvutza": "20262",
+             "semkurs": "20262",
+             "kvutzaofenhoraaid": "02",
+             "kvteurofenhoraa": "תרגיל",
+             "kvmekuvan": "0",
+             "kvanglit": "0",
+             "kvmisshvuot": "0",
+             "kvsugzamak": "1",
+             "kvteursugzamak": "שבועי",
+             "semesters": [
+              {
+               "semzamak": "20262",
+               "teursemzamak": "ב",
+               "zamak": [
+                {
+                 "teurzman": " ב 18:00-19:00",
+                 "yom": "ב",
+                 "meshaa": "18:00",
+                 "adshaa": "19:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "",
+                   "teurbinyan": "",
+                   "cheder": ""
+                  }
+                 ],
+                 "more": [
+                  {
+                   "shemmore": "מר רותם עטרי"
+                  }
+                 ]
+                }
+               ]
+              }
+             ]
+            }
+           ]
+          }
+         ],
+         "rama": []
+        },
+        {
+         "ramasiduri": "18",
+         "ramaid": "27",
+         "teurrama": "מעבדות מתקדמות",
+         "ramanum": "40",
+         "avid": "23",
+         "zitut_tochnit": "",
+         "zitut_siduri": "",
+         "meshulevet_tochnit": "",
+         "meshulevet_siduri": "",
+         "hesbershaot": "",
+         "nokursim": "",
+         "tavnit": "21",
+         "kurs": [
+          {
+           "kursid": "05424624",
+           "kursshow": "0542-4624",
+           "teurkurs": "מעבדה ברובוטיקה ובקרה של מערכות",
+           "kursavid": "27",
+           "shiyuch": "",
+           "anglit": "",
+           "kursindmisshavuot": "0",
+           "kvutza": [
+            {
+             "kvutzaid": "01",
+             "semkvutza": "20262",
+             "semkurs": "20262",
+             "kvutzaofenhoraaid": "06",
+             "kvteurofenhoraa": "מעבדה",
+             "kvmekuvan": "0",
+             "kvanglit": "0",
+             "kvmisshvuot": "0",
+             "kvsugzamak": "1",
+             "kvteursugzamak": "שבועי",
+             "semesters": [
+              {
+               "semzamak": "20262",
+               "teursemzamak": "ב",
+               "zamak": [
+                {
+                 "teurzman": " ד 12:00-15:00",
+                 "yom": "ד",
+                 "meshaa": "12:00",
+                 "adshaa": "15:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "030",
+                   "teurbinyan": "בנין וולפסון - להנדסה מכנית",
+                   "cheder": "364"
+                  }
+                 ],
+                 "more": [
+                  {
+                   "shemmore": "פרופ' אבישי סינטוב"
+                  }
+                 ]
+                }
+               ]
+              }
+             ]
+            },
+            {
+             "kvutzaid": "02",
+             "semkvutza": "20262",
+             "semkurs": "20262",
+             "kvutzaofenhoraaid": "06",
+             "kvteurofenhoraa": "מעבדה",
+             "kvmekuvan": "0",
+             "kvanglit": "0",
+             "kvmisshvuot": "0",
+             "kvsugzamak": "1",
+             "kvteursugzamak": "שבועי",
+             "semesters": [
+              {
+               "semzamak": "20262",
+               "teursemzamak": "ב",
+               "zamak": [
+                {
+                 "teurzman": " ד 15:00-18:00",
+                 "yom": "ד",
+                 "meshaa": "15:00",
+                 "adshaa": "18:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "030",
+                   "teurbinyan": "בנין וולפסון - להנדסה מכנית",
+                   "cheder": "364"
+                  }
+                 ],
+                 "more": [
+                  {
+                   "shemmore": "פרופ' אבישי סינטוב"
+                  }
+                 ]
+                }
+               ]
+              }
+             ]
+            }
+           ]
+          },
+          {
+           "kursid": "05814131",
+           "kursshow": "0581-4131",
+           "teurkurs": "מעבדה בחומרים הנדסיים",
+           "kursavid": "27",
+           "shiyuch": "",
+           "anglit": "",
+           "kursindmisshavuot": "0",
+           "kvutza": [
+            {
+             "kvutzaid": "01",
+             "semkvutza": "20261",
+             "semkurs": "20261",
+             "kvutzaofenhoraaid": "06",
+             "kvteurofenhoraa": "מעבדה",
+             "kvmekuvan": "0",
+             "kvanglit": "0",
+             "kvmisshvuot": "0",
+             "kvsugzamak": "1",
+             "kvteursugzamak": "שבועי",
+             "semesters": [
+              {
+               "semzamak": "20261",
+               "teursemzamak": "א",
+               "zamak": [
+                {
+                 "teurzman": " ה 08:00-11:00",
+                 "yom": "ה",
+                 "meshaa": "08:00",
+                 "adshaa": "11:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "030",
+                   "teurbinyan": "בנין וולפסון - להנדסה מכנית",
+                   "cheder": "266"
+                  }
+                 ],
+                 "more": [
+                  {
+                   "shemmore": "פרופ' אילן גולדפרב"
+                  },
+                  {
+                   "shemmore": "מר אסף ניצן"
+                  }
+                 ]
+                }
+               ]
+              }
+             ]
+            },
+            {
+             "kvutzaid": "02",
+             "semkvutza": "20261",
+             "semkurs": "20261",
+             "kvutzaofenhoraaid": "06",
+             "kvteurofenhoraa": "מעבדה",
+             "kvmekuvan": "0",
+             "kvanglit": "0",
+             "kvmisshvuot": "0",
+             "kvsugzamak": "1",
+             "kvteursugzamak": "שבועי",
+             "semesters": [
+              {
+               "semzamak": "20261",
+               "teursemzamak": "א",
+               "zamak": [
+                {
+                 "teurzman": " ה 11:00-14:00",
+                 "yom": "ה",
+                 "meshaa": "11:00",
+                 "adshaa": "14:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "030",
+                   "teurbinyan": "בנין וולפסון - להנדסה מכנית",
+                   "cheder": "266"
+                  }
+                 ],
+                 "more": [
+                  {
+                   "shemmore": "פרופ' אילן גולדפרב"
+                  },
+                  {
+                   "shemmore": "מר אסף ניצן"
+                  }
+                 ]
+                }
+               ]
+              }
+             ]
+            }
+           ]
+          }
+         ],
+         "rama": []
+        }
+       ]
+      },
+      {
+       "ramasiduri": "19",
+       "ramaid": "5",
+       "teurrama": "שנים ג+ד - קורסי  בחירה/התמחות",
+       "ramanum": "30",
+       "avid": "",
+       "zitut_tochnit": "",
+       "zitut_siduri": "",
+       "meshulevet_tochnit": "",
+       "meshulevet_siduri": "",
+       "hesbershaot": "",
+       "nokursim": "",
+       "tavnit": "21",
+       "rama": [
+        {
+         "ramasiduri": "20",
+         "ramaid": "14",
+         "teurrama": "מבנים ומכניקה חישובית",
+         "ramanum": "40",
+         "avid": "5",
+         "zitut_tochnit": "",
+         "zitut_siduri": "",
+         "meshulevet_tochnit": "",
+         "meshulevet_siduri": "",
+         "hesbershaot": "",
+         "nokursim": "",
+         "tavnit": "21",
+         "kurs": [
+          {
+           "kursid": "05424221",
+           "kursshow": "0542-4221",
+           "teurkurs": "מבוא לתורת האלסטיות",
+           "kursavid": "14",
+           "shiyuch": "",
+           "anglit": "",
+           "kursindmisshavuot": "0",
+           "kvutza": [
+            {
+             "kvutzaid": "01",
+             "semkvutza": "20262",
+             "semkurs": "20262",
+             "kvutzaofenhoraaid": "01",
+             "kvteurofenhoraa": "שיעור",
+             "kvmekuvan": "0",
+             "kvanglit": "0",
+             "kvmisshvuot": "",
+             "kvsugzamak": "1",
+             "kvteursugzamak": "שבועי",
+             "semesters": [
+              {
+               "semzamak": "20262",
+               "teursemzamak": "ב",
+               "zamak": [
+                {
+                 "teurzman": " א 11:00-13:00",
+                 "yom": "א",
+                 "meshaa": "11:00",
+                 "adshaa": "13:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "",
+                   "teurbinyan": "",
+                   "cheder": ""
+                  }
+                 ],
+                 "more": [
+                  {
+                   "shemmore": "ד\"ר תומר מרקוביץ"
+                  }
+                 ]
+                },
+                {
+                 "teurzman": " ב 12:00-13:00",
+                 "yom": "ב",
+                 "meshaa": "12:00",
+                 "adshaa": "13:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "",
+                   "teurbinyan": "",
+                   "cheder": ""
+                  }
+                 ],
+                 "more": [
+                  {
+                   "shemmore": "ד\"ר תומר מרקוביץ"
+                  }
+                 ]
+                }
+               ]
+              }
+             ]
+            },
+            {
+             "kvutzaid": "02",
+             "semkvutza": "20262",
+             "semkurs": "20262",
+             "kvutzaofenhoraaid": "02",
+             "kvteurofenhoraa": "תרגיל",
+             "kvmekuvan": "0",
+             "kvanglit": "0",
+             "kvmisshvuot": "",
+             "kvsugzamak": "1",
+             "kvteursugzamak": "שבועי",
+             "semesters": [
+              {
+               "semzamak": "20262",
+               "teursemzamak": "ב",
+               "zamak": [
+                {
+                 "teurzman": " ב 13:00-14:00",
+                 "yom": "ב",
+                 "meshaa": "13:00",
+                 "adshaa": "14:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "",
+                   "teurbinyan": "",
+                   "cheder": ""
+                  }
+                 ],
+                 "more": [
+                  {
+                   "shemmore": "מר עידו צדקה"
+                  }
+                 ]
+                }
+               ]
+              }
+             ]
+            }
+           ]
+          },
+          {
+           "kursid": "05424223",
+           "kursshow": "0542-4223",
+           "teurkurs": "מבוא לאלמנטים סופיים",
+           "kursavid": "14",
+           "shiyuch": "",
+           "anglit": "",
+           "kursindmisshavuot": "0",
+           "kvutza": [
+            {
+             "kvutzaid": "01",
+             "semkvutza": "20261",
+             "semkurs": "20261",
+             "kvutzaofenhoraaid": "01",
+             "kvteurofenhoraa": "שיעור",
+             "kvmekuvan": "0",
+             "kvanglit": "0",
+             "kvmisshvuot": "0",
+             "kvsugzamak": "1",
+             "kvteursugzamak": "שבועי",
+             "semesters": [
+              {
+               "semzamak": "20261",
+               "teursemzamak": "א",
+               "zamak": [
+                {
+                 "teurzman": " א 12:00-14:00",
+                 "yom": "א",
+                 "meshaa": "12:00",
+                 "adshaa": "14:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "204",
+                   "teurbinyan": "בנין וולפסון להנדסת מחשבים ותוכנה",
+                   "cheder": "103"
+                  }
+                 ],
+                 "more": [
+                  {
+                   "shemmore": "פרופ' זהר יוסיבאש"
+                  }
+                 ]
+                }
+               ]
+              }
+             ]
+            },
+            {
+             "kvutzaid": "02",
+             "semkvutza": "20261",
+             "semkurs": "20261",
+             "kvutzaofenhoraaid": "02",
+             "kvteurofenhoraa": "תרגיל",
+             "kvmekuvan": "0",
+             "kvanglit": "0",
+             "kvmisshvuot": "0",
+             "kvsugzamak": "1",
+             "kvteursugzamak": "שבועי",
+             "semesters": [
+              {
+               "semzamak": "20261",
+               "teursemzamak": "א",
+               "zamak": [
+                {
+                 "teurzman": " ד 13:00-15:00",
+                 "yom": "ד",
+                 "meshaa": "13:00",
+                 "adshaa": "15:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "122",
+                   "teurbinyan": "בנין כיתות הנדסה",
+                   "cheder": "206"
+                  }
+                 ],
+                 "more": [
+                  {
+                   "shemmore": "מר טל סגל"
+                  }
+                 ]
+                }
+               ]
+              }
+             ]
+            }
+           ]
+          },
+          {
+           "kursid": "05424220",
+           "kursshow": "0542-4220",
+           "teurkurs": "תורת התנודות",
+           "kursavid": "14",
+           "shiyuch": "",
+           "anglit": "",
+           "kursindmisshavuot": "0",
+           "kvutza": [
+            {
+             "kvutzaid": "01",
+             "semkvutza": "20261",
+             "semkurs": "20261",
+             "kvutzaofenhoraaid": "03",
+             "kvteurofenhoraa": "שיעור ותרגיל",
+             "kvmekuvan": "0",
+             "kvanglit": "0",
+             "kvmisshvuot": "0",
+             "kvsugzamak": "1",
+             "kvteursugzamak": "שבועי",
+             "semesters": [
+              {
+               "semzamak": "20261",
+               "teursemzamak": "א",
+               "zamak": [
+                {
+                 "teurzman": " ד 16:00-18:00",
+                 "yom": "ד",
+                 "meshaa": "16:00",
+                 "adshaa": "18:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "030",
+                   "teurbinyan": "בנין וולפסון - להנדסה מכנית",
+                   "cheder": "120"
+                  }
+                 ],
+                 "more": [
+                  {
+                   "shemmore": "ד\"ר איגור ברינסקי"
+                  },
+                  {
+                   "shemmore": " גד בלום"
+                  }
+                 ]
+                },
+                {
+                 "teurzman": " ב 12:00-14:00",
+                 "yom": "ב",
+                 "meshaa": "12:00",
+                 "adshaa": "14:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "030",
+                   "teurbinyan": "בנין וולפסון - להנדסה מכנית",
+                   "cheder": "130"
+                  }
+                 ],
+                 "more": [
+                  {
+                   "shemmore": "ד\"ר איגור ברינסקי"
+                  },
+                  {
+                   "shemmore": " גד בלום"
+                  }
+                 ]
+                }
+               ]
+              }
+             ]
+            }
+           ]
+          },
+          {
+           "kursid": "05814131",
+           "kursshow": "0581-4131",
+           "teurkurs": "מעבדה בחומרים הנדסיים",
+           "kursavid": "14",
+           "shiyuch": "",
+           "anglit": "",
+           "kursindmisshavuot": "0",
+           "kvutza": [
+            {
+             "kvutzaid": "01",
+             "semkvutza": "20261",
+             "semkurs": "20261",
+             "kvutzaofenhoraaid": "06",
+             "kvteurofenhoraa": "מעבדה",
+             "kvmekuvan": "0",
+             "kvanglit": "0",
+             "kvmisshvuot": "0",
+             "kvsugzamak": "1",
+             "kvteursugzamak": "שבועי",
+             "semesters": [
+              {
+               "semzamak": "20261",
+               "teursemzamak": "א",
+               "zamak": [
+                {
+                 "teurzman": " ה 08:00-11:00",
+                 "yom": "ה",
+                 "meshaa": "08:00",
+                 "adshaa": "11:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "030",
+                   "teurbinyan": "בנין וולפסון - להנדסה מכנית",
+                   "cheder": "266"
+                  }
+                 ],
+                 "more": [
+                  {
+                   "shemmore": "פרופ' אילן גולדפרב"
+                  },
+                  {
+                   "shemmore": "מר אסף ניצן"
+                  }
+                 ]
+                }
+               ]
+              }
+             ]
+            },
+            {
+             "kvutzaid": "02",
+             "semkvutza": "20261",
+             "semkurs": "20261",
+             "kvutzaofenhoraaid": "06",
+             "kvteurofenhoraa": "מעבדה",
+             "kvmekuvan": "0",
+             "kvanglit": "0",
+             "kvmisshvuot": "0",
+             "kvsugzamak": "1",
+             "kvteursugzamak": "שבועי",
+             "semesters": [
+              {
+               "semzamak": "20261",
+               "teursemzamak": "א",
+               "zamak": [
+                {
+                 "teurzman": " ה 11:00-14:00",
+                 "yom": "ה",
+                 "meshaa": "11:00",
+                 "adshaa": "14:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "030",
+                   "teurbinyan": "בנין וולפסון - להנדסה מכנית",
+                   "cheder": "266"
+                  }
+                 ],
+                 "more": [
+                  {
+                   "shemmore": "פרופ' אילן גולדפרב"
+                  },
+                  {
+                   "shemmore": "מר אסף ניצן"
+                  }
+                 ]
+                }
+               ]
+              }
+             ]
+            }
+           ]
+          }
+         ],
+         "rama": []
+        },
+        {
+         "ramasiduri": "21",
+         "ramaid": "15",
+         "teurrama": "הנדסת סביבה ומערכות אנרגיה",
+         "ramanum": "40",
+         "avid": "5",
+         "zitut_tochnit": "",
+         "zitut_siduri": "",
+         "meshulevet_tochnit": "",
+         "meshulevet_siduri": "",
+         "hesbershaot": "",
+         "nokursim": "",
+         "tavnit": "21",
+         "kurs": [
+          {
+           "kursid": "05424120",
+           "kursshow": "0542-4120",
+           "teurkurs": "תרמודינמיקה (2)",
+           "kursavid": "15",
+           "shiyuch": "",
+           "anglit": "",
+           "kursindmisshavuot": "0",
+           "kvutza": [
+            {
+             "kvutzaid": "01",
+             "semkvutza": "20261",
+             "semkurs": "20261",
+             "kvutzaofenhoraaid": "03",
+             "kvteurofenhoraa": "שיעור ותרגיל",
+             "kvmekuvan": "0",
+             "kvanglit": "0",
+             "kvmisshvuot": "0",
+             "kvsugzamak": "1",
+             "kvteursugzamak": "שבועי",
+             "semesters": [
+              {
+               "semzamak": "20261",
+               "teursemzamak": "א",
+               "zamak": [
+                {
+                 "teurzman": " ג 17:00-19:00",
+                 "yom": "ג",
+                 "meshaa": "17:00",
+                 "adshaa": "19:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "030",
+                   "teurbinyan": "בנין וולפסון - להנדסה מכנית",
+                   "cheder": "238"
+                  }
+                 ],
+                 "more": [
+                  {
+                   "shemmore": "ד\"ר רועי קושניר"
+                  }
+                 ]
+                },
+                {
+                 "teurzman": " ב 14:00-16:00",
+                 "yom": "ב",
+                 "meshaa": "14:00",
+                 "adshaa": "16:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "122",
+                   "teurbinyan": "בנין כיתות הנדסה",
+                   "cheder": "205"
+                  }
+                 ],
+                 "more": [
+                  {
+                   "shemmore": "ד\"ר רועי קושניר"
+                  }
+                 ]
+                }
+               ]
+              }
+             ]
+            }
+           ]
+          },
+          {
+           "kursid": "05424123",
+           "kursshow": "0542-4123",
+           "teurkurs": "תהליכי מעבר חום וחומר",
+           "kursavid": "15",
+           "shiyuch": "",
+           "anglit": "",
+           "kursindmisshavuot": "0",
+           "kvutza": [
+            {
+             "kvutzaid": "01",
+             "semkvutza": "20262",
+             "semkurs": "20262",
+             "kvutzaofenhoraaid": "01",
+             "kvteurofenhoraa": "שיעור",
+             "kvmekuvan": "0",
+             "kvanglit": "0",
+             "kvmisshvuot": "0",
+             "kvsugzamak": "1",
+             "kvteursugzamak": "שבועי",
+             "semesters": [
+              {
+               "semzamak": "20262",
+               "teursemzamak": "ב",
+               "zamak": [
+                {
+                 "teurzman": " א 14:00-17:00",
+                 "yom": "א",
+                 "meshaa": "14:00",
+                 "adshaa": "17:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "",
+                   "teurbinyan": "",
+                   "cheder": ""
+                  }
+                 ],
+                 "more": [
+                  {
+                   "shemmore": "פרופ' אלכסנדר ליברזון"
+                  }
+                 ]
+                },
+                {
+                 "teurzman": " ג 10:00-11:00",
+                 "yom": "ג",
+                 "meshaa": "10:00",
+                 "adshaa": "11:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "",
+                   "teurbinyan": "",
+                   "cheder": ""
+                  }
+                 ],
+                 "more": [
+                  {
+                   "shemmore": "פרופ' אלכסנדר ליברזון"
+                  }
+                 ]
+                }
+               ]
+              }
+             ]
+            },
+            {
+             "kvutzaid": "02",
+             "semkvutza": "20262",
+             "semkurs": "20262",
+             "kvutzaofenhoraaid": "02",
+             "kvteurofenhoraa": "תרגיל",
+             "kvmekuvan": "0",
+             "kvanglit": "0",
+             "kvmisshvuot": "0",
+             "kvsugzamak": "1",
+             "kvteursugzamak": "שבועי",
+             "semesters": [
+              {
+               "semzamak": "20262",
+               "teursemzamak": "ב",
+               "zamak": [
+                {
+                 "teurzman": " ג 11:00-12:00",
+                 "yom": "ג",
+                 "meshaa": "11:00",
+                 "adshaa": "12:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "",
+                   "teurbinyan": "",
+                   "cheder": ""
+                  }
+                 ],
+                 "more": [
+                  {
+                   "shemmore": "עידו רכבוך"
+                  }
+                 ]
+                }
+               ]
+              }
+             ]
+            }
+           ]
+          }
+         ],
+         "rama": []
+        },
+        {
+         "ramasiduri": "22",
+         "ramaid": "16",
+         "teurrama": "אווירונאוטיקה וחלל",
+         "ramanum": "40",
+         "avid": "5",
+         "zitut_tochnit": "",
+         "zitut_siduri": "",
+         "meshulevet_tochnit": "",
+         "meshulevet_siduri": "",
+         "hesbershaot": "",
+         "nokursim": "",
+         "tavnit": "21",
+         "kurs": [
+          {
+           "kursid": "05424120",
+           "kursshow": "0542-4120",
+           "teurkurs": "תרמודינמיקה (2)",
+           "kursavid": "16",
+           "shiyuch": "",
+           "anglit": "",
+           "kursindmisshavuot": "0",
+           "kvutza": [
+            {
+             "kvutzaid": "01",
+             "semkvutza": "20261",
+             "semkurs": "20261",
+             "kvutzaofenhoraaid": "03",
+             "kvteurofenhoraa": "שיעור ותרגיל",
+             "kvmekuvan": "0",
+             "kvanglit": "0",
+             "kvmisshvuot": "0",
+             "kvsugzamak": "1",
+             "kvteursugzamak": "שבועי",
+             "semesters": [
+              {
+               "semzamak": "20261",
+               "teursemzamak": "א",
+               "zamak": [
+                {
+                 "teurzman": " ג 17:00-19:00",
+                 "yom": "ג",
+                 "meshaa": "17:00",
+                 "adshaa": "19:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "030",
+                   "teurbinyan": "בנין וולפסון - להנדסה מכנית",
+                   "cheder": "238"
+                  }
+                 ],
+                 "more": [
+                  {
+                   "shemmore": "ד\"ר רועי קושניר"
+                  }
+                 ]
+                },
+                {
+                 "teurzman": " ב 14:00-16:00",
+                 "yom": "ב",
+                 "meshaa": "14:00",
+                 "adshaa": "16:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "122",
+                   "teurbinyan": "בנין כיתות הנדסה",
+                   "cheder": "205"
+                  }
+                 ],
+                 "more": [
+                  {
+                   "shemmore": "ד\"ר רועי קושניר"
+                  }
+                 ]
+                }
+               ]
+              }
+             ]
+            }
+           ]
+          },
+          {
+           "kursid": "05424220",
+           "kursshow": "0542-4220",
+           "teurkurs": "תורת התנודות",
+           "kursavid": "16",
+           "shiyuch": "",
+           "anglit": "",
+           "kursindmisshavuot": "0",
+           "kvutza": [
+            {
+             "kvutzaid": "01",
+             "semkvutza": "20261",
+             "semkurs": "20261",
+             "kvutzaofenhoraaid": "03",
+             "kvteurofenhoraa": "שיעור ותרגיל",
+             "kvmekuvan": "0",
+             "kvanglit": "0",
+             "kvmisshvuot": "0",
+             "kvsugzamak": "1",
+             "kvteursugzamak": "שבועי",
+             "semesters": [
+              {
+               "semzamak": "20261",
+               "teursemzamak": "א",
+               "zamak": [
+                {
+                 "teurzman": " ד 16:00-18:00",
+                 "yom": "ד",
+                 "meshaa": "16:00",
+                 "adshaa": "18:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "030",
+                   "teurbinyan": "בנין וולפסון - להנדסה מכנית",
+                   "cheder": "120"
+                  }
+                 ],
+                 "more": [
+                  {
+                   "shemmore": "ד\"ר איגור ברינסקי"
+                  },
+                  {
+                   "shemmore": " גד בלום"
+                  }
+                 ]
+                },
+                {
+                 "teurzman": " ב 12:00-14:00",
+                 "yom": "ב",
+                 "meshaa": "12:00",
+                 "adshaa": "14:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "030",
+                   "teurbinyan": "בנין וולפסון - להנדסה מכנית",
+                   "cheder": "130"
+                  }
+                 ],
+                 "more": [
+                  {
+                   "shemmore": "ד\"ר איגור ברינסקי"
+                  },
+                  {
+                   "shemmore": " גד בלום"
+                  }
+                 ]
+                }
+               ]
+              }
+             ]
+            }
+           ]
+          },
+          {
+           "kursid": "05424221",
+           "kursshow": "0542-4221",
+           "teurkurs": "מבוא לתורת האלסטיות",
+           "kursavid": "16",
+           "shiyuch": "",
+           "anglit": "",
+           "kursindmisshavuot": "0",
+           "kvutza": [
+            {
+             "kvutzaid": "01",
+             "semkvutza": "20262",
+             "semkurs": "20262",
+             "kvutzaofenhoraaid": "01",
+             "kvteurofenhoraa": "שיעור",
+             "kvmekuvan": "0",
+             "kvanglit": "0",
+             "kvmisshvuot": "",
+             "kvsugzamak": "1",
+             "kvteursugzamak": "שבועי",
+             "semesters": [
+              {
+               "semzamak": "20262",
+               "teursemzamak": "ב",
+               "zamak": [
+                {
+                 "teurzman": " א 11:00-13:00",
+                 "yom": "א",
+                 "meshaa": "11:00",
+                 "adshaa": "13:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "",
+                   "teurbinyan": "",
+                   "cheder": ""
+                  }
+                 ],
+                 "more": [
+                  {
+                   "shemmore": "ד\"ר תומר מרקוביץ"
+                  }
+                 ]
+                },
+                {
+                 "teurzman": " ב 12:00-13:00",
+                 "yom": "ב",
+                 "meshaa": "12:00",
+                 "adshaa": "13:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "",
+                   "teurbinyan": "",
+                   "cheder": ""
+                  }
+                 ],
+                 "more": [
+                  {
+                   "shemmore": "ד\"ר תומר מרקוביץ"
+                  }
+                 ]
+                }
+               ]
+              }
+             ]
+            },
+            {
+             "kvutzaid": "02",
+             "semkvutza": "20262",
+             "semkurs": "20262",
+             "kvutzaofenhoraaid": "02",
+             "kvteurofenhoraa": "תרגיל",
+             "kvmekuvan": "0",
+             "kvanglit": "0",
+             "kvmisshvuot": "",
+             "kvsugzamak": "1",
+             "kvteursugzamak": "שבועי",
+             "semesters": [
+              {
+               "semzamak": "20262",
+               "teursemzamak": "ב",
+               "zamak": [
+                {
+                 "teurzman": " ב 13:00-14:00",
+                 "yom": "ב",
+                 "meshaa": "13:00",
+                 "adshaa": "14:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "",
+                   "teurbinyan": "",
+                   "cheder": ""
+                  }
+                 ],
+                 "more": [
+                  {
+                   "shemmore": "מר עידו צדקה"
+                  }
+                 ]
+                }
+               ]
+              }
+             ]
+            }
+           ]
+          }
+         ],
+         "rama": []
+        },
+        {
+         "ramasiduri": "23",
+         "ramaid": "17",
+         "teurrama": "מערכות מכטרוניות",
+         "ramanum": "40",
+         "avid": "5",
+         "zitut_tochnit": "",
+         "zitut_siduri": "",
+         "meshulevet_tochnit": "",
+         "meshulevet_siduri": "",
+         "hesbershaot": "",
+         "nokursim": "",
+         "tavnit": "21",
+         "kurs": [
+          {
+           "kursid": "05424455",
+           "kursshow": "0542-4455",
+           "teurkurs": "בינה חישובית",
+           "kursavid": "17",
+           "shiyuch": "",
+           "anglit": "",
+           "kursindmisshavuot": "0",
+           "kvutza": [
+            {
+             "kvutzaid": "01",
+             "semkvutza": "20262",
+             "semkurs": "20262",
+             "kvutzaofenhoraaid": "01",
+             "kvteurofenhoraa": "שיעור",
+             "kvmekuvan": "0",
+             "kvanglit": "0",
+             "kvmisshvuot": "0",
+             "kvsugzamak": "1",
+             "kvteursugzamak": "שבועי",
+             "semesters": [
+              {
+               "semzamak": "20262",
+               "teursemzamak": "ב",
+               "zamak": [
+                {
+                 "teurzman": " ג 16:00-19:00",
+                 "yom": "ג",
+                 "meshaa": "16:00",
+                 "adshaa": "19:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "",
+                   "teurbinyan": "",
+                   "cheder": ""
+                  }
+                 ],
+                 "more": [
+                  {
+                   "shemmore": "פרופ' אבישי סינטוב"
+                  }
+                 ]
+                }
+               ]
+              }
+             ]
+            },
+            {
+             "kvutzaid": "02",
+             "semkvutza": "20262",
+             "semkurs": "20262",
+             "kvutzaofenhoraaid": "02",
+             "kvteurofenhoraa": "תרגיל",
+             "kvmekuvan": "0",
+             "kvanglit": "0",
+             "kvmisshvuot": "0",
+             "kvsugzamak": "1",
+             "kvteursugzamak": "שבועי",
+             "semesters": [
+              {
+               "semzamak": "20262",
+               "teursemzamak": "ב",
+               "zamak": [
+                {
+                 "teurzman": " ב 18:00-19:00",
+                 "yom": "ב",
+                 "meshaa": "18:00",
+                 "adshaa": "19:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "",
+                   "teurbinyan": "",
+                   "cheder": ""
+                  }
+                 ],
+                 "more": [
+                  {
+                   "shemmore": "מר רותם עטרי"
+                  }
+                 ]
+                }
+               ]
+              }
+             ]
+            }
+           ]
+          },
+          {
+           "kursid": "05424624",
+           "kursshow": "0542-4624",
+           "teurkurs": "מעבדה ברובוטיקה ובקרה של מערכות",
+           "kursavid": "17",
+           "shiyuch": "",
+           "anglit": "",
+           "kursindmisshavuot": "0",
+           "kvutza": [
+            {
+             "kvutzaid": "01",
+             "semkvutza": "20262",
+             "semkurs": "20262",
+             "kvutzaofenhoraaid": "06",
+             "kvteurofenhoraa": "מעבדה",
+             "kvmekuvan": "0",
+             "kvanglit": "0",
+             "kvmisshvuot": "0",
+             "kvsugzamak": "1",
+             "kvteursugzamak": "שבועי",
+             "semesters": [
+              {
+               "semzamak": "20262",
+               "teursemzamak": "ב",
+               "zamak": [
+                {
+                 "teurzman": " ד 12:00-15:00",
+                 "yom": "ד",
+                 "meshaa": "12:00",
+                 "adshaa": "15:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "030",
+                   "teurbinyan": "בנין וולפסון - להנדסה מכנית",
+                   "cheder": "364"
+                  }
+                 ],
+                 "more": [
+                  {
+                   "shemmore": "פרופ' אבישי סינטוב"
+                  }
+                 ]
+                }
+               ]
+              }
+             ]
+            },
+            {
+             "kvutzaid": "02",
+             "semkvutza": "20262",
+             "semkurs": "20262",
+             "kvutzaofenhoraaid": "06",
+             "kvteurofenhoraa": "מעבדה",
+             "kvmekuvan": "0",
+             "kvanglit": "0",
+             "kvmisshvuot": "0",
+             "kvsugzamak": "1",
+             "kvteursugzamak": "שבועי",
+             "semesters": [
+              {
+               "semzamak": "20262",
+               "teursemzamak": "ב",
+               "zamak": [
+                {
+                 "teurzman": " ד 15:00-18:00",
+                 "yom": "ד",
+                 "meshaa": "15:00",
+                 "adshaa": "18:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "030",
+                   "teurbinyan": "בנין וולפסון - להנדסה מכנית",
+                   "cheder": "364"
+                  }
+                 ],
+                 "more": [
+                  {
+                   "shemmore": "פרופ' אבישי סינטוב"
+                  }
+                 ]
+                }
+               ]
+              }
+             ]
+            }
+           ]
+          }
+         ],
+         "rama": []
+        },
+        {
+         "ramasiduri": "24",
+         "ramaid": "18",
+         "teurrama": "זרימה ותיכון תרמי",
+         "ramanum": "40",
+         "avid": "5",
+         "zitut_tochnit": "",
+         "zitut_siduri": "",
+         "meshulevet_tochnit": "",
+         "meshulevet_siduri": "",
+         "hesbershaot": "",
+         "nokursim": "",
+         "tavnit": "21",
+         "kurs": [
+          {
+           "kursid": "05424120",
+           "kursshow": "0542-4120",
+           "teurkurs": "תרמודינמיקה (2)",
+           "kursavid": "18",
+           "shiyuch": "",
+           "anglit": "",
+           "kursindmisshavuot": "0",
+           "kvutza": [
+            {
+             "kvutzaid": "01",
+             "semkvutza": "20261",
+             "semkurs": "20261",
+             "kvutzaofenhoraaid": "03",
+             "kvteurofenhoraa": "שיעור ותרגיל",
+             "kvmekuvan": "0",
+             "kvanglit": "0",
+             "kvmisshvuot": "0",
+             "kvsugzamak": "1",
+             "kvteursugzamak": "שבועי",
+             "semesters": [
+              {
+               "semzamak": "20261",
+               "teursemzamak": "א",
+               "zamak": [
+                {
+                 "teurzman": " ג 17:00-19:00",
+                 "yom": "ג",
+                 "meshaa": "17:00",
+                 "adshaa": "19:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "030",
+                   "teurbinyan": "בנין וולפסון - להנדסה מכנית",
+                   "cheder": "238"
+                  }
+                 ],
+                 "more": [
+                  {
+                   "shemmore": "ד\"ר רועי קושניר"
+                  }
+                 ]
+                },
+                {
+                 "teurzman": " ב 14:00-16:00",
+                 "yom": "ב",
+                 "meshaa": "14:00",
+                 "adshaa": "16:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "122",
+                   "teurbinyan": "בנין כיתות הנדסה",
+                   "cheder": "205"
+                  }
+                 ],
+                 "more": [
+                  {
+                   "shemmore": "ד\"ר רועי קושניר"
+                  }
+                 ]
+                }
+               ]
+              }
+             ]
+            }
+           ]
+          },
+          {
+           "kursid": "05424123",
+           "kursshow": "0542-4123",
+           "teurkurs": "תהליכי מעבר חום וחומר",
+           "kursavid": "18",
+           "shiyuch": "",
+           "anglit": "",
+           "kursindmisshavuot": "0",
+           "kvutza": [
+            {
+             "kvutzaid": "01",
+             "semkvutza": "20262",
+             "semkurs": "20262",
+             "kvutzaofenhoraaid": "01",
+             "kvteurofenhoraa": "שיעור",
+             "kvmekuvan": "0",
+             "kvanglit": "0",
+             "kvmisshvuot": "0",
+             "kvsugzamak": "1",
+             "kvteursugzamak": "שבועי",
+             "semesters": [
+              {
+               "semzamak": "20262",
+               "teursemzamak": "ב",
+               "zamak": [
+                {
+                 "teurzman": " א 14:00-17:00",
+                 "yom": "א",
+                 "meshaa": "14:00",
+                 "adshaa": "17:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "",
+                   "teurbinyan": "",
+                   "cheder": ""
+                  }
+                 ],
+                 "more": [
+                  {
+                   "shemmore": "פרופ' אלכסנדר ליברזון"
+                  }
+                 ]
+                },
+                {
+                 "teurzman": " ג 10:00-11:00",
+                 "yom": "ג",
+                 "meshaa": "10:00",
+                 "adshaa": "11:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "",
+                   "teurbinyan": "",
+                   "cheder": ""
+                  }
+                 ],
+                 "more": [
+                  {
+                   "shemmore": "פרופ' אלכסנדר ליברזון"
+                  }
+                 ]
+                }
+               ]
+              }
+             ]
+            },
+            {
+             "kvutzaid": "02",
+             "semkvutza": "20262",
+             "semkurs": "20262",
+             "kvutzaofenhoraaid": "02",
+             "kvteurofenhoraa": "תרגיל",
+             "kvmekuvan": "0",
+             "kvanglit": "0",
+             "kvmisshvuot": "0",
+             "kvsugzamak": "1",
+             "kvteursugzamak": "שבועי",
+             "semesters": [
+              {
+               "semzamak": "20262",
+               "teursemzamak": "ב",
+               "zamak": [
+                {
+                 "teurzman": " ג 11:00-12:00",
+                 "yom": "ג",
+                 "meshaa": "11:00",
+                 "adshaa": "12:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "",
+                   "teurbinyan": "",
+                   "cheder": ""
+                  }
+                 ],
+                 "more": [
+                  {
+                   "shemmore": "עידו רכבוך"
+                  }
+                 ]
+                }
+               ]
+              }
+             ]
+            }
+           ]
+          },
+          {
+           "kursid": "05424320",
+           "kursshow": "0542-4320",
+           "teurkurs": "מכניקת הזורמים (2)",
+           "kursavid": "18",
+           "shiyuch": "",
+           "anglit": "",
+           "kursindmisshavuot": "0",
+           "kvutza": [
+            {
+             "kvutzaid": "01",
+             "semkvutza": "20262",
+             "semkurs": "20262",
+             "kvutzaofenhoraaid": "01",
+             "kvteurofenhoraa": "שיעור",
+             "kvmekuvan": "0",
+             "kvanglit": "0",
+             "kvmisshvuot": "",
+             "kvsugzamak": "1",
+             "kvteursugzamak": "שבועי",
+             "semesters": [
+              {
+               "semzamak": "20262",
+               "teursemzamak": "ב",
+               "zamak": [
+                {
+                 "teurzman": " ה 12:00-15:00",
+                 "yom": "ה",
+                 "meshaa": "12:00",
+                 "adshaa": "15:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "",
+                   "teurbinyan": "",
+                   "cheder": ""
+                  }
+                 ],
+                 "more": [
+                  {
+                   "shemmore": "פרופ' יצחק ירון טולדו"
+                  }
+                 ]
+                }
+               ]
+              }
+             ]
+            },
+            {
+             "kvutzaid": "02",
+             "semkvutza": "20262",
+             "semkurs": "20262",
+             "kvutzaofenhoraaid": "02",
+             "kvteurofenhoraa": "תרגיל",
+             "kvmekuvan": "0",
+             "kvanglit": "0",
+             "kvmisshvuot": "",
+             "kvsugzamak": "1",
+             "kvteursugzamak": "שבועי",
+             "semesters": [
+              {
+               "semzamak": "20262",
+               "teursemzamak": "ב",
+               "zamak": [
+                {
+                 "teurzman": " ה 15:00-16:00",
+                 "yom": "ה",
+                 "meshaa": "15:00",
+                 "adshaa": "16:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "",
+                   "teurbinyan": "",
+                   "cheder": ""
+                  }
+                 ],
+                 "more": [
+                  {
+                   "shemmore": "עמר הדר"
+                  }
+                 ]
+                }
+               ]
+              }
+             ]
+            }
+           ]
+          }
+         ],
+         "rama": []
+        },
+        {
+         "ramasiduri": "25",
+         "ramaid": "20",
+         "teurrama": "תכן מכני",
+         "ramanum": "40",
+         "avid": "5",
+         "zitut_tochnit": "",
+         "zitut_siduri": "",
+         "meshulevet_tochnit": "",
+         "meshulevet_siduri": "",
+         "hesbershaot": "",
+         "nokursim": "",
+         "tavnit": "21",
+         "kurs": [
+          {
+           "kursid": "05424420",
+           "kursshow": "0542-4420",
+           "teurkurs": "תורת המכונות",
+           "kursavid": "20",
+           "shiyuch": "",
+           "anglit": "",
+           "kursindmisshavuot": "0",
+           "kvutza": [
+            {
+             "kvutzaid": "01",
+             "semkvutza": "20261",
+             "semkurs": "20261",
+             "kvutzaofenhoraaid": "03",
+             "kvteurofenhoraa": "שיעור ותרגיל",
+             "kvmekuvan": "0",
+             "kvanglit": "0",
+             "kvmisshvuot": "0",
+             "kvsugzamak": "1",
+             "kvteursugzamak": "שבועי",
+             "semesters": [
+              {
+               "semzamak": "20261",
+               "teursemzamak": "א",
+               "zamak": [
+                {
+                 "teurzman": " ג 11:00-13:00",
+                 "yom": "ג",
+                 "meshaa": "11:00",
+                 "adshaa": "13:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "030",
+                   "teurbinyan": "בנין וולפסון - להנדסה מכנית",
+                   "cheder": "134"
+                  }
+                 ],
+                 "more": [
+                  {
+                   "shemmore": "ד\"ר יוסף גרונפלד"
+                  }
+                 ]
+                },
+                {
+                 "teurzman": " ד 11:00-13:00",
+                 "yom": "ד",
+                 "meshaa": "11:00",
+                 "adshaa": "13:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "204",
+                   "teurbinyan": "בנין וולפסון להנדסת מחשבים ותוכנה",
+                   "cheder": "104"
+                  }
+                 ],
+                 "more": [
+                  {
+                   "shemmore": "ד\"ר יוסף גרונפלד"
+                  }
+                 ]
+                }
+               ]
+              }
+             ]
+            }
+           ]
+          },
+          {
+           "kursid": "05424422",
+           "kursshow": "0542-4422",
+           "teurkurs": "תכן הנדסי: מבוא ושיטות",
+           "kursavid": "20",
+           "shiyuch": "",
+           "anglit": "",
+           "kursindmisshavuot": "0",
+           "kvutza": [
+            {
+             "kvutzaid": "01",
+             "semkvutza": "20261",
+             "semkurs": "20261",
+             "kvutzaofenhoraaid": "03",
+             "kvteurofenhoraa": "שיעור ותרגיל",
+             "kvmekuvan": "0",
+             "kvanglit": "0",
+             "kvmisshvuot": "0",
+             "kvsugzamak": "1",
+             "kvteursugzamak": "שבועי",
+             "semesters": [
+              {
+               "semzamak": "20261",
+               "teursemzamak": "א",
+               "zamak": [
+                {
+                 "teurzman": " ג 13:00-17:00",
+                 "yom": "ג",
+                 "meshaa": "13:00",
+                 "adshaa": "17:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "201",
+                   "teurbinyan": "כיתות דן דוד",
+                   "cheder": "111"
+                  }
+                 ],
+                 "more": [
+                  {
+                   "shemmore": "מר דני-משה ברקו"
+                  }
+                 ]
+                },
+                {
+                 "teurzman": " ג 15:00-17:00",
+                 "yom": "ג",
+                 "meshaa": "15:00",
+                 "adshaa": "17:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "201",
+                   "teurbinyan": "כיתות דן דוד",
+                   "cheder": "104"
+                  }
+                 ],
+                 "more": [
+                  {
+                   "shemmore": "מר דני-משה ברקו"
+                  }
+                 ]
+                },
+                {
+                 "teurzman": " ג 15:00-17:00",
+                 "yom": "ג",
+                 "meshaa": "15:00",
+                 "adshaa": "17:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "201",
+                   "teurbinyan": "כיתות דן דוד",
+                   "cheder": "202"
+                  }
+                 ],
+                 "more": [
+                  {
+                   "shemmore": "מר דני-משה ברקו"
+                  }
+                 ]
+                },
+                {
+                 "teurzman": " ג 15:00-17:00",
+                 "yom": "ג",
+                 "meshaa": "15:00",
+                 "adshaa": "17:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "201",
+                   "teurbinyan": "כיתות דן דוד",
+                   "cheder": "103"
+                  }
+                 ],
+                 "more": [
+                  {
+                   "shemmore": "מר דני-משה ברקו"
+                  }
+                 ]
+                }
+               ]
+              }
+             ]
+            }
+           ]
+          },
+          {
+           "kursid": "05424455",
+           "kursshow": "0542-4455",
+           "teurkurs": "בינה חישובית",
+           "kursavid": "20",
+           "shiyuch": "",
+           "anglit": "",
+           "kursindmisshavuot": "0",
+           "kvutza": [
+            {
+             "kvutzaid": "01",
+             "semkvutza": "20262",
+             "semkurs": "20262",
+             "kvutzaofenhoraaid": "01",
+             "kvteurofenhoraa": "שיעור",
+             "kvmekuvan": "0",
+             "kvanglit": "0",
+             "kvmisshvuot": "0",
+             "kvsugzamak": "1",
+             "kvteursugzamak": "שבועי",
+             "semesters": [
+              {
+               "semzamak": "20262",
+               "teursemzamak": "ב",
+               "zamak": [
+                {
+                 "teurzman": " ג 16:00-19:00",
+                 "yom": "ג",
+                 "meshaa": "16:00",
+                 "adshaa": "19:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "",
+                   "teurbinyan": "",
+                   "cheder": ""
+                  }
+                 ],
+                 "more": [
+                  {
+                   "shemmore": "פרופ' אבישי סינטוב"
+                  }
+                 ]
+                }
+               ]
+              }
+             ]
+            },
+            {
+             "kvutzaid": "02",
+             "semkvutza": "20262",
+             "semkurs": "20262",
+             "kvutzaofenhoraaid": "02",
+             "kvteurofenhoraa": "תרגיל",
+             "kvmekuvan": "0",
+             "kvanglit": "0",
+             "kvmisshvuot": "0",
+             "kvsugzamak": "1",
+             "kvteursugzamak": "שבועי",
+             "semesters": [
+              {
+               "semzamak": "20262",
+               "teursemzamak": "ב",
+               "zamak": [
+                {
+                 "teurzman": " ב 18:00-19:00",
+                 "yom": "ב",
+                 "meshaa": "18:00",
+                 "adshaa": "19:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "",
+                   "teurbinyan": "",
+                   "cheder": ""
+                  }
+                 ],
+                 "more": [
+                  {
+                   "shemmore": "מר רותם עטרי"
+                  }
+                 ]
+                }
+               ]
+              }
+             ]
+            }
+           ]
+          },
+          {
+           "kursid": "05424624",
+           "kursshow": "0542-4624",
+           "teurkurs": "מעבדה ברובוטיקה ובקרה של מערכות",
+           "kursavid": "20",
+           "shiyuch": "",
+           "anglit": "",
+           "kursindmisshavuot": "0",
+           "kvutza": [
+            {
+             "kvutzaid": "01",
+             "semkvutza": "20262",
+             "semkurs": "20262",
+             "kvutzaofenhoraaid": "06",
+             "kvteurofenhoraa": "מעבדה",
+             "kvmekuvan": "0",
+             "kvanglit": "0",
+             "kvmisshvuot": "0",
+             "kvsugzamak": "1",
+             "kvteursugzamak": "שבועי",
+             "semesters": [
+              {
+               "semzamak": "20262",
+               "teursemzamak": "ב",
+               "zamak": [
+                {
+                 "teurzman": " ד 12:00-15:00",
+                 "yom": "ד",
+                 "meshaa": "12:00",
+                 "adshaa": "15:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "030",
+                   "teurbinyan": "בנין וולפסון - להנדסה מכנית",
+                   "cheder": "364"
+                  }
+                 ],
+                 "more": [
+                  {
+                   "shemmore": "פרופ' אבישי סינטוב"
+                  }
+                 ]
+                }
+               ]
+              }
+             ]
+            },
+            {
+             "kvutzaid": "02",
+             "semkvutza": "20262",
+             "semkurs": "20262",
+             "kvutzaofenhoraaid": "06",
+             "kvteurofenhoraa": "מעבדה",
+             "kvmekuvan": "0",
+             "kvanglit": "0",
+             "kvmisshvuot": "0",
+             "kvsugzamak": "1",
+             "kvteursugzamak": "שבועי",
+             "semesters": [
+              {
+               "semzamak": "20262",
+               "teursemzamak": "ב",
+               "zamak": [
+                {
+                 "teurzman": " ד 15:00-18:00",
+                 "yom": "ד",
+                 "meshaa": "15:00",
+                 "adshaa": "18:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "030",
+                   "teurbinyan": "בנין וולפסון - להנדסה מכנית",
+                   "cheder": "364"
+                  }
+                 ],
+                 "more": [
+                  {
+                   "shemmore": "פרופ' אבישי סינטוב"
+                  }
+                 ]
+                }
+               ]
+              }
+             ]
+            }
+           ]
+          }
+         ],
+         "rama": []
+        },
+        {
+         "ramasiduri": "26",
+         "ramaid": "21",
+         "teurrama": "מערכות ממוזערות וחומרים",
+         "ramanum": "40",
+         "avid": "5",
+         "zitut_tochnit": "",
+         "zitut_siduri": "",
+         "meshulevet_tochnit": "",
+         "meshulevet_siduri": "",
+         "hesbershaot": "",
+         "nokursim": "",
+         "tavnit": "21",
+         "kurs": [
+          {
+           "kursid": "05424220",
+           "kursshow": "0542-4220",
+           "teurkurs": "תורת התנודות",
+           "kursavid": "21",
+           "shiyuch": "",
+           "anglit": "",
+           "kursindmisshavuot": "0",
+           "kvutza": [
+            {
+             "kvutzaid": "01",
+             "semkvutza": "20261",
+             "semkurs": "20261",
+             "kvutzaofenhoraaid": "03",
+             "kvteurofenhoraa": "שיעור ותרגיל",
+             "kvmekuvan": "0",
+             "kvanglit": "0",
+             "kvmisshvuot": "0",
+             "kvsugzamak": "1",
+             "kvteursugzamak": "שבועי",
+             "semesters": [
+              {
+               "semzamak": "20261",
+               "teursemzamak": "א",
+               "zamak": [
+                {
+                 "teurzman": " ד 16:00-18:00",
+                 "yom": "ד",
+                 "meshaa": "16:00",
+                 "adshaa": "18:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "030",
+                   "teurbinyan": "בנין וולפסון - להנדסה מכנית",
+                   "cheder": "120"
+                  }
+                 ],
+                 "more": [
+                  {
+                   "shemmore": "ד\"ר איגור ברינסקי"
+                  },
+                  {
+                   "shemmore": " גד בלום"
+                  }
+                 ]
+                },
+                {
+                 "teurzman": " ב 12:00-14:00",
+                 "yom": "ב",
+                 "meshaa": "12:00",
+                 "adshaa": "14:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "030",
+                   "teurbinyan": "בנין וולפסון - להנדסה מכנית",
+                   "cheder": "130"
+                  }
+                 ],
+                 "more": [
+                  {
+                   "shemmore": "ד\"ר איגור ברינסקי"
+                  },
+                  {
+                   "shemmore": " גד בלום"
+                  }
+                 ]
+                }
+               ]
+              }
+             ]
+            }
+           ]
+          },
+          {
+           "kursid": "05814131",
+           "kursshow": "0581-4131",
+           "teurkurs": "מעבדה בחומרים הנדסיים",
+           "kursavid": "21",
+           "shiyuch": "",
+           "anglit": "",
+           "kursindmisshavuot": "0",
+           "kvutza": [
+            {
+             "kvutzaid": "01",
+             "semkvutza": "20261",
+             "semkurs": "20261",
+             "kvutzaofenhoraaid": "06",
+             "kvteurofenhoraa": "מעבדה",
+             "kvmekuvan": "0",
+             "kvanglit": "0",
+             "kvmisshvuot": "0",
+             "kvsugzamak": "1",
+             "kvteursugzamak": "שבועי",
+             "semesters": [
+              {
+               "semzamak": "20261",
+               "teursemzamak": "א",
+               "zamak": [
+                {
+                 "teurzman": " ה 08:00-11:00",
+                 "yom": "ה",
+                 "meshaa": "08:00",
+                 "adshaa": "11:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "030",
+                   "teurbinyan": "בנין וולפסון - להנדסה מכנית",
+                   "cheder": "266"
+                  }
+                 ],
+                 "more": [
+                  {
+                   "shemmore": "פרופ' אילן גולדפרב"
+                  },
+                  {
+                   "shemmore": "מר אסף ניצן"
+                  }
+                 ]
+                }
+               ]
+              }
+             ]
+            },
+            {
+             "kvutzaid": "02",
+             "semkvutza": "20261",
+             "semkurs": "20261",
+             "kvutzaofenhoraaid": "06",
+             "kvteurofenhoraa": "מעבדה",
+             "kvmekuvan": "0",
+             "kvanglit": "0",
+             "kvmisshvuot": "0",
+             "kvsugzamak": "1",
+             "kvteursugzamak": "שבועי",
+             "semesters": [
+              {
+               "semzamak": "20261",
+               "teursemzamak": "א",
+               "zamak": [
+                {
+                 "teurzman": " ה 11:00-14:00",
+                 "yom": "ה",
+                 "meshaa": "11:00",
+                 "adshaa": "14:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "030",
+                   "teurbinyan": "בנין וולפסון - להנדסה מכנית",
+                   "cheder": "266"
+                  }
+                 ],
+                 "more": [
+                  {
+                   "shemmore": "פרופ' אילן גולדפרב"
+                  },
+                  {
+                   "shemmore": "מר אסף ניצן"
+                  }
+                 ]
+                }
+               ]
+              }
+             ]
+            }
+           ]
+          }
+         ],
+         "rama": []
+        },
+        {
+         "ramasiduri": "27",
+         "ramaid": "28",
+         "teurrama": "מערכות אנרגיה",
+         "ramanum": "40",
+         "avid": "5",
+         "zitut_tochnit": "",
+         "zitut_siduri": "",
+         "meshulevet_tochnit": "",
+         "meshulevet_siduri": "",
+         "hesbershaot": "",
+         "nokursim": "",
+         "tavnit": "21",
+         "kurs": [
+          {
+           "kursid": "05424120",
+           "kursshow": "0542-4120",
+           "teurkurs": "תרמודינמיקה (2)",
+           "kursavid": "28",
+           "shiyuch": "",
+           "anglit": "",
+           "kursindmisshavuot": "0",
+           "kvutza": [
+            {
+             "kvutzaid": "01",
+             "semkvutza": "20261",
+             "semkurs": "20261",
+             "kvutzaofenhoraaid": "03",
+             "kvteurofenhoraa": "שיעור ותרגיל",
+             "kvmekuvan": "0",
+             "kvanglit": "0",
+             "kvmisshvuot": "0",
+             "kvsugzamak": "1",
+             "kvteursugzamak": "שבועי",
+             "semesters": [
+              {
+               "semzamak": "20261",
+               "teursemzamak": "א",
+               "zamak": [
+                {
+                 "teurzman": " ג 17:00-19:00",
+                 "yom": "ג",
+                 "meshaa": "17:00",
+                 "adshaa": "19:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "030",
+                   "teurbinyan": "בנין וולפסון - להנדסה מכנית",
+                   "cheder": "238"
+                  }
+                 ],
+                 "more": [
+                  {
+                   "shemmore": "ד\"ר רועי קושניר"
+                  }
+                 ]
+                },
+                {
+                 "teurzman": " ב 14:00-16:00",
+                 "yom": "ב",
+                 "meshaa": "14:00",
+                 "adshaa": "16:00",
+                 "taarich": "",
+                 "adtaarich": "",
+                 "makom": [
+                  {
+                   "binyan": "122",
+                   "teurbinyan": "בנין כיתות הנדסה",
+                   "cheder": "205"
+                  }
+                 ],
+                 "more": [
+                  {
+                   "shemmore": "ד\"ר רועי קושניר"
+                  }
+                 ]
+                }
+               ]
+              }
+             ]
+            }
+           ]
+          }
+         ],
+         "rama": []
+        }
+       ]
+      }
+     ],
+     "teachingMethod": [
+      "שיעור ותרגיל",
+      "מעבדה",
+      "שיעור",
+      "תרגיל",
+      "פרוייקט"
+     ]
+    }
+   ]
+  }
+ }
+}

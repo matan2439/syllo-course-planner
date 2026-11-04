@@ -7,6 +7,7 @@ import registry from '../data/config/institutions.json';
  * data/config/institutions.json; code resolves an institution from a program id.
  */
 export const BOARD_FORMATS = ['syllo_board_v1'] as const;
+export const CATALOG_YEAR_POLICIES = ['start_year', 'may_opt_newer', 'always_latest'] as const;
 export const institutionSchema = z.object({
   id: z.string().regex(/^[a-z0-9_]+$/),
   nameHe: z.string().min(1),
@@ -20,7 +21,10 @@ export const institutionSchema = z.object({
     categoryId: z.string(), nameHe: z.string(), creditsPerCourse: z.number().positive(),
     countsTowardTotal: z.boolean(), source: z.string(),
   }).nullable().optional(),
-  sources: z.record(z.string()).optional(),
+  sources: z.record(z.union([z.string(), z.array(z.string())])).optional(),
+  /** Which catalog year a student follows. TAU value is a default pending per-degree research. */
+  catalogYearPolicy: z.enum(CATALOG_YEAR_POLICIES).optional(),
+  _needsVerification: z.boolean().optional(),
 }).strict();
 export type Institution = z.infer<typeof institutionSchema>;
 

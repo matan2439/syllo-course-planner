@@ -1,4 +1,461 @@
 {
+  "0509-1624": {
+    "ims": {
+      "name_he": "אלגברה ליניארית להנדסה מכנית",
+      "offered_semesters": [
+        "A",
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0509162401&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05091624&year=2026"
+    },
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "A",
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
+        },
+        "program": {
+          "credits": 6.5,
+          "teaching_format": [
+            {
+              "hours": 5,
+              "type": "שיעור"
+            },
+            {
+              "hours": 2,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 7
+        },
+        "timetable": [
+          "A",
+          "B"
+        ]
+      }
+    }
+  },
+  "0509-1645": {
+    "ims": {
+      "name_he": "משוואות דיפרנציאליות רגילות להנדסה מכנית",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0509164501&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05091645&year=2026"
+    },
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "B"
+        ]
+      }
+    }
+  },
+  "0509-1646": {
+    "ims": {
+      "name_he": "חשבון דיפרנציאלי ואינטגרלי 1ב' להנדסה מכנית ומדע והנדסה של חומרים",
+      "offered_semesters": [
+        "A",
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0509164601&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05091646&year=2026"
+    },
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "A",
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
+        },
+        "program": {
+          "credits": 5.5,
+          "teaching_format": [
+            {
+              "hours": 4,
+              "type": "שיעור"
+            },
+            {
+              "hours": 2,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 6
+        },
+        "timetable": [
+          "A",
+          "B"
+        ]
+      }
+    }
+  },
+  "0509-1647": {
+    "ims": {
+      "name_he": "חשבון  דיפרנציאלי ואינטגרלי 2ב' למכנית",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0509164701&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05091647&year=2026"
+    },
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
+        },
+        "program": {
+          "credits": 5.5,
+          "teaching_format": [
+            {
+              "hours": 4,
+              "type": "שיעור"
+            },
+            {
+              "hours": 2,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 6
+        },
+        "timetable": [
+          "B"
+        ]
+      }
+    }
+  },
+  "0509-1815": {
+    "ims": {
+      "name_he": "כימיה בסיסית להנדסה",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0509181501&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05091815&year=2026"
+    },
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
+        },
+        "program": {
+          "credits": 3,
+          "teaching_format": [
+            {
+              "hours": 2,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 3
+        },
+        "timetable": [
+          "A"
+        ]
+      }
+    }
+  },
+  "0509-1829": {
+    "ims": {
+      "name_he": "פיזיקה (2)",
+      "offered_semesters": [
+        "A",
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0509182901&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05091829&year=2026"
+    },
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "A",
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
+        },
+        "program": {
+          "credits": 5.5,
+          "teaching_format": [
+            {
+              "hours": 4,
+              "type": "שיעור"
+            },
+            {
+              "hours": 2,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 6
+        },
+        "timetable": [
+          "A",
+          "B"
+        ]
+      }
+    }
+  },
+  "0509-1834": {
+    "ims": {
+      "name_he": "מעבדה בפיזיקה",
+      "offered_semesters": [
+        "A",
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0509183401&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05091834&year=2026"
+    },
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "A",
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
+        },
+        "program": {
+          "credits": 2,
+          "teaching_format": [
+            {
+              "hours": 2,
+              "type": "מעבדה"
+            }
+          ],
+          "weekly_hours": 2
+        },
+        "timetable": [
+          "A",
+          "B"
+        ]
+      }
+    }
+  },
+  "0509-2805": {
+    "ims": {
+      "name_he": "מבוא להסתברות וסטטיסטיקה להנדסה מכנית וחומרים",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0509280501&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05092805&year=2026"
+    },
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "A"
+        ]
+      }
+    }
+  },
+  "0509-2843": {
+    "ims": {
+      "name_he": "אנליזה הרמונית",
+      "offered_semesters": [
+        "A",
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0509284301&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05092843&year=2026"
+    },
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "A",
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
+        },
+        "program": {
+          "credits": 3,
+          "teaching_format": [
+            {
+              "hours": 2,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 3
+        },
+        "timetable": [
+          "A",
+          "B"
+        ]
+      }
+    }
+  },
+  "0509-2844": {
+    "ims": {
+      "name_he": "פונקציות מרוכבות",
+      "offered_semesters": [
+        "A",
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0509284401&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05092844&year=2026"
+    },
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "A",
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
+        },
+        "program": {
+          "credits": 3,
+          "teaching_format": [
+            {
+              "hours": 2,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 3
+        },
+        "timetable": [
+          "A",
+          "B"
+        ]
+      }
+    }
+  },
+  "0509-2846": {
+    "ims": {
+      "name_he": "משוואות דיפרנציאליות חלקיות",
+      "offered_semesters": [
+        "A",
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0509284601&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05092846&year=2026"
+    },
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "A",
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
+        },
+        "program": {
+          "credits": 3,
+          "teaching_format": [
+            {
+              "hours": 2,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 3
+        },
+        "timetable": [
+          "A",
+          "B"
+        ]
+      }
+    }
+  },
   "0509-4010": {
     "ims": {
       "name_he": "ננו לווינים- בין חינוך למדעים למהפכת החלל",
@@ -9,27 +466,31 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0509401001&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05094010&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "B"
-      ],
-      "source": "program_timetable",
-      "status": "offered",
-      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
-    },
-    "program": {
-      "credits": 3,
-      "teaching_format": [
-        {
-          "hours": 3,
-          "type": "שיעור"
-        }
-      ],
-      "weekly_hours": 3
-    },
-    "timetable": [
-      "B"
-    ]
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
+        },
+        "program": {
+          "credits": 3,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            }
+          ],
+          "weekly_hours": 3
+        },
+        "timetable": [
+          "B"
+        ]
+      }
+    }
   },
   "0512-1202": {
     "ims": {
@@ -41,35 +502,39 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512120208&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05121202&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "B"
-      ],
-      "source": "program_timetable",
-      "status": "offered",
-      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
-    },
-    "program": {
-      "credits": 5,
-      "teaching_format": [
-        {
-          "hours": 3,
-          "type": "שיעור"
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
         },
-        {
-          "hours": 1,
-          "type": "תרגיל"
+        "program": {
+          "credits": 5,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            },
+            {
+              "hours": 2,
+              "type": "מעבדה"
+            }
+          ],
+          "weekly_hours": 6
         },
-        {
-          "hours": 2,
-          "type": "מעבדה"
-        }
-      ],
-      "weekly_hours": 6
-    },
-    "timetable": [
-      "B"
-    ]
+        "timetable": [
+          "B"
+        ]
+      }
+    }
   },
   "0512-1203": {
     "ims": {
@@ -81,31 +546,35 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512120301&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05121203&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "B"
-      ],
-      "source": "program_timetable",
-      "status": "offered",
-      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
-    },
-    "program": {
-      "credits": 4,
-      "teaching_format": [
-        {
-          "hours": 3,
-          "type": "שיעור"
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
         },
-        {
-          "hours": 1,
-          "type": "תרגיל"
-        }
-      ],
-      "weekly_hours": 4
-    },
-    "timetable": [
-      "B"
-    ]
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "B"
+        ]
+      }
+    }
   },
   "0512-1204": {
     "ims": {
@@ -117,35 +586,79 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512120401&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05121204&year=2026"
     },
-    "offering": {
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
+        },
+        "program": {
+          "credits": 3,
+          "teaching_format": [
+            {
+              "hours": 2,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            },
+            {
+              "hours": 0.5,
+              "type": "מעבדה"
+            }
+          ],
+          "weekly_hours": 3.5
+        },
+        "timetable": [
+          "A"
+        ]
+      }
+    }
+  },
+  "0512-1205": {
+    "ims": {
+      "name_he": "מבוא למעגלים מערכות ואותות חשמליים",
       "offered_semesters": [
-        "A"
+        "B"
       ],
-      "source": "program_timetable",
       "status": "offered",
-      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512120501&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05121205&year=2026"
     },
-    "program": {
-      "credits": 3,
-      "teaching_format": [
-        {
-          "hours": 2,
-          "type": "שיעור"
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
         },
-        {
-          "hours": 1,
-          "type": "תרגיל"
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
         },
-        {
-          "hours": 0.5,
-          "type": "מעבדה"
-        }
-      ],
-      "weekly_hours": 3.5
-    },
-    "timetable": [
-      "A"
-    ]
+        "timetable": [
+          "B"
+        ]
+      }
+    }
   },
   "0512-2508": {
     "ims": {
@@ -158,33 +671,37 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512250801&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05122508&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "A",
-        "B"
-      ],
-      "source": "program_timetable",
-      "status": "offered",
-      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
-    },
-    "program": {
-      "credits": 4,
-      "teaching_format": [
-        {
-          "hours": 3,
-          "type": "שיעור"
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "A",
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
         },
-        {
-          "hours": 1,
-          "type": "תרגיל"
-        }
-      ],
-      "weekly_hours": 4
-    },
-    "timetable": [
-      "A",
-      "B"
-    ]
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "A",
+          "B"
+        ]
+      }
+    }
   },
   "0512-4200": {
     "ims": {
@@ -197,33 +714,37 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512420001&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05124200&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "A",
-        "B"
-      ],
-      "source": "program_timetable",
-      "status": "offered",
-      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
-    },
-    "program": {
-      "credits": 4,
-      "teaching_format": [
-        {
-          "hours": 3,
-          "type": "שיעור"
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "A",
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
         },
-        {
-          "hours": 1,
-          "type": "תרגיל"
-        }
-      ],
-      "weekly_hours": 4
-    },
-    "timetable": [
-      "A",
-      "B"
-    ]
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "A",
+          "B"
+        ]
+      }
+    }
   },
   "0512-4362": {
     "ims": {
@@ -235,31 +756,35 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512436201&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05124362&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "A"
-      ],
-      "source": "program_timetable",
-      "status": "offered",
-      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
-    },
-    "program": {
-      "credits": 4,
-      "teaching_format": [
-        {
-          "hours": 3,
-          "type": "שיעור"
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
         },
-        {
-          "hours": 1,
-          "type": "תרגיל"
-        }
-      ],
-      "weekly_hours": 4
-    },
-    "timetable": [
-      "A"
-    ]
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "A"
+        ]
+      }
+    }
   },
   "0512-4700": {
     "ims": {
@@ -271,31 +796,35 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512470001&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05124700&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "B"
-      ],
-      "source": "program_timetable",
-      "status": "offered",
-      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
-    },
-    "program": {
-      "credits": 4,
-      "teaching_format": [
-        {
-          "hours": 3,
-          "type": "שיעור"
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
         },
-        {
-          "hours": 1,
-          "type": "תרגיל"
-        }
-      ],
-      "weekly_hours": 4
-    },
-    "timetable": [
-      "B"
-    ]
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "B"
+        ]
+      }
+    }
   },
   "0512-4702": {
     "ims": {
@@ -307,31 +836,310 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512470201&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05124702&year=2026"
     },
-    "offering": {
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "A"
+        ]
+      }
+    }
+  },
+  "0542-1510": {
+    "ims": {
+      "name_he": "גרפיקה הנדסית",
       "offered_semesters": [
         "A"
       ],
-      "source": "program_timetable",
       "status": "offered",
-      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542151001&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05421510&year=2026"
     },
-    "program": {
-      "credits": 4,
-      "teaching_format": [
-        {
-          "hours": 3,
-          "type": "שיעור"
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
         },
-        {
-          "hours": 1,
-          "type": "תרגיל"
-        }
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור ותרגיל"
+            },
+            {
+              "hours": 2,
+              "type": "מעבדה"
+            }
+          ],
+          "weekly_hours": 5
+        },
+        "timetable": [
+          "A"
+        ]
+      }
+    }
+  },
+  "0542-1800": {
+    "ims": {
+      "name_he": "מבוא להנדסה מכנית",
+      "offered_semesters": [
+        "A"
       ],
-      "weekly_hours": 4
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542180001&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05421800&year=2026"
     },
-    "timetable": [
-      "A"
-    ]
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
+        },
+        "program": {
+          "credits": 0,
+          "teaching_format": [
+            {
+              "hours": null,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 0
+        },
+        "timetable": [
+          "A"
+        ]
+      }
+    }
+  },
+  "0542-1810": {
+    "ims": {
+      "name_he": "מכניקה של חלקיקים",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542181001&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05421810&year=2026"
+    },
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
+        },
+        "program": {
+          "credits": 4.5,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 2,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 5
+        },
+        "timetable": [
+          "B"
+        ]
+      }
+    }
+  },
+  "0542-1820": {
+    "ims": {
+      "name_he": "סטטיקה של גוף קשיח",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542182001&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05421820&year=2026"
+    },
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "B"
+        ]
+      }
+    }
+  },
+  "0542-1821": {
+    "ims": {
+      "name_he": "תכנות בסיסי להנדסה מכנית",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542182101&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05421821&year=2026"
+    },
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
+        },
+        "program": {
+          "credits": 3.5,
+          "teaching_format": [
+            {
+              "hours": 2,
+              "type": "שיעור"
+            },
+            {
+              "hours": 2,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "A"
+        ]
+      }
+    }
+  },
+  "0542-2110": {
+    "ims": {
+      "name_he": "דינמיקה של גוף קשיח",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542211001&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05422110&year=2026"
+    },
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 4,
+              "type": "שיעור ותרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "A"
+        ]
+      }
+    }
+  },
+  "0542-2200": {
+    "ims": {
+      "name_he": "מכניקת המוצקים (1)",
+      "offered_semesters": [
+        "A",
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542220001&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05422200&year=2026"
+    },
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "A",
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
+        },
+        "program": {
+          "credits": 5,
+          "teaching_format": [
+            {
+              "hours": 4,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 5
+        },
+        "timetable": [
+          "A",
+          "B"
+        ]
+      }
+    }
   },
   "0542-2400": {
     "ims": {
@@ -343,27 +1151,31 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542240001&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05422400&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "A"
-      ],
-      "source": "program_timetable",
-      "status": "offered",
-      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
-    },
-    "program": {
-      "credits": 3.5,
-      "teaching_format": [
-        {
-          "hours": 4,
-          "type": "שיעור ותרגיל"
-        }
-      ],
-      "weekly_hours": 4
-    },
-    "timetable": [
-      "A"
-    ]
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
+        },
+        "program": {
+          "credits": 3.5,
+          "teaching_format": [
+            {
+              "hours": 4,
+              "type": "שיעור ותרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "A"
+        ]
+      }
+    }
   },
   "0542-2500": {
     "ims": {
@@ -376,33 +1188,80 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542250001&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05422500&year=2026"
     },
-    "offering": {
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "A",
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
+        },
+        "program": {
+          "credits": 5,
+          "teaching_format": [
+            {
+              "hours": 4,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 5
+        },
+        "timetable": [
+          "A",
+          "B"
+        ]
+      }
+    }
+  },
+  "0542-2600": {
+    "ims": {
+      "name_he": "תרמודינמיקה (1)",
       "offered_semesters": [
         "A",
         "B"
       ],
-      "source": "program_timetable",
       "status": "offered",
-      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542260001&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05422600&year=2026"
     },
-    "program": {
-      "credits": 5,
-      "teaching_format": [
-        {
-          "hours": 4,
-          "type": "שיעור"
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "A",
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
         },
-        {
-          "hours": 1,
-          "type": "תרגיל"
-        }
-      ],
-      "weekly_hours": 5
-    },
-    "timetable": [
-      "A",
-      "B"
-    ]
+        "program": {
+          "credits": 5,
+          "teaching_format": [
+            {
+              "hours": 4,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 5
+        },
+        "timetable": [
+          "A",
+          "B"
+        ]
+      }
+    }
   },
   "0542-3112": {
     "ims": {
@@ -415,29 +1274,33 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542311201&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05423112&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "A",
-        "B"
-      ],
-      "source": "program_timetable",
-      "status": "offered",
-      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
-    },
-    "program": {
-      "credits": 2,
-      "teaching_format": [
-        {
-          "hours": 2,
-          "type": "פרוייקט"
-        }
-      ],
-      "weekly_hours": 2
-    },
-    "timetable": [
-      "A",
-      "B"
-    ]
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "A",
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
+        },
+        "program": {
+          "credits": 2,
+          "teaching_format": [
+            {
+              "hours": 2,
+              "type": "פרוייקט"
+            }
+          ],
+          "weekly_hours": 2
+        },
+        "timetable": [
+          "A",
+          "B"
+        ]
+      }
+    }
   },
   "0542-3243": {
     "ims": {
@@ -449,35 +1312,39 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542324301&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05423243&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "A"
-      ],
-      "source": "program_timetable",
-      "status": "offered",
-      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
-    },
-    "program": {
-      "credits": 5,
-      "teaching_format": [
-        {
-          "hours": 3,
-          "type": "שיעור"
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
         },
-        {
-          "hours": 2,
-          "type": "תרגיל"
+        "program": {
+          "credits": 5,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 2,
+              "type": "תרגיל"
+            },
+            {
+              "hours": 0.5,
+              "type": "מעבדה"
+            }
+          ],
+          "weekly_hours": 5.5
         },
-        {
-          "hours": 0.5,
-          "type": "מעבדה"
-        }
-      ],
-      "weekly_hours": 5.5
-    },
-    "timetable": [
-      "A"
-    ]
+        "timetable": [
+          "A"
+        ]
+      }
+    }
   },
   "0542-3620": {
     "ims": {
@@ -490,33 +1357,37 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542362001&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05423620&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "A",
-        "B"
-      ],
-      "source": "program_timetable",
-      "status": "offered",
-      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
-    },
-    "program": {
-      "credits": 4,
-      "teaching_format": [
-        {
-          "hours": 3,
-          "type": "שיעור"
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "A",
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
         },
-        {
-          "hours": 1,
-          "type": "תרגיל"
-        }
-      ],
-      "weekly_hours": 4
-    },
-    "timetable": [
-      "A",
-      "B"
-    ]
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "A",
+          "B"
+        ]
+      }
+    }
   },
   "0542-3780": {
     "ims": {
@@ -528,27 +1399,31 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542378002&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05423780&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "B"
-      ],
-      "source": "program_timetable",
-      "status": "offered",
-      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
-    },
-    "program": {
-      "credits": 3,
-      "teaching_format": [
-        {
-          "hours": 3,
-          "type": "שיעור"
-        }
-      ],
-      "weekly_hours": 3
-    },
-    "timetable": [
-      "B"
-    ]
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
+        },
+        "program": {
+          "credits": 3,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            }
+          ],
+          "weekly_hours": 3
+        },
+        "timetable": [
+          "B"
+        ]
+      }
+    }
   },
   "0542-3791": {
     "ims": {
@@ -561,29 +1436,33 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542379101&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05423791&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "A",
-        "B"
-      ],
-      "source": "program_timetable",
-      "status": "offered",
-      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
-    },
-    "program": {
-      "credits": 1,
-      "teaching_format": [
-        {
-          "hours": 2,
-          "type": "מעבדה"
-        }
-      ],
-      "weekly_hours": 2
-    },
-    "timetable": [
-      "A",
-      "B"
-    ]
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "A",
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
+        },
+        "program": {
+          "credits": 1,
+          "teaching_format": [
+            {
+              "hours": 2,
+              "type": "מעבדה"
+            }
+          ],
+          "weekly_hours": 2
+        },
+        "timetable": [
+          "A",
+          "B"
+        ]
+      }
+    }
   },
   "0542-3792": {
     "ims": {
@@ -595,33 +1474,77 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542379201&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05423792&year=2026"
     },
-    "offering": {
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "A",
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
+        },
+        "program": {
+          "credits": 3,
+          "teaching_format": [
+            {
+              "hours": 2,
+              "type": "שיעור"
+            },
+            {
+              "hours": 2,
+              "type": "מעבדה"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "A",
+          "B"
+        ]
+      }
+    }
+  },
+  "0542-3804": {
+    "ims": {
+      "name_he": "אנליזה נומרית להנדסה מכנית",
       "offered_semesters": [
-        "A",
         "B"
       ],
-      "source": "program_timetable",
       "status": "offered",
-      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542380401&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05423804&year=2026"
     },
-    "program": {
-      "credits": 3,
-      "teaching_format": [
-        {
-          "hours": 2,
-          "type": "שיעור"
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
         },
-        {
-          "hours": 2,
-          "type": "מעבדה"
-        }
-      ],
-      "weekly_hours": 4
-    },
-    "timetable": [
-      "A",
-      "B"
-    ]
+        "program": {
+          "credits": 4.5,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 2,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 5
+        },
+        "timetable": [
+          "B"
+        ]
+      }
+    }
   },
   "0542-4010": {
     "ims": {
@@ -633,27 +1556,31 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542401001&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424010&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "A"
-      ],
-      "source": "program_timetable",
-      "status": "offered",
-      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
-    },
-    "program": {
-      "credits": 4,
-      "teaching_format": [
-        {
-          "hours": 3,
-          "type": "פרוייקט"
-        }
-      ],
-      "weekly_hours": 3
-    },
-    "timetable": [
-      "A"
-    ]
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "פרוייקט"
+            }
+          ],
+          "weekly_hours": 3
+        },
+        "timetable": [
+          "A"
+        ]
+      }
+    }
   },
   "0542-4011": {
     "ims": {
@@ -665,27 +1592,31 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542401101&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424011&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "A"
-      ],
-      "source": "program_timetable",
-      "status": "offered",
-      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
-    },
-    "program": {
-      "credits": 3,
-      "teaching_format": [
-        {
-          "hours": 3,
-          "type": "פרוייקט"
-        }
-      ],
-      "weekly_hours": 3
-    },
-    "timetable": [
-      "A"
-    ]
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
+        },
+        "program": {
+          "credits": 3,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "פרוייקט"
+            }
+          ],
+          "weekly_hours": 3
+        },
+        "timetable": [
+          "A"
+        ]
+      }
+    }
   },
   "0542-4012": {
     "ims": {
@@ -697,27 +1628,31 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542401201&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424012&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "B"
-      ],
-      "source": "program_timetable",
-      "status": "offered",
-      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
-    },
-    "program": {
-      "credits": 3,
-      "teaching_format": [
-        {
-          "hours": 3,
-          "type": "פרוייקט"
-        }
-      ],
-      "weekly_hours": 3
-    },
-    "timetable": [
-      "B"
-    ]
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
+        },
+        "program": {
+          "credits": 3,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "פרוייקט"
+            }
+          ],
+          "weekly_hours": 3
+        },
+        "timetable": [
+          "B"
+        ]
+      }
+    }
   },
   "0542-4020": {
     "ims": {
@@ -729,27 +1664,31 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542402001&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424020&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "B"
-      ],
-      "source": "program_timetable",
-      "status": "offered",
-      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
-    },
-    "program": {
-      "credits": 4,
-      "teaching_format": [
-        {
-          "hours": 3,
-          "type": "פרוייקט"
-        }
-      ],
-      "weekly_hours": 3
-    },
-    "timetable": [
-      "B"
-    ]
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "פרוייקט"
+            }
+          ],
+          "weekly_hours": 3
+        },
+        "timetable": [
+          "B"
+        ]
+      }
+    }
   },
   "0542-4091": {
     "ims": {
@@ -762,29 +1701,33 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542409101&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424091&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "A",
-        "B"
-      ],
-      "source": "program_timetable",
-      "status": "offered",
-      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
-    },
-    "program": {
-      "credits": 1.5,
-      "teaching_format": [
-        {
-          "hours": 2,
-          "type": "מעבדה"
-        }
-      ],
-      "weekly_hours": 2
-    },
-    "timetable": [
-      "A",
-      "B"
-    ]
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "A",
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
+        },
+        "program": {
+          "credits": 1.5,
+          "teaching_format": [
+            {
+              "hours": 2,
+              "type": "מעבדה"
+            }
+          ],
+          "weekly_hours": 2
+        },
+        "timetable": [
+          "A",
+          "B"
+        ]
+      }
+    }
   },
   "0542-4092": {
     "ims": {
@@ -796,27 +1739,31 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542409201&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424092&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "A"
-      ],
-      "source": "program_timetable",
-      "status": "offered",
-      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
-    },
-    "program": {
-      "credits": 1.5,
-      "teaching_format": [
-        {
-          "hours": 2,
-          "type": "מעבדה"
-        }
-      ],
-      "weekly_hours": 2
-    },
-    "timetable": [
-      "A"
-    ]
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
+        },
+        "program": {
+          "credits": 1.5,
+          "teaching_format": [
+            {
+              "hours": 2,
+              "type": "מעבדה"
+            }
+          ],
+          "weekly_hours": 2
+        },
+        "timetable": [
+          "A"
+        ]
+      }
+    }
   },
   "0542-4093": {
     "ims": {
@@ -824,23 +1771,27 @@
       "status": "not_offered",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424093&year=2026"
     },
-    "offering": {
-      "offered_semesters": [],
-      "source": "ims",
-      "status": "not_offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424093&year=2026"
-    },
-    "program": {
-      "credits": 0.5,
-      "teaching_format": [
-        {
-          "hours": 1,
-          "type": "מעבדה"
-        }
-      ],
-      "weekly_hours": 1
-    },
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [],
+          "source": "ims",
+          "status": "not_offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424093&year=2026"
+        },
+        "program": {
+          "credits": 0.5,
+          "teaching_format": [
+            {
+              "hours": 1,
+              "type": "מעבדה"
+            }
+          ],
+          "weekly_hours": 1
+        },
+        "timetable": null
+      }
+    }
   },
   "0542-4094": {
     "ims": {
@@ -852,27 +1803,31 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542409401&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424094&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "B"
-      ],
-      "source": "program_timetable",
-      "status": "offered",
-      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
-    },
-    "program": {
-      "credits": 0.5,
-      "teaching_format": [
-        {
-          "hours": 1,
-          "type": "מעבדה"
-        }
-      ],
-      "weekly_hours": 1
-    },
-    "timetable": [
-      "B"
-    ]
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
+        },
+        "program": {
+          "credits": 0.5,
+          "teaching_format": [
+            {
+              "hours": 1,
+              "type": "מעבדה"
+            }
+          ],
+          "weekly_hours": 1
+        },
+        "timetable": [
+          "B"
+        ]
+      }
+    }
   },
   "0542-4120": {
     "ims": {
@@ -884,27 +1839,31 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542412001&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424120&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "A"
-      ],
-      "source": "program_timetable",
-      "status": "offered",
-      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
-    },
-    "program": {
-      "credits": 4,
-      "teaching_format": [
-        {
-          "hours": 4,
-          "type": "שיעור ותרגיל"
-        }
-      ],
-      "weekly_hours": 4
-    },
-    "timetable": [
-      "A"
-    ]
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 4,
+              "type": "שיעור ותרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "A"
+        ]
+      }
+    }
   },
   "0542-4123": {
     "ims": {
@@ -916,31 +1875,35 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542412301&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424123&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "B"
-      ],
-      "source": "program_timetable",
-      "status": "offered",
-      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
-    },
-    "program": {
-      "credits": 4,
-      "teaching_format": [
-        {
-          "hours": 3,
-          "type": "שיעור"
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
         },
-        {
-          "hours": 1,
-          "type": "תרגיל"
-        }
-      ],
-      "weekly_hours": 4
-    },
-    "timetable": [
-      "B"
-    ]
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "B"
+        ]
+      }
+    }
   },
   "0542-4124": {
     "ims": {
@@ -952,31 +1915,35 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542412401&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424124&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "A"
-      ],
-      "source": "program_timetable",
-      "status": "offered",
-      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
-    },
-    "program": {
-      "credits": 4,
-      "teaching_format": [
-        {
-          "hours": 3,
-          "type": "שיעור"
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
         },
-        {
-          "hours": 1,
-          "type": "תרגיל"
-        }
-      ],
-      "weekly_hours": 4
-    },
-    "timetable": [
-      "A"
-    ]
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "A"
+        ]
+      }
+    }
   },
   "0542-4125": {
     "ims": {
@@ -988,31 +1955,35 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542412501&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424125&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "A"
-      ],
-      "source": "program_timetable",
-      "status": "offered",
-      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
-    },
-    "program": {
-      "credits": 4,
-      "teaching_format": [
-        {
-          "hours": 3,
-          "type": "שיעור"
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
         },
-        {
-          "hours": 1,
-          "type": "תרגיל"
-        }
-      ],
-      "weekly_hours": 4
-    },
-    "timetable": [
-      "A"
-    ]
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "A"
+        ]
+      }
+    }
   },
   "0542-4131": {
     "ims": {
@@ -1024,27 +1995,31 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542413101&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424131&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "A"
-      ],
-      "source": "program_timetable",
-      "status": "offered",
-      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
-    },
-    "program": {
-      "credits": 4,
-      "teaching_format": [
-        {
-          "hours": 4,
-          "type": "שיעור ותרגיל"
-        }
-      ],
-      "weekly_hours": 4
-    },
-    "timetable": [
-      "A"
-    ]
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 4,
+              "type": "שיעור ותרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "A"
+        ]
+      }
+    }
   },
   "0542-4132": {
     "ims": {
@@ -1056,27 +2031,31 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542413201&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424132&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "B"
-      ],
-      "source": "program_timetable",
-      "status": "offered",
-      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
-    },
-    "program": {
-      "credits": 4,
-      "teaching_format": [
-        {
-          "hours": 4,
-          "type": "שיעור ותרגיל"
-        }
-      ],
-      "weekly_hours": 4
-    },
-    "timetable": [
-      "B"
-    ]
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 4,
+              "type": "שיעור ותרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "B"
+        ]
+      }
+    }
   },
   "0542-4135": {
     "ims": {
@@ -1088,31 +2067,35 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542413501&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424135&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "B"
-      ],
-      "source": "program_timetable",
-      "status": "offered",
-      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
-    },
-    "program": {
-      "credits": 4,
-      "teaching_format": [
-        {
-          "hours": 3,
-          "type": "שיעור"
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
         },
-        {
-          "hours": 1,
-          "type": "תרגיל"
-        }
-      ],
-      "weekly_hours": 4
-    },
-    "timetable": [
-      "B"
-    ]
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "B"
+        ]
+      }
+    }
   },
   "0542-4179": {
     "ims": {
@@ -1124,27 +2107,31 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542417901&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424179&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "B"
-      ],
-      "source": "program_timetable",
-      "status": "offered",
-      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
-    },
-    "program": {
-      "credits": 4,
-      "teaching_format": [
-        {
-          "hours": 4,
-          "type": "שיעור ותרגיל"
-        }
-      ],
-      "weekly_hours": 4
-    },
-    "timetable": [
-      "B"
-    ]
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 4,
+              "type": "שיעור ותרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "B"
+        ]
+      }
+    }
   },
   "0542-4191": {
     "ims": {
@@ -1156,27 +2143,31 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542419101&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424191&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "B"
-      ],
-      "source": "program_timetable",
-      "status": "offered",
-      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
-    },
-    "program": {
-      "credits": 3,
-      "teaching_format": [
-        {
-          "hours": 3,
-          "type": "שיעור"
-        }
-      ],
-      "weekly_hours": 3
-    },
-    "timetable": [
-      "B"
-    ]
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
+        },
+        "program": {
+          "credits": 3,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            }
+          ],
+          "weekly_hours": 3
+        },
+        "timetable": [
+          "B"
+        ]
+      }
+    }
   },
   "0542-4220": {
     "ims": {
@@ -1188,27 +2179,31 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542422001&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424220&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "A"
-      ],
-      "source": "program_timetable",
-      "status": "offered",
-      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
-    },
-    "program": {
-      "credits": 4,
-      "teaching_format": [
-        {
-          "hours": 4,
-          "type": "שיעור ותרגיל"
-        }
-      ],
-      "weekly_hours": 4
-    },
-    "timetable": [
-      "A"
-    ]
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 4,
+              "type": "שיעור ותרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "A"
+        ]
+      }
+    }
   },
   "0542-4221": {
     "ims": {
@@ -1220,31 +2215,35 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542422101&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424221&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "B"
-      ],
-      "source": "program_timetable",
-      "status": "offered",
-      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
-    },
-    "program": {
-      "credits": 4,
-      "teaching_format": [
-        {
-          "hours": 3,
-          "type": "שיעור"
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
         },
-        {
-          "hours": 1,
-          "type": "תרגיל"
-        }
-      ],
-      "weekly_hours": 4
-    },
-    "timetable": [
-      "B"
-    ]
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "B"
+        ]
+      }
+    }
   },
   "0542-4223": {
     "ims": {
@@ -1256,31 +2255,35 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542422301&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424223&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "A"
-      ],
-      "source": "program_timetable",
-      "status": "offered",
-      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
-    },
-    "program": {
-      "credits": 3.5,
-      "teaching_format": [
-        {
-          "hours": 2,
-          "type": "שיעור"
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
         },
-        {
-          "hours": 2,
-          "type": "תרגיל"
-        }
-      ],
-      "weekly_hours": 4
-    },
-    "timetable": [
-      "A"
-    ]
+        "program": {
+          "credits": 3.5,
+          "teaching_format": [
+            {
+              "hours": 2,
+              "type": "שיעור"
+            },
+            {
+              "hours": 2,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "A"
+        ]
+      }
+    }
   },
   "0542-4224": {
     "ims": {
@@ -1292,31 +2295,35 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542422401&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424224&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "B"
-      ],
-      "source": "program_timetable",
-      "status": "offered",
-      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
-    },
-    "program": {
-      "credits": 4,
-      "teaching_format": [
-        {
-          "hours": 3,
-          "type": "שיעור"
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
         },
-        {
-          "hours": 1,
-          "type": "תרגיל"
-        }
-      ],
-      "weekly_hours": 4
-    },
-    "timetable": [
-      "B"
-    ]
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "B"
+        ]
+      }
+    }
   },
   "0542-4226": {
     "ims": {
@@ -1324,27 +2331,31 @@
       "status": "not_offered",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424226&year=2026"
     },
-    "offering": {
-      "offered_semesters": [],
-      "source": "ims",
-      "status": "not_offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424226&year=2026"
-    },
-    "program": {
-      "credits": 3,
-      "teaching_format": [
-        {
-          "hours": 2,
-          "type": "שיעור"
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [],
+          "source": "ims",
+          "status": "not_offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424226&year=2026"
         },
-        {
-          "hours": 1,
-          "type": "תרגיל"
-        }
-      ],
-      "weekly_hours": 3
-    },
-    "timetable": null
+        "program": {
+          "credits": 3,
+          "teaching_format": [
+            {
+              "hours": 2,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 3
+        },
+        "timetable": null
+      }
+    }
   },
   "0542-4275": {
     "ims": {
@@ -1356,27 +2367,31 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542427501&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424275&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "B"
-      ],
-      "source": "program_timetable",
-      "status": "offered",
-      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
-    },
-    "program": {
-      "credits": 3,
-      "teaching_format": [
-        {
-          "hours": 3,
-          "type": "שיעור"
-        }
-      ],
-      "weekly_hours": 3
-    },
-    "timetable": [
-      "B"
-    ]
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
+        },
+        "program": {
+          "credits": 3,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            }
+          ],
+          "weekly_hours": 3
+        },
+        "timetable": [
+          "B"
+        ]
+      }
+    }
   },
   "0542-4320": {
     "ims": {
@@ -1388,31 +2403,35 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542432001&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424320&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "B"
-      ],
-      "source": "program_timetable",
-      "status": "offered",
-      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
-    },
-    "program": {
-      "credits": 4,
-      "teaching_format": [
-        {
-          "hours": 3,
-          "type": "שיעור"
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
         },
-        {
-          "hours": 1,
-          "type": "תרגיל"
-        }
-      ],
-      "weekly_hours": 4
-    },
-    "timetable": [
-      "B"
-    ]
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "B"
+        ]
+      }
+    }
   },
   "0542-4321": {
     "ims": {
@@ -1424,31 +2443,35 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542432101&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424321&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "B"
-      ],
-      "source": "program_timetable",
-      "status": "offered",
-      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
-    },
-    "program": {
-      "credits": 4,
-      "teaching_format": [
-        {
-          "hours": 3,
-          "type": "שיעור"
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
         },
-        {
-          "hours": 1,
-          "type": "תרגיל"
-        }
-      ],
-      "weekly_hours": 4
-    },
-    "timetable": [
-      "B"
-    ]
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "B"
+        ]
+      }
+    }
   },
   "0542-4322": {
     "ims": {
@@ -1460,31 +2483,35 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542432201&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424322&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "A"
-      ],
-      "source": "program_timetable",
-      "status": "offered",
-      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
-    },
-    "program": {
-      "credits": 4,
-      "teaching_format": [
-        {
-          "hours": 3,
-          "type": "שיעור"
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
         },
-        {
-          "hours": 1,
-          "type": "תרגיל"
-        }
-      ],
-      "weekly_hours": 4
-    },
-    "timetable": [
-      "A"
-    ]
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "A"
+        ]
+      }
+    }
   },
   "0542-4351": {
     "ims": {
@@ -1496,27 +2523,31 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542435101&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424351&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "B"
-      ],
-      "source": "program_timetable",
-      "status": "offered",
-      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
-    },
-    "program": {
-      "credits": 4,
-      "teaching_format": [
-        {
-          "hours": 4,
-          "type": "שיעור ותרגיל"
-        }
-      ],
-      "weekly_hours": 4
-    },
-    "timetable": [
-      "B"
-    ]
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 4,
+              "type": "שיעור ותרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "B"
+        ]
+      }
+    }
   },
   "0542-4352": {
     "ims": {
@@ -1528,31 +2559,35 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542435201&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424352&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "A"
-      ],
-      "source": "program_timetable",
-      "status": "offered",
-      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
-    },
-    "program": {
-      "credits": 4,
-      "teaching_format": [
-        {
-          "hours": 3,
-          "type": "שיעור"
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
         },
-        {
-          "hours": 1,
-          "type": "תרגיל"
-        }
-      ],
-      "weekly_hours": 4
-    },
-    "timetable": [
-      "A"
-    ]
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "A"
+        ]
+      }
+    }
   },
   "0542-4391": {
     "ims": {
@@ -1564,31 +2599,35 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542439101&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424391&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "A"
-      ],
-      "source": "program_timetable",
-      "status": "offered",
-      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
-    },
-    "program": {
-      "credits": 3.5,
-      "teaching_format": [
-        {
-          "hours": 2,
-          "type": "שיעור"
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
         },
-        {
-          "hours": 3,
-          "type": "מעבדה"
-        }
-      ],
-      "weekly_hours": 5
-    },
-    "timetable": [
-      "A"
-    ]
+        "program": {
+          "credits": 3.5,
+          "teaching_format": [
+            {
+              "hours": 2,
+              "type": "שיעור"
+            },
+            {
+              "hours": 3,
+              "type": "מעבדה"
+            }
+          ],
+          "weekly_hours": 5
+        },
+        "timetable": [
+          "A"
+        ]
+      }
+    }
   },
   "0542-4420": {
     "ims": {
@@ -1600,27 +2639,31 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542442001&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424420&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "A"
-      ],
-      "source": "program_timetable",
-      "status": "offered",
-      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
-    },
-    "program": {
-      "credits": 4,
-      "teaching_format": [
-        {
-          "hours": 4,
-          "type": "שיעור ותרגיל"
-        }
-      ],
-      "weekly_hours": 4
-    },
-    "timetable": [
-      "A"
-    ]
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 4,
+              "type": "שיעור ותרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "A"
+        ]
+      }
+    }
   },
   "0542-4422": {
     "ims": {
@@ -1632,27 +2675,31 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542442201&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424422&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "A"
-      ],
-      "source": "program_timetable",
-      "status": "offered",
-      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
-    },
-    "program": {
-      "credits": 4,
-      "teaching_format": [
-        {
-          "hours": 4,
-          "type": "שיעור ותרגיל"
-        }
-      ],
-      "weekly_hours": 4
-    },
-    "timetable": [
-      "A"
-    ]
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 4,
+              "type": "שיעור ותרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "A"
+        ]
+      }
+    }
   },
   "0542-4425": {
     "ims": {
@@ -1664,31 +2711,35 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542442501&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424425&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "B"
-      ],
-      "source": "program_timetable",
-      "status": "offered",
-      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
-    },
-    "program": {
-      "credits": 2.5,
-      "teaching_format": [
-        {
-          "hours": 2,
-          "type": "שיעור"
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
         },
-        {
-          "hours": 1,
-          "type": "תרגיל"
-        }
-      ],
-      "weekly_hours": 3
-    },
-    "timetable": [
-      "B"
-    ]
+        "program": {
+          "credits": 2.5,
+          "teaching_format": [
+            {
+              "hours": 2,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 3
+        },
+        "timetable": [
+          "B"
+        ]
+      }
+    }
   },
   "0542-4455": {
     "ims": {
@@ -1700,31 +2751,35 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542445501&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424455&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "B"
-      ],
-      "source": "program_timetable",
-      "status": "offered",
-      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
-    },
-    "program": {
-      "credits": 4,
-      "teaching_format": [
-        {
-          "hours": 3,
-          "type": "שיעור"
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
         },
-        {
-          "hours": 1,
-          "type": "תרגיל"
-        }
-      ],
-      "weekly_hours": 4
-    },
-    "timetable": [
-      "B"
-    ]
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "B"
+        ]
+      }
+    }
   },
   "0542-4524": {
     "ims": {
@@ -1736,27 +2791,31 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542452401&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424524&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "A"
-      ],
-      "source": "program_timetable",
-      "status": "offered",
-      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
-    },
-    "program": {
-      "credits": 4,
-      "teaching_format": [
-        {
-          "hours": 4,
-          "type": "שיעור ותרגיל"
-        }
-      ],
-      "weekly_hours": 4
-    },
-    "timetable": [
-      "A"
-    ]
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 4,
+              "type": "שיעור ותרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "A"
+        ]
+      }
+    }
   },
   "0542-4527": {
     "ims": {
@@ -1768,27 +2827,31 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542452701&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424527&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "B"
-      ],
-      "source": "program_timetable",
-      "status": "offered",
-      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
-    },
-    "program": {
-      "credits": 4,
-      "teaching_format": [
-        {
-          "hours": 4,
-          "type": "שיעור ותרגיל"
-        }
-      ],
-      "weekly_hours": 4
-    },
-    "timetable": [
-      "B"
-    ]
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 4,
+              "type": "שיעור ותרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "B"
+        ]
+      }
+    }
   },
   "0542-4559": {
     "ims": {
@@ -1800,27 +2863,31 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542455901&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424559&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "A"
-      ],
-      "source": "program_timetable",
-      "status": "offered",
-      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
-    },
-    "program": {
-      "credits": 2.5,
-      "teaching_format": [
-        {
-          "hours": 3,
-          "type": "מעבדה"
-        }
-      ],
-      "weekly_hours": 3
-    },
-    "timetable": [
-      "A"
-    ]
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
+        },
+        "program": {
+          "credits": 2.5,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "מעבדה"
+            }
+          ],
+          "weekly_hours": 3
+        },
+        "timetable": [
+          "A"
+        ]
+      }
+    }
   },
   "0542-4621": {
     "ims": {
@@ -1832,27 +2899,31 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542462101&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424621&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "A"
-      ],
-      "source": "program_timetable",
-      "status": "offered",
-      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
-    },
-    "program": {
-      "credits": 3,
-      "teaching_format": [
-        {
-          "hours": 3,
-          "type": "שיעור ותרגיל"
-        }
-      ],
-      "weekly_hours": 3
-    },
-    "timetable": [
-      "A"
-    ]
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
+        },
+        "program": {
+          "credits": 3,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור ותרגיל"
+            }
+          ],
+          "weekly_hours": 3
+        },
+        "timetable": [
+          "A"
+        ]
+      }
+    }
   },
   "0542-4622": {
     "ims": {
@@ -1864,31 +2935,35 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542462201&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424622&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "B"
-      ],
-      "source": "program_timetable",
-      "status": "offered",
-      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
-    },
-    "program": {
-      "credits": 4,
-      "teaching_format": [
-        {
-          "hours": 3,
-          "type": "שיעור"
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
         },
-        {
-          "hours": 1,
-          "type": "תרגיל"
-        }
-      ],
-      "weekly_hours": 4
-    },
-    "timetable": [
-      "B"
-    ]
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "B"
+        ]
+      }
+    }
   },
   "0542-4624": {
     "ims": {
@@ -1900,27 +2975,31 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542462401&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424624&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "B"
-      ],
-      "source": "program_timetable",
-      "status": "offered",
-      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
-    },
-    "program": {
-      "credits": 2.5,
-      "teaching_format": [
-        {
-          "hours": 3,
-          "type": "מעבדה"
-        }
-      ],
-      "weekly_hours": 3
-    },
-    "timetable": [
-      "B"
-    ]
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
+        },
+        "program": {
+          "credits": 2.5,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "מעבדה"
+            }
+          ],
+          "weekly_hours": 3
+        },
+        "timetable": [
+          "B"
+        ]
+      }
+    }
   },
   "0542-4722": {
     "ims": {
@@ -1932,31 +3011,35 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0542472201&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424722&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "B"
-      ],
-      "source": "program_timetable",
-      "status": "offered",
-      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
-    },
-    "program": {
-      "credits": 4,
-      "teaching_format": [
-        {
-          "hours": 4,
-          "type": "שיעור ותרגיל"
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
         },
-        {
-          "hours": 1,
-          "type": "מעבדה"
-        }
-      ],
-      "weekly_hours": 5
-    },
-    "timetable": [
-      "B"
-    ]
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 4,
+              "type": "שיעור ותרגיל"
+            },
+            {
+              "hours": 1,
+              "type": "מעבדה"
+            }
+          ],
+          "weekly_hours": 5
+        },
+        "timetable": [
+          "B"
+        ]
+      }
+    }
   },
   "0555-3160": {
     "ims": {
@@ -1968,31 +3051,35 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0555316001&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05553160&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "A"
-      ],
-      "source": "program_timetable",
-      "status": "offered",
-      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
-    },
-    "program": {
-      "credits": 4,
-      "teaching_format": [
-        {
-          "hours": 3,
-          "type": "שיעור"
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
         },
-        {
-          "hours": 1,
-          "type": "תרגיל"
-        }
-      ],
-      "weekly_hours": 4
-    },
-    "timetable": [
-      "A"
-    ]
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "A"
+        ]
+      }
+    }
   },
   "0555-4000": {
     "ims": {
@@ -2000,27 +3087,31 @@
       "status": "not_offered",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05554000&year=2026"
     },
-    "offering": {
-      "offered_semesters": [],
-      "source": "ims",
-      "status": "not_offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05554000&year=2026"
-    },
-    "program": {
-      "credits": 4,
-      "teaching_format": [
-        {
-          "hours": 3,
-          "type": "שיעור"
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [],
+          "source": "ims",
+          "status": "not_offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05554000&year=2026"
         },
-        {
-          "hours": 1,
-          "type": "תרגיל"
-        }
-      ],
-      "weekly_hours": 4
-    },
-    "timetable": null
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": null
+      }
+    }
   },
   "0555-4432": {
     "ims": {
@@ -2028,27 +3119,31 @@
       "status": "not_offered",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05554432&year=2026"
     },
-    "offering": {
-      "offered_semesters": [],
-      "source": "ims",
-      "status": "not_offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05554432&year=2026"
-    },
-    "program": {
-      "credits": 4,
-      "teaching_format": [
-        {
-          "hours": 3,
-          "type": "שיעור"
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [],
+          "source": "ims",
+          "status": "not_offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05554432&year=2026"
         },
-        {
-          "hours": 1,
-          "type": "תרגיל"
-        }
-      ],
-      "weekly_hours": 4
-    },
-    "timetable": null
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": null
+      }
+    }
   },
   "0555-4550": {
     "ims": {
@@ -2060,31 +3155,35 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0555455001&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05554550&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "B"
-      ],
-      "source": "program_timetable",
-      "status": "offered",
-      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
-    },
-    "program": {
-      "credits": 4,
-      "teaching_format": [
-        {
-          "hours": 3,
-          "type": "שיעור"
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
         },
-        {
-          "hours": 1,
-          "type": "תרגיל"
-        }
-      ],
-      "weekly_hours": 4
-    },
-    "timetable": [
-      "B"
-    ]
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "B"
+        ]
+      }
+    }
   },
   "0555-4555": {
     "ims": {
@@ -2096,31 +3195,35 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0555455501&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05554555&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "B"
-      ],
-      "source": "program_timetable",
-      "status": "offered",
-      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
-    },
-    "program": {
-      "credits": 4,
-      "teaching_format": [
-        {
-          "hours": 3,
-          "type": "שיעור"
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
         },
-        {
-          "hours": 1,
-          "type": "תרגיל"
-        }
-      ],
-      "weekly_hours": 4
-    },
-    "timetable": [
-      "B"
-    ]
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "B"
+        ]
+      }
+    }
   },
   "0555-4562": {
     "ims": {
@@ -2132,31 +3235,35 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0555456201&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05554562&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "A"
-      ],
-      "source": "program_timetable",
-      "status": "offered",
-      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
-    },
-    "program": {
-      "credits": 4,
-      "teaching_format": [
-        {
-          "hours": 3,
-          "type": "שיעור"
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
         },
-        {
-          "hours": 1,
-          "type": "תרגיל"
-        }
-      ],
-      "weekly_hours": 4
-    },
-    "timetable": [
-      "A"
-    ]
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "A"
+        ]
+      }
+    }
   },
   "0555-4630": {
     "ims": {
@@ -2168,31 +3275,35 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0555463001&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05554630&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "B"
-      ],
-      "source": "program_timetable",
-      "status": "offered",
-      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
-    },
-    "program": {
-      "credits": 4,
-      "teaching_format": [
-        {
-          "hours": 3,
-          "type": "שיעור"
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
         },
-        {
-          "hours": 1,
-          "type": "תרגיל"
-        }
-      ],
-      "weekly_hours": 4
-    },
-    "timetable": [
-      "B"
-    ]
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "B"
+        ]
+      }
+    }
   },
   "0571-1818": {
     "ims": {
@@ -2204,31 +3315,35 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0571181801&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05711818&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "B"
-      ],
-      "source": "program_timetable",
-      "status": "offered",
-      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
-    },
-    "program": {
-      "credits": 3.5,
-      "teaching_format": [
-        {
-          "hours": 2,
-          "type": "שיעור"
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
         },
-        {
-          "hours": 2,
-          "type": "תרגיל"
-        }
-      ],
-      "weekly_hours": 4
-    },
-    "timetable": [
-      "B"
-    ]
+        "program": {
+          "credits": 3.5,
+          "teaching_format": [
+            {
+              "hours": 2,
+              "type": "שיעור"
+            },
+            {
+              "hours": 2,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "B"
+        ]
+      }
+    }
   },
   "0571-3802": {
     "ims": {
@@ -2240,31 +3355,35 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0571380201&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05713802&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "B"
-      ],
-      "source": "program_timetable",
-      "status": "offered",
-      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
-    },
-    "program": {
-      "credits": 4,
-      "teaching_format": [
-        {
-          "hours": 3,
-          "type": "שיעור"
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
         },
-        {
-          "hours": 1,
-          "type": "תרגיל"
-        }
-      ],
-      "weekly_hours": 4
-    },
-    "timetable": [
-      "B"
-    ]
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "B"
+        ]
+      }
+    }
   },
   "0571-4174": {
     "ims": {
@@ -2276,27 +3395,107 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0571417401&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05714174&year=2026"
     },
-    "offering": {
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
+        },
+        "program": {
+          "credits": 2,
+          "teaching_format": [
+            {
+              "hours": 2,
+              "type": "שיעור"
+            }
+          ],
+          "weekly_hours": 2
+        },
+        "timetable": [
+          "A"
+        ]
+      }
+    }
+  },
+  "0581-1111": {
+    "ims": {
+      "name_he": "מבוא למדע והנדסה של חומרים",
       "offered_semesters": [
-        "A"
+        "B"
       ],
-      "source": "program_timetable",
       "status": "offered",
-      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0581111101&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05811111&year=2026"
     },
-    "program": {
-      "credits": 2,
-      "teaching_format": [
-        {
-          "hours": 2,
-          "type": "שיעור"
-        }
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "B"
+        ]
+      }
+    }
+  },
+  "0581-1132": {
+    "ims": {
+      "name_he": "מבוא למדע והנדסה של חומרים - מעבדה",
+      "offered_semesters": [
+        "B"
       ],
-      "weekly_hours": 2
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0581113201&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05811132&year=2026"
     },
-    "timetable": [
-      "A"
-    ]
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
+        },
+        "program": {
+          "credits": 0.5,
+          "teaching_format": [
+            {
+              "hours": 1,
+              "type": "מעבדה"
+            }
+          ],
+          "weekly_hours": 1
+        },
+        "timetable": [
+          "B"
+        ]
+      }
+    }
   },
   "0581-4131": {
     "ims": {
@@ -2308,27 +3507,31 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0581413101&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05814131&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "A"
-      ],
-      "source": "program_timetable",
-      "status": "offered",
-      "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
-    },
-    "program": {
-      "credits": 0.5,
-      "teaching_format": [
-        {
-          "hours": 1,
-          "type": "מעבדה"
-        }
-      ],
-      "weekly_hours": 1
-    },
-    "timetable": [
-      "A"
-    ]
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
+        },
+        "program": {
+          "credits": 0.5,
+          "teaching_format": [
+            {
+              "hours": 1,
+              "type": "מעבדה"
+            }
+          ],
+          "weekly_hours": 1
+        },
+        "timetable": [
+          "A"
+        ]
+      }
+    }
   },
   "0608-1010": {
     "ims": {
@@ -2340,16 +3543,20 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0608101001&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06081010&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "B"
-      ],
-      "source": "ims",
-      "status": "offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06081010&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06081010&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "0608-1110": {
     "ims": {
@@ -2361,16 +3568,20 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0608111001&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06081110&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "A"
-      ],
-      "source": "ims",
-      "status": "offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06081110&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06081110&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "0608-1152": {
     "ims": {
@@ -2382,16 +3593,20 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0608115201&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06081152&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "A"
-      ],
-      "source": "ims",
-      "status": "offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06081152&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06081152&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "0608-1153": {
     "ims": {
@@ -2399,14 +3614,18 @@
       "status": "not_offered",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06081153&year=2026"
     },
-    "offering": {
-      "offered_semesters": [],
-      "source": "ims",
-      "status": "not_offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06081153&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [],
+          "source": "ims",
+          "status": "not_offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06081153&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "0608-1177": {
     "ims": {
@@ -2418,16 +3637,20 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0608117701&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06081177&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "B"
-      ],
-      "source": "ims",
-      "status": "offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06081177&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06081177&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "0609-1002": {
     "ims": {
@@ -2439,16 +3662,20 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0609100201&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091002&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "A"
-      ],
-      "source": "ims",
-      "status": "offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091002&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091002&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "0609-1003": {
     "ims": {
@@ -2460,16 +3687,20 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0609100301&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091003&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "A"
-      ],
-      "source": "ims",
-      "status": "offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091003&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091003&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "0609-1004": {
     "ims": {
@@ -2481,16 +3712,20 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0609100401&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091004&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "B"
-      ],
-      "source": "ims",
-      "status": "offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091004&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091004&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "0609-1005": {
     "ims": {
@@ -2502,16 +3737,20 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0609100501&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091005&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "A"
-      ],
-      "source": "ims",
-      "status": "offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091005&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091005&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "0609-1006": {
     "ims": {
@@ -2523,16 +3762,20 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0609100601&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091006&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "A"
-      ],
-      "source": "ims",
-      "status": "offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091006&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091006&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "0609-1007": {
     "ims": {
@@ -2545,17 +3788,21 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0609100701&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091007&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "A",
-        "B"
-      ],
-      "source": "ims",
-      "status": "offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091007&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "A",
+            "B"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091007&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "0609-1008": {
     "ims": {
@@ -2567,16 +3814,20 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0609100801&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091008&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "B"
-      ],
-      "source": "ims",
-      "status": "offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091008&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091008&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "0609-1009": {
     "ims": {
@@ -2588,16 +3839,20 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0609100901&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091009&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "A"
-      ],
-      "source": "ims",
-      "status": "offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091009&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091009&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "0609-1010": {
     "ims": {
@@ -2609,16 +3864,20 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0609101001&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091010&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "A"
-      ],
-      "source": "ims",
-      "status": "offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091010&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091010&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "0609-1011": {
     "ims": {
@@ -2630,16 +3889,20 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0609101101&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091011&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "B"
-      ],
-      "source": "ims",
-      "status": "offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091011&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091011&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "0609-1013": {
     "ims": {
@@ -2651,16 +3914,20 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0609101301&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091013&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "A"
-      ],
-      "source": "ims",
-      "status": "offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091013&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091013&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "0609-1014": {
     "ims": {
@@ -2672,16 +3939,20 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0609101401&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091014&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "A"
-      ],
-      "source": "ims",
-      "status": "offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091014&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091014&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "0609-1015": {
     "ims": {
@@ -2693,16 +3964,20 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0609101501&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091015&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "B"
-      ],
-      "source": "ims",
-      "status": "offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091015&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091015&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "0609-1017": {
     "ims": {
@@ -2715,17 +3990,21 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0609101701&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091017&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "A",
-        "B"
-      ],
-      "source": "ims",
-      "status": "offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091017&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "A",
+            "B"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091017&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "0609-1018": {
     "ims": {
@@ -2733,14 +4012,18 @@
       "status": "not_offered",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091018&year=2026"
     },
-    "offering": {
-      "offered_semesters": [],
-      "source": "ims",
-      "status": "not_offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091018&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [],
+          "source": "ims",
+          "status": "not_offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091018&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "0609-1019": {
     "ims": {
@@ -2752,16 +4035,20 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0609101901&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091019&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "B"
-      ],
-      "source": "ims",
-      "status": "offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091019&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091019&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "0609-1020": {
     "ims": {
@@ -2773,16 +4060,20 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0609102001&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091020&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "B"
-      ],
-      "source": "ims",
-      "status": "offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091020&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091020&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "0609-1021": {
     "ims": {
@@ -2794,16 +4085,20 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0609102101&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091021&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "A"
-      ],
-      "source": "ims",
-      "status": "offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091021&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091021&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "0609-1201": {
     "ims": {
@@ -2811,14 +4106,18 @@
       "status": "not_offered",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091201&year=2026"
     },
-    "offering": {
-      "offered_semesters": [],
-      "source": "ims",
-      "status": "not_offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091201&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [],
+          "source": "ims",
+          "status": "not_offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091201&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "0609-1209": {
     "ims": {
@@ -2826,14 +4125,18 @@
       "status": "not_offered",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091209&year=2026"
     },
-    "offering": {
-      "offered_semesters": [],
-      "source": "ims",
-      "status": "not_offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091209&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [],
+          "source": "ims",
+          "status": "not_offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091209&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "0609-1211": {
     "ims": {
@@ -2845,16 +4148,20 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0609121101&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091211&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "B"
-      ],
-      "source": "ims",
-      "status": "offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091211&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091211&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "0609-1212": {
     "ims": {
@@ -2866,16 +4173,20 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0609121201&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091212&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "B"
-      ],
-      "source": "ims",
-      "status": "offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091212&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091212&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "0609-1225": {
     "ims": {
@@ -2883,14 +4194,18 @@
       "status": "not_offered",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091225&year=2026"
     },
-    "offering": {
-      "offered_semesters": [],
-      "source": "ims",
-      "status": "not_offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091225&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [],
+          "source": "ims",
+          "status": "not_offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091225&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "0609-1226": {
     "ims": {
@@ -2898,14 +4213,18 @@
       "status": "not_offered",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091226&year=2026"
     },
-    "offering": {
-      "offered_semesters": [],
-      "source": "ims",
-      "status": "not_offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091226&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [],
+          "source": "ims",
+          "status": "not_offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091226&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "0609-1303": {
     "ims": {
@@ -2917,16 +4236,20 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0609130301&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091303&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "A"
-      ],
-      "source": "ims",
-      "status": "offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091303&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091303&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "0612-6041": {
     "ims": {
@@ -2934,14 +4257,18 @@
       "status": "not_offered",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06126041&year=2026"
     },
-    "offering": {
-      "offered_semesters": [],
-      "source": "ims",
-      "status": "not_offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06126041&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [],
+          "source": "ims",
+          "status": "not_offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06126041&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "0612-6044": {
     "ims": {
@@ -2949,14 +4276,18 @@
       "status": "not_offered",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06126044&year=2026"
     },
-    "offering": {
-      "offered_semesters": [],
-      "source": "ims",
-      "status": "not_offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06126044&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [],
+          "source": "ims",
+          "status": "not_offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06126044&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "0616-1311": {
     "ims": {
@@ -2968,16 +4299,20 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0616131101&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06161311&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "A"
-      ],
-      "source": "ims",
-      "status": "offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06161311&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06161311&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "0618-1016": {
     "ims": {
@@ -2989,16 +4324,20 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0618101601&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06181016&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "B"
-      ],
-      "source": "ims",
-      "status": "offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06181016&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06181016&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "0618-1042": {
     "ims": {
@@ -3010,16 +4349,20 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0618104201&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06181042&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "B"
-      ],
-      "source": "ims",
-      "status": "offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06181042&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06181042&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "0618-1059": {
     "ims": {
@@ -3031,16 +4374,20 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0618105901&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06181059&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "A"
-      ],
-      "source": "ims",
-      "status": "offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06181059&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06181059&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "0621-1101": {
     "ims": {
@@ -3052,16 +4399,20 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0621110101&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06211101&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "B"
-      ],
-      "source": "ims",
-      "status": "offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06211101&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06211101&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "0621-1194": {
     "ims": {
@@ -3069,14 +4420,18 @@
       "status": "not_offered",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06211194&year=2026"
     },
-    "offering": {
-      "offered_semesters": [],
-      "source": "ims",
-      "status": "not_offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06211194&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [],
+          "source": "ims",
+          "status": "not_offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06211194&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "0621-1219": {
     "ims": {
@@ -3088,16 +4443,20 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0621121901&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06211219&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "A"
-      ],
-      "source": "ims",
-      "status": "offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06211219&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06211219&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "0621-1220": {
     "ims": {
@@ -3105,14 +4464,18 @@
       "status": "not_offered",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06211220&year=2026"
     },
-    "offering": {
-      "offered_semesters": [],
-      "source": "ims",
-      "status": "not_offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06211220&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [],
+          "source": "ims",
+          "status": "not_offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06211220&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "0622-1001": {
     "ims": {
@@ -3124,16 +4487,20 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0622100101&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06221001&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "A"
-      ],
-      "source": "ims",
-      "status": "offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06221001&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06221001&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "0622-1004": {
     "ims": {
@@ -3141,14 +4508,18 @@
       "status": "not_offered",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06221004&year=2026"
     },
-    "offering": {
-      "offered_semesters": [],
-      "source": "ims",
-      "status": "not_offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06221004&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [],
+          "source": "ims",
+          "status": "not_offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06221004&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "0622-2001": {
     "ims": {
@@ -3161,17 +4532,21 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0622200101&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06222001&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "A",
-        "B"
-      ],
-      "source": "ims",
-      "status": "offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06222001&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "A",
+            "B"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06222001&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "0627-1010": {
     "ims": {
@@ -3183,16 +4558,20 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0627101001&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06271010&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "A"
-      ],
-      "source": "ims",
-      "status": "offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06271010&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06271010&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "0631-1130": {
     "ims": {
@@ -3204,16 +4583,20 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0631113001&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06311130&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "B"
-      ],
-      "source": "ims",
-      "status": "offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06311130&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06311130&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "0631-2468": {
     "ims": {
@@ -3225,16 +4608,20 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0631246801&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06312468&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "A"
-      ],
-      "source": "ims",
-      "status": "offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06312468&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06312468&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "0631-2503": {
     "ims": {
@@ -3242,14 +4629,18 @@
       "status": "not_offered",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06312503&year=2026"
     },
-    "offering": {
-      "offered_semesters": [],
-      "source": "ims",
-      "status": "not_offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06312503&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [],
+          "source": "ims",
+          "status": "not_offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06312503&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "0631-3496": {
     "ims": {
@@ -3261,16 +4652,20 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0631349601&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06313496&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "A"
-      ],
-      "source": "ims",
-      "status": "offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06313496&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06313496&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "0662-1011": {
     "ims": {
@@ -3282,16 +4677,20 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0662101101&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06621011&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "A"
-      ],
-      "source": "ims",
-      "status": "offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06621011&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06621011&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "0662-1180": {
     "ims": {
@@ -3299,14 +4698,18 @@
       "status": "not_offered",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06621180&year=2026"
     },
-    "offering": {
-      "offered_semesters": [],
-      "source": "ims",
-      "status": "not_offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06621180&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [],
+          "source": "ims",
+          "status": "not_offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06621180&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "0662-1757": {
     "ims": {
@@ -3314,14 +4717,18 @@
       "status": "not_offered",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06621757&year=2026"
     },
-    "offering": {
-      "offered_semesters": [],
-      "source": "ims",
-      "status": "not_offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06621757&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [],
+          "source": "ims",
+          "status": "not_offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06621757&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "0662-2253": {
     "ims": {
@@ -3329,14 +4736,18 @@
       "status": "not_offered",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06622253&year=2026"
     },
-    "offering": {
-      "offered_semesters": [],
-      "source": "ims",
-      "status": "not_offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06622253&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [],
+          "source": "ims",
+          "status": "not_offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06622253&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "0662-2615": {
     "ims": {
@@ -3344,14 +4755,18 @@
       "status": "not_offered",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06622615&year=2026"
     },
-    "offering": {
-      "offered_semesters": [],
-      "source": "ims",
-      "status": "not_offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06622615&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [],
+          "source": "ims",
+          "status": "not_offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06622615&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "0662-2620": {
     "ims": {
@@ -3363,16 +4778,20 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0662262001&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06622620&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "A"
-      ],
-      "source": "ims",
-      "status": "offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06622620&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06622620&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "0662-2642": {
     "ims": {
@@ -3380,14 +4799,18 @@
       "status": "not_offered",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06622642&year=2026"
     },
-    "offering": {
-      "offered_semesters": [],
-      "source": "ims",
-      "status": "not_offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06622642&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [],
+          "source": "ims",
+          "status": "not_offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06622642&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "0662-2649": {
     "ims": {
@@ -3395,14 +4818,18 @@
       "status": "not_offered",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06622649&year=2026"
     },
-    "offering": {
-      "offered_semesters": [],
-      "source": "ims",
-      "status": "not_offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06622649&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [],
+          "source": "ims",
+          "status": "not_offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06622649&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "0662-2653": {
     "ims": {
@@ -3410,14 +4837,18 @@
       "status": "not_offered",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06622653&year=2026"
     },
-    "offering": {
-      "offered_semesters": [],
-      "source": "ims",
-      "status": "not_offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06622653&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [],
+          "source": "ims",
+          "status": "not_offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06622653&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "0662-2656": {
     "ims": {
@@ -3425,14 +4856,18 @@
       "status": "not_offered",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06622656&year=2026"
     },
-    "offering": {
-      "offered_semesters": [],
-      "source": "ims",
-      "status": "not_offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06622656&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [],
+          "source": "ims",
+          "status": "not_offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06622656&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "0669-6175": {
     "ims": {
@@ -3444,16 +4879,20 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0669617501&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06696175&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "B"
-      ],
-      "source": "ims",
-      "status": "offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06696175&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06696175&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "0669-6198": {
     "ims": {
@@ -3461,14 +4900,18 @@
       "status": "not_offered",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06696198&year=2026"
     },
-    "offering": {
-      "offered_semesters": [],
-      "source": "ims",
-      "status": "not_offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06696198&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [],
+          "source": "ims",
+          "status": "not_offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06696198&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "0669-6203": {
     "ims": {
@@ -3476,14 +4919,18 @@
       "status": "not_offered",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06696203&year=2026"
     },
-    "offering": {
-      "offered_semesters": [],
-      "source": "ims",
-      "status": "not_offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06696203&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [],
+          "source": "ims",
+          "status": "not_offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06696203&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "0671-1031": {
     "ims": {
@@ -3495,16 +4942,20 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0671103101&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06711031&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "B"
-      ],
-      "source": "ims",
-      "status": "offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06711031&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06711031&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "0671-1045": {
     "ims": {
@@ -3516,16 +4967,20 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0671104501&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06711045&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "A"
-      ],
-      "source": "ims",
-      "status": "offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06711045&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06711045&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "0671-1091": {
     "ims": {
@@ -3537,16 +4992,20 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0671109101&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06711091&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "A"
-      ],
-      "source": "ims",
-      "status": "offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06711091&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06711091&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "0671-1130": {
     "ims": {
@@ -3554,14 +5013,18 @@
       "status": "not_offered",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06711130&year=2026"
     },
-    "offering": {
-      "offered_semesters": [],
-      "source": "ims",
-      "status": "not_offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06711130&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [],
+          "source": "ims",
+          "status": "not_offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06711130&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "0671-1238": {
     "ims": {
@@ -3573,16 +5036,20 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0671123801&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06711238&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "B"
-      ],
-      "source": "ims",
-      "status": "offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06711238&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06711238&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "0671-2215": {
     "ims": {
@@ -3590,14 +5057,18 @@
       "status": "not_offered",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06712215&year=2026"
     },
-    "offering": {
-      "offered_semesters": [],
-      "source": "ims",
-      "status": "not_offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06712215&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [],
+          "source": "ims",
+          "status": "not_offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06712215&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "0671-2331": {
     "ims": {
@@ -3605,14 +5076,18 @@
       "status": "not_offered",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06712331&year=2026"
     },
-    "offering": {
-      "offered_semesters": [],
-      "source": "ims",
-      "status": "not_offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06712331&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [],
+          "source": "ims",
+          "status": "not_offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06712331&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "0671-2383": {
     "ims": {
@@ -3620,14 +5095,18 @@
       "status": "not_offered",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06712383&year=2026"
     },
-    "offering": {
-      "offered_semesters": [],
-      "source": "ims",
-      "status": "not_offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06712383&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [],
+          "source": "ims",
+          "status": "not_offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06712383&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "0671-2649": {
     "ims": {
@@ -3639,16 +5118,20 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0671264901&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06712649&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "A"
-      ],
-      "source": "ims",
-      "status": "offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06712649&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06712649&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "0671-2668": {
     "ims": {
@@ -3656,14 +5139,18 @@
       "status": "not_offered",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06712668&year=2026"
     },
-    "offering": {
-      "offered_semesters": [],
-      "source": "ims",
-      "status": "not_offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06712668&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [],
+          "source": "ims",
+          "status": "not_offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06712668&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "0671-2669": {
     "ims": {
@@ -3671,14 +5158,18 @@
       "status": "not_offered",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06712669&year=2026"
     },
-    "offering": {
-      "offered_semesters": [],
-      "source": "ims",
-      "status": "not_offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06712669&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [],
+          "source": "ims",
+          "status": "not_offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06712669&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "0671-2670": {
     "ims": {
@@ -3686,14 +5177,18 @@
       "status": "not_offered",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06712670&year=2026"
     },
-    "offering": {
-      "offered_semesters": [],
-      "source": "ims",
-      "status": "not_offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06712670&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [],
+          "source": "ims",
+          "status": "not_offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06712670&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "0671-4389": {
     "ims": {
@@ -3701,14 +5196,18 @@
       "status": "not_offered",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06714389&year=2026"
     },
-    "offering": {
-      "offered_semesters": [],
-      "source": "ims",
-      "status": "not_offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06714389&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [],
+          "source": "ims",
+          "status": "not_offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06714389&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "0672-1102": {
     "ims": {
@@ -3720,16 +5219,20 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0672110201&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06721102&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "B"
-      ],
-      "source": "ims",
-      "status": "offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06721102&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06721102&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "0672-1109": {
     "ims": {
@@ -3741,16 +5244,20 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0672110901&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06721109&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "A"
-      ],
-      "source": "ims",
-      "status": "offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06721109&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06721109&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "0672-1202": {
     "ims": {
@@ -3762,16 +5269,20 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0672120201&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06721202&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "B"
-      ],
-      "source": "ims",
-      "status": "offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06721202&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06721202&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "0672-1557": {
     "ims": {
@@ -3779,14 +5290,18 @@
       "status": "not_offered",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06721557&year=2026"
     },
-    "offering": {
-      "offered_semesters": [],
-      "source": "ims",
-      "status": "not_offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06721557&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [],
+          "source": "ims",
+          "status": "not_offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06721557&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "0677-1283": {
     "ims": {
@@ -3794,14 +5309,18 @@
       "status": "not_offered",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06771283&year=2026"
     },
-    "offering": {
-      "offered_semesters": [],
-      "source": "ims",
-      "status": "not_offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06771283&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [],
+          "source": "ims",
+          "status": "not_offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06771283&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "0677-1514": {
     "ims": {
@@ -3813,16 +5332,20 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0677151401&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06771514&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "A"
-      ],
-      "source": "ims",
-      "status": "offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06771514&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06771514&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "0687-1113": {
     "ims": {
@@ -3834,16 +5357,20 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0687111301&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06871113&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "A"
-      ],
-      "source": "ims",
-      "status": "offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06871113&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06871113&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "0687-1115": {
     "ims": {
@@ -3855,16 +5382,20 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0687111501&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06871115&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "A"
-      ],
-      "source": "ims",
-      "status": "offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06871115&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06871115&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "0723-2022": {
     "ims": {
@@ -3876,16 +5407,20 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0723202201&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=07232022&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "A"
-      ],
-      "source": "ims",
-      "status": "offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=07232022&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=07232022&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "0723-2047": {
     "ims": {
@@ -3897,16 +5432,20 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0723204701&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=07232047&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "A"
-      ],
-      "source": "ims",
-      "status": "offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=07232047&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=07232047&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "0723-2052": {
     "ims": {
@@ -3918,16 +5457,20 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0723205201&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=07232052&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "B"
-      ],
-      "source": "ims",
-      "status": "offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=07232052&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=07232052&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "1673-4026": {
     "ims": {
@@ -3935,14 +5478,18 @@
       "status": "not_offered",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=16734026&year=2026"
     },
-    "offering": {
-      "offered_semesters": [],
-      "source": "ims",
-      "status": "not_offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=16734026&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [],
+          "source": "ims",
+          "status": "not_offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=16734026&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "1880-0710": {
     "ims": {
@@ -3955,17 +5502,21 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=1880071001&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=18800710&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "A",
-        "B"
-      ],
-      "source": "ims",
-      "status": "offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=18800710&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "A",
+            "B"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=18800710&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   },
   "1880-0901": {
     "ims": {
@@ -3978,16 +5529,20 @@
       "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=1880090101&year=2026",
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=18800901&year=2026"
     },
-    "offering": {
-      "offered_semesters": [
-        "A",
-        "B"
-      ],
-      "source": "ims",
-      "status": "offered",
-      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=18800901&year=2026"
-    },
-    "program": null,
-    "timetable": null
+    "programs": {
+      "8715": {
+        "offering": {
+          "offered_semesters": [
+            "A",
+            "B"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=18800901&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      }
+    }
   }
 }

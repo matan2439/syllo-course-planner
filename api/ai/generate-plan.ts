@@ -34,6 +34,7 @@ import { parseProgramVersionId, queryBoardJson } from '../board';
 import { completedCategoryCountsFromContext } from './requirements_recompute';
 import { buildConstraintModel, planContextToState } from './planner_model';
 import { loadLocalBoardJson } from './board_loader';
+import { isServableProgramId } from '../../shared/programs';
 import { PlannerWorker } from './planner_worker';
 import { PlannerAgent } from './planner_agent';
 import { BeamSearchStrategy } from './planner_search_beam';
@@ -1562,7 +1563,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
 
   // Board — always plan over the full course universe.
   let board: any = null;
-  if (dbUrl) {
+  if (dbUrl && isServableProgramId(program_id)) {
     const pv = parseProgramVersionId(program_id);
     if (pv) {
       try { board = await queryBoardJson(dbUrl, pv.base, pv.year); } catch { board = null; }

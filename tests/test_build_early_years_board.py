@@ -56,3 +56,14 @@ def test_published_early_board_is_years_1_2_with_its_requirements():
     window = {s["semester_id"] for s in board["semesters"]}
     for course in board["metadata"]["program_repository_courses"]:
         assert set(course["effective_allowed_semesters"]) <= window
+
+
+def test_offline_read_never_touches_the_network(monkeypatch, tmp_path):
+    import pytest
+    import scripts.build_early_years_board as early
+
+    monkeypatch.setattr(early, "ROOT", tmp_path)
+    monkeypatch.setattr(early, "fetch_program_data",
+                        lambda *a, **k: (_ for _ in ()).throw(AssertionError("network")))
+    with pytest.raises(FileNotFoundError, match="offline"):
+        early.read_official("8715", 2026, offline=True)

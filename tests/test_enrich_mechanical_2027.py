@@ -1,5 +1,5 @@
 """
-Tests for app.pipeline.enrich_mechanical_2027 and related enrichment infrastructure.
+Tests for app.pipeline.enrich_board_graphql and related enrichment infrastructure.
 All tests use fixtures and cached data — no live network calls.
 """
 
@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pytest
 
-from app.pipeline.enrich_mechanical_2027 import _extract_course_map, enrich_board
+from app.pipeline.enrich_board_graphql import _extract_course_map, enrich_board
 from app.analysis.semester_board import _build_course_details_url
 from app.scraping.enrich_board_links import enrich_board as enrich_links
 
@@ -394,7 +394,7 @@ def test_enrich_board_dry_run_no_write(tmp_path):
     board_copy = tmp_path / "board.json"
     shutil.copy(_BOARD_PATH, board_copy)
     before = board_copy.read_text(encoding="utf-8")
-    enrich_board(board_path=board_copy, dry_run=True)
+    enrich_board(board_path=board_copy, dry_run=True, tcid="8715", shana="2026")
     after = board_copy.read_text(encoding="utf-8")
     assert before == after, "dry_run must not modify the board JSON"
 

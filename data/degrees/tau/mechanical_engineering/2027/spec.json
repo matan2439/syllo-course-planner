@@ -1,0 +1,3622 @@
+{
+  "program_id": "mechanical_engineering_2027",
+  "institution": "tau",
+  "source_year": 2026,
+  "total_required_credits": 185.0,
+  "catalog_year_policy": "start_year",
+  "mandatory_courses": [
+    {
+      "course_id": "0542-1510",
+      "year": 1,
+      "semester": "A",
+      "placement_rule": "fixed_semester"
+    },
+    {
+      "course_id": "0509-1624",
+      "year": 1,
+      "semester": "A",
+      "placement_rule": "fixed_semester"
+    },
+    {
+      "course_id": "0509-1646",
+      "year": 1,
+      "semester": "A",
+      "placement_rule": "fixed_semester"
+    },
+    {
+      "course_id": "0509-1815",
+      "year": 1,
+      "semester": "A",
+      "placement_rule": "fixed_semester"
+    },
+    {
+      "course_id": "0542-1821",
+      "year": 1,
+      "semester": "A",
+      "placement_rule": "fixed_semester"
+    },
+    {
+      "course_id": "0542-1800",
+      "year": 1,
+      "semester": "A",
+      "placement_rule": "fixed_semester"
+    },
+    {
+      "course_id": "0509-1645",
+      "year": 1,
+      "semester": "B",
+      "placement_rule": "fixed_semester"
+    },
+    {
+      "course_id": "0509-1647",
+      "year": 1,
+      "semester": "B",
+      "placement_rule": "fixed_semester"
+    },
+    {
+      "course_id": "0509-1834",
+      "year": 1,
+      "semester": "B",
+      "placement_rule": "fixed_semester"
+    },
+    {
+      "course_id": "0542-1810",
+      "year": 1,
+      "semester": "B",
+      "placement_rule": "fixed_semester"
+    },
+    {
+      "course_id": "0542-1820",
+      "year": 1,
+      "semester": "B",
+      "placement_rule": "fixed_semester"
+    },
+    {
+      "course_id": "0581-1111",
+      "year": 1,
+      "semester": "B",
+      "placement_rule": "fixed_semester"
+    },
+    {
+      "course_id": "0581-1132",
+      "year": 1,
+      "semester": "B",
+      "placement_rule": "fixed_semester"
+    },
+    {
+      "course_id": "0509-1829",
+      "year": 2,
+      "semester": "A",
+      "placement_rule": "fixed_semester"
+    },
+    {
+      "course_id": "0509-2805",
+      "year": 2,
+      "semester": "A",
+      "placement_rule": "fixed_semester"
+    },
+    {
+      "course_id": "0509-2844",
+      "year": 2,
+      "semester": "A",
+      "placement_rule": "fixed_semester"
+    },
+    {
+      "course_id": "0542-2110",
+      "year": 2,
+      "semester": "A",
+      "placement_rule": "fixed_semester"
+    },
+    {
+      "course_id": "0542-2200",
+      "year": 2,
+      "semester": "A",
+      "placement_rule": "fixed_semester"
+    },
+    {
+      "course_id": "0542-3804",
+      "year": 2,
+      "semester": "B",
+      "placement_rule": "fixed_semester"
+    },
+    {
+      "course_id": "0509-2843",
+      "year": 2,
+      "semester": "B",
+      "placement_rule": "fixed_semester"
+    },
+    {
+      "course_id": "0509-2846",
+      "year": 2,
+      "semester": "B",
+      "placement_rule": "fixed_semester"
+    },
+    {
+      "course_id": "0512-1205",
+      "year": 2,
+      "semester": "B",
+      "placement_rule": "fixed_semester"
+    },
+    {
+      "course_id": "0542-2600",
+      "year": 2,
+      "semester": "B",
+      "placement_rule": "fixed_semester"
+    },
+    {
+      "course_id": "0512-1204",
+      "year": 3,
+      "semester": "A",
+      "placement_rule": "fixed_semester"
+    },
+    {
+      "course_id": "0542-2400",
+      "year": 3,
+      "semester": "A",
+      "placement_rule": "fixed_semester"
+    },
+    {
+      "course_id": "0542-2500",
+      "year": 3,
+      "semester": "A",
+      "placement_rule": "fixed_semester"
+    },
+    {
+      "course_id": "0542-3243",
+      "year": 3,
+      "semester": "A",
+      "placement_rule": "fixed_semester"
+    },
+    {
+      "course_id": "0542-3620",
+      "year": 3,
+      "semester": "either",
+      "placement_rule": "choose_one_allowed_semester"
+    },
+    {
+      "course_id": "0542-3780",
+      "year": 3,
+      "semester": "either",
+      "placement_rule": "choose_one_allowed_semester"
+    },
+    {
+      "course_id": "0542-3791",
+      "year": 3,
+      "semester": "either",
+      "placement_rule": "choose_one_allowed_semester"
+    },
+    {
+      "course_id": "0542-3792",
+      "year": 3,
+      "semester": "either",
+      "placement_rule": "choose_one_allowed_semester"
+    },
+    {
+      "course_id": "0542-4010",
+      "year": 4,
+      "semester": "either",
+      "placement_rule": "choose_one_allowed_semester"
+    },
+    {
+      "course_id": "0542-4020",
+      "year": 4,
+      "semester": "either",
+      "placement_rule": "choose_one_allowed_semester"
+    },
+    {
+      "course_id": "0542-4091",
+      "year": 4,
+      "semester": "either",
+      "placement_rule": "choose_one_allowed_semester"
+    },
+    {
+      "course_id": "0542-4092",
+      "year": 4,
+      "semester": "either",
+      "placement_rule": "choose_one_allowed_semester"
+    }
+  ],
+  "categories": [
+    {
+      "category_id": "fluids",
+      "name_he": "קורסי ליבה — זורמים",
+      "min_courses": 1,
+      "min_credits": null,
+      "course_ids": [
+        "0542-4120",
+        "0542-4123",
+        "0542-4320",
+        "0542-4352"
+      ],
+      "group": "core"
+    },
+    {
+      "category_id": "solids",
+      "name_he": "קורסי ליבה — מוצקים",
+      "min_courses": 1,
+      "min_credits": null,
+      "course_ids": [
+        "0542-4220",
+        "0542-4221",
+        "0542-4223",
+        "0542-4224"
+      ],
+      "group": "core"
+    },
+    {
+      "category_id": "systems",
+      "name_he": "קורסי ליבה — מערכות",
+      "min_courses": 1,
+      "min_credits": null,
+      "course_ids": [
+        "0542-4420",
+        "0542-4422",
+        "0542-4455",
+        "0542-4622"
+      ],
+      "group": "core"
+    },
+    {
+      "category_id": "advanced_labs",
+      "name_he": "מעבדות מתקדמות",
+      "min_courses": 1,
+      "min_credits": null,
+      "course_ids": [
+        "0542-4391",
+        "0542-4624",
+        "0581-4131",
+        "0542-4093",
+        "0542-4094"
+      ],
+      "group": null
+    },
+    {
+      "category_id": "other_specialization",
+      "name_he": "קורסי התמחות / בחירה נוספים",
+      "min_courses": 0,
+      "min_credits": null,
+      "course_ids": [
+        "0542-4124",
+        "0542-4125",
+        "0542-4131",
+        "0542-4132",
+        "0542-4135",
+        "0542-4179",
+        "0542-4191",
+        "0542-4226",
+        "0542-4275",
+        "0542-4321",
+        "0542-4322",
+        "0542-4351",
+        "0542-4425",
+        "0542-4524",
+        "0542-4527",
+        "0542-4559",
+        "0542-4621",
+        "0542-4722",
+        "0509-4010",
+        "0512-1203",
+        "0512-1202",
+        "0512-2508",
+        "0512-4200",
+        "0512-4362",
+        "0512-4700",
+        "0512-4702",
+        "0571-1818",
+        "0571-3802",
+        "0571-4174",
+        "0555-4000",
+        "0555-4432",
+        "0555-4555",
+        "0555-4562",
+        "0555-3160",
+        "0555-4630",
+        "0555-4550",
+        "0542-4011",
+        "0542-4012",
+        "0542-3112"
+      ],
+      "group": null
+    }
+  ],
+  "group_minimums": {
+    "core": 6
+  },
+  "general_requirement": {
+    "category_id": "shaar_ruach",
+    "name_he": "קורסי שער רוח",
+    "min_courses": 3,
+    "credits_required": 6,
+    "needs_review": false,
+    "note": "תוכנית מחייבת 6 נק\"ז קורסי שער רוח (2 נק\"ז לכל קורס) — 3 קורסים לפחות. אינם נספרים כבחירת הנדסה.",
+    "course_ids": [
+      "0609-1005",
+      "0609-1003",
+      "0609-1008",
+      "0609-1007",
+      "0609-1013",
+      "0609-1014",
+      "1880-0901",
+      "1880-0710",
+      "0609-1002",
+      "0609-1011",
+      "0609-1018",
+      "0609-1017",
+      "0609-1201",
+      "0609-1225",
+      "0609-1226",
+      "0609-1303",
+      "0612-6041",
+      "0612-6044",
+      "0618-1059",
+      "0622-1001",
+      "0627-1010",
+      "0631-1130",
+      "0631-2468",
+      "0631-3496",
+      "0671-1045",
+      "0671-2215",
+      "0671-2331",
+      "0671-2669",
+      "0671-2670",
+      "0672-1102",
+      "0677-1514",
+      "0687-1113",
+      "0687-1115",
+      "0616-1311",
+      "0672-1109",
+      "0723-2047",
+      "0723-2022",
+      "0621-1194",
+      "0621-1219",
+      "0669-6175",
+      "0662-1011",
+      "0662-1757",
+      "0662-2642",
+      "0662-2649",
+      "0608-1110",
+      "0608-1177",
+      "0608-1152",
+      "0608-1153",
+      "0669-6198",
+      "0609-1006",
+      "0609-1021",
+      "0609-1004",
+      "0609-1009",
+      "0609-1015",
+      "0609-1010",
+      "0609-1019",
+      "0609-1020",
+      "0609-1209",
+      "0609-1211",
+      "0609-1212",
+      "0618-1016",
+      "0618-1042",
+      "0622-1004",
+      "0622-2001",
+      "0631-2503",
+      "0671-1031",
+      "0671-1091",
+      "0671-1130",
+      "0671-1238",
+      "0671-2383",
+      "0671-2649",
+      "0671-2668",
+      "0671-4389",
+      "0672-1202",
+      "0672-1557",
+      "0677-1283",
+      "1673-4026",
+      "0723-2052",
+      "0621-1101",
+      "0621-1220",
+      "0662-1180",
+      "0662-2253",
+      "0662-2615",
+      "0662-2620",
+      "0662-2653",
+      "0662-2656",
+      "0608-1010",
+      "0669-6203"
+    ]
+  },
+  "double_counting": "forbidden",
+  "allowed_double_counted": [],
+  "ui": {
+    "other_category_label": "קורסים באישור מיוחד",
+    "sidebar_order": [
+      "fluids",
+      "solids",
+      "systems",
+      "advanced_labs",
+      "other_specialization"
+    ]
+  },
+  "legacy": {
+    "program": {
+      "program_name_he": "הנדסה מכנית",
+      "program_name": "Mechanical Engineering",
+      "academic_year_he": "תשפ\"ז",
+      "source_type": "mechanical_engineering_2027_pdf_enriched_with_tau_program_page",
+      "source_file": "קורסי בחירה תשפז - לפרסום לשנה ג'-ד'.pdf",
+      "needs_verification": false,
+      "notes": [
+        "לפי המצגת: יש ללמוד לפחות 6 קורסי ליבה",
+        "יש לבחור לפחות קורס ליבה אחד מכל תת-קבוצה: זורמים, מוצקים, מערכות",
+        "יש ללמוד לפחות מעבדה מתקדמת אחת",
+        "יש להתחשב בדרישות הקדם לכל קורס"
+      ],
+      "elective_courses": [
+        {
+          "course_id": "0542-4120",
+          "name_he": "תרמודינמיקה (2)",
+          "hours": 4,
+          "offered_semesters": [
+            "A"
+          ],
+          "category_id": "fluids",
+          "offered_in_year": true,
+          "prerequisites": [
+            {
+              "name_he": "תרמודינמיקה (1)",
+              "course_id": null,
+              "resolution_status": "unresolved"
+            }
+          ],
+          "teaching_format": [
+            {
+              "type": "שיעור ותרגיל",
+              "hours": 4.0
+            }
+          ],
+          "has_prereqs": true
+        },
+        {
+          "course_id": "0542-4123",
+          "name_he": "תהליכי מעבר חום וחומר",
+          "hours": 4,
+          "offered_semesters": [
+            "B"
+          ],
+          "category_id": "fluids",
+          "offered_in_year": true,
+          "prerequisites": [
+            {
+              "name_he": "מכניקת הזורמים (1)",
+              "course_id": null,
+              "resolution_status": "unresolved"
+            },
+            {
+              "name_he": "מעבר חום",
+              "course_id": null,
+              "resolution_status": "unresolved"
+            }
+          ],
+          "teaching_format": [
+            {
+              "type": "שיעור ותרגיל",
+              "hours": 4.0
+            }
+          ],
+          "has_prereqs": true
+        },
+        {
+          "course_id": "0542-4320",
+          "name_he": "מכניקת הזורמים (2)",
+          "hours": 4,
+          "offered_semesters": [
+            "B"
+          ],
+          "category_id": "fluids",
+          "offered_in_year": true,
+          "prerequisites": [
+            {
+              "name_he": "מכניקת הזורמים (1)",
+              "course_id": null,
+              "resolution_status": "unresolved"
+            }
+          ]
+        },
+        {
+          "course_id": "0542-4352",
+          "name_he": "דינמיקת הגזים",
+          "hours": 4,
+          "offered_semesters": [
+            "A"
+          ],
+          "category_id": "fluids",
+          "offered_in_year": true,
+          "prerequisites": [
+            {
+              "name_he": "מכניקת הזורמים (1)",
+              "course_id": null,
+              "resolution_status": "unresolved"
+            },
+            {
+              "name_he": "תרמודינמיקה (1)",
+              "course_id": null,
+              "resolution_status": "unresolved"
+            }
+          ]
+        },
+        {
+          "course_id": "0542-4220",
+          "name_he": "תורת התנודות",
+          "hours": 4,
+          "offered_semesters": [
+            "A"
+          ],
+          "category_id": "solids",
+          "offered_in_year": true,
+          "prerequisites": [
+            {
+              "name_he": "דינמיקה של גוף קשיח",
+              "course_id": null,
+              "resolution_status": "unresolved"
+            },
+            {
+              "name_he": "מכניקת המוצקים (1)",
+              "course_id": null,
+              "resolution_status": "unresolved"
+            }
+          ],
+          "teaching_format": [
+            {
+              "type": "שיעור ותרגיל",
+              "hours": 4.0
+            }
+          ],
+          "has_prereqs": true
+        },
+        {
+          "course_id": "0542-4221",
+          "name_he": "מבוא לתורת האלסטיות",
+          "hours": 4,
+          "offered_semesters": [
+            "B"
+          ],
+          "category_id": "solids",
+          "offered_in_year": true,
+          "prerequisites": [
+            {
+              "name_he": "מכניקת המוצקים (1)",
+              "course_id": null,
+              "resolution_status": "unresolved"
+            }
+          ],
+          "teaching_format": [
+            {
+              "type": "שיעור ותרגיל",
+              "hours": 4.0
+            }
+          ],
+          "has_prereqs": true
+        },
+        {
+          "course_id": "0542-4223",
+          "name_he": "מבוא לאלמנטים סופיים",
+          "hours": 4,
+          "offered_semesters": [
+            "A"
+          ],
+          "category_id": "solids",
+          "offered_in_year": true,
+          "prerequisites": [
+            {
+              "name_he": "מכניקת המוצקים (1)",
+              "course_id": null,
+              "resolution_status": "unresolved"
+            }
+          ],
+          "teaching_format": [
+            {
+              "type": "שיעור",
+              "hours": 2.0
+            },
+            {
+              "type": "תרגיל",
+              "hours": 2.0
+            }
+          ],
+          "has_prereqs": true
+        },
+        {
+          "course_id": "0542-4224",
+          "name_he": "מכניקת המוצקים (2)",
+          "hours": 4,
+          "offered_semesters": [
+            "B"
+          ],
+          "category_id": "solids",
+          "offered_in_year": true,
+          "prerequisites": [
+            {
+              "name_he": "מכניקת המוצקים (1)",
+              "course_id": null,
+              "resolution_status": "unresolved"
+            }
+          ],
+          "teaching_format": [
+            {
+              "type": "שיעור ותרגיל",
+              "hours": 4.0
+            }
+          ],
+          "has_prereqs": true
+        },
+        {
+          "course_id": "0542-4420",
+          "name_he": "תורת המכונות",
+          "hours": 4,
+          "offered_semesters": [
+            "A"
+          ],
+          "category_id": "systems",
+          "offered_in_year": true,
+          "prerequisites": [
+            {
+              "name_he": "דינמיקה של גוף קשיח",
+              "course_id": null,
+              "resolution_status": "unresolved"
+            },
+            {
+              "name_he": "מכניקת המוצקים (1)",
+              "course_id": null,
+              "resolution_status": "unresolved"
+            }
+          ],
+          "teaching_format": [
+            {
+              "type": "שיעור ותרגיל",
+              "hours": 4.0
+            }
+          ],
+          "has_prereqs": true
+        },
+        {
+          "course_id": "0542-4422",
+          "name_he": "תכן הנדסי: מבוא ושיטות",
+          "hours": 4,
+          "offered_semesters": [
+            "A"
+          ],
+          "category_id": "systems",
+          "offered_in_year": true,
+          "prerequisites": [
+            {
+              "name_he": "אלגברה לינארית",
+              "course_id": null,
+              "resolution_status": "unresolved"
+            }
+          ],
+          "teaching_format": [
+            {
+              "type": "שיעור ותרגיל",
+              "hours": 4.0
+            }
+          ],
+          "has_prereqs": true
+        },
+        {
+          "course_id": "0542-4455",
+          "name_he": "בינה חישובית",
+          "hours": 4,
+          "offered_semesters": [
+            "B"
+          ],
+          "category_id": "systems",
+          "offered_in_year": true,
+          "prerequisites": [
+            {
+              "name_he": "מבוא להסתברות וסטטיסטיקה להנדסה מכנית וחומרים",
+              "course_id": null,
+              "resolution_status": "unresolved"
+            },
+            {
+              "name_he": "מבוא לבקרה",
+              "course_id": null,
+              "resolution_status": "unresolved"
+            }
+          ],
+          "teaching_format": [
+            {
+              "type": "שיעור ותרגיל",
+              "hours": 4.0
+            }
+          ],
+          "has_prereqs": true
+        },
+        {
+          "course_id": "0542-4622",
+          "name_he": "דינמיקה ובקרה של מערכות",
+          "hours": 4,
+          "offered_semesters": [
+            "B"
+          ],
+          "category_id": "systems",
+          "offered_in_year": true,
+          "prerequisites": [
+            {
+              "name_he": "מבוא לבקרה",
+              "course_id": null,
+              "resolution_status": "unresolved"
+            }
+          ],
+          "teaching_format": [
+            {
+              "type": "שיעור ותרגיל",
+              "hours": 4.0
+            }
+          ],
+          "has_prereqs": true
+        },
+        {
+          "course_id": "0542-4391",
+          "name_he": "מעבדה בסימולציות נומריות בזרימה ומעבר חום",
+          "hours": 3.5,
+          "offered_semesters": [
+            "A"
+          ],
+          "category_id": "advanced_labs",
+          "offered_in_year": true,
+          "prerequisites": [
+            {
+              "name_he": "מכניקת הזורמים (1)",
+              "course_id": null,
+              "resolution_status": "unresolved"
+            },
+            {
+              "name_he": "מעבר חום",
+              "course_id": null,
+              "resolution_status": "unresolved"
+            }
+          ]
+        },
+        {
+          "course_id": "0542-4624",
+          "name_he": "מעבדה ברובוטיקה ובקרה של מערכות",
+          "hours": 3,
+          "offered_semesters": [
+            "B"
+          ],
+          "category_id": "advanced_labs",
+          "offered_in_year": true,
+          "prerequisites": [
+            {
+              "name_he": "מבוא לרובוטיקה",
+              "course_id": null,
+              "resolution_status": "unresolved"
+            }
+          ],
+          "teaching_format": [
+            {
+              "type": "מעבדה",
+              "hours": 3.0
+            }
+          ],
+          "has_prereqs": true
+        },
+        {
+          "course_id": "0581-4131",
+          "name_he": "מעבדה בחומרים הנדסיים",
+          "hours": 1,
+          "offered_semesters": [
+            "A"
+          ],
+          "category_id": "advanced_labs",
+          "offered_in_year": true,
+          "prerequisites": [
+            {
+              "name_he": "מבוא למדע והנדסה של חומרים",
+              "course_id": null,
+              "resolution_status": "unresolved"
+            }
+          ],
+          "teaching_format": [
+            {
+              "type": "מעבדה",
+              "hours": 1.0
+            }
+          ],
+          "has_prereqs": true
+        },
+        {
+          "course_id": "0542-4093",
+          "name_he": "מעבדה במערכות אנרגיה",
+          "hours": 1,
+          "offered_semesters": [],
+          "category_id": "advanced_labs",
+          "offered_in_year": false,
+          "not_offered_note": "לא מוצע בתשפ\"ז",
+          "prerequisites": [],
+          "teaching_format": [
+            {
+              "type": "מעבדה",
+              "hours": 1.0
+            }
+          ],
+          "has_prereqs": true
+        },
+        {
+          "course_id": "0542-4094",
+          "name_he": "מעבדת מתקדמת בזרימה ומערכות אנרגיה",
+          "hours": 1,
+          "offered_semesters": [
+            "B"
+          ],
+          "category_id": "advanced_labs",
+          "offered_in_year": true,
+          "prerequisites": [
+            {
+              "name_he": "תרמודינמיקה (1)",
+              "course_id": null,
+              "resolution_status": "unresolved"
+            },
+            {
+              "name_he": "הנדסת ניסויים ומדידות - מעבדה",
+              "course_id": null,
+              "resolution_status": "unresolved"
+            },
+            {
+              "name_he": "מכניקת זורמים (1)",
+              "course_id": null,
+              "resolution_status": "unresolved"
+            },
+            {
+              "name_he": "מעבר חום",
+              "course_id": null,
+              "resolution_status": "unresolved"
+            },
+            {
+              "name_he": "מעבדת זרימה ומעבר חום",
+              "course_id": null,
+              "resolution_status": "unresolved"
+            }
+          ]
+        }
+      ],
+      "other_specialization_electives": [
+        {
+          "course_id": "0542-4124",
+          "name_he": null,
+          "hours": null,
+          "offered_semesters": [],
+          "interest_areas": [],
+          "offered_in_year": true,
+          "notes": ""
+        },
+        {
+          "course_id": "0542-4125",
+          "name_he": "מבוא להנדסת סביבה",
+          "hours": 4.0,
+          "offered_semesters": [],
+          "interest_areas": [],
+          "offered_in_year": true,
+          "notes": "",
+          "teaching_format": [
+            {
+              "type": "שיעור ותרגיל",
+              "hours": 4.0
+            }
+          ],
+          "has_prereqs": true
+        },
+        {
+          "course_id": "0542-4131",
+          "name_he": "מנועי שריפה פנימית",
+          "hours": 4.0,
+          "offered_semesters": [],
+          "interest_areas": [],
+          "offered_in_year": true,
+          "notes": "",
+          "teaching_format": [
+            {
+              "type": "שיעור ותרגיל",
+              "hours": 4.0
+            }
+          ],
+          "has_prereqs": true
+        },
+        {
+          "course_id": "0542-4132",
+          "name_he": "אנרגיה מתחדשת",
+          "hours": 4.0,
+          "offered_semesters": [],
+          "interest_areas": [],
+          "offered_in_year": true,
+          "notes": "",
+          "teaching_format": [
+            {
+              "type": "שיעור ותרגיל",
+              "hours": 4.0
+            }
+          ],
+          "has_prereqs": true
+        },
+        {
+          "course_id": "0542-4135",
+          "name_he": null,
+          "hours": null,
+          "offered_semesters": [],
+          "interest_areas": [],
+          "offered_in_year": true,
+          "notes": ""
+        },
+        {
+          "course_id": "0542-4179",
+          "name_he": "מתקנים לייצור כח וניצול אנרגיה",
+          "hours": 4.0,
+          "offered_semesters": [],
+          "interest_areas": [],
+          "offered_in_year": true,
+          "notes": "",
+          "teaching_format": [
+            {
+              "type": "שיעור ותרגיל",
+              "hours": 4.0
+            }
+          ],
+          "has_prereqs": true
+        },
+        {
+          "course_id": "0542-4191",
+          "name_he": null,
+          "hours": null,
+          "offered_semesters": [],
+          "interest_areas": [],
+          "offered_in_year": true,
+          "notes": ""
+        },
+        {
+          "course_id": "0542-4226",
+          "name_he": null,
+          "hours": null,
+          "offered_semesters": [],
+          "interest_areas": [],
+          "offered_in_year": true,
+          "notes": ""
+        },
+        {
+          "course_id": "0542-4275",
+          "name_he": null,
+          "hours": null,
+          "offered_semesters": [],
+          "interest_areas": [],
+          "offered_in_year": true,
+          "notes": ""
+        },
+        {
+          "course_id": "0542-4321",
+          "name_he": "הידראוליקה הנדסית",
+          "hours": 4.0,
+          "offered_semesters": [],
+          "interest_areas": [],
+          "offered_in_year": true,
+          "notes": "",
+          "teaching_format": [
+            {
+              "type": "שיעור ותרגיל",
+              "hours": 4.0
+            }
+          ],
+          "has_prereqs": true
+        },
+        {
+          "course_id": "0542-4322",
+          "name_he": "תכנון תרמי של ציוד אלקטרוני",
+          "hours": 4.0,
+          "offered_semesters": [],
+          "interest_areas": [],
+          "offered_in_year": true,
+          "notes": "",
+          "teaching_format": [
+            {
+              "type": "שיעור ותרגיל",
+              "hours": 4.0
+            }
+          ],
+          "has_prereqs": true
+        },
+        {
+          "course_id": "0542-4351",
+          "name_he": "הנדסה ימית",
+          "hours": 4.0,
+          "offered_semesters": [],
+          "interest_areas": [],
+          "offered_in_year": true,
+          "notes": "",
+          "teaching_format": [
+            {
+              "type": "שיעור ותרגיל",
+              "hours": 4.0
+            }
+          ],
+          "has_prereqs": true
+        },
+        {
+          "course_id": "0542-4425",
+          "name_he": null,
+          "hours": null,
+          "offered_semesters": [],
+          "interest_areas": [],
+          "offered_in_year": true,
+          "notes": ""
+        },
+        {
+          "course_id": "0542-4524",
+          "name_he": null,
+          "hours": null,
+          "offered_semesters": [],
+          "interest_areas": [],
+          "offered_in_year": true,
+          "notes": ""
+        },
+        {
+          "course_id": "0542-4527",
+          "name_he": null,
+          "hours": null,
+          "offered_semesters": [],
+          "interest_areas": [],
+          "offered_in_year": true,
+          "notes": ""
+        },
+        {
+          "course_id": "0542-4559",
+          "name_he": null,
+          "hours": null,
+          "offered_semesters": [],
+          "interest_areas": [],
+          "offered_in_year": true,
+          "notes": ""
+        },
+        {
+          "course_id": "0542-4621",
+          "name_he": "מבוא לרובוטיקה",
+          "hours": 3.0,
+          "offered_semesters": [],
+          "interest_areas": [],
+          "offered_in_year": true,
+          "notes": "",
+          "teaching_format": [
+            {
+              "type": "שיעור ותרגיל",
+              "hours": 3.0
+            }
+          ],
+          "has_prereqs": true
+        },
+        {
+          "course_id": "0542-4722",
+          "name_he": "מבוא להנדסת מערכות זעירות (Mems)",
+          "hours": 5.0,
+          "offered_semesters": [],
+          "interest_areas": [],
+          "offered_in_year": true,
+          "notes": "",
+          "teaching_format": [
+            {
+              "type": "שיעור ותרגיל",
+              "hours": 4.0
+            },
+            {
+              "type": "מעבדה",
+              "hours": 1.0
+            }
+          ],
+          "has_prereqs": true
+        },
+        {
+          "course_id": "0509-4010",
+          "name_he": null,
+          "hours": null,
+          "offered_semesters": [],
+          "interest_areas": [],
+          "offered_in_year": true,
+          "notes": ""
+        },
+        {
+          "course_id": "0512-1203",
+          "name_he": null,
+          "hours": null,
+          "offered_semesters": [],
+          "interest_areas": [],
+          "offered_in_year": true,
+          "notes": ""
+        },
+        {
+          "course_id": "0512-1202",
+          "name_he": null,
+          "hours": null,
+          "offered_semesters": [],
+          "interest_areas": [],
+          "offered_in_year": true,
+          "notes": ""
+        },
+        {
+          "course_id": "0512-2508",
+          "name_he": null,
+          "hours": null,
+          "offered_semesters": [],
+          "interest_areas": [],
+          "offered_in_year": true,
+          "notes": ""
+        },
+        {
+          "course_id": "0512-4200",
+          "name_he": null,
+          "hours": null,
+          "offered_semesters": [],
+          "interest_areas": [],
+          "offered_in_year": true,
+          "notes": ""
+        },
+        {
+          "course_id": "0512-4362",
+          "name_he": null,
+          "hours": null,
+          "offered_semesters": [],
+          "interest_areas": [],
+          "offered_in_year": true,
+          "notes": ""
+        },
+        {
+          "course_id": "0512-4700",
+          "name_he": null,
+          "hours": null,
+          "offered_semesters": [],
+          "interest_areas": [],
+          "offered_in_year": true,
+          "notes": ""
+        },
+        {
+          "course_id": "0512-4702",
+          "name_he": null,
+          "hours": null,
+          "offered_semesters": [],
+          "interest_areas": [],
+          "offered_in_year": true,
+          "notes": ""
+        },
+        {
+          "course_id": "0571-1818",
+          "name_he": null,
+          "hours": null,
+          "offered_semesters": [],
+          "interest_areas": [],
+          "offered_in_year": true,
+          "notes": ""
+        },
+        {
+          "course_id": "0571-3802",
+          "name_he": null,
+          "hours": null,
+          "offered_semesters": [],
+          "interest_areas": [],
+          "offered_in_year": true,
+          "notes": ""
+        },
+        {
+          "course_id": "0571-4174",
+          "name_he": null,
+          "hours": null,
+          "offered_semesters": [],
+          "interest_areas": [],
+          "offered_in_year": true,
+          "notes": ""
+        },
+        {
+          "course_id": "0555-4000",
+          "name_he": null,
+          "hours": null,
+          "offered_semesters": [],
+          "interest_areas": [],
+          "offered_in_year": true,
+          "notes": ""
+        },
+        {
+          "course_id": "0555-4432",
+          "name_he": null,
+          "hours": null,
+          "offered_semesters": [],
+          "interest_areas": [],
+          "offered_in_year": true,
+          "notes": ""
+        },
+        {
+          "course_id": "0555-4555",
+          "name_he": null,
+          "hours": null,
+          "offered_semesters": [],
+          "interest_areas": [],
+          "offered_in_year": true,
+          "notes": ""
+        },
+        {
+          "course_id": "0555-4562",
+          "name_he": null,
+          "hours": null,
+          "offered_semesters": [],
+          "interest_areas": [],
+          "offered_in_year": true,
+          "notes": ""
+        },
+        {
+          "course_id": "0555-3160",
+          "name_he": null,
+          "hours": null,
+          "offered_semesters": [],
+          "interest_areas": [],
+          "offered_in_year": true,
+          "notes": ""
+        },
+        {
+          "course_id": "0555-4630",
+          "name_he": null,
+          "hours": null,
+          "offered_semesters": [],
+          "interest_areas": [],
+          "offered_in_year": true,
+          "notes": ""
+        },
+        {
+          "course_id": "0555-4550",
+          "name_he": null,
+          "hours": null,
+          "offered_semesters": [],
+          "interest_areas": [],
+          "offered_in_year": true,
+          "notes": ""
+        },
+        {
+          "course_id": "0542-4011",
+          "name_he": "פרוייקט מחקר למצטיינים (1)",
+          "hours": 3.0,
+          "offered_semesters": [],
+          "interest_areas": [],
+          "offered_in_year": true,
+          "notes": "",
+          "teaching_format": [
+            {
+              "type": "פרוייקט",
+              "hours": 3.0
+            }
+          ],
+          "has_prereqs": false
+        },
+        {
+          "course_id": "0542-4012",
+          "name_he": "פרויקט מחקר למצטיינים (2)",
+          "hours": 3.0,
+          "offered_semesters": [],
+          "interest_areas": [],
+          "offered_in_year": true,
+          "notes": "",
+          "teaching_format": [
+            {
+              "type": "פרוייקט",
+              "hours": 3.0
+            }
+          ],
+          "has_prereqs": false
+        },
+        {
+          "course_id": "0542-3112",
+          "name_he": "פרויקט יישומי בהנדסה מכנית",
+          "hours": 2.0,
+          "offered_semesters": [],
+          "interest_areas": [],
+          "offered_in_year": true,
+          "notes": "",
+          "teaching_format": [
+            {
+              "type": "פרוייקט",
+              "hours": 2.0
+            }
+          ],
+          "has_prereqs": false
+        }
+      ],
+      "mandatory_courses_from_page": [
+        {
+          "course_id": "0512-1204",
+          "name_he": "המרת אנרגיה והנע חשמלי",
+          "weekly_hours": 3.5,
+          "credit_hours": 3.0,
+          "has_prereqs": true,
+          "teaching_format": [
+            {
+              "type": "שיעור",
+              "hours": 2.0
+            },
+            {
+              "type": "תרגיל",
+              "hours": 1.0
+            },
+            {
+              "type": "מעבדה",
+              "hours": 0.5
+            }
+          ],
+          "source": "tau_program_page",
+          "year": 3,
+          "semester_section": "סמסטר א",
+          "allowed_semesters": [
+            "year_3_semester_a"
+          ],
+          "locked_by_default": true,
+          "placement_rule": "fixed_semester",
+          "needs_verification": false
+        },
+        {
+          "course_id": "0542-2400",
+          "name_he": "תכן מכני (1)",
+          "weekly_hours": 4.0,
+          "credit_hours": 3.5,
+          "has_prereqs": true,
+          "teaching_format": [
+            {
+              "type": "שיעור ותרגיל",
+              "hours": 4.0
+            }
+          ],
+          "source": "tau_program_page",
+          "year": 3,
+          "semester_section": "סמסטר א",
+          "allowed_semesters": [
+            "year_3_semester_a"
+          ],
+          "locked_by_default": true,
+          "placement_rule": "fixed_semester",
+          "needs_verification": false
+        },
+        {
+          "course_id": "0542-3243",
+          "name_he": "מבוא לבקרה",
+          "weekly_hours": 5.5,
+          "credit_hours": 5.0,
+          "has_prereqs": true,
+          "teaching_format": [
+            {
+              "type": "שיעור",
+              "hours": 3.0
+            },
+            {
+              "type": "תרגיל",
+              "hours": 2.0
+            },
+            {
+              "type": "מעבדה",
+              "hours": 0.5
+            }
+          ],
+          "source": "tau_program_page",
+          "year": 3,
+          "semester_section": "סמסטר א",
+          "allowed_semesters": [
+            "year_3_semester_a"
+          ],
+          "locked_by_default": true,
+          "placement_rule": "fixed_semester",
+          "needs_verification": false
+        },
+        {
+          "course_id": "0542-3620",
+          "name_he": "מעבר חם",
+          "weekly_hours": 4.0,
+          "credit_hours": 4.0,
+          "has_prereqs": true,
+          "teaching_format": [
+            {
+              "type": "שיעור",
+              "hours": 3.0
+            },
+            {
+              "type": "תרגיל",
+              "hours": 1.0
+            }
+          ],
+          "source": "tau_program_page",
+          "year": 3,
+          "semester_section": "סמסטר א",
+          "allowed_semesters": [
+            "year_3_semester_a",
+            "year_3_semester_b"
+          ],
+          "locked_by_default": false,
+          "placement_rule": "choose_one_allowed_semester",
+          "needs_verification": false
+        },
+        {
+          "course_id": "0542-3780",
+          "name_he": "תהליכי עיבוד (1)",
+          "weekly_hours": 3.0,
+          "credit_hours": 3.0,
+          "has_prereqs": true,
+          "teaching_format": [
+            {
+              "type": "שיעור",
+              "hours": 3.0
+            }
+          ],
+          "source": "tau_program_page",
+          "year": 3,
+          "semester_section": "סמסטר א",
+          "allowed_semesters": [
+            "year_3_semester_a",
+            "year_3_semester_b"
+          ],
+          "locked_by_default": false,
+          "placement_rule": "choose_one_allowed_semester",
+          "needs_verification": false
+        },
+        {
+          "course_id": "0542-3791",
+          "name_he": "תהליכי עיבוד - מעבדה",
+          "weekly_hours": 2.0,
+          "credit_hours": 1.0,
+          "has_prereqs": false,
+          "teaching_format": [
+            {
+              "type": "מעבדה",
+              "hours": 2.0
+            }
+          ],
+          "source": "tau_program_page",
+          "year": 3,
+          "semester_section": "סמסטר א",
+          "allowed_semesters": [
+            "year_3_semester_a",
+            "year_3_semester_b"
+          ],
+          "locked_by_default": false,
+          "placement_rule": "choose_one_allowed_semester",
+          "needs_verification": false
+        },
+        {
+          "course_id": "0542-3792",
+          "name_he": "הנדסת ניסויים ומדידות - מעבדה",
+          "weekly_hours": 4.0,
+          "credit_hours": 3.0,
+          "has_prereqs": true,
+          "teaching_format": [
+            {
+              "type": "שיעור",
+              "hours": 2.0
+            },
+            {
+              "type": "מעבדה",
+              "hours": 2.0
+            }
+          ],
+          "source": "tau_program_page",
+          "year": 3,
+          "semester_section": "סמסטר א",
+          "allowed_semesters": [
+            "year_3_semester_a",
+            "year_3_semester_b"
+          ],
+          "locked_by_default": false,
+          "placement_rule": "choose_one_allowed_semester",
+          "needs_verification": false
+        },
+        {
+          "course_id": "0542-4010",
+          "name_he": "תיכון ופרוייקט (1)",
+          "weekly_hours": 3.0,
+          "credit_hours": 4.0,
+          "has_prereqs": false,
+          "teaching_format": [
+            {
+              "type": "פרוייקט",
+              "hours": 3.0
+            }
+          ],
+          "source": "tau_program_page",
+          "year": 4,
+          "semester_section": "קורסי חובה",
+          "allowed_semesters": [
+            "year_4_semester_a",
+            "year_4_semester_b"
+          ],
+          "locked_by_default": false,
+          "placement_rule": "choose_one_allowed_semester",
+          "needs_verification": false
+        },
+        {
+          "course_id": "0542-4020",
+          "name_he": "תיכון ופרוייקט (2)",
+          "weekly_hours": 3.0,
+          "credit_hours": 4.0,
+          "has_prereqs": true,
+          "teaching_format": [
+            {
+              "type": "פרוייקט",
+              "hours": 3.0
+            }
+          ],
+          "source": "tau_program_page",
+          "year": 4,
+          "semester_section": "קורסי חובה",
+          "allowed_semesters": [
+            "year_4_semester_a",
+            "year_4_semester_b"
+          ],
+          "locked_by_default": false,
+          "placement_rule": "choose_one_allowed_semester",
+          "needs_verification": false
+        },
+        {
+          "course_id": "0542-4091",
+          "name_he": "מעבדה במכניקת המוצקים",
+          "weekly_hours": 2.0,
+          "credit_hours": 1.5,
+          "has_prereqs": true,
+          "teaching_format": [
+            {
+              "type": "מעבדה",
+              "hours": 2.0
+            }
+          ],
+          "source": "tau_program_page",
+          "year": 4,
+          "semester_section": "קורסי חובה",
+          "allowed_semesters": [
+            "year_4_semester_a",
+            "year_4_semester_b"
+          ],
+          "locked_by_default": false,
+          "placement_rule": "choose_one_allowed_semester",
+          "needs_verification": false
+        },
+        {
+          "course_id": "0542-4092",
+          "name_he": "מעבדת זרימה ומעבר חום",
+          "weekly_hours": 2.0,
+          "credit_hours": 1.5,
+          "has_prereqs": true,
+          "teaching_format": [
+            {
+              "type": "מעבדה",
+              "hours": 2.0
+            }
+          ],
+          "source": "tau_program_page",
+          "year": 4,
+          "semester_section": "קורסי חובה",
+          "allowed_semesters": [
+            "year_4_semester_a",
+            "year_4_semester_b"
+          ],
+          "locked_by_default": false,
+          "placement_rule": "choose_one_allowed_semester",
+          "needs_verification": false
+        }
+      ],
+      "source_url": "https://www.tau.ac.il/study-program?safa=1&shana=2025&tab=programStudy&tcid=8715",
+      "enrichment_shana": "2025",
+      "parsed_at": "2026-05-28T16:16:33",
+      "parse_warnings": []
+    },
+    "requirements": {
+      "mandatory_courses": {
+        "courses_file": "data/programs/mechanical_engineering_mandatory_2027.json",
+        "source": "tau_graphql_2025",
+        "needs_verification": true
+      }
+    },
+    "requirement_category_keys": {
+      "advanced_labs": "advanced_labs",
+      "other_specialization": "other_specialization"
+    },
+    "key_order": {
+      "program": [
+        "program_id",
+        "program_name_he",
+        "program_name",
+        "academic_year_he",
+        "source_type",
+        "source_file",
+        "needs_verification",
+        "total_required_hours",
+        "notes",
+        "requirements",
+        "elective_courses",
+        "other_specialization_electives",
+        "ui",
+        "mandatory_courses_from_page",
+        "source_url",
+        "enrichment_shana",
+        "parsed_at",
+        "parse_warnings"
+      ],
+      "requirements": [
+        "mandatory_courses",
+        "core_courses_total_min",
+        "core_categories",
+        "advanced_labs",
+        "other_specialization",
+        "general_requirements"
+      ]
+    }
+  },
+  "coverage": {
+    "tau:8715:2026:body:hesbernosaf:cf8fe7bb7bf8": {
+      "mapped_to": "total_required_credits"
+    },
+    "tau:8715:2026:body:terms:038a1f3d66af": {
+      "not_planning_rule": "Link to a previous year's program booklet (archive); this spec follows the current תשפ\"ז program tree."
+    },
+    "tau:8715:2026:body:terms:3654e1f75808": {
+      "not_planning_rule": "Link to a previous year's program booklet (archive); this spec follows the current תשפ\"ז program tree."
+    },
+    "tau:8715:2026:body:terms:3ec196486867": {
+      "not_planning_rule": "Link to a previous year's program booklet (archive); this spec follows the current תשפ\"ז program tree."
+    },
+    "tau:8715:2026:body:terms:563222606199": {
+      "not_planning_rule": "Link to a previous year's program booklet (archive); this spec follows the current תשפ\"ז program tree."
+    },
+    "tau:8715:2026:body:terms:5d14156e4221": {
+      "not_planning_rule": "Link to a previous year's program booklet (archive); this spec follows the current תשפ\"ז program tree."
+    },
+    "tau:8715:2026:body:terms:8026588cd798": {
+      "mapped_to": "known_gaps[unread-regulations-pdf]"
+    },
+    "tau:8715:2026:body:terms:94a41bd710ac": {
+      "not_planning_rule": "Link to a previous year's program booklet (archive); this spec follows the current תשפ\"ז program tree."
+    },
+    "tau:8715:2026:body:terms:af00ab942e7e": {
+      "not_planning_rule": "Link to a previous year's program booklet (archive); this spec follows the current תשפ\"ז program tree."
+    },
+    "tau:8715:2026:body:terms:c5e1f668e848": {
+      "not_planning_rule": "Link to a previous year's program booklet (archive); this spec follows the current תשפ\"ז program tree."
+    },
+    "tau:8715:2026:body:terms:d6d67e2105ad": {
+      "not_planning_rule": "Link to a previous year's program booklet (archive); this spec follows the current תשפ\"ז program tree."
+    },
+    "tau:8715:2026:body:terms:d9d8c77d61b6": {
+      "not_planning_rule": "Link to a previous year's program booklet (archive); this spec follows the current תשפ\"ז program tree."
+    },
+    "tau:8715:2026:body:teurshaot": {
+      "not_planning_rule": "Unit label of the program (credits counted in semester hours, ש\"ס); not a rule."
+    },
+    "tau:8715:2026:body:teurtoar": {
+      "not_planning_rule": "Degree title awarded (B.Sc. in Mechanical Engineering); not a planning rule."
+    },
+    "tau:8715:2026:body:teurtochnit": {
+      "not_planning_rule": "Program description (single-major program in mechanical engineering); not a planning rule."
+    },
+    "tau:8715:2026:rama:1": {
+      "not_planning_rule": "Subtotal of the recommended-plan courses listed under this year/semester; every listed course is mapped on its own and the sum follows from their credits, so it states no independent requirement."
+    },
+    "tau:8715:2026:rama:10": {
+      "not_planning_rule": "Subtotal of the recommended-plan courses listed under this year/semester; every listed course is mapped on its own and the sum follows from their credits, so it states no independent requirement."
+    },
+    "tau:8715:2026:rama:10:kurs:0509-2843": {
+      "mapped_to": "mandatory_courses[0509-2843]"
+    },
+    "tau:8715:2026:rama:10:kurs:0509-2846": {
+      "mapped_to": "mandatory_courses[0509-2846]"
+    },
+    "tau:8715:2026:rama:10:kurs:0512-1205": {
+      "mapped_to": "mandatory_courses[0512-1205]"
+    },
+    "tau:8715:2026:rama:10:kurs:0542-2200": {
+      "mapped_to": "mandatory_courses[0542-2200]"
+    },
+    "tau:8715:2026:rama:10:kurs:0542-2200:hearakurs:27f39efc4dbf": {
+      "mapped_to": "mandatory_courses[0542-2200]"
+    },
+    "tau:8715:2026:rama:10:kurs:0542-2500": {
+      "mapped_to": "mandatory_courses[0542-2500]"
+    },
+    "tau:8715:2026:rama:10:kurs:0542-2500:hearakurs:ada3ac27701b": {
+      "mapped_to": "course_rules[window-0542-2500]"
+    },
+    "tau:8715:2026:rama:10:kurs:0542-2600": {
+      "mapped_to": "mandatory_courses[0542-2600]"
+    },
+    "tau:8715:2026:rama:10:kurs:0542-2600:hearakurs:27f39efc4dbf": {
+      "mapped_to": "mandatory_courses[0542-2600]"
+    },
+    "tau:8715:2026:rama:10:kurs:0542-3804": {
+      "mapped_to": "mandatory_courses[0542-3804]"
+    },
+    "tau:8715:2026:rama:11": {
+      "not_planning_rule": "Subtotal of the recommended-plan courses listed under this year/semester; every listed course is mapped on its own and the sum follows from their credits, so it states no independent requirement."
+    },
+    "tau:8715:2026:rama:11:kurs:0512-1204": {
+      "mapped_to": "mandatory_courses[0512-1204]"
+    },
+    "tau:8715:2026:rama:11:kurs:0542-2400": {
+      "mapped_to": "mandatory_courses[0542-2400]"
+    },
+    "tau:8715:2026:rama:11:kurs:0542-2500": {
+      "mapped_to": "mandatory_courses[0542-2500]"
+    },
+    "tau:8715:2026:rama:11:kurs:0542-2500:hearakurs:ada3ac27701b": {
+      "mapped_to": "course_rules[window-0542-2500]"
+    },
+    "tau:8715:2026:rama:11:kurs:0542-3243": {
+      "mapped_to": "mandatory_courses[0542-3243]"
+    },
+    "tau:8715:2026:rama:11:kurs:0542-3620": {
+      "mapped_to": "mandatory_courses[0542-3620]"
+    },
+    "tau:8715:2026:rama:11:kurs:0542-3620:hearakurs:a52a49784afe": {
+      "mapped_to": "mandatory_courses[0542-3620]"
+    },
+    "tau:8715:2026:rama:11:kurs:0542-3620:hearakurs:e175a34dd83d": {
+      "not_planning_rule": "Language-of-instruction note (taught in English); it does not constrain which courses, when, or how they count toward the degree."
+    },
+    "tau:8715:2026:rama:11:kurs:0542-3780": {
+      "mapped_to": "mandatory_courses[0542-3780]"
+    },
+    "tau:8715:2026:rama:11:kurs:0542-3780:hearakurs:a52a49784afe": {
+      "mapped_to": "mandatory_courses[0542-3780]"
+    },
+    "tau:8715:2026:rama:11:kurs:0542-3791": {
+      "mapped_to": "mandatory_courses[0542-3791]"
+    },
+    "tau:8715:2026:rama:11:kurs:0542-3791:hearakurs:a52a49784afe": {
+      "mapped_to": "mandatory_courses[0542-3791]"
+    },
+    "tau:8715:2026:rama:11:kurs:0542-3792": {
+      "mapped_to": "mandatory_courses[0542-3792]"
+    },
+    "tau:8715:2026:rama:11:kurs:0542-3792:hearakurs:ba68fa7491b0": {
+      "mapped_to": "course_rules[annual-0542-3792]"
+    },
+    "tau:8715:2026:rama:12": {
+      "not_planning_rule": "Subtotal of the recommended-plan courses listed under this year/semester; every listed course is mapped on its own and the sum follows from their credits, so it states no independent requirement."
+    },
+    "tau:8715:2026:rama:12:kurs:0542-3620": {
+      "mapped_to": "mandatory_courses[0542-3620]"
+    },
+    "tau:8715:2026:rama:12:kurs:0542-3620:hearakurs:a52a49784afe": {
+      "mapped_to": "mandatory_courses[0542-3620]"
+    },
+    "tau:8715:2026:rama:12:kurs:0542-3620:hearakurs:e175a34dd83d": {
+      "not_planning_rule": "Language-of-instruction note (taught in English); it does not constrain which courses, when, or how they count toward the degree."
+    },
+    "tau:8715:2026:rama:12:kurs:0542-3780": {
+      "mapped_to": "mandatory_courses[0542-3780]"
+    },
+    "tau:8715:2026:rama:12:kurs:0542-3780:hearakurs:a52a49784afe": {
+      "mapped_to": "mandatory_courses[0542-3780]"
+    },
+    "tau:8715:2026:rama:12:kurs:0542-3791": {
+      "mapped_to": "mandatory_courses[0542-3791]"
+    },
+    "tau:8715:2026:rama:12:kurs:0542-3791:hearakurs:a52a49784afe": {
+      "mapped_to": "mandatory_courses[0542-3791]"
+    },
+    "tau:8715:2026:rama:12:kurs:0542-3792": {
+      "mapped_to": "mandatory_courses[0542-3792]"
+    },
+    "tau:8715:2026:rama:12:kurs:0542-3792:hearakurs:ba68fa7491b0": {
+      "mapped_to": "course_rules[annual-0542-3792]"
+    },
+    "tau:8715:2026:rama:13": {
+      "not_planning_rule": "Subtotal of the recommended-plan courses listed under this year/semester; every listed course is mapped on its own and the sum follows from their credits, so it states no independent requirement."
+    },
+    "tau:8715:2026:rama:13:kurs:0542-4010": {
+      "mapped_to": "mandatory_courses[0542-4010]"
+    },
+    "tau:8715:2026:rama:13:kurs:0542-4010:hearakurs:800dc8086d55": {
+      "mapped_to": "mandatory_courses[0542-4010]"
+    },
+    "tau:8715:2026:rama:13:kurs:0542-4020": {
+      "mapped_to": "mandatory_courses[0542-4020]"
+    },
+    "tau:8715:2026:rama:13:kurs:0542-4020:hearakurs:ed357c516aed": {
+      "mapped_to": "mandatory_courses[0542-4020]"
+    },
+    "tau:8715:2026:rama:13:kurs:0542-4091": {
+      "mapped_to": "mandatory_courses[0542-4091]"
+    },
+    "tau:8715:2026:rama:13:kurs:0542-4091:hearakurs:4813bdae0cb0": {
+      "mapped_to": "mandatory_courses[0542-4091]"
+    },
+    "tau:8715:2026:rama:13:kurs:0542-4092": {
+      "mapped_to": "mandatory_courses[0542-4092]"
+    },
+    "tau:8715:2026:rama:13:kurs:0542-4092:hearakurs:7dbe9f9ad1c8": {
+      "mapped_to": "mandatory_courses[0542-4092]"
+    },
+    "tau:8715:2026:rama:14": {
+      "mapped_to": "categories[other_specialization]"
+    },
+    "tau:8715:2026:rama:14:hesber:de146f30b90f": {
+      "not_planning_rule": "Descriptive text of an optional specialization track (0-17 credits, no minimum); informational, no planning constraint."
+    },
+    "tau:8715:2026:rama:14:kurs:0542-4166": {
+      "not_planning_rule": "Specialization-track elective that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups); it cannot be planned this catalog year, so it is not in the spec elective pool."
+    },
+    "tau:8715:2026:rama:14:kurs:0542-4166:hearakurs:1416a249152d": {
+      "not_planning_rule": "Specialization-track elective that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups); it cannot be planned this catalog year, so it is not in the spec elective pool."
+    },
+    "tau:8715:2026:rama:14:kurs:0542-4191": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4191]"
+    },
+    "tau:8715:2026:rama:14:kurs:0542-4191:idkunkurs:4a461d2ede66": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4191]"
+    },
+    "tau:8715:2026:rama:14:kurs:0542-4191:idkunkurs:e7e90665d4d8": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4191]"
+    },
+    "tau:8715:2026:rama:14:kurs:0542-4220": {
+      "mapped_to": "categories[solids].course_ids[0542-4220]"
+    },
+    "tau:8715:2026:rama:14:kurs:0542-4220:hearakurs:2b2202b57bd3": {
+      "mapped_to": "categories[solids].course_ids[0542-4220]"
+    },
+    "tau:8715:2026:rama:14:kurs:0542-4221": {
+      "mapped_to": "categories[solids].course_ids[0542-4221]"
+    },
+    "tau:8715:2026:rama:14:kurs:0542-4221:hearakurs:031f97901c18": {
+      "mapped_to": "categories[solids].course_ids[0542-4221]"
+    },
+    "tau:8715:2026:rama:14:kurs:0542-4222": {
+      "not_planning_rule": "Specialization-track elective that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups); it cannot be planned this catalog year, so it is not in the spec elective pool."
+    },
+    "tau:8715:2026:rama:14:kurs:0542-4222:hearakurs:1416a249152d": {
+      "not_planning_rule": "Specialization-track elective that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups); it cannot be planned this catalog year, so it is not in the spec elective pool."
+    },
+    "tau:8715:2026:rama:14:kurs:0542-4223": {
+      "mapped_to": "categories[solids].course_ids[0542-4223]"
+    },
+    "tau:8715:2026:rama:14:kurs:0542-4223:hearakurs:04f6a55ed447": {
+      "mapped_to": "categories[solids].course_ids[0542-4223]"
+    },
+    "tau:8715:2026:rama:14:kurs:0542-4224": {
+      "mapped_to": "categories[solids].course_ids[0542-4224]"
+    },
+    "tau:8715:2026:rama:14:kurs:0542-4224:hearakurs:031f97901c18": {
+      "mapped_to": "categories[solids].course_ids[0542-4224]"
+    },
+    "tau:8715:2026:rama:14:kurs:0542-4225": {
+      "not_planning_rule": "Specialization-track elective that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups); it cannot be planned this catalog year, so it is not in the spec elective pool."
+    },
+    "tau:8715:2026:rama:14:kurs:0542-4225:hearakurs:1416a249152d": {
+      "not_planning_rule": "Specialization-track elective that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups); it cannot be planned this catalog year, so it is not in the spec elective pool."
+    },
+    "tau:8715:2026:rama:14:kurs:0542-4226": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4226]"
+    },
+    "tau:8715:2026:rama:14:kurs:0542-4226:hearakurs:4a461d2ede66": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4226]"
+    },
+    "tau:8715:2026:rama:14:kurs:0542-4520": {
+      "not_planning_rule": "Specialization-track elective that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups); it cannot be planned this catalog year, so it is not in the spec elective pool."
+    },
+    "tau:8715:2026:rama:14:kurs:0542-4520:hearakurs:1416a249152d": {
+      "not_planning_rule": "Specialization-track elective that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups); it cannot be planned this catalog year, so it is not in the spec elective pool."
+    },
+    "tau:8715:2026:rama:14:kurs:0542-4528": {
+      "not_planning_rule": "Specialization-track elective that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups); it cannot be planned this catalog year, so it is not in the spec elective pool."
+    },
+    "tau:8715:2026:rama:14:kurs:0542-4528:hearakurs:1416a249152d": {
+      "not_planning_rule": "Specialization-track elective that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups); it cannot be planned this catalog year, so it is not in the spec elective pool."
+    },
+    "tau:8715:2026:rama:14:kurs:0542-4722": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4722]"
+    },
+    "tau:8715:2026:rama:14:kurs:0542-4722:hearakurs:10ca4c059463": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4722]"
+    },
+    "tau:8715:2026:rama:14:kurs:0555-3160": {
+      "mapped_to": "categories[other_specialization].course_ids[0555-3160]"
+    },
+    "tau:8715:2026:rama:14:kurs:0555-4550": {
+      "mapped_to": "categories[other_specialization].course_ids[0555-4550]"
+    },
+    "tau:8715:2026:rama:14:kurs:0581-4131": {
+      "mapped_to": "categories[advanced_labs].course_ids[0581-4131]"
+    },
+    "tau:8715:2026:rama:14:kurs:0581-4131:hearakurs:d99838430ed5": {
+      "mapped_to": "categories[advanced_labs].course_ids[0581-4131]"
+    },
+    "tau:8715:2026:rama:15": {
+      "mapped_to": "categories[other_specialization]"
+    },
+    "tau:8715:2026:rama:15:hesber:f2c22964a5ba": {
+      "not_planning_rule": "Descriptive text of an optional specialization track (0-17 credits, no minimum); informational, no planning constraint."
+    },
+    "tau:8715:2026:rama:15:kurs:0542-3360": {
+      "not_planning_rule": "Specialization-track elective that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups); it cannot be planned this catalog year, so it is not in the spec elective pool."
+    },
+    "tau:8715:2026:rama:15:kurs:0542-3360:hearakurs:1416a249152d": {
+      "not_planning_rule": "Specialization-track elective that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups); it cannot be planned this catalog year, so it is not in the spec elective pool."
+    },
+    "tau:8715:2026:rama:15:kurs:0542-4093": {
+      "mapped_to": "categories[advanced_labs].course_ids[0542-4093]"
+    },
+    "tau:8715:2026:rama:15:kurs:0542-4093:idkunkurs:b4c3907acd33": {
+      "mapped_to": "categories[advanced_labs].course_ids[0542-4093]"
+    },
+    "tau:8715:2026:rama:15:kurs:0542-4094": {
+      "mapped_to": "categories[advanced_labs].course_ids[0542-4094]"
+    },
+    "tau:8715:2026:rama:15:kurs:0542-4094:hearakurs:4f15eba533cd": {
+      "mapped_to": "categories[advanced_labs].course_ids[0542-4094]"
+    },
+    "tau:8715:2026:rama:15:kurs:0542-4120": {
+      "mapped_to": "categories[fluids].course_ids[0542-4120]"
+    },
+    "tau:8715:2026:rama:15:kurs:0542-4120:hearakurs:b6eefb7a208f": {
+      "mapped_to": "categories[fluids].course_ids[0542-4120]"
+    },
+    "tau:8715:2026:rama:15:kurs:0542-4122": {
+      "not_planning_rule": "Specialization-track elective that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups); it cannot be planned this catalog year, so it is not in the spec elective pool."
+    },
+    "tau:8715:2026:rama:15:kurs:0542-4122:hearakurs:1416a249152d": {
+      "not_planning_rule": "Specialization-track elective that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups); it cannot be planned this catalog year, so it is not in the spec elective pool."
+    },
+    "tau:8715:2026:rama:15:kurs:0542-4123": {
+      "mapped_to": "categories[fluids].course_ids[0542-4123]"
+    },
+    "tau:8715:2026:rama:15:kurs:0542-4123:hearakurs:5750cf95eba1": {
+      "mapped_to": "categories[fluids].course_ids[0542-4123]"
+    },
+    "tau:8715:2026:rama:15:kurs:0542-4124": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4124]"
+    },
+    "tau:8715:2026:rama:15:kurs:0542-4124:idkunkurs:e7e90665d4d8": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4124]"
+    },
+    "tau:8715:2026:rama:15:kurs:0542-4125": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4125]"
+    },
+    "tau:8715:2026:rama:15:kurs:0542-4125:hearakurs:59b659eb20d8": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4125]"
+    },
+    "tau:8715:2026:rama:15:kurs:0542-4131": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4131]"
+    },
+    "tau:8715:2026:rama:15:kurs:0542-4132": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4132]"
+    },
+    "tau:8715:2026:rama:15:kurs:0542-4132:hearakurs:74f9fbd7074f": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4132]"
+    },
+    "tau:8715:2026:rama:15:kurs:0542-4134": {
+      "not_planning_rule": "Specialization-track elective that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups); it cannot be planned this catalog year, so it is not in the spec elective pool."
+    },
+    "tau:8715:2026:rama:15:kurs:0542-4134:hearakurs:1416a249152d": {
+      "not_planning_rule": "Specialization-track elective that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups); it cannot be planned this catalog year, so it is not in the spec elective pool."
+    },
+    "tau:8715:2026:rama:15:kurs:0542-4163": {
+      "not_planning_rule": "Specialization-track elective that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups); it cannot be planned this catalog year, so it is not in the spec elective pool."
+    },
+    "tau:8715:2026:rama:15:kurs:0542-4163:hearakurs:4e4622282767": {
+      "not_planning_rule": "Specialization-track elective that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups); it cannot be planned this catalog year, so it is not in the spec elective pool."
+    },
+    "tau:8715:2026:rama:15:kurs:0542-4179": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4179]"
+    },
+    "tau:8715:2026:rama:15:kurs:0542-4179:hearakurs:6ac1e26f3fb2": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4179]"
+    },
+    "tau:8715:2026:rama:15:kurs:0542-4275": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4275]"
+    },
+    "tau:8715:2026:rama:15:kurs:0542-4275:hearakurs:a6e901424286": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4275]"
+    },
+    "tau:8715:2026:rama:16": {
+      "mapped_to": "categories[other_specialization]"
+    },
+    "tau:8715:2026:rama:16:hesber:2473272ca84e": {
+      "not_planning_rule": "Descriptive text of an optional specialization track (0-17 credits, no minimum); informational, no planning constraint."
+    },
+    "tau:8715:2026:rama:16:kurs:0509-4010": {
+      "mapped_to": "categories[other_specialization].course_ids[0509-4010]"
+    },
+    "tau:8715:2026:rama:16:kurs:0509-4010:hearakurs:615b4650e8f5": {
+      "mapped_to": "course_rules[year-0509-4010]"
+    },
+    "tau:8715:2026:rama:16:kurs:0542-3360": {
+      "not_planning_rule": "Specialization-track elective that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups); it cannot be planned this catalog year, so it is not in the spec elective pool."
+    },
+    "tau:8715:2026:rama:16:kurs:0542-3360:hearakurs:1416a249152d": {
+      "not_planning_rule": "Specialization-track elective that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups); it cannot be planned this catalog year, so it is not in the spec elective pool."
+    },
+    "tau:8715:2026:rama:16:kurs:0542-4094": {
+      "mapped_to": "categories[advanced_labs].course_ids[0542-4094]"
+    },
+    "tau:8715:2026:rama:16:kurs:0542-4094:hearakurs:4f15eba533cd": {
+      "mapped_to": "categories[advanced_labs].course_ids[0542-4094]"
+    },
+    "tau:8715:2026:rama:16:kurs:0542-4120": {
+      "mapped_to": "categories[fluids].course_ids[0542-4120]"
+    },
+    "tau:8715:2026:rama:16:kurs:0542-4120:hearakurs:b6eefb7a208f": {
+      "mapped_to": "categories[fluids].course_ids[0542-4120]"
+    },
+    "tau:8715:2026:rama:16:kurs:0542-4134": {
+      "not_planning_rule": "Specialization-track elective that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups); it cannot be planned this catalog year, so it is not in the spec elective pool."
+    },
+    "tau:8715:2026:rama:16:kurs:0542-4134:hearakurs:1416a249152d": {
+      "not_planning_rule": "Specialization-track elective that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups); it cannot be planned this catalog year, so it is not in the spec elective pool."
+    },
+    "tau:8715:2026:rama:16:kurs:0542-4220": {
+      "mapped_to": "categories[solids].course_ids[0542-4220]"
+    },
+    "tau:8715:2026:rama:16:kurs:0542-4220:hearakurs:2b2202b57bd3": {
+      "mapped_to": "categories[solids].course_ids[0542-4220]"
+    },
+    "tau:8715:2026:rama:16:kurs:0542-4221": {
+      "mapped_to": "categories[solids].course_ids[0542-4221]"
+    },
+    "tau:8715:2026:rama:16:kurs:0542-4221:hearakurs:031f97901c18": {
+      "mapped_to": "categories[solids].course_ids[0542-4221]"
+    },
+    "tau:8715:2026:rama:16:kurs:0542-4224": {
+      "mapped_to": "categories[solids].course_ids[0542-4224]"
+    },
+    "tau:8715:2026:rama:16:kurs:0542-4224:hearakurs:031f97901c18": {
+      "mapped_to": "categories[solids].course_ids[0542-4224]"
+    },
+    "tau:8715:2026:rama:16:kurs:0542-4275": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4275]"
+    },
+    "tau:8715:2026:rama:16:kurs:0542-4275:hearakurs:a6e901424286": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4275]"
+    },
+    "tau:8715:2026:rama:16:kurs:0542-4352": {
+      "mapped_to": "categories[fluids].course_ids[0542-4352]"
+    },
+    "tau:8715:2026:rama:16:kurs:0542-4352:hearakurs:b3ff02f8d11a": {
+      "mapped_to": "categories[fluids].course_ids[0542-4352]"
+    },
+    "tau:8715:2026:rama:16:kurs:0542-4424": {
+      "not_planning_rule": "Specialization-track elective that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups); it cannot be planned this catalog year, so it is not in the spec elective pool."
+    },
+    "tau:8715:2026:rama:16:kurs:0542-4424:hearakurs:1416a249152d": {
+      "not_planning_rule": "Specialization-track elective that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups); it cannot be planned this catalog year, so it is not in the spec elective pool."
+    },
+    "tau:8715:2026:rama:16:kurs:0542-4522": {
+      "not_planning_rule": "Specialization-track elective that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups); it cannot be planned this catalog year, so it is not in the spec elective pool."
+    },
+    "tau:8715:2026:rama:16:kurs:0542-4522:hearakurs:1416a249152d": {
+      "not_planning_rule": "Specialization-track elective that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups); it cannot be planned this catalog year, so it is not in the spec elective pool."
+    },
+    "tau:8715:2026:rama:16:kurs:0542-4523": {
+      "not_planning_rule": "Specialization-track elective that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups); it cannot be planned this catalog year, so it is not in the spec elective pool."
+    },
+    "tau:8715:2026:rama:16:kurs:0542-4523:hearakurs:1416a249152d": {
+      "not_planning_rule": "Specialization-track elective that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups); it cannot be planned this catalog year, so it is not in the spec elective pool."
+    },
+    "tau:8715:2026:rama:16:kurs:0542-4524": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4524]"
+    },
+    "tau:8715:2026:rama:16:kurs:0542-4524:hearakurs:a6e901424286": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4524]"
+    },
+    "tau:8715:2026:rama:16:kurs:0542-4527": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4527]"
+    },
+    "tau:8715:2026:rama:16:kurs:0542-4527:hearakurs:a6e901424286": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4527]"
+    },
+    "tau:8715:2026:rama:17": {
+      "mapped_to": "categories[other_specialization]"
+    },
+    "tau:8715:2026:rama:17:hesber:92ae93b7615a": {
+      "not_planning_rule": "Descriptive text of an optional specialization track (0-17 credits, no minimum); informational, no planning constraint."
+    },
+    "tau:8715:2026:rama:17:kurs:0512-1202": {
+      "mapped_to": "categories[other_specialization].course_ids[0512-1202]"
+    },
+    "tau:8715:2026:rama:17:kurs:0512-1202:idkunkurs:cc6056322036": {
+      "mapped_to": "categories[other_specialization].course_ids[0512-1202]"
+    },
+    "tau:8715:2026:rama:17:kurs:0512-1203": {
+      "mapped_to": "categories[other_specialization].course_ids[0512-1203]"
+    },
+    "tau:8715:2026:rama:17:kurs:0512-1203:hearakurs:184a199ebd4b": {
+      "not_planning_rule": "Registration condition (approval of the EE track head, subject to free seats) decided case by case at enrollment; not a degree-requirement constraint the planner can evaluate."
+    },
+    "tau:8715:2026:rama:17:kurs:0512-2508": {
+      "mapped_to": "categories[other_specialization].course_ids[0512-2508]"
+    },
+    "tau:8715:2026:rama:17:kurs:0512-2508:hearakurs:184a199ebd4b": {
+      "not_planning_rule": "Registration condition (approval of the EE track head, subject to free seats) decided case by case at enrollment; not a degree-requirement constraint the planner can evaluate."
+    },
+    "tau:8715:2026:rama:17:kurs:0512-4200": {
+      "mapped_to": "categories[other_specialization].course_ids[0512-4200]"
+    },
+    "tau:8715:2026:rama:17:kurs:0512-4200:hearakurs:184a199ebd4b": {
+      "not_planning_rule": "Registration condition (approval of the EE track head, subject to free seats) decided case by case at enrollment; not a degree-requirement constraint the planner can evaluate."
+    },
+    "tau:8715:2026:rama:17:kurs:0512-4362": {
+      "mapped_to": "categories[other_specialization].course_ids[0512-4362]"
+    },
+    "tau:8715:2026:rama:17:kurs:0512-4362:hearakurs:982a4544da17": {
+      "mapped_to": "course_rules[prereq-sub-0512-4362-0542-3243]"
+    },
+    "tau:8715:2026:rama:17:kurs:0512-4700": {
+      "mapped_to": "categories[other_specialization].course_ids[0512-4700]"
+    },
+    "tau:8715:2026:rama:17:kurs:0512-4700:hearakurs:184a199ebd4b": {
+      "not_planning_rule": "Registration condition (approval of the EE track head, subject to free seats) decided case by case at enrollment; not a degree-requirement constraint the planner can evaluate."
+    },
+    "tau:8715:2026:rama:17:kurs:0512-4702": {
+      "mapped_to": "categories[other_specialization].course_ids[0512-4702]"
+    },
+    "tau:8715:2026:rama:17:kurs:0512-4702:hearakurs:184a199ebd4b": {
+      "not_planning_rule": "Registration condition (approval of the EE track head, subject to free seats) decided case by case at enrollment; not a degree-requirement constraint the planner can evaluate."
+    },
+    "tau:8715:2026:rama:17:kurs:0542-4455": {
+      "mapped_to": "categories[systems].course_ids[0542-4455]"
+    },
+    "tau:8715:2026:rama:17:kurs:0542-4455:hearakurs:027f91402a8f": {
+      "mapped_to": "categories[systems].course_ids[0542-4455]"
+    },
+    "tau:8715:2026:rama:17:kurs:0542-4559": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4559]"
+    },
+    "tau:8715:2026:rama:17:kurs:0542-4559:idkunkurs:5ccb49b59321": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4559]"
+    },
+    "tau:8715:2026:rama:17:kurs:0542-4620": {
+      "not_planning_rule": "Specialization-track elective that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups); it cannot be planned this catalog year, so it is not in the spec elective pool."
+    },
+    "tau:8715:2026:rama:17:kurs:0542-4620:hearakurs:1416a249152d": {
+      "not_planning_rule": "Specialization-track elective that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups); it cannot be planned this catalog year, so it is not in the spec elective pool."
+    },
+    "tau:8715:2026:rama:17:kurs:0542-4621": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4621]"
+    },
+    "tau:8715:2026:rama:17:kurs:0542-4621:hearakurs:59b659eb20d8": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4621]"
+    },
+    "tau:8715:2026:rama:17:kurs:0542-4622": {
+      "mapped_to": "categories[systems].course_ids[0542-4622]"
+    },
+    "tau:8715:2026:rama:17:kurs:0542-4622:hearakurs:027f91402a8f": {
+      "mapped_to": "categories[systems].course_ids[0542-4622]"
+    },
+    "tau:8715:2026:rama:17:kurs:0542-4624": {
+      "mapped_to": "categories[advanced_labs].course_ids[0542-4624]"
+    },
+    "tau:8715:2026:rama:17:kurs:0542-4624:hearakurs:4f15eba533cd": {
+      "mapped_to": "categories[advanced_labs].course_ids[0542-4624]"
+    },
+    "tau:8715:2026:rama:17:kurs:0542-4722": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4722]"
+    },
+    "tau:8715:2026:rama:17:kurs:0542-4722:hearakurs:10ca4c059463": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4722]"
+    },
+    "tau:8715:2026:rama:17:kurs:0555-4562": {
+      "mapped_to": "categories[other_specialization].course_ids[0555-4562]"
+    },
+    "tau:8715:2026:rama:17:kurs:0571-1818": {
+      "mapped_to": "categories[other_specialization].course_ids[0571-1818]"
+    },
+    "tau:8715:2026:rama:17:kurs:0571-1818:idkunkurs:4a461d2ede66": {
+      "mapped_to": "categories[other_specialization].course_ids[0571-1818]"
+    },
+    "tau:8715:2026:rama:18": {
+      "mapped_to": "categories[other_specialization]"
+    },
+    "tau:8715:2026:rama:18:hesber:10ff1eb47186": {
+      "not_planning_rule": "Descriptive text of an optional specialization track (0-17 credits, no minimum); informational, no planning constraint."
+    },
+    "tau:8715:2026:rama:18:kurs:0542-3360": {
+      "not_planning_rule": "Specialization-track elective that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups); it cannot be planned this catalog year, so it is not in the spec elective pool."
+    },
+    "tau:8715:2026:rama:18:kurs:0542-3360:hearakurs:1416a249152d": {
+      "not_planning_rule": "Specialization-track elective that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups); it cannot be planned this catalog year, so it is not in the spec elective pool."
+    },
+    "tau:8715:2026:rama:18:kurs:0542-4094": {
+      "mapped_to": "categories[advanced_labs].course_ids[0542-4094]"
+    },
+    "tau:8715:2026:rama:18:kurs:0542-4094:hearakurs:4f15eba533cd": {
+      "mapped_to": "categories[advanced_labs].course_ids[0542-4094]"
+    },
+    "tau:8715:2026:rama:18:kurs:0542-4120": {
+      "mapped_to": "categories[fluids].course_ids[0542-4120]"
+    },
+    "tau:8715:2026:rama:18:kurs:0542-4120:hearakurs:b6eefb7a208f": {
+      "mapped_to": "categories[fluids].course_ids[0542-4120]"
+    },
+    "tau:8715:2026:rama:18:kurs:0542-4122": {
+      "not_planning_rule": "Specialization-track elective that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups); it cannot be planned this catalog year, so it is not in the spec elective pool."
+    },
+    "tau:8715:2026:rama:18:kurs:0542-4122:hearakurs:1416a249152d": {
+      "not_planning_rule": "Specialization-track elective that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups); it cannot be planned this catalog year, so it is not in the spec elective pool."
+    },
+    "tau:8715:2026:rama:18:kurs:0542-4123": {
+      "mapped_to": "categories[fluids].course_ids[0542-4123]"
+    },
+    "tau:8715:2026:rama:18:kurs:0542-4123:hearakurs:5750cf95eba1": {
+      "mapped_to": "categories[fluids].course_ids[0542-4123]"
+    },
+    "tau:8715:2026:rama:18:kurs:0542-4135": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4135]"
+    },
+    "tau:8715:2026:rama:18:kurs:0542-4135:hearakurs:1416a249152d": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4135]"
+    },
+    "tau:8715:2026:rama:18:kurs:0542-4225": {
+      "not_planning_rule": "Specialization-track elective that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups); it cannot be planned this catalog year, so it is not in the spec elective pool."
+    },
+    "tau:8715:2026:rama:18:kurs:0542-4225:hearakurs:1416a249152d": {
+      "not_planning_rule": "Specialization-track elective that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups); it cannot be planned this catalog year, so it is not in the spec elective pool."
+    },
+    "tau:8715:2026:rama:18:kurs:0542-4275": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4275]"
+    },
+    "tau:8715:2026:rama:18:kurs:0542-4275:hearakurs:a6e901424286": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4275]"
+    },
+    "tau:8715:2026:rama:18:kurs:0542-4320": {
+      "mapped_to": "categories[fluids].course_ids[0542-4320]"
+    },
+    "tau:8715:2026:rama:18:kurs:0542-4320:hearakurs:416aca441c7c": {
+      "mapped_to": "categories[fluids].course_ids[0542-4320]"
+    },
+    "tau:8715:2026:rama:18:kurs:0542-4321": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4321]"
+    },
+    "tau:8715:2026:rama:18:kurs:0542-4321:hearakurs:6ac1e26f3fb2": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4321]"
+    },
+    "tau:8715:2026:rama:18:kurs:0542-4322": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4322]"
+    },
+    "tau:8715:2026:rama:18:kurs:0542-4322:hearakurs:e7e90665d4d8": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4322]"
+    },
+    "tau:8715:2026:rama:18:kurs:0542-4351": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4351]"
+    },
+    "tau:8715:2026:rama:18:kurs:0542-4351:hearakurs:59b659eb20d8": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4351]"
+    },
+    "tau:8715:2026:rama:18:kurs:0542-4352": {
+      "mapped_to": "categories[fluids].course_ids[0542-4352]"
+    },
+    "tau:8715:2026:rama:18:kurs:0542-4352:hearakurs:b3ff02f8d11a": {
+      "mapped_to": "categories[fluids].course_ids[0542-4352]"
+    },
+    "tau:8715:2026:rama:18:kurs:0542-4391": {
+      "mapped_to": "categories[advanced_labs].course_ids[0542-4391]"
+    },
+    "tau:8715:2026:rama:18:kurs:0542-4391:hearakurs:73c246685663": {
+      "mapped_to": "categories[advanced_labs].course_ids[0542-4391]"
+    },
+    "tau:8715:2026:rama:18:kurs:0542-4523": {
+      "not_planning_rule": "Specialization-track elective that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups); it cannot be planned this catalog year, so it is not in the spec elective pool."
+    },
+    "tau:8715:2026:rama:18:kurs:0542-4523:hearakurs:1416a249152d": {
+      "not_planning_rule": "Specialization-track elective that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups); it cannot be planned this catalog year, so it is not in the spec elective pool."
+    },
+    "tau:8715:2026:rama:19": {
+      "mapped_to": "general_requirement"
+    },
+    "tau:8715:2026:rama:19:hesber:844fed1b5228": {
+      "mapped_to": "course_rules[exempt-music-tech-shaar-ruach]"
+    },
+    "tau:8715:2026:rama:2": {
+      "not_planning_rule": "Subtotal of the recommended-plan courses listed under this year/semester; every listed course is mapped on its own and the sum follows from their credits, so it states no independent requirement."
+    },
+    "tau:8715:2026:rama:20": {
+      "mapped_to": "categories[other_specialization]"
+    },
+    "tau:8715:2026:rama:20:hesber:5064daa14c84": {
+      "not_planning_rule": "Descriptive text of an optional specialization track (0-17 credits, no minimum); informational, no planning constraint."
+    },
+    "tau:8715:2026:rama:20:kurs:0542-4124": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4124]"
+    },
+    "tau:8715:2026:rama:20:kurs:0542-4124:idkunkurs:e7e90665d4d8": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4124]"
+    },
+    "tau:8715:2026:rama:20:kurs:0542-4134": {
+      "not_planning_rule": "Specialization-track elective that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups); it cannot be planned this catalog year, so it is not in the spec elective pool."
+    },
+    "tau:8715:2026:rama:20:kurs:0542-4134:hearakurs:1416a249152d": {
+      "not_planning_rule": "Specialization-track elective that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups); it cannot be planned this catalog year, so it is not in the spec elective pool."
+    },
+    "tau:8715:2026:rama:20:kurs:0542-4191": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4191]"
+    },
+    "tau:8715:2026:rama:20:kurs:0542-4191:idkunkurs:4a461d2ede66": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4191]"
+    },
+    "tau:8715:2026:rama:20:kurs:0542-4191:idkunkurs:e7e90665d4d8": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4191]"
+    },
+    "tau:8715:2026:rama:20:kurs:0542-4290": {
+      "not_planning_rule": "Specialization-track elective that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups); it cannot be planned this catalog year, so it is not in the spec elective pool."
+    },
+    "tau:8715:2026:rama:20:kurs:0542-4290:hearakurs:1416a249152d": {
+      "not_planning_rule": "Specialization-track elective that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups); it cannot be planned this catalog year, so it is not in the spec elective pool."
+    },
+    "tau:8715:2026:rama:20:kurs:0542-4322": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4322]"
+    },
+    "tau:8715:2026:rama:20:kurs:0542-4322:hearakurs:e7e90665d4d8": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4322]"
+    },
+    "tau:8715:2026:rama:20:kurs:0542-4420": {
+      "mapped_to": "categories[systems].course_ids[0542-4420]"
+    },
+    "tau:8715:2026:rama:20:kurs:0542-4420:hearakurs:59b659eb20d8": {
+      "mapped_to": "categories[systems].course_ids[0542-4420]"
+    },
+    "tau:8715:2026:rama:20:kurs:0542-4421": {
+      "not_planning_rule": "Specialization-track elective that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups); it cannot be planned this catalog year, so it is not in the spec elective pool."
+    },
+    "tau:8715:2026:rama:20:kurs:0542-4421:hearakurs:1416a249152d": {
+      "not_planning_rule": "Specialization-track elective that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups); it cannot be planned this catalog year, so it is not in the spec elective pool."
+    },
+    "tau:8715:2026:rama:20:kurs:0542-4422": {
+      "mapped_to": "categories[systems].course_ids[0542-4422]"
+    },
+    "tau:8715:2026:rama:20:kurs:0542-4422:hearakurs:8f029711d2a1": {
+      "mapped_to": "categories[systems].course_ids[0542-4422]"
+    },
+    "tau:8715:2026:rama:20:kurs:0542-4424": {
+      "not_planning_rule": "Specialization-track elective that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups); it cannot be planned this catalog year, so it is not in the spec elective pool."
+    },
+    "tau:8715:2026:rama:20:kurs:0542-4424:hearakurs:1416a249152d": {
+      "not_planning_rule": "Specialization-track elective that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups); it cannot be planned this catalog year, so it is not in the spec elective pool."
+    },
+    "tau:8715:2026:rama:20:kurs:0542-4425": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4425]"
+    },
+    "tau:8715:2026:rama:20:kurs:0542-4425:hearakurs:88b4230c367d": {
+      "not_planning_rule": "Refers to the previous academic year (תשפ\"ו); no bearing on the תשפ\"ז plan."
+    },
+    "tau:8715:2026:rama:20:kurs:0542-4452": {
+      "not_planning_rule": "Specialization-track elective that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups); it cannot be planned this catalog year, so it is not in the spec elective pool."
+    },
+    "tau:8715:2026:rama:20:kurs:0542-4452:hearakurs:1416a249152d": {
+      "not_planning_rule": "Specialization-track elective that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups); it cannot be planned this catalog year, so it is not in the spec elective pool."
+    },
+    "tau:8715:2026:rama:20:kurs:0542-4455": {
+      "mapped_to": "categories[systems].course_ids[0542-4455]"
+    },
+    "tau:8715:2026:rama:20:kurs:0542-4455:hearakurs:027f91402a8f": {
+      "mapped_to": "categories[systems].course_ids[0542-4455]"
+    },
+    "tau:8715:2026:rama:20:kurs:0542-4456": {
+      "not_planning_rule": "Specialization-track elective with no 2026 offering (IMS 2026: not_offered, absent from the program timetable) although its program note says semester B; not plannable this year, so not in the spec elective pool (discrepancy listed in the Task 8 report)."
+    },
+    "tau:8715:2026:rama:20:kurs:0542-4456:hearakurs:4a461d2ede66": {
+      "not_planning_rule": "Specialization-track elective with no 2026 offering (IMS 2026: not_offered, absent from the program timetable) although its program note says semester B; not plannable this year, so not in the spec elective pool (discrepancy listed in the Task 8 report)."
+    },
+    "tau:8715:2026:rama:20:kurs:0542-4620": {
+      "not_planning_rule": "Specialization-track elective that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups); it cannot be planned this catalog year, so it is not in the spec elective pool."
+    },
+    "tau:8715:2026:rama:20:kurs:0542-4620:hearakurs:1416a249152d": {
+      "not_planning_rule": "Specialization-track elective that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups); it cannot be planned this catalog year, so it is not in the spec elective pool."
+    },
+    "tau:8715:2026:rama:20:kurs:0542-4621": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4621]"
+    },
+    "tau:8715:2026:rama:20:kurs:0542-4621:hearakurs:59b659eb20d8": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4621]"
+    },
+    "tau:8715:2026:rama:20:kurs:0542-4622": {
+      "mapped_to": "categories[systems].course_ids[0542-4622]"
+    },
+    "tau:8715:2026:rama:20:kurs:0542-4622:hearakurs:027f91402a8f": {
+      "mapped_to": "categories[systems].course_ids[0542-4622]"
+    },
+    "tau:8715:2026:rama:20:kurs:0542-4624": {
+      "mapped_to": "categories[advanced_labs].course_ids[0542-4624]"
+    },
+    "tau:8715:2026:rama:20:kurs:0542-4624:hearakurs:4f15eba533cd": {
+      "mapped_to": "categories[advanced_labs].course_ids[0542-4624]"
+    },
+    "tau:8715:2026:rama:20:kurs:0555-4000": {
+      "mapped_to": "categories[other_specialization].course_ids[0555-4000]"
+    },
+    "tau:8715:2026:rama:20:kurs:0555-4432": {
+      "mapped_to": "categories[other_specialization].course_ids[0555-4432]"
+    },
+    "tau:8715:2026:rama:20:kurs:0571-3802": {
+      "mapped_to": "categories[other_specialization].course_ids[0571-3802]"
+    },
+    "tau:8715:2026:rama:20:kurs:0571-4174": {
+      "mapped_to": "categories[other_specialization].course_ids[0571-4174]"
+    },
+    "tau:8715:2026:rama:21": {
+      "mapped_to": "categories[other_specialization]"
+    },
+    "tau:8715:2026:rama:21:hesber:bbf1b632711d": {
+      "not_planning_rule": "Descriptive text of an optional specialization track (0-17 credits, no minimum); informational, no planning constraint."
+    },
+    "tau:8715:2026:rama:21:kurs:0512-1202": {
+      "mapped_to": "categories[other_specialization].course_ids[0512-1202]"
+    },
+    "tau:8715:2026:rama:21:kurs:0512-1202:idkunkurs:cc6056322036": {
+      "mapped_to": "categories[other_specialization].course_ids[0512-1202]"
+    },
+    "tau:8715:2026:rama:21:kurs:0512-1203": {
+      "mapped_to": "categories[other_specialization].course_ids[0512-1203]"
+    },
+    "tau:8715:2026:rama:21:kurs:0512-1203:hearakurs:184a199ebd4b": {
+      "not_planning_rule": "Registration condition (approval of the EE track head, subject to free seats) decided case by case at enrollment; not a degree-requirement constraint the planner can evaluate."
+    },
+    "tau:8715:2026:rama:21:kurs:0512-2508": {
+      "mapped_to": "categories[other_specialization].course_ids[0512-2508]"
+    },
+    "tau:8715:2026:rama:21:kurs:0512-2508:hearakurs:184a199ebd4b": {
+      "not_planning_rule": "Registration condition (approval of the EE track head, subject to free seats) decided case by case at enrollment; not a degree-requirement constraint the planner can evaluate."
+    },
+    "tau:8715:2026:rama:21:kurs:0512-4200": {
+      "mapped_to": "categories[other_specialization].course_ids[0512-4200]"
+    },
+    "tau:8715:2026:rama:21:kurs:0512-4200:hearakurs:184a199ebd4b": {
+      "not_planning_rule": "Registration condition (approval of the EE track head, subject to free seats) decided case by case at enrollment; not a degree-requirement constraint the planner can evaluate."
+    },
+    "tau:8715:2026:rama:21:kurs:0512-4362": {
+      "mapped_to": "categories[other_specialization].course_ids[0512-4362]"
+    },
+    "tau:8715:2026:rama:21:kurs:0512-4362:hearakurs:982a4544da17": {
+      "mapped_to": "course_rules[prereq-sub-0512-4362-0542-3243]"
+    },
+    "tau:8715:2026:rama:21:kurs:0512-4700": {
+      "mapped_to": "categories[other_specialization].course_ids[0512-4700]"
+    },
+    "tau:8715:2026:rama:21:kurs:0512-4700:hearakurs:184a199ebd4b": {
+      "not_planning_rule": "Registration condition (approval of the EE track head, subject to free seats) decided case by case at enrollment; not a degree-requirement constraint the planner can evaluate."
+    },
+    "tau:8715:2026:rama:21:kurs:0512-4702": {
+      "mapped_to": "categories[other_specialization].course_ids[0512-4702]"
+    },
+    "tau:8715:2026:rama:21:kurs:0512-4702:hearakurs:184a199ebd4b": {
+      "not_planning_rule": "Registration condition (approval of the EE track head, subject to free seats) decided case by case at enrollment; not a degree-requirement constraint the planner can evaluate."
+    },
+    "tau:8715:2026:rama:21:kurs:0542-4220": {
+      "mapped_to": "categories[solids].course_ids[0542-4220]"
+    },
+    "tau:8715:2026:rama:21:kurs:0542-4220:hearakurs:2b2202b57bd3": {
+      "mapped_to": "categories[solids].course_ids[0542-4220]"
+    },
+    "tau:8715:2026:rama:21:kurs:0542-4224": {
+      "mapped_to": "categories[solids].course_ids[0542-4224]"
+    },
+    "tau:8715:2026:rama:21:kurs:0542-4224:hearakurs:031f97901c18": {
+      "mapped_to": "categories[solids].course_ids[0542-4224]"
+    },
+    "tau:8715:2026:rama:21:kurs:0542-4425": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4425]"
+    },
+    "tau:8715:2026:rama:21:kurs:0542-4425:hearakurs:88b4230c367d": {
+      "not_planning_rule": "Refers to the previous academic year (תשפ\"ו); no bearing on the תשפ\"ז plan."
+    },
+    "tau:8715:2026:rama:21:kurs:0542-4559": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4559]"
+    },
+    "tau:8715:2026:rama:21:kurs:0542-4559:idkunkurs:5ccb49b59321": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4559]"
+    },
+    "tau:8715:2026:rama:21:kurs:0542-4722": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4722]"
+    },
+    "tau:8715:2026:rama:21:kurs:0542-4722:hearakurs:10ca4c059463": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4722]"
+    },
+    "tau:8715:2026:rama:21:kurs:0555-4555": {
+      "mapped_to": "categories[other_specialization].course_ids[0555-4555]"
+    },
+    "tau:8715:2026:rama:21:kurs:0555-4630": {
+      "mapped_to": "categories[other_specialization].course_ids[0555-4630]"
+    },
+    "tau:8715:2026:rama:21:kurs:0581-4131": {
+      "mapped_to": "categories[advanced_labs].course_ids[0581-4131]"
+    },
+    "tau:8715:2026:rama:21:kurs:0581-4131:hearakurs:d99838430ed5": {
+      "mapped_to": "categories[advanced_labs].course_ids[0581-4131]"
+    },
+    "tau:8715:2026:rama:22": {
+      "mapped_to": "categories[other_specialization]"
+    },
+    "tau:8715:2026:rama:22:hesber:209207a62d07": {
+      "not_planning_rule": "Descriptive text of an optional specialization track (0-17 credits, no minimum); informational, no planning constraint."
+    },
+    "tau:8715:2026:rama:22:kurs:0542-3112": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-3112]"
+    },
+    "tau:8715:2026:rama:22:kurs:0542-3112:hearakurs:8f023b660a06": {
+      "not_planning_rule": "Course description (applied mechanical-engineering project with the Mitchabrim+ partner); no planning constraint."
+    },
+    "tau:8715:2026:rama:22:kurs:0542-4011": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4011]"
+    },
+    "tau:8715:2026:rama:22:kurs:0542-4011:hearakurs:e638f449814d": {
+      "mapped_to": "course_rules[cohort-excellence-0542-4011-0542-4012]"
+    },
+    "tau:8715:2026:rama:22:kurs:0542-4012": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4012]"
+    },
+    "tau:8715:2026:rama:22:kurs:0542-4012:hearakurs:d20d10223f1f": {
+      "mapped_to": "course_rules[cohort-excellence-0542-4011-0542-4012]"
+    },
+    "tau:8715:2026:rama:23": {
+      "mapped_to": "group_minimums.core"
+    },
+    "tau:8715:2026:rama:23:hesber:cc8bc091a581": {
+      "mapped_to": "group_minimums.core"
+    },
+    "tau:8715:2026:rama:24": {
+      "mapped_to": "categories[fluids]"
+    },
+    "tau:8715:2026:rama:24:kurs:0542-4120": {
+      "mapped_to": "categories[fluids].course_ids[0542-4120]"
+    },
+    "tau:8715:2026:rama:24:kurs:0542-4120:hearakurs:b6eefb7a208f": {
+      "mapped_to": "categories[fluids].course_ids[0542-4120]"
+    },
+    "tau:8715:2026:rama:24:kurs:0542-4123": {
+      "mapped_to": "categories[fluids].course_ids[0542-4123]"
+    },
+    "tau:8715:2026:rama:24:kurs:0542-4123:hearakurs:5750cf95eba1": {
+      "mapped_to": "categories[fluids].course_ids[0542-4123]"
+    },
+    "tau:8715:2026:rama:24:kurs:0542-4320": {
+      "mapped_to": "categories[fluids].course_ids[0542-4320]"
+    },
+    "tau:8715:2026:rama:24:kurs:0542-4320:hearakurs:416aca441c7c": {
+      "mapped_to": "categories[fluids].course_ids[0542-4320]"
+    },
+    "tau:8715:2026:rama:24:kurs:0542-4352": {
+      "mapped_to": "categories[fluids].course_ids[0542-4352]"
+    },
+    "tau:8715:2026:rama:24:kurs:0542-4352:hearakurs:b3ff02f8d11a": {
+      "mapped_to": "categories[fluids].course_ids[0542-4352]"
+    },
+    "tau:8715:2026:rama:25": {
+      "mapped_to": "categories[solids]"
+    },
+    "tau:8715:2026:rama:25:kurs:0542-4220": {
+      "mapped_to": "categories[solids].course_ids[0542-4220]"
+    },
+    "tau:8715:2026:rama:25:kurs:0542-4220:hearakurs:2b2202b57bd3": {
+      "mapped_to": "categories[solids].course_ids[0542-4220]"
+    },
+    "tau:8715:2026:rama:25:kurs:0542-4221": {
+      "mapped_to": "categories[solids].course_ids[0542-4221]"
+    },
+    "tau:8715:2026:rama:25:kurs:0542-4221:hearakurs:031f97901c18": {
+      "mapped_to": "categories[solids].course_ids[0542-4221]"
+    },
+    "tau:8715:2026:rama:25:kurs:0542-4223": {
+      "mapped_to": "categories[solids].course_ids[0542-4223]"
+    },
+    "tau:8715:2026:rama:25:kurs:0542-4223:hearakurs:04f6a55ed447": {
+      "mapped_to": "categories[solids].course_ids[0542-4223]"
+    },
+    "tau:8715:2026:rama:25:kurs:0542-4224": {
+      "mapped_to": "categories[solids].course_ids[0542-4224]"
+    },
+    "tau:8715:2026:rama:25:kurs:0542-4224:hearakurs:031f97901c18": {
+      "mapped_to": "categories[solids].course_ids[0542-4224]"
+    },
+    "tau:8715:2026:rama:26": {
+      "mapped_to": "categories[systems]"
+    },
+    "tau:8715:2026:rama:26:kurs:0542-4420": {
+      "mapped_to": "categories[systems].course_ids[0542-4420]"
+    },
+    "tau:8715:2026:rama:26:kurs:0542-4420:hearakurs:59b659eb20d8": {
+      "mapped_to": "categories[systems].course_ids[0542-4420]"
+    },
+    "tau:8715:2026:rama:26:kurs:0542-4422": {
+      "mapped_to": "categories[systems].course_ids[0542-4422]"
+    },
+    "tau:8715:2026:rama:26:kurs:0542-4422:hearakurs:8f029711d2a1": {
+      "mapped_to": "categories[systems].course_ids[0542-4422]"
+    },
+    "tau:8715:2026:rama:26:kurs:0542-4455": {
+      "mapped_to": "categories[systems].course_ids[0542-4455]"
+    },
+    "tau:8715:2026:rama:26:kurs:0542-4455:hearakurs:027f91402a8f": {
+      "mapped_to": "categories[systems].course_ids[0542-4455]"
+    },
+    "tau:8715:2026:rama:26:kurs:0542-4622": {
+      "mapped_to": "categories[systems].course_ids[0542-4622]"
+    },
+    "tau:8715:2026:rama:26:kurs:0542-4622:hearakurs:027f91402a8f": {
+      "mapped_to": "categories[systems].course_ids[0542-4622]"
+    },
+    "tau:8715:2026:rama:27": {
+      "mapped_to": "categories[advanced_labs]"
+    },
+    "tau:8715:2026:rama:27:kurs:0542-4093": {
+      "mapped_to": "categories[advanced_labs].course_ids[0542-4093]"
+    },
+    "tau:8715:2026:rama:27:kurs:0542-4093:idkunkurs:b4c3907acd33": {
+      "mapped_to": "categories[advanced_labs].course_ids[0542-4093]"
+    },
+    "tau:8715:2026:rama:27:kurs:0542-4094": {
+      "mapped_to": "categories[advanced_labs].course_ids[0542-4094]"
+    },
+    "tau:8715:2026:rama:27:kurs:0542-4094:hearakurs:4f15eba533cd": {
+      "mapped_to": "categories[advanced_labs].course_ids[0542-4094]"
+    },
+    "tau:8715:2026:rama:27:kurs:0542-4391": {
+      "mapped_to": "categories[advanced_labs].course_ids[0542-4391]"
+    },
+    "tau:8715:2026:rama:27:kurs:0542-4391:hearakurs:73c246685663": {
+      "mapped_to": "categories[advanced_labs].course_ids[0542-4391]"
+    },
+    "tau:8715:2026:rama:27:kurs:0542-4624": {
+      "mapped_to": "categories[advanced_labs].course_ids[0542-4624]"
+    },
+    "tau:8715:2026:rama:27:kurs:0542-4624:hearakurs:4f15eba533cd": {
+      "mapped_to": "categories[advanced_labs].course_ids[0542-4624]"
+    },
+    "tau:8715:2026:rama:27:kurs:0581-4131": {
+      "mapped_to": "categories[advanced_labs].course_ids[0581-4131]"
+    },
+    "tau:8715:2026:rama:27:kurs:0581-4131:hearakurs:d99838430ed5": {
+      "mapped_to": "categories[advanced_labs].course_ids[0581-4131]"
+    },
+    "tau:8715:2026:rama:28": {
+      "mapped_to": "categories[other_specialization]"
+    },
+    "tau:8715:2026:rama:28:hesber:b71c41472781": {
+      "not_planning_rule": "Recommendation only (\"מומלץ לבחור 3 קורסים\") inside an optional specialization track; not a degree requirement."
+    },
+    "tau:8715:2026:rama:28:kurs:0542-4093": {
+      "mapped_to": "categories[advanced_labs].course_ids[0542-4093]"
+    },
+    "tau:8715:2026:rama:28:kurs:0542-4093:idkunkurs:b4c3907acd33": {
+      "mapped_to": "categories[advanced_labs].course_ids[0542-4093]"
+    },
+    "tau:8715:2026:rama:28:kurs:0542-4120": {
+      "mapped_to": "categories[fluids].course_ids[0542-4120]"
+    },
+    "tau:8715:2026:rama:28:kurs:0542-4120:hearakurs:b6eefb7a208f": {
+      "mapped_to": "categories[fluids].course_ids[0542-4120]"
+    },
+    "tau:8715:2026:rama:28:kurs:0542-4131": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4131]"
+    },
+    "tau:8715:2026:rama:28:kurs:0542-4132": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4132]"
+    },
+    "tau:8715:2026:rama:28:kurs:0542-4132:hearakurs:74f9fbd7074f": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4132]"
+    },
+    "tau:8715:2026:rama:28:kurs:0542-4163": {
+      "not_planning_rule": "Specialization-track elective that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups); it cannot be planned this catalog year, so it is not in the spec elective pool."
+    },
+    "tau:8715:2026:rama:28:kurs:0542-4163:hearakurs:4e4622282767": {
+      "not_planning_rule": "Specialization-track elective that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups); it cannot be planned this catalog year, so it is not in the spec elective pool."
+    },
+    "tau:8715:2026:rama:28:kurs:0542-4179": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4179]"
+    },
+    "tau:8715:2026:rama:28:kurs:0542-4179:hearakurs:6ac1e26f3fb2": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4179]"
+    },
+    "tau:8715:2026:rama:29": {
+      "mapped_to": "general_requirement"
+    },
+    "tau:8715:2026:rama:29:hesber:059e719d0d0d": {
+      "not_planning_rule": "Recommended-plan timing only (\"לפי תכנית הלימודים המומלצת ניתן\") for שאר רוח courses in semesters 3-4; the binding 6-credit requirement is mapped via the שאר רוח sections."
+    },
+    "tau:8715:2026:rama:3": {
+      "not_planning_rule": "Subtotal of the recommended-plan courses listed under this year/semester; every listed course is mapped on its own and the sum follows from their credits, so it states no independent requirement."
+    },
+    "tau:8715:2026:rama:30": {
+      "mapped_to": "general_requirement"
+    },
+    "tau:8715:2026:rama:30:hesber:b30478b9cd9e": {
+      "mapped_to": "course_rules[exempt-music-tech-shaar-ruach]"
+    },
+    "tau:8715:2026:rama:4": {
+      "not_planning_rule": "Subtotal of the recommended-plan courses listed under this year/semester; every listed course is mapped on its own and the sum follows from their credits, so it states no independent requirement."
+    },
+    "tau:8715:2026:rama:5": {
+      "mapped_to": "categories[other_specialization]"
+    },
+    "tau:8715:2026:rama:5:hesber:e5faba27ac2f": {
+      "mapped_to": "group_minimums.core"
+    },
+    "tau:8715:2026:rama:6": {
+      "mapped_to": "general_requirement"
+    },
+    "tau:8715:2026:rama:6:hesber:23e8689d93a8": {
+      "mapped_to": "course_rules[exempt-music-tech-shaar-ruach]"
+    },
+    "tau:8715:2026:rama:7": {
+      "not_planning_rule": "Subtotal of the recommended-plan courses listed under this year/semester; every listed course is mapped on its own and the sum follows from their credits, so it states no independent requirement."
+    },
+    "tau:8715:2026:rama:7:kurs:0509-1624": {
+      "mapped_to": "mandatory_courses[0509-1624]"
+    },
+    "tau:8715:2026:rama:7:kurs:0509-1646": {
+      "mapped_to": "mandatory_courses[0509-1646]"
+    },
+    "tau:8715:2026:rama:7:kurs:0509-1815": {
+      "mapped_to": "mandatory_courses[0509-1815]"
+    },
+    "tau:8715:2026:rama:7:kurs:0542-1510": {
+      "mapped_to": "mandatory_courses[0542-1510]"
+    },
+    "tau:8715:2026:rama:7:kurs:0542-1510:idkunkurs:cb672092a516": {
+      "mapped_to": "course_rules[equiv-0542-1510-0509-1510]"
+    },
+    "tau:8715:2026:rama:7:kurs:0542-1800": {
+      "mapped_to": "mandatory_courses[0542-1800]"
+    },
+    "tau:8715:2026:rama:7:kurs:0542-1800:hearakurs:e175a34dd83d": {
+      "not_planning_rule": "Language-of-instruction note (taught in English); it does not constrain which courses, when, or how they count toward the degree."
+    },
+    "tau:8715:2026:rama:7:kurs:0542-1821": {
+      "mapped_to": "mandatory_courses[0542-1821]"
+    },
+    "tau:8715:2026:rama:8": {
+      "not_planning_rule": "Subtotal of the recommended-plan courses listed under this year/semester; every listed course is mapped on its own and the sum follows from their credits, so it states no independent requirement."
+    },
+    "tau:8715:2026:rama:8:kurs:0509-1645": {
+      "mapped_to": "mandatory_courses[0509-1645]"
+    },
+    "tau:8715:2026:rama:8:kurs:0509-1647": {
+      "mapped_to": "mandatory_courses[0509-1647]"
+    },
+    "tau:8715:2026:rama:8:kurs:0509-1834": {
+      "mapped_to": "mandatory_courses[0509-1834]"
+    },
+    "tau:8715:2026:rama:8:kurs:0542-1810": {
+      "mapped_to": "mandatory_courses[0542-1810]"
+    },
+    "tau:8715:2026:rama:8:kurs:0542-1820": {
+      "mapped_to": "mandatory_courses[0542-1820]"
+    },
+    "tau:8715:2026:rama:8:kurs:0581-1111": {
+      "mapped_to": "mandatory_courses[0581-1111]"
+    },
+    "tau:8715:2026:rama:8:kurs:0581-1132": {
+      "mapped_to": "mandatory_courses[0581-1132]"
+    },
+    "tau:8715:2026:rama:9": {
+      "not_planning_rule": "Subtotal of the recommended-plan courses listed under this year/semester; every listed course is mapped on its own and the sum follows from their credits, so it states no independent requirement."
+    },
+    "tau:8715:2026:rama:9:kurs:0509-1829": {
+      "mapped_to": "mandatory_courses[0509-1829]"
+    },
+    "tau:8715:2026:rama:9:kurs:0509-2805": {
+      "mapped_to": "mandatory_courses[0509-2805]"
+    },
+    "tau:8715:2026:rama:9:kurs:0509-2844": {
+      "mapped_to": "mandatory_courses[0509-2844]"
+    },
+    "tau:8715:2026:rama:9:kurs:0542-2110": {
+      "mapped_to": "mandatory_courses[0542-2110]"
+    },
+    "tau:8715:2026:rama:9:kurs:0542-2200": {
+      "mapped_to": "mandatory_courses[0542-2200]"
+    },
+    "tau:8715:2026:rama:9:kurs:0542-2200:hearakurs:27f39efc4dbf": {
+      "mapped_to": "mandatory_courses[0542-2200]"
+    },
+    "tau:8715:2026:rama:9:kurs:0542-2600": {
+      "mapped_to": "mandatory_courses[0542-2600]"
+    },
+    "tau:8715:2026:rama:9:kurs:0542-2600:hearakurs:27f39efc4dbf": {
+      "mapped_to": "mandatory_courses[0542-2600]"
+    },
+    "tau:8715:2026:timetable:0509-1624": {
+      "mapped_to": "mandatory_courses[0509-1624]"
+    },
+    "tau:8715:2026:timetable:0509-1645": {
+      "mapped_to": "mandatory_courses[0509-1645]"
+    },
+    "tau:8715:2026:timetable:0509-1646": {
+      "mapped_to": "mandatory_courses[0509-1646]"
+    },
+    "tau:8715:2026:timetable:0509-1647": {
+      "mapped_to": "mandatory_courses[0509-1647]"
+    },
+    "tau:8715:2026:timetable:0509-1815": {
+      "mapped_to": "mandatory_courses[0509-1815]"
+    },
+    "tau:8715:2026:timetable:0509-1829": {
+      "mapped_to": "mandatory_courses[0509-1829]"
+    },
+    "tau:8715:2026:timetable:0509-1834": {
+      "mapped_to": "mandatory_courses[0509-1834]"
+    },
+    "tau:8715:2026:timetable:0509-2805": {
+      "mapped_to": "mandatory_courses[0509-2805]"
+    },
+    "tau:8715:2026:timetable:0509-2843": {
+      "mapped_to": "mandatory_courses[0509-2843]"
+    },
+    "tau:8715:2026:timetable:0509-2844": {
+      "mapped_to": "mandatory_courses[0509-2844]"
+    },
+    "tau:8715:2026:timetable:0509-2846": {
+      "mapped_to": "mandatory_courses[0509-2846]"
+    },
+    "tau:8715:2026:timetable:0509-4010": {
+      "mapped_to": "categories[other_specialization].course_ids[0509-4010]"
+    },
+    "tau:8715:2026:timetable:0512-1202": {
+      "mapped_to": "categories[other_specialization].course_ids[0512-1202]"
+    },
+    "tau:8715:2026:timetable:0512-1203": {
+      "mapped_to": "categories[other_specialization].course_ids[0512-1203]"
+    },
+    "tau:8715:2026:timetable:0512-1204": {
+      "mapped_to": "mandatory_courses[0512-1204]"
+    },
+    "tau:8715:2026:timetable:0512-1205": {
+      "mapped_to": "mandatory_courses[0512-1205]"
+    },
+    "tau:8715:2026:timetable:0512-2508": {
+      "mapped_to": "categories[other_specialization].course_ids[0512-2508]"
+    },
+    "tau:8715:2026:timetable:0512-4200": {
+      "mapped_to": "categories[other_specialization].course_ids[0512-4200]"
+    },
+    "tau:8715:2026:timetable:0512-4362": {
+      "mapped_to": "categories[other_specialization].course_ids[0512-4362]"
+    },
+    "tau:8715:2026:timetable:0512-4700": {
+      "mapped_to": "categories[other_specialization].course_ids[0512-4700]"
+    },
+    "tau:8715:2026:timetable:0512-4702": {
+      "mapped_to": "categories[other_specialization].course_ids[0512-4702]"
+    },
+    "tau:8715:2026:timetable:0542-1510": {
+      "mapped_to": "mandatory_courses[0542-1510]"
+    },
+    "tau:8715:2026:timetable:0542-1800": {
+      "mapped_to": "mandatory_courses[0542-1800]"
+    },
+    "tau:8715:2026:timetable:0542-1810": {
+      "mapped_to": "mandatory_courses[0542-1810]"
+    },
+    "tau:8715:2026:timetable:0542-1820": {
+      "mapped_to": "mandatory_courses[0542-1820]"
+    },
+    "tau:8715:2026:timetable:0542-1821": {
+      "mapped_to": "mandatory_courses[0542-1821]"
+    },
+    "tau:8715:2026:timetable:0542-2110": {
+      "mapped_to": "mandatory_courses[0542-2110]"
+    },
+    "tau:8715:2026:timetable:0542-2200": {
+      "mapped_to": "mandatory_courses[0542-2200]"
+    },
+    "tau:8715:2026:timetable:0542-2400": {
+      "mapped_to": "mandatory_courses[0542-2400]"
+    },
+    "tau:8715:2026:timetable:0542-2500": {
+      "mapped_to": "mandatory_courses[0542-2500]"
+    },
+    "tau:8715:2026:timetable:0542-2600": {
+      "mapped_to": "mandatory_courses[0542-2600]"
+    },
+    "tau:8715:2026:timetable:0542-3112": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-3112]"
+    },
+    "tau:8715:2026:timetable:0542-3243": {
+      "mapped_to": "mandatory_courses[0542-3243]"
+    },
+    "tau:8715:2026:timetable:0542-3620": {
+      "mapped_to": "mandatory_courses[0542-3620]"
+    },
+    "tau:8715:2026:timetable:0542-3780": {
+      "mapped_to": "mandatory_courses[0542-3780]"
+    },
+    "tau:8715:2026:timetable:0542-3791": {
+      "mapped_to": "mandatory_courses[0542-3791]"
+    },
+    "tau:8715:2026:timetable:0542-3792": {
+      "mapped_to": "mandatory_courses[0542-3792]"
+    },
+    "tau:8715:2026:timetable:0542-3804": {
+      "mapped_to": "mandatory_courses[0542-3804]"
+    },
+    "tau:8715:2026:timetable:0542-4010": {
+      "mapped_to": "mandatory_courses[0542-4010]"
+    },
+    "tau:8715:2026:timetable:0542-4011": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4011]"
+    },
+    "tau:8715:2026:timetable:0542-4012": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4012]"
+    },
+    "tau:8715:2026:timetable:0542-4020": {
+      "mapped_to": "mandatory_courses[0542-4020]"
+    },
+    "tau:8715:2026:timetable:0542-4091": {
+      "mapped_to": "mandatory_courses[0542-4091]"
+    },
+    "tau:8715:2026:timetable:0542-4092": {
+      "mapped_to": "mandatory_courses[0542-4092]"
+    },
+    "tau:8715:2026:timetable:0542-4094": {
+      "mapped_to": "categories[advanced_labs].course_ids[0542-4094]"
+    },
+    "tau:8715:2026:timetable:0542-4120": {
+      "mapped_to": "categories[fluids].course_ids[0542-4120]"
+    },
+    "tau:8715:2026:timetable:0542-4123": {
+      "mapped_to": "categories[fluids].course_ids[0542-4123]"
+    },
+    "tau:8715:2026:timetable:0542-4124": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4124]"
+    },
+    "tau:8715:2026:timetable:0542-4125": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4125]"
+    },
+    "tau:8715:2026:timetable:0542-4131": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4131]"
+    },
+    "tau:8715:2026:timetable:0542-4132": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4132]"
+    },
+    "tau:8715:2026:timetable:0542-4135": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4135]"
+    },
+    "tau:8715:2026:timetable:0542-4179": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4179]"
+    },
+    "tau:8715:2026:timetable:0542-4191": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4191]"
+    },
+    "tau:8715:2026:timetable:0542-4220": {
+      "mapped_to": "categories[solids].course_ids[0542-4220]"
+    },
+    "tau:8715:2026:timetable:0542-4221": {
+      "mapped_to": "categories[solids].course_ids[0542-4221]"
+    },
+    "tau:8715:2026:timetable:0542-4223": {
+      "mapped_to": "categories[solids].course_ids[0542-4223]"
+    },
+    "tau:8715:2026:timetable:0542-4224": {
+      "mapped_to": "categories[solids].course_ids[0542-4224]"
+    },
+    "tau:8715:2026:timetable:0542-4275": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4275]"
+    },
+    "tau:8715:2026:timetable:0542-4320": {
+      "mapped_to": "categories[fluids].course_ids[0542-4320]"
+    },
+    "tau:8715:2026:timetable:0542-4321": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4321]"
+    },
+    "tau:8715:2026:timetable:0542-4322": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4322]"
+    },
+    "tau:8715:2026:timetable:0542-4351": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4351]"
+    },
+    "tau:8715:2026:timetable:0542-4352": {
+      "mapped_to": "categories[fluids].course_ids[0542-4352]"
+    },
+    "tau:8715:2026:timetable:0542-4391": {
+      "mapped_to": "categories[advanced_labs].course_ids[0542-4391]"
+    },
+    "tau:8715:2026:timetable:0542-4420": {
+      "mapped_to": "categories[systems].course_ids[0542-4420]"
+    },
+    "tau:8715:2026:timetable:0542-4422": {
+      "mapped_to": "categories[systems].course_ids[0542-4422]"
+    },
+    "tau:8715:2026:timetable:0542-4425": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4425]"
+    },
+    "tau:8715:2026:timetable:0542-4455": {
+      "mapped_to": "categories[systems].course_ids[0542-4455]"
+    },
+    "tau:8715:2026:timetable:0542-4524": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4524]"
+    },
+    "tau:8715:2026:timetable:0542-4527": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4527]"
+    },
+    "tau:8715:2026:timetable:0542-4559": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4559]"
+    },
+    "tau:8715:2026:timetable:0542-4621": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4621]"
+    },
+    "tau:8715:2026:timetable:0542-4622": {
+      "mapped_to": "categories[systems].course_ids[0542-4622]"
+    },
+    "tau:8715:2026:timetable:0542-4624": {
+      "mapped_to": "categories[advanced_labs].course_ids[0542-4624]"
+    },
+    "tau:8715:2026:timetable:0542-4722": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4722]"
+    },
+    "tau:8715:2026:timetable:0555-3160": {
+      "mapped_to": "categories[other_specialization].course_ids[0555-3160]"
+    },
+    "tau:8715:2026:timetable:0555-4550": {
+      "mapped_to": "categories[other_specialization].course_ids[0555-4550]"
+    },
+    "tau:8715:2026:timetable:0555-4555": {
+      "mapped_to": "categories[other_specialization].course_ids[0555-4555]"
+    },
+    "tau:8715:2026:timetable:0555-4562": {
+      "mapped_to": "categories[other_specialization].course_ids[0555-4562]"
+    },
+    "tau:8715:2026:timetable:0555-4630": {
+      "mapped_to": "categories[other_specialization].course_ids[0555-4630]"
+    },
+    "tau:8715:2026:timetable:0571-1818": {
+      "mapped_to": "categories[other_specialization].course_ids[0571-1818]"
+    },
+    "tau:8715:2026:timetable:0571-3802": {
+      "mapped_to": "categories[other_specialization].course_ids[0571-3802]"
+    },
+    "tau:8715:2026:timetable:0571-4174": {
+      "mapped_to": "categories[other_specialization].course_ids[0571-4174]"
+    },
+    "tau:8715:2026:timetable:0581-1111": {
+      "mapped_to": "mandatory_courses[0581-1111]"
+    },
+    "tau:8715:2026:timetable:0581-1132": {
+      "mapped_to": "mandatory_courses[0581-1132]"
+    },
+    "tau:8715:2026:timetable:0581-4131": {
+      "mapped_to": "categories[advanced_labs].course_ids[0581-4131]"
+    },
+    "tau:ims:2026:0509-1624": {
+      "mapped_to": "mandatory_courses[0509-1624]"
+    },
+    "tau:ims:2026:0509-1645": {
+      "mapped_to": "mandatory_courses[0509-1645]"
+    },
+    "tau:ims:2026:0509-1646": {
+      "mapped_to": "mandatory_courses[0509-1646]"
+    },
+    "tau:ims:2026:0509-1647": {
+      "mapped_to": "mandatory_courses[0509-1647]"
+    },
+    "tau:ims:2026:0509-1815": {
+      "mapped_to": "mandatory_courses[0509-1815]"
+    },
+    "tau:ims:2026:0509-1829": {
+      "mapped_to": "mandatory_courses[0509-1829]"
+    },
+    "tau:ims:2026:0509-1834": {
+      "mapped_to": "mandatory_courses[0509-1834]"
+    },
+    "tau:ims:2026:0509-2805": {
+      "mapped_to": "mandatory_courses[0509-2805]"
+    },
+    "tau:ims:2026:0509-2843": {
+      "mapped_to": "mandatory_courses[0509-2843]"
+    },
+    "tau:ims:2026:0509-2844": {
+      "mapped_to": "mandatory_courses[0509-2844]"
+    },
+    "tau:ims:2026:0509-2846": {
+      "mapped_to": "mandatory_courses[0509-2846]"
+    },
+    "tau:ims:2026:0509-4010": {
+      "mapped_to": "categories[other_specialization].course_ids[0509-4010]"
+    },
+    "tau:ims:2026:0512-1202": {
+      "mapped_to": "categories[other_specialization].course_ids[0512-1202]"
+    },
+    "tau:ims:2026:0512-1203": {
+      "mapped_to": "categories[other_specialization].course_ids[0512-1203]"
+    },
+    "tau:ims:2026:0512-1204": {
+      "mapped_to": "mandatory_courses[0512-1204]"
+    },
+    "tau:ims:2026:0512-1205": {
+      "mapped_to": "mandatory_courses[0512-1205]"
+    },
+    "tau:ims:2026:0512-2508": {
+      "mapped_to": "categories[other_specialization].course_ids[0512-2508]"
+    },
+    "tau:ims:2026:0512-4200": {
+      "mapped_to": "categories[other_specialization].course_ids[0512-4200]"
+    },
+    "tau:ims:2026:0512-4362": {
+      "mapped_to": "categories[other_specialization].course_ids[0512-4362]"
+    },
+    "tau:ims:2026:0512-4700": {
+      "mapped_to": "categories[other_specialization].course_ids[0512-4700]"
+    },
+    "tau:ims:2026:0512-4702": {
+      "mapped_to": "categories[other_specialization].course_ids[0512-4702]"
+    },
+    "tau:ims:2026:0542-1510": {
+      "mapped_to": "mandatory_courses[0542-1510]"
+    },
+    "tau:ims:2026:0542-1800": {
+      "mapped_to": "mandatory_courses[0542-1800]"
+    },
+    "tau:ims:2026:0542-1810": {
+      "mapped_to": "mandatory_courses[0542-1810]"
+    },
+    "tau:ims:2026:0542-1820": {
+      "mapped_to": "mandatory_courses[0542-1820]"
+    },
+    "tau:ims:2026:0542-1821": {
+      "mapped_to": "mandatory_courses[0542-1821]"
+    },
+    "tau:ims:2026:0542-2110": {
+      "mapped_to": "mandatory_courses[0542-2110]"
+    },
+    "tau:ims:2026:0542-2200": {
+      "mapped_to": "mandatory_courses[0542-2200]"
+    },
+    "tau:ims:2026:0542-2400": {
+      "mapped_to": "mandatory_courses[0542-2400]"
+    },
+    "tau:ims:2026:0542-2500": {
+      "mapped_to": "mandatory_courses[0542-2500]"
+    },
+    "tau:ims:2026:0542-2600": {
+      "mapped_to": "mandatory_courses[0542-2600]"
+    },
+    "tau:ims:2026:0542-3112": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-3112]"
+    },
+    "tau:ims:2026:0542-3243": {
+      "mapped_to": "mandatory_courses[0542-3243]"
+    },
+    "tau:ims:2026:0542-3360": {
+      "not_planning_rule": "Specialization-track elective that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups); it cannot be planned this catalog year, so it is not in the spec elective pool."
+    },
+    "tau:ims:2026:0542-3620": {
+      "mapped_to": "mandatory_courses[0542-3620]"
+    },
+    "tau:ims:2026:0542-3780": {
+      "mapped_to": "mandatory_courses[0542-3780]"
+    },
+    "tau:ims:2026:0542-3791": {
+      "mapped_to": "mandatory_courses[0542-3791]"
+    },
+    "tau:ims:2026:0542-3792": {
+      "mapped_to": "mandatory_courses[0542-3792]"
+    },
+    "tau:ims:2026:0542-3804": {
+      "mapped_to": "mandatory_courses[0542-3804]"
+    },
+    "tau:ims:2026:0542-4010": {
+      "mapped_to": "mandatory_courses[0542-4010]"
+    },
+    "tau:ims:2026:0542-4011": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4011]"
+    },
+    "tau:ims:2026:0542-4012": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4012]"
+    },
+    "tau:ims:2026:0542-4020": {
+      "mapped_to": "mandatory_courses[0542-4020]"
+    },
+    "tau:ims:2026:0542-4091": {
+      "mapped_to": "mandatory_courses[0542-4091]"
+    },
+    "tau:ims:2026:0542-4092": {
+      "mapped_to": "mandatory_courses[0542-4092]"
+    },
+    "tau:ims:2026:0542-4093": {
+      "mapped_to": "categories[advanced_labs].course_ids[0542-4093]"
+    },
+    "tau:ims:2026:0542-4094": {
+      "mapped_to": "categories[advanced_labs].course_ids[0542-4094]"
+    },
+    "tau:ims:2026:0542-4120": {
+      "mapped_to": "categories[fluids].course_ids[0542-4120]"
+    },
+    "tau:ims:2026:0542-4122": {
+      "not_planning_rule": "Specialization-track elective that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups); it cannot be planned this catalog year, so it is not in the spec elective pool."
+    },
+    "tau:ims:2026:0542-4123": {
+      "mapped_to": "categories[fluids].course_ids[0542-4123]"
+    },
+    "tau:ims:2026:0542-4124": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4124]"
+    },
+    "tau:ims:2026:0542-4125": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4125]"
+    },
+    "tau:ims:2026:0542-4131": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4131]"
+    },
+    "tau:ims:2026:0542-4132": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4132]"
+    },
+    "tau:ims:2026:0542-4134": {
+      "not_planning_rule": "Specialization-track elective that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups); it cannot be planned this catalog year, so it is not in the spec elective pool."
+    },
+    "tau:ims:2026:0542-4135": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4135]"
+    },
+    "tau:ims:2026:0542-4163": {
+      "not_planning_rule": "Specialization-track elective that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups); it cannot be planned this catalog year, so it is not in the spec elective pool."
+    },
+    "tau:ims:2026:0542-4166": {
+      "not_planning_rule": "Specialization-track elective that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups); it cannot be planned this catalog year, so it is not in the spec elective pool."
+    },
+    "tau:ims:2026:0542-4179": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4179]"
+    },
+    "tau:ims:2026:0542-4191": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4191]"
+    },
+    "tau:ims:2026:0542-4220": {
+      "mapped_to": "categories[solids].course_ids[0542-4220]"
+    },
+    "tau:ims:2026:0542-4221": {
+      "mapped_to": "categories[solids].course_ids[0542-4221]"
+    },
+    "tau:ims:2026:0542-4222": {
+      "not_planning_rule": "Specialization-track elective that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups); it cannot be planned this catalog year, so it is not in the spec elective pool."
+    },
+    "tau:ims:2026:0542-4223": {
+      "mapped_to": "categories[solids].course_ids[0542-4223]"
+    },
+    "tau:ims:2026:0542-4224": {
+      "mapped_to": "categories[solids].course_ids[0542-4224]"
+    },
+    "tau:ims:2026:0542-4225": {
+      "not_planning_rule": "Specialization-track elective that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups); it cannot be planned this catalog year, so it is not in the spec elective pool."
+    },
+    "tau:ims:2026:0542-4226": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4226]"
+    },
+    "tau:ims:2026:0542-4275": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4275]"
+    },
+    "tau:ims:2026:0542-4290": {
+      "not_planning_rule": "Specialization-track elective that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups); it cannot be planned this catalog year, so it is not in the spec elective pool."
+    },
+    "tau:ims:2026:0542-4320": {
+      "mapped_to": "categories[fluids].course_ids[0542-4320]"
+    },
+    "tau:ims:2026:0542-4321": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4321]"
+    },
+    "tau:ims:2026:0542-4322": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4322]"
+    },
+    "tau:ims:2026:0542-4351": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4351]"
+    },
+    "tau:ims:2026:0542-4352": {
+      "mapped_to": "categories[fluids].course_ids[0542-4352]"
+    },
+    "tau:ims:2026:0542-4391": {
+      "mapped_to": "categories[advanced_labs].course_ids[0542-4391]"
+    },
+    "tau:ims:2026:0542-4420": {
+      "mapped_to": "categories[systems].course_ids[0542-4420]"
+    },
+    "tau:ims:2026:0542-4421": {
+      "not_planning_rule": "Specialization-track elective that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups); it cannot be planned this catalog year, so it is not in the spec elective pool."
+    },
+    "tau:ims:2026:0542-4422": {
+      "mapped_to": "categories[systems].course_ids[0542-4422]"
+    },
+    "tau:ims:2026:0542-4424": {
+      "not_planning_rule": "Specialization-track elective that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups); it cannot be planned this catalog year, so it is not in the spec elective pool."
+    },
+    "tau:ims:2026:0542-4425": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4425]"
+    },
+    "tau:ims:2026:0542-4452": {
+      "not_planning_rule": "Specialization-track elective that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups); it cannot be planned this catalog year, so it is not in the spec elective pool."
+    },
+    "tau:ims:2026:0542-4455": {
+      "mapped_to": "categories[systems].course_ids[0542-4455]"
+    },
+    "tau:ims:2026:0542-4456": {
+      "not_planning_rule": "Specialization-track elective with no 2026 offering (IMS 2026: not_offered, absent from the program timetable) although its program note says semester B; not plannable this year, so not in the spec elective pool (discrepancy listed in the Task 8 report)."
+    },
+    "tau:ims:2026:0542-4520": {
+      "not_planning_rule": "Specialization-track elective that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups); it cannot be planned this catalog year, so it is not in the spec elective pool."
+    },
+    "tau:ims:2026:0542-4522": {
+      "not_planning_rule": "Specialization-track elective that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups); it cannot be planned this catalog year, so it is not in the spec elective pool."
+    },
+    "tau:ims:2026:0542-4523": {
+      "not_planning_rule": "Specialization-track elective that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups); it cannot be planned this catalog year, so it is not in the spec elective pool."
+    },
+    "tau:ims:2026:0542-4524": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4524]"
+    },
+    "tau:ims:2026:0542-4527": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4527]"
+    },
+    "tau:ims:2026:0542-4528": {
+      "not_planning_rule": "Specialization-track elective that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups); it cannot be planned this catalog year, so it is not in the spec elective pool."
+    },
+    "tau:ims:2026:0542-4559": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4559]"
+    },
+    "tau:ims:2026:0542-4620": {
+      "not_planning_rule": "Specialization-track elective that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups); it cannot be planned this catalog year, so it is not in the spec elective pool."
+    },
+    "tau:ims:2026:0542-4621": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4621]"
+    },
+    "tau:ims:2026:0542-4622": {
+      "mapped_to": "categories[systems].course_ids[0542-4622]"
+    },
+    "tau:ims:2026:0542-4624": {
+      "mapped_to": "categories[advanced_labs].course_ids[0542-4624]"
+    },
+    "tau:ims:2026:0542-4722": {
+      "mapped_to": "categories[other_specialization].course_ids[0542-4722]"
+    },
+    "tau:ims:2026:0555-3160": {
+      "mapped_to": "categories[other_specialization].course_ids[0555-3160]"
+    },
+    "tau:ims:2026:0555-4000": {
+      "mapped_to": "categories[other_specialization].course_ids[0555-4000]"
+    },
+    "tau:ims:2026:0555-4432": {
+      "mapped_to": "categories[other_specialization].course_ids[0555-4432]"
+    },
+    "tau:ims:2026:0555-4550": {
+      "mapped_to": "categories[other_specialization].course_ids[0555-4550]"
+    },
+    "tau:ims:2026:0555-4555": {
+      "mapped_to": "categories[other_specialization].course_ids[0555-4555]"
+    },
+    "tau:ims:2026:0555-4562": {
+      "mapped_to": "categories[other_specialization].course_ids[0555-4562]"
+    },
+    "tau:ims:2026:0555-4630": {
+      "mapped_to": "categories[other_specialization].course_ids[0555-4630]"
+    },
+    "tau:ims:2026:0571-1818": {
+      "mapped_to": "categories[other_specialization].course_ids[0571-1818]"
+    },
+    "tau:ims:2026:0571-3802": {
+      "mapped_to": "categories[other_specialization].course_ids[0571-3802]"
+    },
+    "tau:ims:2026:0571-4174": {
+      "mapped_to": "categories[other_specialization].course_ids[0571-4174]"
+    },
+    "tau:ims:2026:0581-1111": {
+      "mapped_to": "mandatory_courses[0581-1111]"
+    },
+    "tau:ims:2026:0581-1132": {
+      "mapped_to": "mandatory_courses[0581-1132]"
+    },
+    "tau:ims:2026:0581-4131": {
+      "mapped_to": "categories[advanced_labs].course_ids[0581-4131]"
+    }
+  },
+  "source_conflicts": [
+    {
+      "course_id": null,
+      "description": "Total degree hours: the spec has total_required_credits 185, but TAU says at least 184 (hesbernosaf; rama 23: \"184 שעות החל משנת הלימודים תשפ\"ו, 185 שעות למי שהתחילו לפני\") and rama 5 says 185.5. Not applied (post-migration update).",
+      "sources": [
+        "tau:8715:2026:body:hesbernosaf:cf8fe7bb7bf8",
+        "tau:8715:2026:rama:23:hesber:cc8bc091a581",
+        "tau:8715:2026:rama:5:hesber:e5faba27ac2f"
+      ]
+    },
+    {
+      "course_id": "0542-2500",
+      "description": "listed Y2/B in data/config/early_year_courses.json and Y3/A in data/programs/mechanical_engineering_mandatory_2027.json; both current boards place it. mandatory_courses keeps Y3/A. TAU (live program, תשפ\"ז) lists it under both Y2/B and Y3/A with the note \"יש לקחת את הקורס בסמסטר 4 או 5\"; see course_rules[window-0542-2500].",
+      "sources": [
+        "tau:8715:2026:rama:10:kurs:0542-2500:hearakurs:ada3ac27701b",
+        "tau:8715:2026:rama:11:kurs:0542-2500:hearakurs:ada3ac27701b",
+        "tau:8715:2026:rama:10:kurs:0542-2500",
+        "tau:8715:2026:rama:11:kurs:0542-2500"
+      ]
+    },
+    {
+      "course_id": "0542-2200",
+      "description": "TAU lists it under Y2/A and Y2/B with the note \"יש לקחת את הקורס בסמסטר 3 או 4\"; the spec fixes it at Y2/A. Not applied (post-migration update).",
+      "sources": [
+        "tau:8715:2026:rama:10:kurs:0542-2200:hearakurs:27f39efc4dbf",
+        "tau:8715:2026:rama:9:kurs:0542-2200:hearakurs:27f39efc4dbf",
+        "tau:8715:2026:rama:10:kurs:0542-2200",
+        "tau:8715:2026:rama:9:kurs:0542-2200"
+      ]
+    },
+    {
+      "course_id": "0542-2600",
+      "description": "TAU lists it under Y2/A and Y2/B with the note \"יש לקחת את הקורס בסמסטר 3 או 4\"; the spec fixes it at Y2/B. Not applied (post-migration update).",
+      "sources": [
+        "tau:8715:2026:rama:10:kurs:0542-2600:hearakurs:27f39efc4dbf",
+        "tau:8715:2026:rama:9:kurs:0542-2600:hearakurs:27f39efc4dbf",
+        "tau:8715:2026:rama:10:kurs:0542-2600",
+        "tau:8715:2026:rama:9:kurs:0542-2600"
+      ]
+    },
+    {
+      "course_id": "0542-4135",
+      "description": "TAU program note says it is not taught in תשפ\"ז (\"לא נלמד\"), but the live program timetable offers it in semester B (as do the committed facts). Not applied.",
+      "sources": [
+        "tau:8715:2026:rama:18:kurs:0542-4135:hearakurs:1416a249152d",
+        "tau:8715:2026:timetable:0542-4135"
+      ]
+    },
+    {
+      "course_id": "0542-4132",
+      "description": "TAU program note says it is not taught in תשפ\"ז (\"לא נלמד\"), but the live program timetable offers it in semester B (as do the committed facts). Not applied.",
+      "sources": [
+        "tau:8715:2026:rama:15:kurs:0542-4132:hearakurs:74f9fbd7074f",
+        "tau:8715:2026:rama:28:kurs:0542-4132:hearakurs:74f9fbd7074f",
+        "tau:8715:2026:timetable:0542-4132"
+      ]
+    },
+    {
+      "course_id": "0542-4010",
+      "description": "TAU note says it is taught in semester 7 only (Y4/A; the timetable agrees), but the spec places it Y4 \"either\". Not applied (post-migration update).",
+      "sources": [
+        "tau:8715:2026:rama:13:kurs:0542-4010:hearakurs:800dc8086d55",
+        "tau:8715:2026:timetable:0542-4010"
+      ]
+    },
+    {
+      "course_id": "0542-4092",
+      "description": "TAU note says it is taught in semester 7 only (Y4/A; the timetable agrees), but the spec places it Y4 \"either\". Not applied (post-migration update).",
+      "sources": [
+        "tau:8715:2026:rama:13:kurs:0542-4092:hearakurs:7dbe9f9ad1c8",
+        "tau:8715:2026:timetable:0542-4092"
+      ]
+    },
+    {
+      "course_id": "0542-4020",
+      "description": "TAU note says it is taught in semester 8 only (Y4/B; the timetable agrees), but the spec places it Y4 \"either\". Not applied (post-migration update).",
+      "sources": [
+        "tau:8715:2026:rama:13:kurs:0542-4020:hearakurs:ed357c516aed",
+        "tau:8715:2026:timetable:0542-4020"
+      ]
+    },
+    {
+      "course_id": "0542-4456",
+      "description": "TAU program note says it is taught in semester B, but IMS 2026 says not_offered and the program timetable has no groups for it; it is not in the spec elective pool. Not applied.",
+      "sources": [
+        "tau:8715:2026:rama:20:kurs:0542-4456",
+        "tau:8715:2026:rama:20:kurs:0542-4456:hearakurs:4a461d2ede66",
+        "tau:ims:2026:0542-4456"
+      ]
+    }
+  ],
+  "course_rules": [
+    {
+      "rule_id": "annual-0542-3792",
+      "kind": "annual",
+      "course_ids": [
+        "0542-3792"
+      ],
+      "params": {
+        "semesters": [
+          5,
+          6
+        ]
+      },
+      "source_ids": [
+        "tau:8715:2026:rama:11:kurs:0542-3792:hearakurs:ba68fa7491b0",
+        "tau:8715:2026:rama:12:kurs:0542-3792:hearakurs:ba68fa7491b0"
+      ],
+      "enforced_by": "board",
+      "note": "TAU: annual course, taught in semesters 5 and 6, final exam in 6. Enforced by data/boards/mechanical_engineering_2027.json: is_annual=true, spans_semesters=[year_3_semester_a, year_3_semester_b], count_hours_once=true (audited by board_audit annual checks)."
+    },
+    {
+      "rule_id": "cohort-excellence-0542-4011-0542-4012",
+      "kind": "cohort_restriction",
+      "course_ids": [
+        "0542-4011",
+        "0542-4012"
+      ],
+      "params": {
+        "cohort": "excellence",
+        "years": [
+          2,
+          3
+        ]
+      },
+      "source_ids": [
+        "tau:8715:2026:rama:22:kurs:0542-4011:hearakurs:e638f449814d",
+        "tau:8715:2026:rama:22:kurs:0542-4012:hearakurs:d20d10223f1f"
+      ],
+      "enforced_by": "none",
+      "note": "TAU: 0542-4011/0542-4012 are open only to students in years 2-3 of the faculty excellence program. The board offers them to everyone in years 3-4 (other_specialization, effective_allowed_semesters year_3/year_4)."
+    },
+    {
+      "rule_id": "equiv-0542-1510-0509-1510",
+      "kind": "equivalent_to",
+      "course_ids": [
+        "0542-1510",
+        "0509-1510"
+      ],
+      "params": {},
+      "source_ids": [
+        "tau:8715:2026:rama:7:kurs:0542-1510:idkunkurs:cb672092a516"
+      ],
+      "enforced_by": "none",
+      "note": "TAU: 0542-1510 is identical to 0509-1510 (\"קורס זהה לקורס מספר 0509.1510\"); the source states only that the courses are identical. The board has no equivalence data."
+    },
+    {
+      "rule_id": "exempt-music-tech-shaar-ruach",
+      "kind": "general_requirement_exemption",
+      "course_ids": [],
+      "params": {
+        "program": "music_tech",
+        "requirement": "general_requirement"
+      },
+      "source_ids": [
+        "tau:8715:2026:rama:19:hesber:844fed1b5228",
+        "tau:8715:2026:rama:30:hesber:b30478b9cd9e",
+        "tau:8715:2026:rama:6:hesber:23e8689d93a8"
+      ],
+      "enforced_by": "none",
+      "note": "TAU: students of the Music-Tech cluster (מקבץ \"מיוזיק-טק\") are exempt from the שאר רוח requirement. Neither the spec nor the board models cohorts."
+    },
+    {
+      "rule_id": "prereq-sub-0512-4362-0542-3243",
+      "kind": "prerequisite_substitute",
+      "course_ids": [
+        "0512-4362",
+        "0542-3243"
+      ],
+      "params": {
+        "course": "0512-4362",
+        "accepted_prerequisite": "0542-3243"
+      },
+      "source_ids": [
+        "tau:8715:2026:rama:17:kurs:0512-4362:hearakurs:982a4544da17",
+        "tau:8715:2026:rama:21:kurs:0512-4362:hearakurs:982a4544da17"
+      ],
+      "enforced_by": "none",
+      "note": "TAU: for 0512-4362 the prerequisite can be recognized through 0542-3243 (מבוא לבקרה) (\"ניתן להכיר כתנאי קדם במבוא לבקרה 0542-3243\"). The board record carries no prerequisite list for 0512-4362 (only prerequisites_url)."
+    },
+    {
+      "rule_id": "window-0542-2500",
+      "kind": "offering_window",
+      "course_ids": [
+        "0542-2500"
+      ],
+      "params": {
+        "semesters": [
+          4,
+          5
+        ]
+      },
+      "source_ids": [
+        "tau:8715:2026:rama:10:kurs:0542-2500:hearakurs:ada3ac27701b",
+        "tau:8715:2026:rama:11:kurs:0542-2500:hearakurs:ada3ac27701b"
+      ],
+      "enforced_by": "none",
+      "note": "TAU: 0542-2500 is taken in semester 4 or 5 (Y2/B or Y3/A). The boards fix it instead: years 1-2 board allowed_semesters [year_2_semester_b], years 3-4 board [year_3_semester_a]; no single choice between the two."
+    },
+    {
+      "rule_id": "year-0509-4010",
+      "kind": "year_restriction",
+      "course_ids": [
+        "0509-4010"
+      ],
+      "params": {
+        "years": [
+          4
+        ]
+      },
+      "source_ids": [
+        "tau:8715:2026:rama:16:kurs:0509-4010:hearakurs:615b4650e8f5"
+      ],
+      "enforced_by": "none",
+      "note": "TAU: 0509-4010 is for 4th-year students only (admission interview after registration). The board allows it in year 3 too (effective_allowed_semesters includes year_3_semester_b)."
+    }
+  ],
+  "known_gaps": [
+    {
+      "gap_id": "unread-regulations-pdf",
+      "description": "The faculty undergraduate regulations (תקנון הלימודים לתואר ראשון, https://engineering.tau.ac.il/sites/engineering.tau.ac.il/files/media_server/Engineering/yedion/Terms_BA.pdf) are only linked from the program page and were not read; they may hold planning rules (e.g. semester load limits, repeat or exemption rules) the spec does not express.",
+      "source_ids": [
+        "tau:8715:2026:body:terms:8026588cd798"
+      ]
+    }
+  ]
+}

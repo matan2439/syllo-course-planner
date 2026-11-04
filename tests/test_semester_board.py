@@ -1149,3 +1149,50 @@ def test_old_format_still_works_backward_compat(no_db):
     assert mc["locked_by_default"] is True
     assert mc["placement_rule"] == "fixed_semester"
     assert mc["allowed_semesters"] == ["year_3_semester_a"]
+
+
+# ---------------------------------------------------------------------------
+# Official offerings are an input (degree.py build passes the program's facts)
+# ---------------------------------------------------------------------------
+
+def _flex_program(cid):
+    return {"requirements": {"mandatory_courses": {"courses": [{
+        "course_id": cid, "name_he": cid, "weekly_hours": 3,
+        "allowed_semesters": ["year_3_semester_a", "year_3_semester_b"],
+        "placement_rule": "choose_one_allowed_semester",
+    }]}}}
+
+
+def test_build_semester_board_uses_the_offerings_passed_in(no_db):
+    import app.analysis.semester_board as sb
+
+    cid = "0542-9999"
+    # No program default exists to fall back on: offerings are only what the caller passes.
+    assert not hasattr(sb, "OFFERED_SEMESTERS_OVERRIDES") and not hasattr(sb, "_load_official_offerings")
+    passed = {cid: {"offered_semesters": ["B"], "offering_source_url": "passed",
+                    "offering_source_confidence": "high"}}
+    board = build_semester_board(_plan(), program=_flex_program(cid), db_path=no_db, offerings=passed)
+    placed = {c["course_id"]: (s["semester_id"], c) for s in board["semesters"] for c in s["courses"]}
+    sem, course = placed[cid]
+    assert sem == "year_3_semester_b"
+    assert course["offered_semesters"] == ["B"]
+    assert course["offering_source_url"] == "passed"
+
+    # An empty mapping or None means "no official offering known", never a program's default file.
+    for none in ({}, None):
+        board = build_semester_board(_plan(), program=_flex_program(cid), db_path=no_db, offerings=none)
+        course = next(c for s in board["semesters"] for c in s["courses"] if c["course_id"] == cid)
+        assert course["offering_source_confidence"] == "unverified"
+        assert course["offered_semesters"] is None
+
+
+def test_official_offerings_keeps_only_offered_courses():
+    from app.analysis.semester_board import official_offerings
+
+    facts = {
+        "A": {"offering": {"status": "offered", "offered_semesters": ["A"], "url": "u"}},
+        "B": {"offering": {"status": "not_offered", "offered_semesters": [], "url": "v"}},
+        "C": {"offering": None},
+    }
+    assert official_offerings(facts) == {"A": {"offered_semesters": ["A"], "offering_source_url": "u",
+                                               "offering_source_confidence": "high"}}

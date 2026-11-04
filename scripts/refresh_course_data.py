@@ -11,17 +11,24 @@ Sources (TAU year code: 2026 == תשפ"ז / 2026-2027):
   * IMS course search  ims.tau.ac.il/tal/kr/search_l.aspx?course_num=..&year=..
       -> syllabus link, and offerings for courses the program timetable doesn't
          list (שער רוח / general courses)
-  * tochniot GraphQL ydtochnit (tcid 8715, shana=year)
+  * tochniot GraphQL ydtochnit (the program's tcid, shana=year)
       -> weekly hours (shaotuni), credits (mishkal), teaching format
 
 Usage:
     python scripts/refresh_course_data.py                 # fetch + audit (read-only for boards)
-    python scripts/refresh_course_data.py --apply         # also patch the board JSON files
+    python scripts/refresh_course_data.py --apply         # = degree.py refresh --apply (facts, then build)
     python scripts/refresh_course_data.py --offline       # use cached HTML/JSON only
 
 Outputs:
-    data/official/tau_course_facts_{year}.json            # normalized official facts
+    data/official/tau_course_facts_{year}.json            # official facts (layout: app/degrees/facts.py)
     data/import_reports/course_data_review_{year}.{json,md}
+
+Boards are written only by ``degree.py build`` (the curation overlay + byte-stable writer);
+``--apply`` refreshes the facts and then runs that build.
+
+A failed fetch never degrades the snapshot: an empty ydtochnit/ydmaarechet response raises, and
+an IMS result of status "unknown" (not cached, fetch failed, unparseable) or a missing program
+row/timetable never replaces a fact the snapshot already holds.
 """
 
 from __future__ import annotations
@@ -40,17 +47,38 @@ from app.parsing.course_search_parser import parse_course_search_result  # noqa:
 from app.scraping.tau_client import build_course_search_url, fetch_url  # noqa: E402
 from app.scraping.tau_program_scraper import fetch_program_data, fetch_schedule_data  # noqa: E402
 
-ACADEMIC_YEAR = 2026  # TAU year code for תשפ"ז (2026-2027) — verified against IMS page header
-PROGRAM_TCID = "8715"  # Mechanical Engineering
-SCHEDULE_URL = "https://www.tau.ac.il/study-program?safa=1&shana={year}&tab=schedule&tcid=" + PROGRAM_TCID
+from app.degrees.facts import facts_path, load_stored, program_view  # noqa: E402
+from app.degrees.registry import ProgramEntry, get_program  # noqa: E402
 
-BOARDS = [
-    ROOT / "data" / "parsed_json" / "mechanical_semester_board_2027.json",
-    ROOT / "data" / "boards" / "mechanical_engineering_2027.json",
-]
+# Nothing here resolves a program at import: every reader takes the program's ProgramEntry
+# (or its tcid). The CLI default program lives only in main().
+CLI_DEFAULT_PROGRAM = "mechanical_engineering_2027"
+SCHEDULE_URL = "https://www.tau.ac.il/study-program?safa=1&shana={year}&tab=schedule&tcid={tcid}"
+
+
+def program_boards(entry: ProgramEntry, data_dir: Path | None = None) -> list[Path]:
+    """The committed boards a program's facts are audited against / patched by --apply."""
+    data = data_dir or ROOT / "data"
+    return [data / "parsed_json" / entry.board_json_file, data / "boards" / f"{entry.id}.json"]
+
+
+def spec_course_ids(entry: ProgramEntry) -> list[str]:
+    """Every course the program's spec references: mandatory (all years), categories, general pool."""
+    from app.degrees.spec import load_spec, spec_path
+
+    path = spec_path(entry)
+    if not path.exists():
+        return []
+    spec = load_spec(path)
+    ids = [m.course_id for m in spec.mandatory_courses]
+    for cat in spec.categories:
+        ids.extend(cat.course_ids)
+    ids.extend((spec.general_requirement or {}).get("course_ids", []))
+    return list(dict.fromkeys(ids))
+
+
 SHAAR_RUACH_SOURCE = ROOT / "data" / "general_courses_shaar_ruach.json"
 IMS_CACHE = ROOT / "data" / "raw_html" / "course_details"
-OFFICIAL_DIR = ROOT / "data" / "official"
 REPORT_DIR = ROOT / "data" / "import_reports"
 
 NOT_OFFERED_MARKER = "אין נתונים מתאימים"
@@ -86,7 +114,7 @@ def semesters_from_groups(group_semesters: list[str | None]) -> list[str]:
     return sorted(out)
 
 
-def read_ims(course_id: str, year: int, offline: bool) -> dict:
+def read_ims(course_id: str, year: int, offline: bool, live: bool = False) -> dict:
     """Offering facts for one course from the IMS course-search page."""
     d = digits(course_id)
     url = build_course_search_url(d, year)
@@ -94,8 +122,8 @@ def read_ims(course_id: str, year: int, offline: bool) -> dict:
     if offline and not cache.exists():
         return {"status": "unknown", "url": url, "reason": "not cached"}
     try:
-        was_cached = cache.exists()
-        html = fetch_url(url, cache)
+        was_cached = cache.exists() and not live
+        html = fetch_url(url, cache, force_refresh=live)
         if not was_cached:
             time.sleep(0.5)  # be polite to IMS
     except RuntimeError as exc:
@@ -117,12 +145,12 @@ def read_ims(course_id: str, year: int, offline: bool) -> dict:
     }
 
 
-def read_program(year: int, offline: bool) -> dict[str, dict]:
+def read_program(year: int, offline: bool, live: bool, tcid: str) -> dict[str, dict]:
     """course_id -> {weekly_hours, credits, teaching_format} from ydtochnit."""
-    cache = ROOT / "data" / "raw_html" / f"tau_program_{PROGRAM_TCID}_{year}.json"
+    cache = ROOT / "data" / "raw_html" / f"tau_program_{tcid}_{year}.json"
     if offline and not cache.exists():
         return {}
-    body = fetch_program_data(PROGRAM_TCID, str(year), cache_path=cache)
+    body = fetch_program_data(tcid, str(year), cache_path=cache, force_refresh=live)
     if isinstance(body, str):
         body = json.loads(body)
 
@@ -147,6 +175,9 @@ def read_program(year: int, offline: bool) -> dict[str, dict]:
 
     for prog in body or []:
         walk(prog)
+    if not out:
+        raise RuntimeError(f"ydtochnit returned no courses for tcid={tcid} shana={year} "
+                           f"(fetch failed or empty): refusing to write degraded facts")
     return out
 
 
@@ -158,12 +189,12 @@ def timetable_semesters(kurs: dict) -> list[str]:
     return sorted(out)
 
 
-def read_timetable(year: int, offline: bool) -> dict[str, list[str]]:
+def read_timetable(year: int, offline: bool, live: bool, tcid: str) -> dict[str, list[str]]:
     """course_id -> offered semesters from the program's official timetable."""
-    cache = ROOT / "data" / "raw_html" / f"tau_schedule_{PROGRAM_TCID}_{year}.json"
+    cache = ROOT / "data" / "raw_html" / f"tau_schedule_{tcid}_{year}.json"
     if offline and not cache.exists():
         return {}
-    body = fetch_schedule_data(PROGRAM_TCID, str(year), cache_path=cache)
+    body = fetch_schedule_data(tcid, str(year), cache_path=cache, force_refresh=live)
     if isinstance(body, str):
         body = json.loads(body)
 
@@ -180,14 +211,17 @@ def read_timetable(year: int, offline: bool) -> dict[str, list[str]]:
 
     for prog in body or []:
         walk(prog)
+    if not out:
+        raise RuntimeError(f"ydmaarechet returned no timetable for tcid={tcid} shana={year} "
+                           f"(fetch failed or empty): refusing to write degraded facts")
     return out
 
 
-def resolve_offering(ims: dict, timetable: list[str] | None, year: int) -> dict:
+def resolve_offering(ims: dict, timetable: list[str] | None, year: int, tcid: str) -> dict:
     """The program timetable wins; IMS only covers courses the timetable doesn't list."""
     if timetable:
         return {"status": "offered", "offered_semesters": timetable,
-                "url": SCHEDULE_URL.format(year=year), "source": "program_timetable"}
+                "url": SCHEDULE_URL.format(year=year, tcid=tcid), "source": "program_timetable"}
     off = {"status": ims["status"], "offered_semesters": ims.get("offered_semesters", []),
            "url": ims["url"], "source": "ims"}
     if "reason" in ims:
@@ -216,16 +250,19 @@ def board_courses(board: dict):
         yield "pool", c
 
 
-def official_facts(course_ids: list[str], year: int, offline: bool) -> dict[str, dict]:
-    program = read_program(year, offline)
-    timetable = read_timetable(year, offline)
+def official_facts(course_ids: list[str], year: int, offline: bool, live: bool, tcid: str) -> dict[str, dict]:
+    program = read_program(year, offline, live, tcid)
+    timetable = read_timetable(year, offline, live, tcid)
     print(f"[timetable] {len(timetable)} program courses with groups in {year}")
+    # Both sources really read this run: a course missing from them has left the program/timetable.
+    sources_read = bool(program) and bool(timetable)
     facts: dict[str, dict] = {}
     for i, cid in enumerate(sorted(course_ids), 1):
         print(f"[{i}/{len(course_ids)}] {cid}", flush=True)
-        ims = read_ims(cid, year, offline)
+        ims = read_ims(cid, year, offline, live)
         facts[cid] = {"ims": ims, "program": program.get(cid), "timetable": timetable.get(cid),
-                      "offering": resolve_offering(ims, timetable.get(cid), year)}
+                      "offering": resolve_offering(ims, timetable.get(cid), year, tcid),
+                      SOURCES_READ: sources_read}
     return facts
 
 
@@ -370,14 +407,17 @@ def apply_shaar_ruach_source(facts: dict) -> None:
     print(f"[apply] {SHAAR_RUACH_SOURCE.relative_to(ROOT)} updated")
 
 
-def refresh_syllabi(board: dict) -> int:
+def refresh_syllabi(board: dict, offline: bool = False) -> int:
     """Rebuild summaries whose syllabus URL moved to this year. A course keeps its old
-    summary (still flagged stale) when this year's syllabus page has no usable text yet."""
-    from app.pipeline.fetch_syllabus_summaries import enrich_course
+    summary (still flagged stale) when this year's syllabus page has no usable text yet.
+    ``offline`` only uses cached syllabus pages (uncached courses are left as they are)."""
+    from app.pipeline.fetch_syllabus_summaries import _cache_path, enrich_course
 
     done = 0
     for _, c in board_courses(board):
         if not (c.get("syllabus_summary_stale") or c.get("syllabus_ai_analysis_status") == "pending"):
+            continue
+        if offline and not (c.get("syllabus_url") and _cache_path(c["course_id"], c["syllabus_url"]).exists()):
             continue
         trial = dict(c)
         enrich_course(trial)
@@ -428,34 +468,113 @@ def _fmt(v) -> str:
     return json.dumps(v, ensure_ascii=False) if not isinstance(v, str) else v
 
 
+SOURCES_READ = "_sources_read"  # transient marker set by official_facts, never stored
+
+
+def merge_fact(old: dict | None, new: dict, year: int, tcid: str) -> dict:
+    """``new`` (a flat fact from this run) over ``old`` (this program's previous flat fact).
+
+    Fail-closed: an "unknown" IMS result (not cached / fetch failed / unparseable) never
+    replaces what the snapshot already holds, and neither does a missing program row or
+    timetable — unless this run really read both sources (``SOURCES_READ``), in which case
+    "missing" means the course left them and the old value is dropped. The offering is then
+    re-resolved from the values actually kept.
+    """
+    authoritative = bool(new.get(SOURCES_READ))
+    new = {k: v for k, v in new.items() if k != SOURCES_READ}
+    if not old:
+        return new
+    ims = new["ims"]
+    if ims.get("status") == "unknown" and old.get("ims"):
+        ims = old["ims"]
+    keep = lambda k: new[k] if new[k] is not None or authoritative else old.get(k)  # noqa: E731
+    program, timetable = keep("program"), keep("timetable")
+    if ims is new["ims"] and program is new["program"] and timetable is new["timetable"]:
+        return new
+    offering = resolve_offering(ims, timetable, year, tcid)
+    if offering["status"] == "unknown" and old.get("offering"):
+        offering = old["offering"]
+    return {"ims": ims, "program": program, "timetable": timetable, "offering": offering}
+
+
+def write_facts(facts: dict, year: int, tcid: str, path: Path | None = None,
+                seed: Path | None = None) -> Path:
+    """Merge this run's flat facts (one program, ``tcid``) into the per-year snapshot every
+    program shares (layout: app/degrees/facts.py). IMS is course-wide; program/timetable/offering
+    are stored under ``programs[tcid]``, so another program's view of a shared course is never
+    touched, and no course is ever dropped. ``seed``: the snapshot to start from when ``path``
+    does not exist yet (a build into another --out-dir starts from the committed one)."""
+    path = path or facts_path(year)
+    tcid = str(tcid)
+    stored = load_stored(path if path.exists() or seed is None else seed)
+    view = program_view(stored, tcid)
+    for cid, new in facts.items():
+        old = view.get(cid)
+        if old is None and (stored.get(cid) or {}).get("ims"):
+            old = {"ims": stored[cid]["ims"]}  # course known through another program: keep its IMS fact
+        fact = merge_fact(old, new, year, tcid)
+        entry = stored.setdefault(cid, {"ims": None, "programs": {}})
+        entry["ims"] = fact["ims"]
+        entry.setdefault("programs", {})[tcid] = {k: fact[k] for k in ("program", "timetable", "offering")}
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(stored, ensure_ascii=False, indent=2, sort_keys=True), encoding="utf-8")
+    return path
+
+
+def refresh(entry: ProgramEntry, year: int | None = None, offline: bool = False, live: bool = False,
+            boards: list[Path] | None = None, facts_file: Path | None = None,
+            update_catalog: bool = False) -> dict:
+    """Facts for every course the program's spec or boards reference (merged into
+    ``facts_file``, default the committed snapshot) and a review report. Boards are never
+    written here: ``degree.py build`` is the only board writer. ``update_catalog`` also keeps
+    the upstream שער רוח catalog in step (a build input). Returns a small summary."""
+    if live and offline:
+        raise ValueError("--live and --offline are mutually exclusive")
+    year = year or entry.source_year
+    tcid = entry.source_ids["tcid"]
+    paths = boards if boards is not None else program_boards(entry)
+    loaded = {p: json.loads(p.read_text(encoding="utf-8")) for p in paths if p.exists()}
+    board_ids = {c["course_id"] for b in loaded.values() for _, c in board_courses(b)}
+    spec_ids = set(spec_course_ids(entry))
+    facts = official_facts(sorted(board_ids | spec_ids), year, offline, live, tcid)
+
+    target = write_facts(facts, year, tcid, path=facts_file,
+                         seed=facts_path(year) if facts_file is not None else None)
+    merged = program_view(load_stored(target), tcid)
+    facts = {cid: merged[cid] for cid in facts}
+
+    rows = [r for b in loaded.values() for r in compare(b, facts, year)]
+    write_report(rows, year, facts)
+    print(f"[review] {len(rows)} mismatch rows -> data/import_reports/course_data_review_{year}.md")
+    if update_catalog:
+        apply_shaar_ruach_source(facts)
+    return {"facts": len(facts), "spec_courses": len(spec_ids), "board_courses": len(board_ids),
+            "spec_courses_missing_facts": sorted(spec_ids - set(facts)), "mismatch_rows": len(rows)}
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--year", type=int, default=ACADEMIC_YEAR)
-    ap.add_argument("--apply", action="store_true", help="patch the board JSON files in place")
-    ap.add_argument("--syllabi", action="store_true", help="with --apply: rebuild stale syllabus summaries")
+    ap.add_argument("--program", default=CLI_DEFAULT_PROGRAM, help="registry program id")
+    ap.add_argument("--year", type=int, default=None, help="TAU year code (default: the program's sourceYear)")
+    ap.add_argument("--apply", action="store_true",
+                    help="refresh the facts, then rebuild the boards (= degree.py refresh --apply)")
+    ap.add_argument("--syllabi", action="store_true",
+                    help="accepted for compatibility: the build always rebuilds stale syllabus summaries")
     ap.add_argument("--offline", action="store_true", help="use cached sources only")
+    ap.add_argument("--live", action="store_true", help="re-download every source, ignoring the cache")
     args = ap.parse_args()
-
-    boards = {p: json.loads(p.read_text(encoding="utf-8")) for p in BOARDS if p.exists()}
-    ids = {c["course_id"] for b in boards.values() for _, c in board_courses(b)}
-    facts = official_facts(sorted(ids), args.year, args.offline)
-
-    OFFICIAL_DIR.mkdir(parents=True, exist_ok=True)
-    (OFFICIAL_DIR / f"tau_course_facts_{args.year}.json").write_text(
-        json.dumps(facts, ensure_ascii=False, indent=2, sort_keys=True), encoding="utf-8")
-
-    rows = [r for b in boards.values() for r in compare(b, facts, args.year)]
-    write_report(rows, args.year, facts)
-    print(f"[review] {len(rows)} mismatch rows -> data/import_reports/course_data_review_{args.year}.md")
-
+    if args.live and args.offline:
+        ap.error("--live and --offline are mutually exclusive")
+    entry = get_program(args.program)
     if args.apply:
-        for path, board in boards.items():
-            n = apply(board, facts, args.year)
-            if args.syllabi:
-                print(f"[syllabi] {path.relative_to(ROOT)}: {refresh_syllabi(board)} summaries rebuilt")
-            path.write_text(json.dumps(board, ensure_ascii=False, indent=2), encoding="utf-8")
-            print(f"[apply] {path.relative_to(ROOT)}: {n} course records updated")
-        apply_shaar_ruach_source(facts)
+        if args.year is not None and args.year != entry.source_year:
+            ap.error(f"--apply builds the boards from the program's sourceYear ({entry.source_year}); "
+                     f"edit data/config/programs.json to change it")
+        import degree  # the single board write path (scripts/degree.py)
+
+        mode = ["--live"] if args.live else ["--offline"] if args.offline else []
+        return degree.main(["refresh", "--program", args.program, "--apply", *mode])
+    refresh(entry, args.year, args.offline, args.live)
     return 0
 
 
