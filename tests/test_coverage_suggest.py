@@ -110,3 +110,105 @@ def test_core_of_track_note_without_exactly_one_rule_is_left_out():
     assert suggest_coverage([_core_note("n3", "F-1")], _spec()) == {}        # no rules at all
     plain = _item("n4", "rule_text", "F-1")                                   # an ordinary note
     assert suggest_coverage([plain], _spec_with_rules(("a", ["F-1", "S-1"]))) == {}
+
+
+# ---- multi-home courses (a course the spec holds in several places)
+
+def _listing(id_, course_id, path, data=None, cancelled=False) -> EvidenceItem:
+    return EvidenceItem(id=id_, source_url="https://example.test", fetched_at=NOW, from_cache=False,
+                        kind="course_listing", path=list(path), raw_text="t", course_id=course_id,
+                        cancelled=cancelled, data=data or {})
+
+
+def _multi_spec() -> DegreeSpec:
+    spec = _spec().model_dump()
+    spec["categories"] = [
+        {"category_id": "comm", "name_he": "מסלול  <b>תקשורת</b>", "course_ids": ["X-1", "Y-1", "BOTH"]},
+        {"category_id": "sig", "name_he": "מסלול עיבוד אותות", "course_ids": ["X-1", "Y-1"]},
+        {"category_id": "dup", "name_he": "מסלול עיבוד אותות", "course_ids": ["Y-1"]},
+    ]
+    return DegreeSpec.model_validate(spec)
+
+
+def test_multi_home_listing_goes_to_the_category_named_by_its_section():
+    spec = _multi_spec()
+    items = [_listing(f"{T}:rama:5:kurs:X1", "X-1", ["שנה ג'", "קורסי מסלול", "מסלול תקשורת"]),
+             _listing(f"{T}:rama:6:kurs:X1", "X-1", ["שנה ג'", "קורסי מסלול", " מסלול   עיבוד אותות "]),
+             _listing(f"{T}:rama:5:kurs:BOTH", "BOTH", ["שנה ג'", "מסלול תקשורת"])]   # mandatory + comm
+    out = suggest_coverage(items, spec)
+    assert out == {items[0].id: MappedTo(mapped_to="categories[comm].course_ids[X-1]"),
+                   items[1].id: MappedTo(mapped_to="categories[sig].course_ids[X-1]"),
+                   items[2].id: MappedTo(mapped_to="categories[comm].course_ids[BOTH]")}
+    assert all(resolve_spec_path(spec, t) for e in out.values() for t in e.targets)
+
+
+def test_multi_home_listing_is_never_guessed():
+    spec = _multi_spec()
+    items = [_listing("a", "X-1", ["שנה ג'", "סמסטר א' (5) - קורסי חובה"]),       # path names no category
+             _listing("b", "Y-1", ["שנה ג'", "מסלול עיבוד אותות"]),               # two categories share the name
+             _listing("c", "X-1", ["מסלול תקשורת", "משהו אחר"]),                  # only the LAST element counts
+             _listing("d", "X-1", ["מסלול תקשורת"], cancelled=True),
+             _listing("e", "BOTH", ["מסלול עיבוד אותות"])]                       # sig does not hold BOTH
+    assert suggest_coverage(items, spec) == {}
+
+
+def test_multi_home_listing_matches_a_repeated_sections_other_locations():
+    spec = _multi_spec()
+    section = EvidenceItem(id=f"{T}:rama:9", source_url="https://example.test", fetched_at=NOW, from_cache=False,
+                           kind="section", path=["סיכום", "רשימה משותפת"], raw_text="רשימה משותפת",
+                           data={"also_at": ["שנה ג' > קורסי מסלול > מסלול תקשורת"]})
+    listing = _listing(f"{T}:rama:9:kurs:X1", "X-1", ["סיכום", "רשימה משותפת"])
+    pdf_style = _listing("pdf:1", "X-1", ["עמוד"], data={"also_at": [{"page": 2, "path": ["א", "מסלול עיבוד אותות"]}]})
+    out = suggest_coverage([section, listing, pdf_style], spec)
+    assert out[listing.id] == MappedTo(mapped_to="categories[comm].course_ids[X-1]")
+    assert out[pdf_style.id] == MappedTo(mapped_to="categories[sig].course_ids[X-1]")
+
+
+def test_multi_home_course_fact_goes_to_mandatory_or_every_home():
+    spec = _multi_spec()
+    items = [_item(f"{T}:timetable:BOTH", "course_fact", "BOTH"), _item("tau:ims:2026:X-1", "course_fact", "X-1"),
+             _item(f"{T}:timetable:Y-1", "course_fact", "Y-1"), _item("cancelled", "course_fact", "X-1", cancelled=True)]
+    out = suggest_coverage(items, spec)
+    assert out == {
+        items[0].id: MappedTo(mapped_to="mandatory_courses[BOTH]"),
+        items[1].id: MappedTo(mapped_to=["categories[comm].course_ids[X-1]", "categories[sig].course_ids[X-1]"]),
+        items[2].id: MappedTo(mapped_to=["categories[comm].course_ids[Y-1]", "categories[sig].course_ids[Y-1]",
+                                         "categories[dup].course_ids[Y-1]"]),
+    }
+    assert all(resolve_spec_path(spec, t) for e in out.values() for t in e.targets)
+
+
+# ---- reusing another degree's mappings
+
+from app.degrees.coverage_suggest import reuse_coverage  # noqa: E402
+from app.degrees.spec import NotPlanningRule  # noqa: E402
+
+
+def _ev(id_, text, kind="rule_text") -> EvidenceItem:
+    return EvidenceItem(id=id_, source_url="https://example.test", fetched_at=NOW, from_cache=False,
+                        kind=kind, path=["x"], raw_text=text)
+
+
+def test_reuse_copies_identical_evidence_only_into_uncovered_resolvable_ids():
+    here = _spec().model_copy(update={"coverage": {"kept": NotPlanningRule(not_planning_rule="mine")}})
+    other = _spec().model_copy(update={"coverage": {
+        "same": MappedTo(mapped_to="categories[fluids]"),
+        "npr": NotPlanningRule(not_planning_rule="policy"),
+        "two": MappedTo(mapped_to=["categories[fluids]", "mandatory_courses[M-1]"]),
+        "differs": MappedTo(mapped_to="categories[fluids]"),
+        "kept": MappedTo(mapped_to="categories[solids]"),
+        "unresolved": MappedTo(mapped_to=["categories[fluids]", "categories[nope]"]),
+        "only_other": MappedTo(mapped_to="categories[fluids]"),
+    }})
+    mine = [_ev(i, "same text") for i in ("same", "npr", "two", "kept", "unresolved", "uncovered_there")]
+    mine.append(_ev("differs", "new wording"))
+    theirs = [_ev(i, "same text") for i in ("same", "npr", "two", "kept", "unresolved", "only_other",
+                                            "uncovered_there")]
+    theirs.append(_ev("differs", "old wording"))
+    result = reuse_coverage(mine, here, theirs, other)
+    assert result.copied == {"same": MappedTo(mapped_to="categories[fluids]"),
+                             "npr": NotPlanningRule(not_planning_rule="policy"),
+                             "two": MappedTo(mapped_to=["categories[fluids]", "mandatory_courses[M-1]"])}
+    assert result.needs_review == {"unresolved": other.coverage["unresolved"]}
+    assert result.differing == ["differs"]
+    assert "kept" not in result.copied  # never overwrites

@@ -9,7 +9,7 @@ One CLI for every registered degree (data/config/programs.json):
     python scripts/degree.py build    --program <id> [--live|--offline] [--out-dir DIR]
     python scripts/degree.py check    --program <id>  --live|--offline
     python scripts/degree.py refresh  --program <id> [--live|--offline] [--apply [--syllabi]]
-    python scripts/degree.py todo     --program <id> [--apply-suggestions]
+    python scripts/degree.py todo     --program <id> [--reuse-from <program-id>] [--apply-suggestions]
     python scripts/degree.py publish  --program <id> [--update]
 
 init      resolves the program in TAU's official program index (fails listing the candidates on
@@ -676,22 +676,53 @@ def run_publish(entry: ProgramEntry, update: bool) -> int:
 TODO_NAME = "todo.md"
 
 
-def run_todo(entry: ProgramEntry, apply_suggestions: bool) -> int:
-    """Print (and write to todo.md beside evidence.json) the coverage worklist; 0 iff nothing is left."""
+def _load_evidence(entry: ProgramEntry):
+    from app.degrees.evidence import EvidenceItem
+
+    return [EvidenceItem.model_validate(r) for r in json.loads(evidence_path(entry).read_text(encoding="utf-8"))]
+
+
+def run_todo(entry: ProgramEntry, apply_suggestions: bool, reuse_from: str | None = None) -> int:
+    """Print (and write to todo.md beside evidence.json) the coverage worklist; 0 iff nothing is left.
+
+    ``reuse_from`` (another program id) first copies that degree's coverage entries for evidence
+    both share verbatim (see ``reuse_coverage``); ``apply_suggestions`` then fills what is still
+    missing. Neither ever overwrites an existing entry."""
     from app.degrees.checks.coverage import coverage_gaps, unresolved_targets
-    from app.degrees.coverage_suggest import suggest_coverage
+    from app.degrees.coverage_suggest import reuse_coverage, suggest_coverage
     from app.degrees.spec import MappedTo
-    from app.degrees.evidence import EvidenceItem, strip_html
+    from app.degrees.evidence import strip_html
     from app.degrees.spec import write_spec
 
     ev_path = evidence_path(entry)
     if not ev_path.exists():
         print(f"{_show(ev_path)} not found — run `degree.py evidence --program {entry.id}` first", file=sys.stderr)
         return 2
-    items = [EvidenceItem.model_validate(r) for r in json.loads(ev_path.read_text(encoding="utf-8"))]
+    other = None
+    if reuse_from:
+        if reuse_from == entry.id:
+            raise DegreeCliError(f"--reuse-from {reuse_from}: a degree cannot reuse its own mappings (itself)")
+        try:
+            other = get_program(reuse_from)
+        except KeyError:
+            raise DegreeCliError(f"--reuse-from {reuse_from}: no such registry program") from None
+        for needed in (evidence_path(other), spec_path(other)):
+            if not needed.exists():
+                raise DegreeCliError(f"--reuse-from {reuse_from}: {_show(needed)} not found")
+    items = _load_evidence(entry)
     spec_file = spec_path(entry)
     spec = load_spec(spec_file)
     lines: list[str] = []
+    review: list[str] = []
+    if other is not None:
+        reuse = reuse_coverage(items, spec, _load_evidence(other), load_spec(spec_path(other)))
+        if reuse.copied:
+            spec = spec.model_copy(update={"coverage": {**spec.coverage, **reuse.copied}})
+            write_spec(spec, spec_file)
+        lines.append(f"reused {len(reuse.copied)} coverage entries from {other.id} into {_show(spec_file)}; "
+                     f"{len(reuse.needs_review)} need review; {len(reuse.differing)} skipped (evidence text differs)")
+        for id_, e in reuse.needs_review.items():
+            review.append(f"- {id_}: {json.dumps(e.model_dump(), ensure_ascii=False)}")
     if apply_suggestions:
         fresh = {k: v for k, v in suggest_coverage(items, spec).items() if k not in spec.coverage}
         if fresh:
@@ -724,6 +755,9 @@ def run_todo(entry: ProgramEntry, apply_suggestions: bool) -> int:
                     where += f" [unresolved: {', '.join(bad)}]"
             lines += [f"- id: {item.id}" + ("" if reasons[item.id] == "unaccounted" else f" ({reasons[item.id]})") + where,
                       f"  source_url: {item.source_url}", f"  text: {strip_html(item.raw_text)}"]
+    if review:
+        lines += ["", f"## needs review (reused from {other.id}: a target does not resolve here; not written)"]
+        lines += review
     if stale:
         lines += ["", "## stale coverage keys (not in evidence; remove from the spec)"]
         lines += [f"- {k}" for k in stale]
@@ -869,6 +903,10 @@ def main(argv: list[str] | None = None) -> int:
                     help="accepted for compatibility: build always rebuilds stale syllabus summaries")
     ap.add_argument("--apply-suggestions", action="store_true",
                     help="todo: first write the unambiguous suggested coverage entries (never overwriting) to the spec")
+    ap.add_argument("--reuse-from", metavar="PROGRAM_ID",
+                    help="todo: first copy that degree's coverage entries for evidence ids both share with "
+                         "identical text, into ids not yet covered and only when every target resolves here "
+                         "(never overwriting); runs BEFORE --apply-suggestions")
     ap.add_argument("--update", action="store_true",
                     help="publish: republish an already-live degree (needs Plan 3's impact analysis; not built yet)")
     init = ap.add_argument_group("init (scaffold a draft degree from the official program index)")
@@ -905,7 +943,7 @@ def _run_command(args, entry: ProgramEntry) -> int:
         _print_evidence_counts(items, write_evidence(entry, items))
         return 0
     if args.command == "todo":
-        return run_todo(entry, args.apply_suggestions)
+        return run_todo(entry, args.apply_suggestions, args.reuse_from)
     if args.command == "publish":
         if args.offline:
             print("publish always builds and checks live (freshness must be verified) — drop --offline",
