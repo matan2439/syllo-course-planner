@@ -26,21 +26,31 @@ test('every institution resolves and entries are strict', () => {
 
 describe('the registry validates itself', () => {
   const me = getProgramEntry('mechanical_engineering_2027')!;
-  const entry = (over: Record<string, unknown>) => ({ ...me, ...over });
+  const entry = (over: Record<string, unknown>) => ({ ...me, base: 'bar', ...over });
 
   test('an id may carry an institution prefix', () => {
-    expect(parseRegistry([entry({ id: 'foo:bar_2027', familyId: 'bar' })]).map((p) => p.id)).toEqual(['foo:bar_2027']);
+    expect(parseRegistry([entry({ id: 'foo:bar_2027', institution: 'foo', familyId: 'bar' })]).map((p) => p.id))
+      .toEqual(['foo:bar_2027']);
   });
 
   test.each(['Bar_2027', 'foo:Bar_2027', 'foo:', ':bar_2027', 'a:b:c_2027', 'bar-2027'])('rejects id %s', (id) => {
     expect(() => parseRegistry([entry({ id, familyId: 'bar' })])).toThrow();
   });
 
+  test.each([
+    [{ id: 'baz_2027' }, /<base>_<year>/],
+    [{ id: 'bar_2028' }, /<base>_<year>/],
+    [{ id: 'bar_2028', year: 2028 }, /sourceYear/],
+    [{ id: 'foo:bar_2027' }, /institution/],
+  ])('id, base, year and sourceYear must agree: %o', (over, why) => {
+    expect(() => parseRegistry([entry({ familyId: 'bar', ...over })])).toThrow(why);
+  });
+
   test('a family needs exactly one default', () => {
     expect(() => parseRegistry([entry({ id: 'bar_2027', familyId: 'bar', isFamilyDefault: false })])).toThrow(/bar/);
     expect(() => parseRegistry([
       entry({ id: 'bar_2027', familyId: 'bar' }),
-      entry({ id: 'bar_2028', familyId: 'bar', year: 2028 }),
+      entry({ id: 'bar_2028', familyId: 'bar', year: 2028, sourceYear: 2027 }),
     ])).toThrow(/bar/);
   });
 

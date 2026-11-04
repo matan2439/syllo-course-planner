@@ -163,6 +163,7 @@ def enrich_board(
         program=program,
         db_path=db_path,
         offerings=offerings,
+        shana=int(shana),
     )
     if not dry_run:
         board_path.write_text(

@@ -104,3 +104,9 @@ def test_live_build_into_out_dir_writes_facts_there(monkeypatch, tmp_path):
         degree.build(ME, tmp_path, live=True)
     assert seen["facts_file"] == tmp_path / "official" / f"tau_course_facts_{ME.source_year}.json"
     assert degree.build_facts_path(ME, degree.DATA) == rcd.facts_path(ME.source_year)
+
+
+@pytest.mark.parametrize("command", ["evidence", "build", "check", "refresh"])
+def test_prefixed_program_ids_are_refused_until_paths_have_a_slug(command, capsys):
+    assert degree.main([command, "--program", "tau:mechanical_engineering_2027", "--offline"]) == 2
+    assert "prefixed ids need a filesystem slug" in capsys.readouterr().err

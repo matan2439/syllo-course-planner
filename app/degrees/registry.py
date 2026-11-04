@@ -3,7 +3,7 @@ import json
 from pathlib import Path
 from typing import Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 CONFIG_DIR = Path(__file__).resolve().parents[2] / "data" / "config"
 DEFAULT_PATH = CONFIG_DIR / "programs.json"
@@ -35,10 +35,22 @@ class ProgramEntry(BaseModel):
         default=None, alias="catalogYearPolicy"
     )
 
+    @model_validator(mode="after")
+    def _id_matches_base_and_year(self):
+        # shared/programs.ts parseRegistry: same rules.
+        prefix, _, bare = self.id.rpartition(":")
+        if prefix and prefix != self.institution:
+            raise ValueError(f"{self.id}: id prefix must be the institution ({self.institution})")
+        if bare != f"{self.base}_{self.year}":
+            raise ValueError(f"{self.id}: id must be <base>_<year> ({self.base}_{self.year})")
+        if self.year != self.source_year + 1:
+            raise ValueError(f"{self.id}: year ({self.year}) must be sourceYear + 1 ({self.source_year + 1})")
+        return self
+
 
 def validate_registry(entries: list[ProgramEntry]) -> list[ProgramEntry]:
     """Registry-wide rules (shared/programs.ts parseRegistry: same rules): ids are unique and
-    every family has exactly one default entry."""
+    every family has exactly one default entry. Per-entry id/base/year rules are on ProgramEntry."""
     ids = [e.id for e in entries]
     dups = sorted({i for i in ids if ids.count(i) > 1})
     if dups:

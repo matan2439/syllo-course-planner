@@ -43,11 +43,11 @@ def _write_registry(tmp_path, programs):
 def _raw(**over):
     me = next(p for p in json.loads(Path(DEFAULT_PATH).read_text(encoding="utf-8"))["programs"]
               if p["id"] == "mechanical_engineering_2027")
-    return {**me, **over}
+    return {**me, "base": "bar", **over}
 
 
 def test_id_may_carry_an_institution_prefix(tmp_path):
-    path = _write_registry(tmp_path, [_raw(id="foo:bar_2027", familyId="bar")])
+    path = _write_registry(tmp_path, [_raw(id="foo:bar_2027", institution="foo", familyId="bar")])
     assert [p.id for p in load_registry(path)] == ["foo:bar_2027"]
 
 
@@ -57,11 +57,23 @@ def test_malformed_ids_are_rejected(tmp_path, bad):
         load_registry(_write_registry(tmp_path, [_raw(id=bad, familyId="bar")]))
 
 
+@pytest.mark.parametrize("over, why", [
+    ({"id": "baz_2027"}, "<base>_<year>"),                        # id names another base
+    ({"id": "bar_2028"}, "<base>_<year>"),                        # id names another year
+    ({"year": 2028, "id": "bar_2028"}, "sourceYear"),             # year != sourceYear + 1
+    ({"id": "foo:bar_2027"}, "institution"),                      # prefix is not the institution
+])
+def test_id_base_year_and_source_year_must_agree(tmp_path, over, why):
+    with pytest.raises(ValueError, match=why):
+        load_registry(_write_registry(tmp_path, [_raw(familyId="bar", **over)]))
+
+
 def test_a_family_needs_exactly_one_default(tmp_path):
     none = [_raw(id="bar_2027", familyId="bar", isFamilyDefault=False)]
     with pytest.raises(ValueError, match="bar"):
         load_registry(_write_registry(tmp_path, none))
-    two = [_raw(id="bar_2027", familyId="bar"), _raw(id="bar_2028", familyId="bar", year=2028)]
+    two = [_raw(id="bar_2027", familyId="bar"),
+           _raw(id="bar_2028", familyId="bar", year=2028, sourceYear=2027)]
     with pytest.raises(ValueError, match="bar"):
         load_registry(_write_registry(tmp_path, two))
 

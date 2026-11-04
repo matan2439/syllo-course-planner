@@ -60,6 +60,7 @@ def generate(
         program=program,
         db_path=db_path,
         offerings=offerings,
+        shana=int(shana),
     )
 
     # Count what was placed

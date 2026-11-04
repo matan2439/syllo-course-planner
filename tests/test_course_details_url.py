@@ -256,3 +256,25 @@ def test_course_with_details_url_shows_official_data_available():
     for rc in repo:
         assert rc.get("official_details_available"), \
             f"{rc['course_id']}: official_details_available must be True (has course_details_url)"
+
+
+# ---------------------------------------------------------------------------
+# The course-details year is the program's sourceYear, not a module constant
+# ---------------------------------------------------------------------------
+
+def test_board_course_details_urls_follow_the_program_shana(pdf_prog, tmp_path):
+    from app.analysis.semester_board import build_semester_board
+
+    program = {**pdf_prog, "requirements": {
+        **pdf_prog.get("requirements", {}),
+        "mandatory_courses": {"courses": [{"course_id": "0512-1204", "name_he": "x", "weekly_hours": 3,
+                                           "allowed_semesters": ["year_3_semester_a"]}]},
+    }}
+    board = build_semester_board({"selected_courses": []}, program=program, db_path=tmp_path / "none.sqlite",
+                                 shana=2027)
+    placed = [c for s in board["semesters"] for c in s["courses"]]
+    repo = board["metadata"]["program_repository_courses"]
+    urls = [c["course_details_url"] for c in placed + repo if c.get("course_details_url")]
+    assert placed and repo and len(urls) >= len(placed)
+    assert all("year=2027" in u for u in urls), [u for u in urls if "year=2027" not in u][:3]
+    assert _build_program_repository_courses(pdf_prog, shana=2027)[0]["course_details_url"].endswith("year=2027")

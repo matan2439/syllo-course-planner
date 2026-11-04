@@ -189,7 +189,7 @@ def build(program_id: str, start_year: int, tcid: str, shana: int,
         },
     }
     board = build_semester_board(plan={"selected_courses": []}, program=program, start_year=start_year,
-                                 offerings=offerings)
+                                 offerings=offerings, shana=int(shana))
 
     # Official program facts win over the local DB for names, hours and credits.
     by_id = {s["course_id"]: s for s in specs}

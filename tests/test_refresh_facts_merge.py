@@ -213,6 +213,7 @@ def test_second_program_refresh_keeps_me_build_identical(monkeypatch, tmp_path):
     }), encoding="utf-8")
 
     committed_facts = rcd.facts_path(me.source_year)
+    committed_bytes = committed_facts.read_bytes()
     stored = load_stored(committed_facts)
     out = tmp_path / "out"
     facts_file = out / "official" / committed_facts.name
@@ -235,8 +236,7 @@ def test_second_program_refresh_keeps_me_build_identical(monkeypatch, tmp_path):
         assert written[c]["programs"]["9999"]["timetable"] == ["B"]
         assert written[c]["programs"]["8715"] == stored[c]["programs"]["8715"]
     assert load_program_facts(me.source_year, "8715", facts_file) == load_program_facts(me.source_year, "8715")
-    assert committed_facts.read_text(encoding="utf-8") == json.dumps(stored, ensure_ascii=False, indent=2,
-                                                                     sort_keys=True)
+    assert committed_facts.read_bytes() == committed_bytes
 
     committed = degree.board_paths(me)
     built = degree.board_paths(me, data_dir=out)

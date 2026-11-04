@@ -31,10 +31,19 @@ export type ProgramEntry = z.infer<typeof programSchema>;
 
 /**
  * Parse and validate registry entries (app/degrees/registry.py validate_registry: same rules):
- * every entry is strict, ids are unique and every family has exactly one default entry.
+ * every entry is strict, an id is `[<institution>:]<base>_<year>` with year = sourceYear + 1,
+ * ids are unique and every family has exactly one default entry.
  */
 export function parseRegistry(programs: unknown[]): ProgramEntry[] {
   const entries = z.array(programSchema).min(1).parse(programs);
+  for (const p of entries) {
+    const cut = p.id.lastIndexOf(':');
+    const prefix = cut < 0 ? '' : p.id.slice(0, cut);
+    const bare = p.id.slice(cut + 1);
+    if (prefix && prefix !== p.institution) throw new Error(`${p.id}: id prefix must be the institution (${p.institution})`);
+    if (bare !== `${p.base}_${p.year}`) throw new Error(`${p.id}: id must be <base>_<year> (${p.base}_${p.year})`);
+    if (p.year !== p.sourceYear + 1) throw new Error(`${p.id}: year (${p.year}) must be sourceYear + 1 (${p.sourceYear + 1})`);
+  }
   const ids = entries.map((p) => p.id);
   const dups = [...new Set(ids.filter((id, i) => ids.indexOf(id) !== i))].sort();
   if (dups.length) throw new Error(`duplicate program ids: ${dups.join(', ')}`);

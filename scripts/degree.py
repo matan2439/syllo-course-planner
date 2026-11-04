@@ -67,6 +67,8 @@ def bidit_fields(source_year: int) -> tuple[str, ...]:
     """The BIDIT fields for TAU year ``source_year``: the schedule field is named for the
     academic year it ends (shana 2026 == 2026-2027 -> ``bidit_schedule_2027``)."""
     return (*BIDIT_FIELDS, f"bidit_schedule_{source_year + 1}")
+
+
 TIMESTAMP_FIELDS = frozenset({"syllabus_last_fetched_at"})
 
 
@@ -388,6 +390,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--syllabi", action="store_true",
                     help="accepted for compatibility: build always rebuilds stale syllabus summaries")
     args = ap.parse_args(argv)
+    if ":" in args.program:  # board/spec/report paths are named after the id: no id->path mapping yet
+        print(f"{args.program}: prefixed ids need a filesystem slug — not supported yet", file=sys.stderr)
+        return 2
     args.out_dir = args.out_dir.resolve()
     os.chdir(ROOT)  # the legacy builders resolve data/... relative to the repo root
     entry = get_program(args.program)
