@@ -69,3 +69,6 @@ tmp/
 output/
 .playwright-mcp/
 web/.tmp/
+
+# degree worklist written by degree.py todo
+data/degrees/**/todo.md

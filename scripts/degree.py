@@ -9,6 +9,7 @@ One CLI for every registered degree (data/config/programs.json):
     python scripts/degree.py build    --program <id> [--live|--offline] [--out-dir DIR]
     python scripts/degree.py check    --program <id>  --live|--offline
     python scripts/degree.py refresh  --program <id> [--live|--offline] [--apply [--syllabi]]
+    python scripts/degree.py todo     --program <id> [--apply-suggestions]
 
 init      resolves the program in TAU's official program index (fails listing the candidates on
           zero or several matches), appends a status "draft" registry entry <base>_<shana+1>,
@@ -449,6 +450,55 @@ def run_check(entry: ProgramEntry, live: bool, offline: bool) -> tuple[bool, str
     return passed, report
 
 
+# ---------------------------------------------------------------- todo
+
+TODO_NAME = "todo.md"
+
+
+def run_todo(entry: ProgramEntry, apply_suggestions: bool) -> int:
+    """Print (and write to todo.md beside evidence.json) the coverage worklist; 0 iff nothing is left."""
+    from app.degrees.coverage_suggest import coverage_gaps, suggest_coverage
+    from app.degrees.evidence import EvidenceItem, strip_html
+    from app.degrees.spec import write_spec
+
+    ev_path = evidence_path(entry)
+    if not ev_path.exists():
+        print(f"{_show(ev_path)} not found — run `degree.py evidence --program {entry.id}` first", file=sys.stderr)
+        return 2
+    items = [EvidenceItem.model_validate(r) for r in json.loads(ev_path.read_text(encoding="utf-8"))]
+    spec_file = spec_path(entry)
+    spec = load_spec(spec_file)
+    lines: list[str] = []
+    if apply_suggestions:
+        fresh = {k: v for k, v in suggest_coverage(items, spec).items() if k not in spec.coverage}
+        if fresh:
+            spec = spec.model_copy(update={"coverage": {**spec.coverage, **fresh}})
+            write_spec(spec, spec_file)
+        lines.append(f"applied {len(fresh)} suggested coverage entries to {_show(spec_file)}")
+    open_items, stale = coverage_gaps(items, spec)
+    lines.append(f"# Coverage worklist — {entry.id}: {len(open_items)} unaccounted of {len(items)} evidence items, "
+                 f"{len(stale)} stale keys")
+    groups: dict[tuple[str, str], list] = {}
+    for item in open_items:
+        groups.setdefault((item.kind, " > ".join(item.path)), []).append(item)
+    last_kind = None
+    for (kind, path), group in sorted(groups.items()):
+        if kind != last_kind:
+            lines += ["", f"## {kind}"]
+            last_kind = kind
+        lines += ["", f"### {path or '(no path)'}"]
+        for item in group:
+            lines += [f"- id: {item.id}", f"  source_url: {item.source_url}", f"  text: {strip_html(item.raw_text)}"]
+    if stale:
+        lines += ["", "## stale coverage keys (not in evidence; remove from the spec)"]
+        lines += [f"- {k}" for k in stale]
+    text = "\n".join(lines) + "\n"
+    ev_path.with_name(TODO_NAME).write_text(text, encoding="utf-8")
+    sys.stdout.buffer.write(text.encode("utf-8"))
+    sys.stdout.flush()
+    return 0 if not open_items and not stale else 1
+
+
 # ---------------------------------------------------------------- init
 
 # Institutions ``init`` can resolve and fetch evidence for (a program index + evidence adapters).
@@ -571,7 +621,7 @@ def run_init(args) -> int:
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("command", choices=["init", "evidence", "build", "check", "refresh"])
+    ap.add_argument("command", choices=["init", "evidence", "build", "check", "refresh", "todo"])
     ap.add_argument("--program", help="registry program id, e.g. mechanical_engineering_2027 (all but init)")
     mode = ap.add_mutually_exclusive_group()
     mode.add_argument("--live", action="store_true",
@@ -582,6 +632,8 @@ def main(argv: list[str] | None = None) -> int:
                     help="refresh: then rebuild the committed boards with `build` into data/")
     ap.add_argument("--syllabi", action="store_true",
                     help="accepted for compatibility: build always rebuilds stale syllabus summaries")
+    ap.add_argument("--apply-suggestions", action="store_true",
+                    help="todo: first write the unambiguous suggested coverage entries (never overwriting) to the spec")
     init = ap.add_argument_group("init (scaffold a draft degree from the official program index)")
     init.add_argument("--institution", default="tau")
     init.add_argument("--title-he", help="the program's official Hebrew title, exactly as the index lists it")
@@ -607,6 +659,8 @@ def main(argv: list[str] | None = None) -> int:
         items = collect(entry, live=args.live, offline=args.offline)
         _print_evidence_counts(items, write_evidence(entry, items))
         return 0
+    if args.command == "todo":
+        return run_todo(entry, args.apply_suggestions)
     if args.command == "build":
         out = build(entry, args.out_dir, offline=args.offline, live=args.live)
         for key, path in out.items():
