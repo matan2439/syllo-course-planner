@@ -221,7 +221,7 @@ def write_board(path: Path, board: dict, previous: str | None, keep_timestamps: 
 
 
 def build(entry: ProgramEntry, out_dir: Path = DATA, offline: bool = False, live: bool = False) -> dict[str, Path]:
-    from app.pipeline.generate_2027_board import generate
+    from app.pipeline.generate_board import generate
     import build_early_years_board as early
 
     rcd = _refresh_module()

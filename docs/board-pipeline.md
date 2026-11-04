@@ -1,33 +1,54 @@
 # Board build / audit / sync / verify pipeline
 
-Single entry point for keeping `data/parsed_json/{program}_semester_board_{year}.json`
+Entry points for keeping `data/parsed_json/{program}_semester_board_{year}.json`
 consistent and in sync with Supabase, replacing ad-hoc manual edits.
 
-## Commands
+## The four commands (`scripts/degree.py`)
+
+Every registered degree (`data/config/programs.json`) is driven by one CLI, `--program <id>`:
+
+| Command | What it does |
+| --- | --- |
+| `evidence` | Collects the official sources (TAU GraphQL, regulations PDF, tochniot pages) into `evidence.json` (`--live` fetches, `--offline` replays the stored snapshot). |
+| `build` | spec -> boards: `spec.json` + `curation.json` + official facts -> `data/parsed_json/..._semester_board_<y>.json`, `data/boards/<id>.json`, the Years 1-2 board and `data/config/early_year_courses.json`. `--out-dir DIR` redirects the output. |
+| `check` | Compares the spec against the evidence: every official item covered, course rules enforced, no unresolved conflicts or gaps. Exits non-zero on failure. |
+| `refresh` | Updates the per-year official course facts snapshot (`--apply` patches boards). |
+
+Flow: `evidence` -> review/edit `spec.json` (+ `curation.json` overlay) -> `check` -> `build`.
+`--live` / `--offline` choose between fetching and replaying stored data.
+
+Where files live:
+
+- `data/config/programs.json` - the registry (program ids, tcid, source year, board file names).
+- `data/degrees/<inst>/<base>/<year>/{spec,evidence,curation}.json` - e.g. `data/degrees/tau/mechanical_engineering/2027/`.
+- `data/official/tau_course_facts_<shana>.json` - per-year official course facts shared by all programs (TAU `shana` 2026 = TAU year tashpaz).
+
+npm scripts:
 
 ```bash
-# Refresh metadata.board_data_version (hash of semesters + repository courses)
-npm run build:board
-
-# Run all consistency checks (read-only, no network/DB)
-npm run audit:board
-
-# Audit, and if it passes, push board_json to Supabase program_versions
-npm run sync:board
-
-# Compare the live deployed API against the local board JSON
-npm run verify:live
+npm run build:board    # degree.py build --program mechanical_engineering_2027 --offline (byte-identical rebuild)
+npm run degree:check   # degree.py check --program mechanical_engineering_2027 --offline
+npm run audit:board    # course_planner_pipeline.py --audit on data/boards/mechanical_engineering_2027.json
+npm run sync:board     # audit, then push that board to Supabase program_versions.board_json
+npm run verify:live    # compare the live API against that board
 ```
 
-All four are thin wrappers around:
+`audit`, `sync` and `verify-live` stay in `scripts/course_planner_pipeline.py` (it is the only
+step that writes to the DB). Production `program_versions.board_json` holds the FULL board
+`data/boards/mechanical_engineering_2027.json`, so these scripts pass `--board-json` to it;
+the older 56-course `data/parsed_json/...` board must not be synced.
 
-```bash
-python3 scripts/course_planner_pipeline.py --program mechanical_engineering --year 2027 \
-    [--build] [--audit] [--sync] [--verify-live] [--live-base https://...]
-```
+### Known failures of `degree:check` for mechanical engineering 2027
 
-Flags can be combined; they always run in order build -> audit -> sync -> verify-live,
-and `--audit` failing (any error-level issue) stops the pipeline before `--sync`.
+`npm run degree:check` exits non-zero today, by design, on two pinned checks:
+
+- `rules_enforced`: 6 course rules in the spec are not yet enforced by the planner/board logic.
+- `known_gaps`: the regulations PDF has not been read (recorded as a gap, not silently assumed).
+
+It will pass once the rules are enforced and the regulations source is read.
+
+Deprecated names kept for one release as re-exports: `app/pipeline/enrich_mechanical_2027.py`
+(now `enrich_board_graphql.py`) and `app/pipeline/generate_2027_board.py` (now `generate_board.py`).
 
 ## Building a degree's boards (`scripts/degree.py`)
 

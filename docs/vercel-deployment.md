@@ -99,7 +99,7 @@ python -m app.pipeline.seed_postgres
 
 To refresh the board data after a pipeline update:
 ```bash
-python -m app.pipeline.generate_2027_board   # regenerates board JSON
+python -m app.pipeline.generate_board   # regenerates board JSON
 python -m app.pipeline.seed_postgres         # re-seeds to Supabase
 ```
 

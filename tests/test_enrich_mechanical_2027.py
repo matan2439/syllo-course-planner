@@ -1,5 +1,5 @@
 """
-Tests for app.pipeline.enrich_mechanical_2027 and related enrichment infrastructure.
+Tests for app.pipeline.enrich_board_graphql and related enrichment infrastructure.
 All tests use fixtures and cached data — no live network calls.
 """
 
@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pytest
 
-from app.pipeline.enrich_mechanical_2027 import _extract_course_map, enrich_board
+from app.pipeline.enrich_board_graphql import _extract_course_map, enrich_board
 from app.analysis.semester_board import _build_course_details_url
 from app.scraping.enrich_board_links import enrich_board as enrich_links
 
