@@ -1,4 +1,210 @@
 {
+  "0321-3818": {
+    "ims": {
+      "name_he": "חומרה קוונטית",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0321381801&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=03213818&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "B"
+        ]
+      }
+    }
+  },
+  "0321-3819": {
+    "ims": {
+      "name_he": "מבוא לאינפורמציה ואלגוריתמים קוונטיים",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0321381901&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=03213819&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "B"
+        ]
+      }
+    }
+  },
+  "0368-3065": {
+    "ims": {
+      "name_he": "מבוא לאבטחת מידע",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0368306501&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=03683065&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "B"
+        ]
+      }
+    }
+  },
+  "0509-1117": {
+    "ims": {
+      "name_he": "כלים מתמטיים לפיזיקה",
+      "offered_semesters": [
+        "A",
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0509111701&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05091117&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A",
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 3.5,
+          "teaching_format": [
+            {
+              "hours": 2,
+              "type": "שיעור"
+            },
+            {
+              "hours": 2,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "A",
+          "B"
+        ]
+      }
+    }
+  },
+  "0509-1118": {
+    "ims": {
+      "name_he": "מכניקה קלאסית להנדסת חשמל",
+      "offered_semesters": [
+        "A",
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0509111801&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05091118&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A",
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 5.5,
+          "teaching_format": [
+            {
+              "hours": 4,
+              "type": "שיעור"
+            },
+            {
+              "hours": 2,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 6
+        },
+        "timetable": [
+          "A",
+          "B"
+        ]
+      }
+    }
+  },
   "0509-1624": {
     "ims": {
       "name_he": "אלגברה ליניארית להנדסה מכנית",
@@ -165,6 +371,178 @@
       }
     }
   },
+  "0509-1724": {
+    "ims": {
+      "name_he": "אלגברה ליניארית להנדסת חשמל ואלקטרוניקה",
+      "offered_semesters": [
+        "A",
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0509172401&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05091724&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A",
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 6.5,
+          "teaching_format": [
+            {
+              "hours": 5,
+              "type": "שיעור"
+            },
+            {
+              "hours": 2,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 7
+        },
+        "timetable": [
+          "A",
+          "B"
+        ]
+      }
+    }
+  },
+  "0509-1745": {
+    "ims": {
+      "name_he": "משוואות דיפרנציאליות רגילות להנדסת חשמל ואלקטרוניקה",
+      "offered_semesters": [
+        "A",
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0509174501&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05091745&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A",
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "A",
+          "B"
+        ]
+      }
+    }
+  },
+  "0509-1746": {
+    "ims": {
+      "name_he": "חשבון דיפרנציאלי ואינטגרלי 1ב'  להנדסת חשמל",
+      "offered_semesters": [
+        "A",
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0509174601&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05091746&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A",
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 5.5,
+          "teaching_format": [
+            {
+              "hours": 4,
+              "type": "שיעור"
+            },
+            {
+              "hours": 2,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 6
+        },
+        "timetable": [
+          "A",
+          "B"
+        ]
+      }
+    }
+  },
+  "0509-1747": {
+    "ims": {
+      "name_he": "חשבון דיפרנציאלי ואינטגרלי 2ב' להנדסת חשמל ואלקטרוניקה",
+      "offered_semesters": [
+        "A",
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0509174701&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05091747&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A",
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 5.5,
+          "teaching_format": [
+            {
+              "hours": 4,
+              "type": "שיעור"
+            },
+            {
+              "hours": 2,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 6
+        },
+        "timetable": [
+          "A",
+          "B"
+        ]
+      }
+    }
+  },
   "0509-1815": {
     "ims": {
       "name_he": "כימיה בסיסית להנדסה",
@@ -176,6 +554,33 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05091815&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 3,
+          "teaching_format": [
+            {
+              "hours": 2,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 3
+        },
+        "timetable": [
+          "A"
+        ]
+      },
       "8715": {
         "offering": {
           "offered_semesters": [
@@ -205,6 +610,49 @@
       }
     }
   },
+  "0509-1820": {
+    "ims": {
+      "name_he": "תכנות - (פייתון)",
+      "offered_semesters": [
+        "A",
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0509182001&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05091820&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A",
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 3.5,
+          "teaching_format": [
+            {
+              "hours": 2,
+              "type": "שיעור"
+            },
+            {
+              "hours": 2,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "A",
+          "B"
+        ]
+      }
+    }
+  },
   "0509-1829": {
     "ims": {
       "name_he": "פיזיקה (2)",
@@ -217,6 +665,35 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05091829&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A",
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 5.5,
+          "teaching_format": [
+            {
+              "hours": 4,
+              "type": "שיעור"
+            },
+            {
+              "hours": 2,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 6
+        },
+        "timetable": [
+          "A",
+          "B"
+        ]
+      },
       "8715": {
         "offering": {
           "offered_semesters": [
@@ -260,6 +737,31 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05091834&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A",
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 2,
+          "teaching_format": [
+            {
+              "hours": 2,
+              "type": "מעבדה"
+            }
+          ],
+          "weekly_hours": 2
+        },
+        "timetable": [
+          "A",
+          "B"
+        ]
+      },
       "8715": {
         "offering": {
           "offered_semesters": [
@@ -279,6 +781,49 @@
             }
           ],
           "weekly_hours": 2
+        },
+        "timetable": [
+          "A",
+          "B"
+        ]
+      }
+    }
+  },
+  "0509-2801": {
+    "ims": {
+      "name_he": "מבוא להסתברות וסטטיסטיקה",
+      "offered_semesters": [
+        "A",
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0509280101&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05092801&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A",
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
         },
         "timetable": [
           "A",
@@ -339,6 +884,35 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05092843&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A",
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 3,
+          "teaching_format": [
+            {
+              "hours": 2,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 3
+        },
+        "timetable": [
+          "A",
+          "B"
+        ]
+      },
       "8715": {
         "offering": {
           "offered_semesters": [
@@ -382,6 +956,35 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05092844&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A",
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 3,
+          "teaching_format": [
+            {
+              "hours": 2,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 3
+        },
+        "timetable": [
+          "A",
+          "B"
+        ]
+      },
       "8715": {
         "offering": {
           "offered_semesters": [
@@ -425,6 +1028,35 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05092846&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A",
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 3,
+          "teaching_format": [
+            {
+              "hours": 2,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 3
+        },
+        "timetable": [
+          "A",
+          "B"
+        ]
+      },
       "8715": {
         "offering": {
           "offered_semesters": [
@@ -467,6 +1099,29 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05094010&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 3,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            }
+          ],
+          "weekly_hours": 3
+        },
+        "timetable": [
+          "B"
+        ]
+      },
       "8715": {
         "offering": {
           "offered_semesters": [
@@ -475,6 +1130,364 @@
           "source": "program_timetable",
           "status": "offered",
           "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
+        },
+        "program": {
+          "credits": 3,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            }
+          ],
+          "weekly_hours": 3
+        },
+        "timetable": [
+          "B"
+        ]
+      }
+    }
+  },
+  "0510-5004": {
+    "ims": {
+      "name_he": "אלקטרוניקה קוונטית",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0510500401&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05105004&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 3,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            }
+          ],
+          "weekly_hours": 3
+        },
+        "timetable": [
+          "B"
+        ]
+      }
+    }
+  },
+  "0510-5210": {
+    "ims": {
+      "name_he": "אופטימיזציה",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0510521001&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05105210&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 3,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            }
+          ],
+          "weekly_hours": 3
+        },
+        "timetable": [
+          "B"
+        ]
+      }
+    }
+  },
+  "0510-6101": {
+    "ims": {
+      "name_he": "תורת האינפורמציה (1)",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0510610101&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05106101&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 3,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            }
+          ],
+          "weekly_hours": 3
+        },
+        "timetable": [
+          "A"
+        ]
+      }
+    }
+  },
+  "0510-6102": {
+    "ims": {
+      "name_he": "עקרונות קידוד וגלוי בתקשורת ספרתית",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0510610201&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05106102&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 3,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            }
+          ],
+          "weekly_hours": 3
+        },
+        "timetable": [
+          "B"
+        ]
+      }
+    }
+  },
+  "0510-6202": {
+    "ims": {
+      "name_he": "תורת השיערוך",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0510620201&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05106202&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 3,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            }
+          ],
+          "weekly_hours": 3
+        },
+        "timetable": [
+          "B"
+        ]
+      }
+    }
+  },
+  "0510-6401": {
+    "ims": {
+      "name_he": "תכנון וניתוח אלגוריתמים",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0510640101&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05106401&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 3,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            }
+          ],
+          "weekly_hours": 3
+        },
+        "timetable": [
+          "A"
+        ]
+      }
+    }
+  },
+  "0510-6404": {
+    "ims": {
+      "name_he": "תורת הלמידה החישובית",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0510640401&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05106404&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05106404&year=2026"
+        },
+        "program": {
+          "credits": 3,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            }
+          ],
+          "weekly_hours": 3
+        },
+        "timetable": null
+      }
+    }
+  },
+  "0510-6610": {
+    "ims": {
+      "name_he": "התקנים פוטוניים - עקרונות ויישומים",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0510661001&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05106610&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 3,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            }
+          ],
+          "weekly_hours": 3
+        },
+        "timetable": [
+          "B"
+        ]
+      }
+    }
+  },
+  "0510-6701": {
+    "ims": {
+      "name_he": "פיזיקה מתקדמת של מוליכים למחצה",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0510670101&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05106701&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 3,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            }
+          ],
+          "weekly_hours": 3
+        },
+        "timetable": [
+          "B"
+        ]
+      }
+    }
+  },
+  "0510-7255": {
+    "ims": {
+      "name_he": "למידה עמוקה",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0510725502&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05107255&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
         },
         "program": {
           "credits": 3,
@@ -660,6 +1673,49 @@
       }
     }
   },
+  "0512-1820": {
+    "ims": {
+      "name_he": "תכנות 2 - שפת C",
+      "offered_semesters": [
+        "A",
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512182001&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05121820&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A",
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 3.5,
+          "teaching_format": [
+            {
+              "hours": 2,
+              "type": "שיעור"
+            },
+            {
+              "hours": 2,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "A",
+          "B"
+        ]
+      }
+    }
+  },
   "0512-2508": {
     "ims": {
       "name_he": "התקנים אלקטרוניים",
@@ -672,6 +1728,35 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05122508&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A",
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "A",
+          "B"
+        ]
+      },
       "8715": {
         "offering": {
           "offered_semesters": [
@@ -698,6 +1783,1266 @@
         },
         "timetable": [
           "A",
+          "B"
+        ]
+      }
+    }
+  },
+  "0512-2510": {
+    "ims": {
+      "name_he": "מבני נתונים ואלגוריתמים",
+      "offered_semesters": [
+        "A",
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512251001&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05122510&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A",
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "A",
+          "B"
+        ]
+      }
+    }
+  },
+  "0512-2525": {
+    "ims": {
+      "name_he": "שדות אלקטרומגנטיים",
+      "offered_semesters": [
+        "A",
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512252501&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05122525&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A",
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "A",
+          "B"
+        ]
+      }
+    }
+  },
+  "0512-2532": {
+    "ims": {
+      "name_he": "אותות אקראיים ורעש",
+      "offered_semesters": [
+        "A",
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512253201&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05122532&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A",
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "A",
+          "B"
+        ]
+      }
+    }
+  },
+  "0512-2830": {
+    "ims": {
+      "name_he": "פיזיקה קוואנטית ומצב מוצק",
+      "offered_semesters": [
+        "A",
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512283001&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05122830&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A",
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "A",
+          "B"
+        ]
+      }
+    }
+  },
+  "0512-2832": {
+    "ims": {
+      "name_he": "מעגלים ומערכות ליניאריות",
+      "offered_semesters": [
+        "A",
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512283201&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05122832&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A",
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 5.5,
+          "teaching_format": [
+            {
+              "hours": 4,
+              "type": "שיעור"
+            },
+            {
+              "hours": 2,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 6
+        },
+        "timetable": [
+          "A",
+          "B"
+        ]
+      }
+    }
+  },
+  "0512-2835": {
+    "ims": {
+      "name_he": "אותות ומערכות",
+      "offered_semesters": [
+        "A",
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512283501&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05122835&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A",
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "A",
+          "B"
+        ]
+      }
+    }
+  },
+  "0512-3000": {
+    "ims": {
+      "name_he": "פרויקט מיוחד",
+      "offered_semesters": [
+        "A",
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512300001&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05123000&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A",
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 3,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "פרוייקט"
+            }
+          ],
+          "weekly_hours": 3
+        },
+        "timetable": [
+          "A",
+          "B"
+        ]
+      }
+    }
+  },
+  "0512-3010": {
+    "ims": {
+      "name_he": "פרויקט מרוכז רב-תחומי",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512301001&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05123010&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 3,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "פרוייקט"
+            }
+          ],
+          "weekly_hours": 3
+        },
+        "timetable": [
+          "B"
+        ]
+      }
+    }
+  },
+  "0512-3513": {
+    "ims": {
+      "name_he": "מעגלים אלקטרוניים אנלוגיים",
+      "offered_semesters": [
+        "A",
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512351301&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05123513&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A",
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "A",
+          "B"
+        ]
+      }
+    }
+  },
+  "0512-3514": {
+    "ims": {
+      "name_he": "מעגלים אלקטרוניים ספרתיים",
+      "offered_semesters": [
+        "A",
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512351401&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05123514&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A",
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "A",
+          "B"
+        ]
+      }
+    }
+  },
+  "0512-3526": {
+    "ims": {
+      "name_he": "תמסורת גלים ומערכות מפולגות",
+      "offered_semesters": [
+        "A",
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512352601&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05123526&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A",
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "A",
+          "B"
+        ]
+      }
+    }
+  },
+  "0512-3542": {
+    "ims": {
+      "name_he": "מעבדה מתקדמת לבקרה",
+      "offered_semesters": [
+        "A",
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512354201&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05123542&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A",
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 1.5,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "מעבדה"
+            }
+          ],
+          "weekly_hours": 3
+        },
+        "timetable": [
+          "A",
+          "B"
+        ]
+      }
+    }
+  },
+  "0512-3543": {
+    "ims": {
+      "name_he": "מבוא לתורת הבקרה",
+      "offered_semesters": [
+        "A",
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512354301&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05123543&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A",
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 3,
+          "teaching_format": [
+            {
+              "hours": 2,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 3
+        },
+        "timetable": [
+          "A",
+          "B"
+        ]
+      }
+    }
+  },
+  "0512-3561": {
+    "ims": {
+      "name_he": "מערכות לוגיות ספרתיות",
+      "offered_semesters": [
+        "A",
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512356101&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05123561&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A",
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "A",
+          "B"
+        ]
+      }
+    }
+  },
+  "0512-3571": {
+    "ims": {
+      "name_he": "המרת אנרגיה",
+      "offered_semesters": [
+        "A",
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512357101&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05123571&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A",
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "A",
+          "B"
+        ]
+      }
+    }
+  },
+  "0512-3572": {
+    "ims": {
+      "name_he": "מעבדה בהמרת אנרגיה",
+      "offered_semesters": [
+        "A",
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512357201&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05123572&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A",
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 1,
+          "teaching_format": [
+            {
+              "hours": 2,
+              "type": "מעבדה"
+            }
+          ],
+          "weekly_hours": 2
+        },
+        "timetable": [
+          "A",
+          "B"
+        ]
+      }
+    }
+  },
+  "0512-3581": {
+    "ims": {
+      "name_he": "אלקטרוניקה - מעבדה A",
+      "offered_semesters": [
+        "A",
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512358101&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05123581&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A",
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 3,
+          "teaching_format": [
+            {
+              "hours": 4,
+              "type": "מעבדה"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "A",
+          "B"
+        ]
+      }
+    }
+  },
+  "0512-3582": {
+    "ims": {
+      "name_he": "מעבדת אלקטרוניקה B",
+      "offered_semesters": [
+        "A",
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512358201&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05123582&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A",
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 3,
+          "teaching_format": [
+            {
+              "hours": 4,
+              "type": "מעבדה"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "A",
+          "B"
+        ]
+      }
+    }
+  },
+  "0512-4000": {
+    "ims": {
+      "name_he": "פרוייקט שלב ב'",
+      "offered_semesters": [
+        "A",
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512400001&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05124000&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A",
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 6,
+          "teaching_format": [
+            {
+              "hours": 4,
+              "type": "פרוייקט"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "A",
+          "B"
+        ]
+      }
+    }
+  },
+  "0512-4001": {
+    "ims": {
+      "name_he": "פרוייקט שלב א'",
+      "offered_semesters": [
+        "A",
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512400101&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05124001&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A",
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 0,
+          "teaching_format": [
+            {
+              "hours": null,
+              "type": "פרוייקט"
+            }
+          ],
+          "weekly_hours": 0
+        },
+        "timetable": [
+          "A",
+          "B"
+        ]
+      }
+    }
+  },
+  "0512-4009": {
+    "ims": {
+      "name_he": "אלגוריתמים ברשתות",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512400901&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05124009&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "A"
+        ]
+      }
+    }
+  },
+  "0512-4013": {
+    "ims": {
+      "name_he": "מעבדת חשיפה לחומרה",
+      "offered_semesters": [
+        "A",
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512401301&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05124013&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A",
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 2,
+          "teaching_format": [
+            {
+              "hours": 4,
+              "type": "מעבדה"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "A",
+          "B"
+        ]
+      }
+    }
+  },
+  "0512-4100": {
+    "ims": {
+      "name_he": "מערכות תקשורת",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512410001&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05124100&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "A"
+        ]
+      }
+    }
+  },
+  "0512-4125": {
+    "ims": {
+      "name_he": "מבוא לטכנולוגיות קוונטיות",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512412501&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05124125&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "B"
+        ]
+      }
+    }
+  },
+  "0512-4126": {
+    "ims": {
+      "name_he": "מעבדה מתקדמת  במחשוב קוונטי",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512412601&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05124126&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 1.5,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "מעבדה"
+            }
+          ],
+          "weekly_hours": 3
+        },
+        "timetable": [
+          "A"
+        ]
+      }
+    }
+  },
+  "0512-4138": {
+    "ims": {
+      "name_he": "ביואלקטרוניקה וממשקי אדם מכונה",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512413801&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05124138&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "B"
+        ]
+      }
+    }
+  },
+  "0512-4161": {
+    "ims": {
+      "name_he": "תקשורת ספרתית",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512416101&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05124161&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "A"
+        ]
+      }
+    }
+  },
+  "0512-4162": {
+    "ims": {
+      "name_he": "העברה ספרתית של אותות",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512416201&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05124162&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "B"
+        ]
+      }
+    }
+  },
+  "0512-4163": {
+    "ims": {
+      "name_he": "מבוא לקודים לתיקון שגיאות",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512416301&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05124163&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "B"
+        ]
+      }
+    }
+  },
+  "0512-4164": {
+    "ims": {
+      "name_he": "מעגלי תקשורת",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512416401&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05124164&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "A"
+        ]
+      }
+    }
+  },
+  "0512-4165": {
+    "ims": {
+      "name_he": "התקנים ביפולאריים במעגלים להספקים נמוכים וגבוהים",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512416501&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05124165&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 3,
+          "teaching_format": [
+            {
+              "hours": 2,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 3
+        },
+        "timetable": [
           "B"
         ]
       }
@@ -715,6 +3060,35 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05124200&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A",
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "A",
+          "B"
+        ]
+      },
       "8715": {
         "offering": {
           "offered_semesters": [
@@ -746,6 +3120,438 @@
       }
     }
   },
+  "0512-4261": {
+    "ims": {
+      "name_he": "מבוא לעיבוד אותות סטטיסטי",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512426101&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05124261&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "A"
+        ]
+      }
+    }
+  },
+  "0512-4263": {
+    "ims": {
+      "name_he": "עיבוד וניתוח וידיאו",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512426301&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05124263&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "A"
+        ]
+      }
+    }
+  },
+  "0512-4264": {
+    "ims": {
+      "name_he": "מבוא ללמידת מכונה סטטיסטית",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512426401&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05124264&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "A"
+        ]
+      }
+    }
+  },
+  "0512-4265": {
+    "ims": {
+      "name_he": "מבוא ללמידה באמצעות  חיזוקים",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512426501&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05124265&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "B"
+        ]
+      }
+    }
+  },
+  "0512-4266": {
+    "ims": {
+      "name_he": "אבטחה ובטיחות של מודלי שפה",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512426601&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05124266&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "A"
+        ]
+      }
+    }
+  },
+  "0512-4290": {
+    "ims": {
+      "name_he": "מעבדה מתקדמת לעיבוד ספרתי של אותות",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512429001&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05124290&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 1.5,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "מעבדה"
+            }
+          ],
+          "weekly_hours": 3
+        },
+        "timetable": [
+          "A"
+        ]
+      }
+    }
+  },
+  "0512-4291": {
+    "ims": {
+      "name_he": "מעבדה מתקדמת בעיבוד תמונות",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512429101&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05124291&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 1.5,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "מעבדה"
+            }
+          ],
+          "weekly_hours": 3
+        },
+        "timetable": [
+          "B"
+        ]
+      }
+    }
+  },
+  "0512-4295": {
+    "ims": {
+      "name_he": "עיבוד אותות מוזיקליים",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512429501&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05124295&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "B"
+        ]
+      }
+    }
+  },
+  "0512-4296": {
+    "ims": {
+      "name_he": "סינתזת צלילים מוזיקליים ומידול פיזיקלי",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512429601&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05124296&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "B"
+        ]
+      }
+    }
+  },
+  "0512-4300": {
+    "ims": {
+      "name_he": "מבוא לבקרה ספרתית",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512430001&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05124300&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "B"
+        ]
+      }
+    }
+  },
+  "0512-4360": {
+    "ims": {
+      "name_he": "מבוא לבקרה לינארית מודרנית",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512436001&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05124360&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "B"
+        ]
+      }
+    }
+  },
   "0512-4362": {
     "ims": {
       "name_he": "מערכות משוב שימושיות",
@@ -757,6 +3563,33 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05124362&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "A"
+        ]
+      },
       "8715": {
         "offering": {
           "offered_semesters": [
@@ -786,6 +3619,1001 @@
       }
     }
   },
+  "0512-4365": {
+    "ims": {
+      "name_he": "מבוא לבקרת   Mpc",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512436501&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05124365&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "A"
+        ]
+      }
+    }
+  },
+  "0512-4390": {
+    "ims": {
+      "name_he": "מעבדה מתקדמת למערכות אוטונומיות",
+      "offered_semesters": [
+        "A",
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512439001&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05124390&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A",
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 1.5,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "מעבדה"
+            }
+          ],
+          "weekly_hours": 3
+        },
+        "timetable": [
+          "A",
+          "B"
+        ]
+      }
+    }
+  },
+  "0512-4400": {
+    "ims": {
+      "name_he": "מבנה המחשב",
+      "offered_semesters": [
+        "A",
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512440001&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05124400&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A",
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 3.5,
+          "teaching_format": [
+            {
+              "hours": 2,
+              "type": "שיעור"
+            },
+            {
+              "hours": 2,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "A",
+          "B"
+        ]
+      }
+    }
+  },
+  "0512-4402": {
+    "ims": {
+      "name_he": "מבוא למערכות הפעלה",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512440205&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05124402&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "A"
+        ]
+      }
+    }
+  },
+  "0512-4461": {
+    "ims": {
+      "name_he": "ארכיטקטורה של מחשבים",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512446101&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05124461&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "A"
+        ]
+      }
+    }
+  },
+  "0512-4462": {
+    "ims": {
+      "name_he": "מבוא לתקשורת מחשבים",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512446201&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05124462&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "B"
+        ]
+      }
+    }
+  },
+  "0512-4490": {
+    "ims": {
+      "name_he": "מעבדה מתקדמת בארכיטקטורת מחשבים",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512449001&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05124490&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 1.5,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "מעבדה"
+            }
+          ],
+          "weekly_hours": 3
+        },
+        "timetable": [
+          "B"
+        ]
+      }
+    }
+  },
+  "0512-4491": {
+    "ims": {
+      "name_he": "מעבדה מתקדמת בתקשורת מחשבים",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512449101&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05124491&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 1.5,
+          "teaching_format": [
+            {
+              "hours": 2,
+              "type": "מעבדה"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 3
+        },
+        "timetable": [
+          "B"
+        ]
+      }
+    }
+  },
+  "0512-4492": {
+    "ims": {
+      "name_he": "מעבדה מתקדמת במבנה המחשב",
+      "offered_semesters": [
+        "A",
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512449201&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05124492&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A",
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 2,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "מעבדה"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "A",
+          "B"
+        ]
+      }
+    }
+  },
+  "0512-4494": {
+    "ims": {
+      "name_he": "מעבדה מתקדמת בתכנות זמן אמת",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512449401&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05124494&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 1.5,
+          "teaching_format": [
+            {
+              "hours": 2,
+              "type": "מעבדה"
+            }
+          ],
+          "weekly_hours": 2
+        },
+        "timetable": [
+          "B"
+        ]
+      }
+    }
+  },
+  "0512-4502": {
+    "ims": {
+      "name_he": "הינע חשמלי של מנועים",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512450201&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05124502&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "A"
+        ]
+      }
+    }
+  },
+  "0512-4503": {
+    "ims": {
+      "name_he": "ממירים ממותגים בתדר גבוה",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512450301&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05124503&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "B"
+        ]
+      }
+    }
+  },
+  "0512-4504": {
+    "ims": {
+      "name_he": "תפעול מערכות הספק בתנאים א-נורמליים",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512450401&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05124504&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "A"
+        ]
+      }
+    }
+  },
+  "0512-4505": {
+    "ims": {
+      "name_he": "בעיות טכנו-כלכליות של מערכות הספק",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512450501&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05124505&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "B"
+        ]
+      }
+    }
+  },
+  "0512-4506": {
+    "ims": {
+      "name_he": "אלקטרוניקת הספק",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512450601&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05124506&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "A"
+        ]
+      }
+    }
+  },
+  "0512-4510": {
+    "ims": {
+      "name_he": "עקרונות רשתות אנרגיה חכמות בשילוב מערכות אנרגיות מתחדשות",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512451001&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05124510&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "A"
+        ]
+      }
+    }
+  },
+  "0512-4590": {
+    "ims": {
+      "name_he": "מעבדה מתקדמת בהמרת אנרגיה",
+      "offered_semesters": [
+        "A",
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512459001&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05124590&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A",
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 1.5,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "מעבדה"
+            }
+          ],
+          "weekly_hours": 3
+        },
+        "timetable": [
+          "A",
+          "B"
+        ]
+      }
+    }
+  },
+  "0512-4601": {
+    "ims": {
+      "name_he": "מבוא ללייזרים",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512460101&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05124601&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "A"
+        ]
+      }
+    }
+  },
+  "0512-4602": {
+    "ims": {
+      "name_he": "מבוא לתקשורת אופטית",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512460201&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05124602&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "B"
+        ]
+      }
+    }
+  },
+  "0512-4603": {
+    "ims": {
+      "name_he": "מערכות הדמייה ועיבוד אופטי של נתונים",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512460301&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05124603&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "A"
+        ]
+      }
+    }
+  },
+  "0512-4605": {
+    "ims": {
+      "name_he": "מבוא לאינטראקציית אור-חומר",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512460501&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05124605&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "A"
+        ]
+      }
+    }
+  },
+  "0512-4652": {
+    "ims": {
+      "name_he": "מעגלים משולבים לתדר גבוה",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512465201&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05124652&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 3,
+          "teaching_format": [
+            {
+              "hours": 2,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 3
+        },
+        "timetable": [
+          "B"
+        ]
+      }
+    }
+  },
+  "0512-4660": {
+    "ims": {
+      "name_he": "אופטיקה קלאסית",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512466001&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05124660&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "B"
+        ]
+      }
+    }
+  },
+  "0512-4670": {
+    "ims": {
+      "name_he": "נושאים נבחרים באופטיקה מתקדמת",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512467001&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05124670&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "B"
+        ]
+      }
+    }
+  },
+  "0512-4690": {
+    "ims": {
+      "name_he": "מעבדה מתקדמת באלקטרואופטיקה",
+      "offered_semesters": [
+        "A",
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512469001&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05124690&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A",
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 3,
+          "teaching_format": [
+            {
+              "hours": 4,
+              "type": "מעבדה"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "A",
+          "B"
+        ]
+      }
+    }
+  },
   "0512-4700": {
     "ims": {
       "name_he": "טכנולוגיות מיקרו וננו אלקטרוניקה",
@@ -797,6 +4625,33 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05124700&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "B"
+        ]
+      },
       "8715": {
         "offering": {
           "offered_semesters": [
@@ -837,6 +4692,33 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05124702&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "A"
+        ]
+      },
       "8715": {
         "offering": {
           "offered_semesters": [
@@ -862,6 +4744,596 @@
         },
         "timetable": [
           "A"
+        ]
+      }
+    }
+  },
+  "0512-4703": {
+    "ims": {
+      "name_he": "מבוא לתכנון מעגלי Vlsi",
+      "offered_semesters": [
+        "A",
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512470301&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05124703&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A",
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 3.5,
+          "teaching_format": [
+            {
+              "hours": 2,
+              "type": "שיעור"
+            },
+            {
+              "hours": 2,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "A",
+          "B"
+        ]
+      }
+    }
+  },
+  "0512-4704": {
+    "ims": {
+      "name_he": "מבוא להתקנים אופטו-אלקטרוניים",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512470401&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05124704&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "B"
+        ]
+      }
+    }
+  },
+  "0512-4705": {
+    "ims": {
+      "name_he": "התקנים אלקטרוניים מתקדמים",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512470501&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05124705&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "B"
+        ]
+      }
+    }
+  },
+  "0512-4706": {
+    "ims": {
+      "name_he": "מעגלים אנאלוגיים משולבים",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512470601&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05124706&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "A"
+        ]
+      }
+    }
+  },
+  "0512-4707": {
+    "ims": {
+      "name_he": "תכנון מתקדם של מעגלי Vlsi",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512470701&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05124707&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "B"
+        ]
+      }
+    }
+  },
+  "0512-4711": {
+    "ims": {
+      "name_he": "תכן, אימות וסינתזה לוגית למעגלי VLSI",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512471101&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05124711&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "A"
+        ]
+      }
+    }
+  },
+  "0512-4790": {
+    "ims": {
+      "name_he": "מעבדה מתקדמת להתקנים",
+      "offered_semesters": [
+        "A",
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512479001&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05124790&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A",
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 1.5,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "מעבדה"
+            }
+          ],
+          "weekly_hours": 3
+        },
+        "timetable": [
+          "A",
+          "B"
+        ]
+      }
+    }
+  },
+  "0512-4791": {
+    "ims": {
+      "name_he": "מעבדה מתקדמת למעגלים משולבים",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512479101&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05124791&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 1.5,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "מעבדה"
+            }
+          ],
+          "weekly_hours": 3
+        },
+        "timetable": [
+          "B"
+        ]
+      }
+    }
+  },
+  "0512-4800": {
+    "ims": {
+      "name_he": "הנדסת מיקרוגלים",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512480001&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05124800&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "B"
+        ]
+      }
+    }
+  },
+  "0512-4802": {
+    "ims": {
+      "name_he": "התקני מיקרוגל 1",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512480201&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05124802&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "B"
+        ]
+      }
+    }
+  },
+  "0512-4804": {
+    "ims": {
+      "name_he": "הנדסת מיקרוגל קוונטית",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512480401&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05124804&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 2,
+          "teaching_format": [
+            {
+              "hours": 2,
+              "type": "שיעור"
+            }
+          ],
+          "weekly_hours": 2
+        },
+        "timetable": [
+          "A"
+        ]
+      }
+    }
+  },
+  "0512-4820": {
+    "ims": {
+      "name_he": "הנדסת מערכות חלל",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512482001&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05124820&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "A"
+        ]
+      }
+    }
+  },
+  "0512-4861": {
+    "ims": {
+      "name_he": "אנטנות וקרינה",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512486101&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05124861&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "A"
+        ]
+      }
+    }
+  },
+  "0512-4862": {
+    "ims": {
+      "name_he": "התפשטות ופיזור גלים",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512486201&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05124862&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "A"
+        ]
+      }
+    }
+  },
+  "0512-4890": {
+    "ims": {
+      "name_he": "מעבדה מתקדמת למיקרוגלים",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512489001&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05124890&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 1.5,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "מעבדה"
+            }
+          ],
+          "weekly_hours": 3
+        },
+        "timetable": [
+          "B"
         ]
       }
     }
@@ -2900,6 +7372,29 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05424621&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 3,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור ותרגיל"
+            }
+          ],
+          "weekly_hours": 3
+        },
+        "timetable": [
+          "A"
+        ]
+      },
       "8715": {
         "offering": {
           "offered_semesters": [
@@ -3041,6 +7536,46 @@
       }
     }
   },
+  "0555-2106": {
+    "ims": {
+      "name_he": "מערכות פיסיולוגיות בגוף האדם",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0555210601&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05552106&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "A"
+        ]
+      }
+    }
+  },
   "0555-3160": {
     "ims": {
       "name_he": "הנדסת תאים ורקמות",
@@ -3060,6 +7595,46 @@
           "source": "program_timetable",
           "status": "offered",
           "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "A"
+        ]
+      }
+    }
+  },
+  "0555-3240": {
+    "ims": {
+      "name_he": "התפשטות גלים ברקמות ביולוגיות",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0555324001&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05553240&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
         },
         "program": {
           "credits": 4,
@@ -3113,6 +7688,42 @@
       }
     }
   },
+  "0555-4282": {
+    "ims": {
+      "name_he": "מעבדה מתקדמת בביו-אלקטרוניקה",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0555428201&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05554282&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 3.5,
+          "teaching_format": [
+            {
+              "hours": 4,
+              "type": "מעבדה"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "A"
+        ]
+      }
+    }
+  },
   "0555-4432": {
     "ims": {
       "offered_semesters": [],
@@ -3145,6 +7756,46 @@
       }
     }
   },
+  "0555-4520": {
+    "ims": {
+      "name_he": "עיבוד תמונות רפואיות (2)",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0555452001&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05554520&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "B"
+        ]
+      }
+    }
+  },
   "0555-4550": {
     "ims": {
       "name_he": "מבוא לביופיזיקה של התא",
@@ -3156,6 +7807,33 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05554550&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "B"
+        ]
+      },
       "8715": {
         "offering": {
           "offered_semesters": [
@@ -3225,6 +7903,46 @@
       }
     }
   },
+  "0555-4560": {
+    "ims": {
+      "name_he": "אותות חשמליים והולכה חשמלית בתאים",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0555456001&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05554560&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "A"
+        ]
+      }
+    }
+  },
   "0555-4562": {
     "ims": {
       "name_he": "מבוא לאולטרסאונד: הדמיה וטיפול",
@@ -3244,6 +7962,46 @@
           "source": "program_timetable",
           "status": "offered",
           "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=8715"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "A"
+        ]
+      }
+    }
+  },
+  "0555-4570": {
+    "ims": {
+      "name_he": "מבוא הנדסי לדימות ע\"י תהודה מגנטית",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0555457001&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05554570&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
         },
         "program": {
           "credits": 4,
@@ -3432,6 +8190,33 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05811111&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "B"
+        ]
+      },
       "8715": {
         "offering": {
           "offered_semesters": [
@@ -3497,6 +8282,86 @@
       }
     }
   },
+  "0581-3121": {
+    "ims": {
+      "name_he": "פיסיקה של חומרים",
+      "offered_semesters": [
+        "A"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0581312101&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05813121&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 4,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 1,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 4
+        },
+        "timetable": [
+          "A"
+        ]
+      }
+    }
+  },
+  "0581-3122": {
+    "ims": {
+      "name_he": "מבוא למדע חישובי בחומרים",
+      "offered_semesters": [
+        "B"
+      ],
+      "status": "offered",
+      "syllabus_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0581312201&year=2026",
+      "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05813122&year=2026"
+    },
+    "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "program_timetable",
+          "status": "offered",
+          "url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622"
+        },
+        "program": {
+          "credits": 4.5,
+          "teaching_format": [
+            {
+              "hours": 3,
+              "type": "שיעור"
+            },
+            {
+              "hours": 2,
+              "type": "תרגיל"
+            }
+          ],
+          "weekly_hours": 5
+        },
+        "timetable": [
+          "B"
+        ]
+      }
+    }
+  },
   "0581-4131": {
     "ims": {
       "name_he": "מעבדה בחומרים הנדסיים",
@@ -3544,6 +8409,18 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06081010&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06081010&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [
@@ -3569,6 +8446,18 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06081110&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06081110&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [
@@ -3594,6 +8483,18 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06081152&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06081152&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [
@@ -3615,6 +8516,16 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06081153&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [],
+          "source": "ims",
+          "status": "not_offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06081153&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [],
@@ -3638,6 +8549,18 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06081177&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06081177&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [
@@ -3663,6 +8586,18 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091002&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091002&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [
@@ -3688,6 +8623,18 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091003&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091003&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [
@@ -3713,6 +8660,18 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091004&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091004&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [
@@ -3738,6 +8697,18 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091005&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091005&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [
@@ -3763,6 +8734,18 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091006&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091006&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [
@@ -3789,6 +8772,19 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091007&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A",
+            "B"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091007&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [
@@ -3815,6 +8811,18 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091008&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091008&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [
@@ -3840,6 +8848,18 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091009&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091009&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [
@@ -3865,6 +8885,18 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091010&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091010&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [
@@ -3890,6 +8922,18 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091011&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091011&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [
@@ -3915,6 +8959,18 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091013&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091013&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [
@@ -3940,6 +8996,18 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091014&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091014&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [
@@ -3965,6 +9033,18 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091015&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091015&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [
@@ -3991,6 +9071,19 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091017&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A",
+            "B"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091017&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [
@@ -4013,6 +9106,16 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091018&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [],
+          "source": "ims",
+          "status": "not_offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091018&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [],
@@ -4036,6 +9139,18 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091019&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091019&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [
@@ -4061,6 +9176,18 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091020&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091020&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [
@@ -4086,6 +9213,18 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091021&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091021&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [
@@ -4107,6 +9246,16 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091201&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [],
+          "source": "ims",
+          "status": "not_offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091201&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [],
@@ -4126,6 +9275,16 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091209&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [],
+          "source": "ims",
+          "status": "not_offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091209&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [],
@@ -4149,6 +9308,18 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091211&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091211&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [
@@ -4174,6 +9345,18 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091212&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091212&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [
@@ -4195,6 +9378,16 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091225&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [],
+          "source": "ims",
+          "status": "not_offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091225&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [],
@@ -4214,6 +9407,16 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091226&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [],
+          "source": "ims",
+          "status": "not_offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091226&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [],
@@ -4237,6 +9440,18 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091303&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06091303&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [
@@ -4258,6 +9473,16 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06126041&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [],
+          "source": "ims",
+          "status": "not_offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06126041&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [],
@@ -4277,6 +9502,16 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06126044&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [],
+          "source": "ims",
+          "status": "not_offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06126044&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [],
@@ -4300,6 +9535,18 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06161311&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06161311&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [
@@ -4325,6 +9572,18 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06181016&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06181016&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [
@@ -4350,6 +9609,18 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06181042&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06181042&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [
@@ -4375,6 +9646,18 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06181059&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06181059&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [
@@ -4400,6 +9683,18 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06211101&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06211101&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [
@@ -4421,6 +9716,16 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06211194&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [],
+          "source": "ims",
+          "status": "not_offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06211194&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [],
@@ -4444,6 +9749,18 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06211219&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06211219&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [
@@ -4465,6 +9782,16 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06211220&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [],
+          "source": "ims",
+          "status": "not_offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06211220&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [],
@@ -4488,6 +9815,18 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06221001&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06221001&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [
@@ -4509,6 +9848,16 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06221004&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [],
+          "source": "ims",
+          "status": "not_offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06221004&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [],
@@ -4533,6 +9882,19 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06222001&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A",
+            "B"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06222001&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [
@@ -4559,6 +9921,18 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06271010&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06271010&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [
@@ -4584,6 +9958,18 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06311130&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06311130&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [
@@ -4609,6 +9995,18 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06312468&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06312468&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [
@@ -4630,6 +10028,16 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06312503&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [],
+          "source": "ims",
+          "status": "not_offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06312503&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [],
@@ -4653,6 +10061,18 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06313496&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06313496&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [
@@ -4678,6 +10098,18 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06621011&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06621011&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [
@@ -4699,6 +10131,16 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06621180&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [],
+          "source": "ims",
+          "status": "not_offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06621180&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [],
@@ -4718,6 +10160,16 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06621757&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [],
+          "source": "ims",
+          "status": "not_offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06621757&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [],
@@ -4737,6 +10189,16 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06622253&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [],
+          "source": "ims",
+          "status": "not_offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06622253&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [],
@@ -4756,6 +10218,16 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06622615&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [],
+          "source": "ims",
+          "status": "not_offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06622615&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [],
@@ -4779,6 +10251,18 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06622620&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06622620&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [
@@ -4800,6 +10284,16 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06622642&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [],
+          "source": "ims",
+          "status": "not_offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06622642&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [],
@@ -4819,6 +10313,16 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06622649&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [],
+          "source": "ims",
+          "status": "not_offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06622649&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [],
@@ -4838,6 +10342,16 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06622653&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [],
+          "source": "ims",
+          "status": "not_offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06622653&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [],
@@ -4857,6 +10371,16 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06622656&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [],
+          "source": "ims",
+          "status": "not_offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06622656&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [],
@@ -4880,6 +10404,18 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06696175&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06696175&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [
@@ -4901,6 +10437,16 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06696198&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [],
+          "source": "ims",
+          "status": "not_offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06696198&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [],
@@ -4920,6 +10466,16 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06696203&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [],
+          "source": "ims",
+          "status": "not_offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06696203&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [],
@@ -4943,6 +10499,18 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06711031&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06711031&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [
@@ -4968,6 +10536,18 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06711045&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06711045&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [
@@ -4993,6 +10573,18 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06711091&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06711091&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [
@@ -5014,6 +10606,16 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06711130&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [],
+          "source": "ims",
+          "status": "not_offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06711130&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [],
@@ -5037,6 +10639,18 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06711238&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06711238&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [
@@ -5058,6 +10672,16 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06712215&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [],
+          "source": "ims",
+          "status": "not_offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06712215&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [],
@@ -5077,6 +10701,16 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06712331&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [],
+          "source": "ims",
+          "status": "not_offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06712331&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [],
@@ -5096,6 +10730,16 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06712383&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [],
+          "source": "ims",
+          "status": "not_offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06712383&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [],
@@ -5119,6 +10763,18 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06712649&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06712649&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [
@@ -5140,6 +10796,16 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06712668&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [],
+          "source": "ims",
+          "status": "not_offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06712668&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [],
@@ -5159,6 +10825,16 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06712669&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [],
+          "source": "ims",
+          "status": "not_offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06712669&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [],
@@ -5178,6 +10854,16 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06712670&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [],
+          "source": "ims",
+          "status": "not_offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06712670&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [],
@@ -5197,6 +10883,16 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06714389&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [],
+          "source": "ims",
+          "status": "not_offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06714389&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [],
@@ -5220,6 +10916,18 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06721102&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06721102&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [
@@ -5245,6 +10953,18 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06721109&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06721109&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [
@@ -5270,6 +10990,18 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06721202&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06721202&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [
@@ -5291,6 +11023,16 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06721557&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [],
+          "source": "ims",
+          "status": "not_offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06721557&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [],
@@ -5310,6 +11052,16 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06771283&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [],
+          "source": "ims",
+          "status": "not_offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06771283&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [],
@@ -5333,6 +11085,18 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06771514&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06771514&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [
@@ -5358,6 +11122,18 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06871113&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06871113&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [
@@ -5383,6 +11159,18 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06871115&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=06871115&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [
@@ -5408,6 +11196,18 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=07232022&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=07232022&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [
@@ -5433,6 +11233,18 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=07232047&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=07232047&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [
@@ -5458,6 +11270,18 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=07232052&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "B"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=07232052&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [
@@ -5479,6 +11303,16 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=16734026&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [],
+          "source": "ims",
+          "status": "not_offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=16734026&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [],
@@ -5503,6 +11337,19 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=18800710&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A",
+            "B"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=18800710&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [
@@ -5530,6 +11377,19 @@
       "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=18800901&year=2026"
     },
     "programs": {
+      "7622": {
+        "offering": {
+          "offered_semesters": [
+            "A",
+            "B"
+          ],
+          "source": "ims",
+          "status": "offered",
+          "url": "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=18800901&year=2026"
+        },
+        "program": null,
+        "timetable": null
+      },
       "8715": {
         "offering": {
           "offered_semesters": [
