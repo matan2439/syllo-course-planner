@@ -128,18 +128,33 @@ def tochniot_evidence(program: ProgramEntry, live: bool, offline: bool) -> list[
     items: list[EvidenceItem] = []
 
     def add(id_, kind, path, raw_text, **kw):
-        items.append(EvidenceItem(id=id_, source_url=GRAPHQL_URL, fetched_at=fetched_at, from_cache=from_cache,
-                                  kind=kind, path=list(path), raw_text=raw_text, **kw))
+        item = EvidenceItem(id=id_, source_url=GRAPHQL_URL, fetched_at=fetched_at, from_cache=from_cache,
+                            kind=kind, path=list(path), raw_text=raw_text, **kw)
+        items.append(item)
+        return item
+
+    # TAU reuses one section (same ramaid) under several parents, e.g. each EE track list under
+    # year 3, year 4 and a summary section. An identical repeat is one fact: emit it once and
+    # record the other locations; a repeat whose content differs gets a content-qualified id.
+    sections: dict[str, tuple[str, EvidenceItem]] = {}
 
     def walk(node: dict, path: list[str]) -> None:
         for r in _children(node, "rama"):
             rid = str(r.get("ramaid"))
             title = (r.get("teurrama") or "").strip()
             rpath = path + [title]
+            fingerprint = json.dumps(r, sort_keys=True, ensure_ascii=False)
+            if rid in sections:
+                first_fp, first = sections[rid]
+                if fingerprint == first_fp:
+                    first.data.setdefault("also_at", []).append(" > ".join(rpath))
+                    continue
+                rid = f"{rid}~{text_id(fingerprint)}"
             shaot = (r.get("shaot") or "").strip()
             mishkal = (r.get("mishkal") or "").strip()
-            add(f"{T}:rama:{rid}", "section", rpath, " ".join(p for p in (title, shaot, mishkal) if p),
-                data={k: r.get(k) for k in ("shaot", "mishkal") if r.get(k)})
+            section = add(f"{T}:rama:{rid}", "section", rpath, " ".join(p for p in (title, shaot, mishkal) if p),
+                          data={k: r.get(k) for k in ("shaot", "mishkal") if r.get(k)})
+            sections.setdefault(rid, (fingerprint, section))
             hesber = r.get("hesber") or ""
             if strip_html(hesber):
                 add(f"{T}:rama:{rid}:hesber:{text_id(hesber)}", "rule_text", rpath, hesber)

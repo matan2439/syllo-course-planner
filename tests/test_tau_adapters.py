@@ -112,6 +112,31 @@ def test_rule_text_id_changes_when_text_changes(program, env):
     assert ":rama:23:hesber:" in next(iter(after - before))
 
 
+def test_identical_repeated_section_is_one_fact(program, env):
+    """TAU reuses a section under several parents (EE tracks under year 3, year 4, summary)."""
+    before = tau.tochniot_evidence(program, False, False)
+    top = env["program"][0]["rama"]
+    shared = next(r for r in top if r.get("kurs") or any(c.get("kurs") for c in r.get("rama") or []))
+    host = next(r for r in top if r is not shared)
+    host.setdefault("rama", []).append(copy.deepcopy(shared))
+    after = tau.tochniot_evidence(program, False, False)
+    assert _ids(after) == _ids(before)  # no new ids, no duplicates
+    first = next(i for i in after if i.id == f"tau:8715:2026:rama:{shared['ramaid']}")
+    assert first.data["also_at"] == [" > ".join([host["teurrama"].strip(), shared["teurrama"].strip()])]
+
+
+def test_differing_repeated_section_gets_qualified_ids(program, env):
+    top = env["program"][0]["rama"]
+    shared = next(r for r in top if r.get("kurs") or any(c.get("kurs") for c in r.get("rama") or []))
+    variant = copy.deepcopy(shared)
+    variant["shaot"] = "סה\"כ 99 ש\"ס"
+    next(r for r in top if r is not shared).setdefault("rama", []).append(variant)
+    items = tau.tochniot_evidence(program, False, False)
+    ids = _ids(items)
+    assert len(ids) == len(set(ids))
+    assert any(i.startswith(f"tau:8715:2026:rama:{shared['ramaid']}~") for i in ids)
+
+
 def test_text_id_ignores_markup_and_whitespace():
     assert text_id("<p>a&nbsp; b</p>") == text_id("a b")
     assert len(text_id("x")) == 12
