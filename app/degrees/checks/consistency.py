@@ -93,24 +93,43 @@ def check_double_counting(spec: DegreeSpec) -> CheckResult:
     return _result("double_counting", problems)
 
 
-def check_degree_length(spec: DegreeSpec, window_years: list[int]) -> CheckResult:
-    """Syllo models 4-year degrees only: the boards cover fixed windows (Years 1-2, Years 3-4).
+def check_degree_length(spec: DegreeSpec) -> CheckResult:
+    """The degree is ``spec.degree_years`` (N) long: the boards cover Years 1-2 (early window)
+    and Years 3..N (main board).
 
-    Fails for every mandatory course whose year no board window covers (the build would
-    otherwise drop it silently), and when the spec's mandatory years are not exactly the
-    windows' years (a 3- or 5-year degree, or a year with no mandatory course at all).
+    Fails for every mandatory course whose year is outside 1..N (the build would otherwise drop
+    it silently). A year with no mandatory course (e.g. an electives-only final year) is fine.
+    A ``study_duration`` rule that states the standard length (``params.semesters`` /
+    ``params.years``) must agree with N. A disagreement stays red even when it is recorded in
+    ``source_conflicts``: which official source governs is the owner's decision, so the problem
+    names the rule and the matching conflict (one citing any of the rule's source ids).
     """
-    covered = sorted(set(window_years))
-    span = f"{covered[0]}-{covered[-1]}" if covered else "none"
+    n = spec.degree_years
     problems: list[str] = []
     for m in spec.mandatory_courses:
-        if m.year not in covered:
-            problems.append(f"mandatory {m.course_id} is in year {m.year}, which no board window covers "
-                            f"(windows cover years {span})")
-    years = sorted({m.year for m in spec.mandatory_courses})
-    if years != covered:
-        problems.append(f"mandatory courses span years {years or '[]'}, expected exactly {span}: "
-                        f"degree length is not modelled yet (4-year degrees only)")
+        if not 1 <= m.year <= n:
+            problems.append(f"mandatory {m.course_id} is in year {m.year}, outside the degree's years 1-{n} "
+                            f"(degree_years {n})")
+    for r in spec.course_rules:
+        if r.kind != "study_duration":
+            continue
+        semesters, years = r.params.get("semesters"), r.params.get("years")
+        found = []
+        if semesters is not None and semesters != 2 * n:
+            whole = "" if semesters % 2 == 0 else " (not whole years: degree_years cannot express it yet)"
+            found.append(f"says {semesters} semesters{whole}, but degree_years {n} is {2 * n} semesters")
+        if years is not None and years != n:
+            found.append(f"says {years} years, but degree_years is {n}")
+        if not found:
+            continue
+        cited = set(r.source_ids)
+        conflicts = [i for i, c in enumerate(spec.source_conflicts) if cited & set(c.sources)]
+        if conflicts:
+            refs = ", ".join(f"source_conflicts[{i}] ({spec.source_conflicts[i].description!r})" for i in conflicts)
+            tail = f"; recorded as {refs} — the owner decides which source governs"
+        else:
+            tail = "; record a source_conflicts entry and ask the owner which source governs"
+        problems += [f"study_duration rule {r.rule_id} {f}{tail}" for f in found]
     return _result("degree_length", problems)
 
 

@@ -3,7 +3,8 @@ Single enrichment command for the 2027 Mechanical Engineering board.
 
 Runs the full pipeline in sequence:
   1. Load mechanical_engineering_2027_enriched.json (with mandatory courses reference).
-  2. build_semester_board() — places 12 mandatory Y3/Y4 courses, builds 56-course repo.
+  2. build_semester_board() — places the mandatory courses of the board's years (Years 3..N,
+     ``years``), builds the repository from the program's elective data.
   3. enrich_board_links — fetch/parse IMS detail pages for REPO courses (from cache).
   4. enrich_board_links — fetch/parse IMS detail pages for PLACED MANDATORY courses.
   5. Fill missing name_he / weekly_hours from TAU GraphQL cache.
@@ -143,13 +144,15 @@ def enrich_board(
     shana: str,
     offline: bool = False,
     offerings: dict | None = None,
+    years: int = 2,
 ) -> dict:
     """Run the full board enrichment pipeline for one program.
 
     ``program`` is the enriched-program dict (``spec_to_program`` output); when omitted
     the committed ME enriched program file is read. ``tcid``/``shana``: the program's
     registry sourceIds.tcid / sourceYear; ``offerings``: its official offerings
-    (``semester_board.official_offerings``). Returns final board stats dict.
+    (``semester_board.official_offerings``); ``years``: the degree years the board covers from
+    Year 3 (``build_semester_board(years=...)``). Returns final board stats dict.
     """
 
     # Step 1: Build board from enriched program
@@ -164,6 +167,7 @@ def enrich_board(
         db_path=db_path,
         offerings=offerings,
         shana=int(shana),
+        years=years,
     )
     if not dry_run:
         board_path.write_text(

@@ -94,6 +94,7 @@ export default function NativePlannerJourney({
   onBoardSnapshot,
   onPrepareRestore,
   companion,
+  degreeSemesterIds,
 }: {
   programId: string
   getBoardFn?: (programId: string) => Promise<BoardModel>
@@ -132,6 +133,8 @@ export default function NativePlannerJourney({
   onPrepareRestore?: (prepare: (() => Promise<void>) | null) => void
   /** Another window's read-only columns shown beside this board ("whole degree" view). */
   companion?: { placement: 'before' | 'after'; node: ReactNode }
+  /** Semesters of every published board of the degree (year picker span); defaults to this board's own. */
+  degreeSemesterIds?: readonly string[]
 }) {
   const { t } = useLocale()
   // ── the board ─────────────────────────────────────────────────────────────
@@ -360,7 +363,7 @@ export default function NativePlannerJourney({
       alwaysOpen={part === 'studies'}
       currentDegreeYear={currentDegreeYear}
       onCurrentDegreeYearChange={onCurrentDegreeYearChange}
-      degreeYears={degreeYearsForBoard(current?.semesters.map((s) => s.semesterId) ?? [], currentDegreeYear)}
+      degreeYears={degreeYearsForBoard(current?.semesters.map((s) => s.semesterId) ?? [], currentDegreeYear, degreeSemesterIds)}
     />
   )
 

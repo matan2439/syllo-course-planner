@@ -102,3 +102,17 @@ test('maps course essentials for the card', () => {
     hasWarnings: true,
   });
 });
+
+test('Hebrew semester titles exist for every year 1-6', () => {
+  const years = ['א׳', 'ב׳', 'ג׳', 'ד׳', 'ה׳', 'ו׳'];
+  years.forEach((y, i) => {
+    for (const [half, he] of [['a', 'א׳'], ['b', 'ב׳']]) {
+      const id = `year_${i + 1}_semester_${half}`;
+      const board = adaptBoard({
+        ...rawBoard,
+        semesters: [{ semester_id: id, display_name: 'English', total_weekly_hours: null, average_difficulty: null, courses: [] }],
+      } as never);
+      expect(board.semesters[0].title).toBe(`שנה ${y} — סמסטר ${he}`);
+    }
+  });
+});

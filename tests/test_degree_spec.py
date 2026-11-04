@@ -112,6 +112,14 @@ def test_resolve_spec_path(me_spec):
     assert not resolve_spec_path(spec, "group_minimums.labs")
     assert resolve_spec_path(spec, "catalog_year_policy")
     assert not resolve_spec_path(spec.model_copy(update={"catalog_year_policy": None}), "catalog_year_policy")
+    assert resolve_spec_path(spec, "degree_years")
+
+
+def test_degree_years_is_spec_only(me_spec):
+    """The degree length never reaches the legacy program; ME (no explicit field) is 4 years."""
+    assert me_spec.degree_years == 4
+    assert load_spec(spec_path(get_program(ME_ID))).degree_years == 4
+    assert spec_to_program(me_spec.model_copy(update={"degree_years": 5})) == _enriched()
 
 
 def _rule(**kw) -> dict:
@@ -146,7 +154,8 @@ def _distinct(**params) -> dict:
                  params={**base, **params})
 
 
-@pytest.mark.parametrize("kind", ["mutually_exclusive", "language_requirement"])
+@pytest.mark.parametrize("kind", ["mutually_exclusive", "language_requirement", "load_limit",
+                                  "study_duration", "prerequisite_policy"])
 def test_course_rule_accepts_new_kinds(me_spec, kind):
     data = me_spec.model_dump(mode="json")
     data["course_rules"] = [_rule(kind=kind, params={})]

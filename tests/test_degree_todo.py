@@ -134,3 +134,12 @@ def test_coverage_gaps_match_check_coverage():
     assert flagged == {"rule:none", "rule:bad", "rule:blank", "rule:map", "rule:gone"}
     assert len(problems) == len(flagged)
     assert all(any(k in p for p in problems) for k in flagged)
+
+
+def test_unread_page_must_go_to_known_gaps(env, capfd):
+    _, spec_file, put = env
+    put([dict(item("pdf:d:unread-page-2", text="[page 2 has no extractable text]"), data={"page": 2, "unread": True})])
+    set_coverage(spec_file, {"pdf:d:unread-page-2": {"not_planning_rule": "scanned page"}})
+    code, out = run(capfd)
+    assert code == 1
+    assert "- id: pdf:d:unread-page-2 (unread page not in known_gaps)" in out and "1 unaccounted" in out

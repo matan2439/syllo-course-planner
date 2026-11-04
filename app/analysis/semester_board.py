@@ -44,9 +44,11 @@ def build_semester_board(
     db_path: Path = _DB_PATH,
     offerings: dict[str, dict[str, Any]] | None = None,
     shana: int | None = None,
+    years: int = 2,
 ) -> dict[str, Any]:
     """
-    Distribute selected_courses from a plan JSON into a 4-semester board.
+    Distribute selected_courses from a plan JSON into a board of *years* degree years
+    (2 semesters each) starting at *start_year* (default: Years 3-4, 4 semesters).
 
     *offerings* is this year's official offering per course (``official_offerings`` of the
     program's facts); None means no official offering is known for any course.
@@ -64,7 +66,7 @@ def build_semester_board(
                    source, data_quality, warnings.
     """
     courses   = plan.get("selected_courses", [])
-    semesters = _make_semesters(start_year)
+    semesters = _make_semesters(start_year, years)
     global_warnings: list[str] = []
 
     # Build course→category map from program requirements (if present)
@@ -559,13 +561,12 @@ def _build_season_prefs_from_program(program: dict) -> dict[str, str]:
 # Semester definitions
 # ---------------------------------------------------------------------------
 
-def _make_semesters(start_year: int) -> list[dict[str, str]]:
-    y = start_year
+def _make_semesters(start_year: int, years: int = 2) -> list[dict[str, str]]:
+    """Two semesters (A, B) per degree year, Years ``start_year`` .. ``start_year + years - 1``."""
     return [
-        {"id": f"year_{y}_semester_a",   "display_name": f"Year {y} — Semester A",   "season": "a"},
-        {"id": f"year_{y}_semester_b",   "display_name": f"Year {y} — Semester B",   "season": "b"},
-        {"id": f"year_{y+1}_semester_a", "display_name": f"Year {y+1} — Semester A", "season": "a"},
-        {"id": f"year_{y+1}_semester_b", "display_name": f"Year {y+1} — Semester B", "season": "b"},
+        {"id": f"year_{y}_semester_{h}", "display_name": f"Year {y} — Semester {h.upper()}", "season": h}
+        for y in range(start_year, start_year + years)
+        for h in ("a", "b")
     ]
 
 
@@ -741,7 +742,7 @@ def _assign_to_semesters(
                 placed_idx = len(semesters) - 1
                 pass_used  = 3
                 warnings.append(
-                    f"{cid}: could not satisfy prerequisite ordering within 4 semesters; "
+                    f"{cid}: could not satisfy prerequisite ordering within {len(semesters)} semesters; "
                     f"placed in last semester."
                 )
 
@@ -1120,6 +1121,7 @@ def _build_shaar_ruach_repository_courses(
     category_id: str,
     category_name_he: str,
     path: Path = _SHAAR_RUACH_PATH,
+    semester_ids: list[str] | tuple[str, ...] = _SHAAR_RUACH_SEMESTER_IDS,
 ) -> list[dict[str, Any]]:
     """
     Load קורסי שער רוח (TAU humanities "gateway" courses) as repository
@@ -1145,7 +1147,7 @@ def _build_shaar_ruach_repository_courses(
             continue
         offered = c.get("offered_semesters") or []
         effective = [
-            s for s in _SHAAR_RUACH_SEMESTER_IDS
+            s for s in semester_ids
             if (s.endswith("_semester_a") and "A" in offered)
             or (s.endswith("_semester_b") and "B" in offered)
         ]
@@ -1181,6 +1183,7 @@ def _build_program_repository_courses(
     program: dict[str, Any],
     db_path: Path = _DB_PATH,
     shana: int | None = None,
+    semester_ids: list[str] | tuple[str, ...] = _SHAAR_RUACH_SEMESTER_IDS,
 ) -> list[dict[str, Any]]:
     """
     Return a flat list of all elective + other-specialization courses defined in
@@ -1328,6 +1331,7 @@ def _build_program_repository_courses(
         seen_shaar_ruach: set[str] = set()
         for sr in _build_shaar_ruach_repository_courses(
             general["category_id"], general.get("name_he") or general["category_id"],
+            semester_ids=semester_ids,
         ):
             if sr["course_id"] in seen or sr["course_id"] in seen_shaar_ruach:
                 continue
@@ -1354,7 +1358,9 @@ def _annotate_program_requirements(
     """
     validation    = validate_program_plan(board, program, completed_course_ids)
     frontend_cats = get_program_categories_for_frontend(program)
-    repo_courses  = _build_program_repository_courses(program, db_path, shana)
+    # The general requirement's courses are allowed in this board's own semesters.
+    semester_ids  = [s["semester_id"] for s in board.get("semesters", [])] or list(_SHAAR_RUACH_SEMESTER_IDS)
+    repo_courses  = _build_program_repository_courses(program, db_path, shana, semester_ids)
 
     board.setdefault("metadata", {}).update({
         "program_requirements_validation": validation,

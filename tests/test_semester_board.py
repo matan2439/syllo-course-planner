@@ -79,6 +79,18 @@ def test_custom_start_year(no_db):
     assert "year_3_semester_a" in ids
 
 
+def test_years_sets_the_board_length(no_db):
+    """``years``: how many degree years the board covers (a 3-year degree's main board is Year 3
+    only; a 5-year degree's is Years 3-5)."""
+    one = build_semester_board(_plan(_pc("A")), start_year=3, years=1, db_path=no_db)
+    assert [s["semester_id"] for s in one["semesters"]] == ["year_3_semester_a", "year_3_semester_b"]
+    three = build_semester_board(_plan(_pc("A")), start_year=3, years=3, db_path=no_db)
+    assert [s["semester_id"] for s in three["semesters"]] == [
+        f"year_{y}_semester_{h}" for y in (3, 4, 5) for h in "ab"]
+    assert [s["display_name"] for s in three["semesters"]][-1] == "Year 5 — Semester B"
+    assert _make_semesters(3) == _make_semesters(3, 2)
+
+
 def test_each_semester_has_required_keys(no_db):
     board = build_semester_board(_plan(_pc("A")), db_path=no_db)
     for sem in board["semesters"]:

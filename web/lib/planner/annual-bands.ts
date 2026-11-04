@@ -7,7 +7,8 @@ export type AnnualBand = { course: CourseVM; startIndex: number }
  * columns (isAnnual: true on both). De-duplicate it into ONE band per
  * year-pair, positioned at the pair's first (even) index — so it can be
  * rendered once, spanning both columns, instead of as two independent cards.
- * Assumes the canonical 4-semester a/b/a/b ordering (SEMESTER_ORDER).
+ * Assumes a/b-paired ordering (a/b/a/b..., SEMESTER_ORDER) for any number of
+ * degree years (a 3-year degree's main board has 2 columns, a 5-year's 6).
  *
  * ponytail: at most one annual course per year-pair is assumed — every real
  * program board today has that shape. If a program ever ships two annual

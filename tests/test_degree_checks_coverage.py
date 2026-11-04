@@ -89,3 +89,38 @@ def test_freshness_fails_on_empty_evidence():
 def test_blank_mapped_to_fails():
     result = check_coverage([_item("a")], _spec({"a": {"mapped_to": ""}}))
     assert not result.passed and "unresolved mapping: a" in result.problems[0]
+
+
+def _gap_spec(coverage) -> DegreeSpec:
+    spec = _spec(coverage)
+    return spec.model_validate({**spec.model_dump(), "known_gaps": [
+        {"gap_id": "scanned", "description": "scanned page", "source_ids": ["pdf:d:unread-page-2"]}]})
+
+
+UNREAD = {"page": 2, "unread": True}
+
+
+def test_unread_page_mapped_to_known_gap_passes():
+    spec = _gap_spec({"pdf:d:unread-page-2": {"mapped_to": "known_gaps[scanned]"}})
+    assert check_coverage([_item("pdf:d:unread-page-2", data=UNREAD)], spec).passed
+
+
+def test_unread_page_mapped_elsewhere_fails():
+    for entry in ({"mapped_to": "categories[fluids]"}, {"not_planning_rule": "just a scan"}):
+        result = check_coverage([_item("pdf:d:unread-page-2", data=UNREAD)], _gap_spec({"pdf:d:unread-page-2": entry}))
+        assert not result.passed
+        assert result.problems[0].startswith("unread page not in known_gaps: pdf:d:unread-page-2"), result.problems
+
+
+def test_unread_page_to_missing_gap_is_unresolved():
+    result = check_coverage([_item("pdf:d:unread-page-2", data=UNREAD)],
+                            _gap_spec({"pdf:d:unread-page-2": {"mapped_to": "known_gaps[nope]"}}))
+    assert not result.passed and result.problems[0].startswith("unresolved mapping:")
+
+
+def test_coverage_gaps_is_shared_with_todo():
+    from app.degrees.checks.coverage import UNREAD_NOT_GAP, coverage_gaps
+
+    spec = _gap_spec({"pdf:d:unread-page-2": {"not_planning_rule": "x"}})
+    gaps, _ = coverage_gaps([_item("pdf:d:unread-page-2", data=UNREAD)], spec)
+    assert [(i.id, r) for i, r in gaps] == [("pdf:d:unread-page-2", UNREAD_NOT_GAP)]

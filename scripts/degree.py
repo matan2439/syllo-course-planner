@@ -48,9 +48,11 @@ publish   the gate a new degree passes before it goes live: refuses anything not
           registry status "live" and the early-year index rewritten, and prints — never runs —
           the owner's DB board sync command and "commit, open a PR, deploy".
 
-build/check refuse a degree that is not 4 years long (mandatory years must be exactly 1-4: the
-boards cover Years 1-2 and 3-4 only) — build exits 2, check fails `degree_length`. A draft's
-boards (window board included) are never served and never enter the early-year index.
+Degree length is data: spec `degree_years` (N, 3..6) sets the boards — the early window board
+is Years 1-2, the program board Years 3..N. build/check refuse a mandatory course outside years
+1..N (or a study_duration rule that disagrees with N) — build exits 2, check fails
+`degree_length`. A draft's boards (window board included) are never served and never enter the
+early-year index.
 """
 from __future__ import annotations
 
@@ -80,13 +82,15 @@ REPORT_DIR = DATA / "import_reports"
 DB_PATH = DATA / "database.sqlite"
 SHAAR_RUACH_SOURCE = DATA / "general_courses_shaar_ruach.json"
 
-# The program board is the Years 3-4 window (build_semester_board's default start_year); the
-# Years 1-2 window board is built next to it by build_early_years_board.
+# The program board covers Years 3..N (N = spec.degree_years; build_semester_board's default
+# start_year); the Years 1-2 window board is built next to it by build_early_years_board.
 MAIN_BOARD_START_YEAR = 3
 EARLY_START_YEAR = 1
-# The degree years the boards cover: the early window (Years 1-2) + the main board (Years 3-4).
-# Degree length is not modelled: a degree whose mandatory years are not exactly these is refused.
-WINDOW_YEARS = sorted({EARLY_START_YEAR, EARLY_START_YEAR + 1, MAIN_BOARD_START_YEAR, MAIN_BOARD_START_YEAR + 1})
+
+
+def main_board_years(spec: DegreeSpec) -> int:
+    """How many degree years the program board covers: Years 3..N (N=3 -> 1, N=4 -> 2, N=5 -> 3)."""
+    return spec.degree_years - MAIN_BOARD_START_YEAR + 1
 
 
 class DegreeCliError(Exception):
@@ -94,18 +98,19 @@ class DegreeCliError(Exception):
 
 
 class DegreeLengthError(DegreeCliError):
-    """The spec has mandatory courses outside the board windows, or is not a 4-year degree."""
+    """The spec has mandatory courses outside its degree years 1..degree_years."""
 
 
 def degree_length_guard(entry: ProgramEntry, spec: DegreeSpec) -> None:
-    """Refuse (DegreeLengthError) a spec the fixed board windows would silently truncate."""
+    """Refuse (DegreeLengthError) a spec the board windows would silently truncate."""
     from app.degrees.checks import check_degree_length
 
-    result = check_degree_length(spec, WINDOW_YEARS)
+    result = check_degree_length(spec)
     if not result.passed:
         raise DegreeLengthError(
             f"{entry.id}: refusing to build — " + "; ".join(result.problems)
-            + ". Boards cover years 1-2 and 3-4 only; a degree of another length needs the length modelled first.")
+            + f". Boards cover years 1-2 and 3-{spec.degree_years} (spec degree_years); fix the course's year "
+              "or degree_years from the official program page.")
 # BIDIT current-year schedule evidence copied from the general-requirement catalog onto its
 # board records (the offline half of scripts/enrich_shaar_ruach_bidit.ts).
 BIDIT_FIELDS = ("weekly_hours", "weekly_hours_source", "weekly_hours_verified_from_bidit")
@@ -167,17 +172,18 @@ def _semester_ids(year: int, semester: str) -> list[str]:
     return [f"year_{year}_semester_{h}" for h in halves]
 
 
-def mandatory_courses_file(spec: DegreeSpec, start_year: int, facts: dict) -> dict:
+def mandatory_courses_file(spec: DegreeSpec, start_year: int, facts: dict, years: int = 2) -> dict:
     """The board builder's mandatory-courses input, generated from the spec (the authority).
 
     Placement comes from the spec; the display name and weekly hours come from the official
     facts (the builder falls back to them when the local course DB lacks a course). Every
-    mandatory course is locked by default, as in the legacy hand-maintained file.
+    mandatory course is locked by default, as in the legacy hand-maintained file. ``years``: the
+    board's degree years from ``start_year`` (``main_board_years(spec)``).
     """
-    years = {start_year, start_year + 1}
+    window = set(range(start_year, start_year + years))
     rows = []
     for m in spec.mandatory_courses:
-        if m.year not in years:
+        if m.year not in window:
             continue
         fact = facts.get(m.course_id) or {}
         rows.append({
@@ -376,7 +382,8 @@ def build(entry: ProgramEntry, out_dir: Path = DATA, offline: bool = False, live
         program["elective_courses"] = elective_courses_from_spec(spec, facts)
     with tempfile.TemporaryDirectory(prefix=f"degree_build_{entry.id}_") as tmp:
         mandatory_file = Path(tmp) / "mandatory_courses.json"
-        mandatory_file.write_text(json.dumps(mandatory_courses_file(spec, MAIN_BOARD_START_YEAR, facts),
+        mandatory_file.write_text(json.dumps(mandatory_courses_file(spec, MAIN_BOARD_START_YEAR, facts,
+                                                                    main_board_years(spec)),
                                              ensure_ascii=False, indent=2), encoding="utf-8")
         reqs = program["requirements"]
         reqs["mandatory_courses"] = {**reqs.get("mandatory_courses", {}), "courses_file": str(mandatory_file)}
@@ -391,7 +398,7 @@ def build(entry: ProgramEntry, out_dir: Path = DATA, offline: bool = False, live
             path.parent.mkdir(parents=True, exist_ok=True)
             print(f"[build] {key}: generate -> {path}")
             generate(program=variant, board_path=path, db_path=DB_PATH, tcid=tcid, shana=str(shana),
-                     offline=offline, offerings=offerings)
+                     offline=offline, offerings=offerings, years=main_board_years(spec))
             board = json.loads(path.read_text(encoding="utf-8"))
             changed = rcd.apply(board, facts, shana)
             summaries = rcd.refresh_syllabi(board, offline)
@@ -485,7 +492,7 @@ def run_checks(entry: ProgramEntry, live: bool, offline: bool) -> CheckRun:
         check_courses_known(spec, facts),
         check_double_counting(spec),
         check_mandatory_offered(spec, facts),
-        check_degree_length(spec, WINDOW_YEARS),
+        check_degree_length(spec),
         check_totals(spec, facts),
         check_plannable(board),
         check_rules_enforced(spec),

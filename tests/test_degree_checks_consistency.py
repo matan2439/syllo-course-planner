@@ -43,33 +43,86 @@ def _fact(credits=4, semesters=("A", "B"), status="offered", hours=4):
 # ---------------------------------------------------------------- degree_length
 
 
-def _years_spec(*years) -> DegreeSpec:
-    return DegreeSpec.model_validate({
+def _years_spec(*years, degree_years=None, rules=(), conflicts=()) -> DegreeSpec:
+    data = {
         "program_id": "p", "institution": "tau", "source_year": 2027, "total_required_credits": 20,
         "mandatory_courses": [{"course_id": f"M-{i}", "year": y, "semester": "A", "placement_rule": "r"}
                               for i, y in enumerate(years)],
         "categories": [], "group_minimums": {}, "ui": {}, "legacy": {},
-    })
+        "course_rules": [{"rule_id": f"dur-{i}", "kind": "study_duration", "course_ids": [], "params": params,
+                          "source_ids": ["s"], "enforced_by": "board", "note": "n"}
+                         for i, params in enumerate(rules)],
+        "source_conflicts": list(conflicts),
+    }
+    if degree_years is not None:
+        data["degree_years"] = degree_years
+    return DegreeSpec.model_validate(data)
 
 
 def test_degree_length_passes_a_four_year_degree():
-    result = check_degree_length(_years_spec(1, 1, 2, 3, 4), [1, 2, 3, 4])
+    result = check_degree_length(_years_spec(1, 1, 2, 3, 4))
     assert result.passed and result.problems == []
 
 
-def test_degree_length_fails_a_mandatory_course_outside_the_windows():
-    result = check_degree_length(_years_spec(1, 2, 3, 4, 5), [1, 2, 3, 4])
+def test_degree_length_passes_three_and_five_year_degrees():
+    assert check_degree_length(_years_spec(1, 2, 3, degree_years=3)).passed
+    assert check_degree_length(_years_spec(1, 2, 3, 4, 5, degree_years=5)).passed
+
+
+def test_degree_length_passes_an_electives_only_final_year():
+    """A year with no mandatory course (e.g. an electives-only final year) is not a refusal."""
+    for years, n in [((1, 2, 3), 4), ((1, 3, 4), 4), ((1, 2), 3)]:
+        result = check_degree_length(_years_spec(*years, degree_years=n))
+        assert result.passed and result.problems == [], (years, n)
+
+
+def test_degree_length_fails_a_mandatory_course_outside_the_degree():
+    result = check_degree_length(_years_spec(1, 2, 3, 4, 5))
     assert not result.passed
-    assert any("M-4 is in year 5, which no board window covers" in p for p in result.problems)
-    assert any("expected exactly 1-4" in p for p in result.problems)
+    assert result.problems == ["mandatory M-4 is in year 5, outside the degree's years 1-4 (degree_years 4)"]
+    result = check_degree_length(_years_spec(0, 1, 2, 3, degree_years=3))
+    assert result.problems == ["mandatory M-0 is in year 0, outside the degree's years 1-3 (degree_years 3)"]
 
 
-def test_degree_length_fails_a_three_year_degree_and_a_gap_year():
-    for years in [(1, 2, 3), (1, 3, 4)]:
-        result = check_degree_length(_years_spec(*years), [1, 2, 3, 4])
-        assert not result.passed
-        assert result.problems == [f"mandatory courses span years {sorted(set(years))}, expected exactly 1-4: "
-                                   "degree length is not modelled yet (4-year degrees only)"]
+def test_degree_length_cross_checks_study_duration_rules():
+    ok = _years_spec(1, 2, 3, 4, rules=[{"semesters": 8, "years": 4}, {"extension_years": 1}])
+    assert check_degree_length(ok).passed
+    bad = _years_spec(1, 2, 3, degree_years=3, rules=[{"semesters": 8, "years": 4}])
+    result = check_degree_length(bad)
+    assert not result.passed
+    ask = "; record a source_conflicts entry and ask the owner which source governs"
+    assert result.problems == [
+        "study_duration rule dur-0 says 4 years, but degree_years is 3" + ask,
+        "study_duration rule dur-0 says 8 semesters, but degree_years 3 is 6 semesters" + ask,
+    ]
+
+
+def test_degree_length_duration_conflict_stays_red_and_names_the_conflict():
+    """A 4.5-year (9-semester) program whose page shows 4 years: recorded as a source conflict,
+    still red (the owner decides which source governs; whole years cannot express 4.5 yet)."""
+    spec = _years_spec(1, 2, 3, 4, rules=[{"semesters": 9, "years": 4.5}], conflicts=[
+        {"course_id": None, "description": "page shows 4 years; regulations say 9 semesters",
+         "sources": ["T:body:years", "s"]},
+        {"course_id": None, "description": "unrelated", "sources": ["other"]},
+    ])
+    result = check_degree_length(spec)
+    assert not result.passed
+    tail = ("; recorded as source_conflicts[0] ('page shows 4 years; regulations say 9 semesters')"
+            " — the owner decides which source governs")
+    assert result.problems == [
+        "study_duration rule dur-0 says 4.5 years, but degree_years is 4" + tail,
+        "study_duration rule dur-0 says 9 semesters (not whole years: degree_years cannot express it yet), "
+        "but degree_years 4 is 8 semesters" + tail,
+    ]
+
+
+def test_degree_years_is_validated():
+    import pytest
+    from pydantic import ValidationError
+    assert _years_spec(1).degree_years == 4
+    for n in (2, 7):
+        with pytest.raises(ValidationError):
+            _years_spec(1, degree_years=n)
 
 
 # ---------------------------------------------------------------- courses_known
@@ -285,7 +338,7 @@ def test_me_spec_passes_all():
         check_mandatory_offered(spec, facts),
         check_totals(spec, facts),
         check_plannable(board),
-        check_degree_length(spec, [1, 2, 3, 4]),
+        check_degree_length(spec),
     ]
     failed = {r.name: r.problems for r in results if not r.passed}
     assert not failed, failed
