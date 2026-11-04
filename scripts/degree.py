@@ -10,6 +10,7 @@ One CLI for every registered degree (data/config/programs.json):
     python scripts/degree.py check    --program <id>  --live|--offline
     python scripts/degree.py refresh  --program <id> [--live|--offline] [--apply [--syllabi]]
     python scripts/degree.py todo     --program <id> [--apply-suggestions]
+    python scripts/degree.py publish  --program <id> [--update]
 
 init      resolves the program in TAU's official program index (fails listing the candidates on
           zero or several matches), appends a status "draft" registry entry <base>_<shana+1>,
@@ -37,6 +38,12 @@ refresh   official facts for every course the spec or boards reference + a misma
           (data/official/tau_course_facts_<year>.json); --apply then runs `build` into data/
           (the only board write path: curation overlay, byte-stable writer, board_data_version)
           after keeping the general-requirement catalog in step.
+publish   the gate a new degree passes before it goes live: refuses a degree already "live"
+          (--update is Plan 3's impact flow: not built yet, exit 1); `build --live` into data/;
+          `check --live` — any FAIL or SKIPPED check: exit 1, registry unchanged (the built files
+          stay in the working tree); all PASS: registry status "live", RELEASE.md beside spec.json
+          (date, evidence counts by kind, check summary, sources with fetch times), and prints —
+          never runs — the owner's DB board sync command and "commit, open a PR, deploy".
 """
 from __future__ import annotations
 
@@ -407,8 +414,25 @@ def write_evidence(entry: ProgramEntry, items) -> Path:
     return path
 
 
+@dataclasses.dataclass
+class CheckRun:
+    """One check run: each check's result, the checks that were SKIPPED (not run), the evidence
+    the run collected, the rendered report, and whether it passed (no FAIL and no SKIPPED)."""
+    results: list
+    skipped: list[str]
+    items: list
+    report: str
+    passed: bool
+
+
 def run_check(entry: ProgramEntry, live: bool, offline: bool) -> tuple[bool, str]:
     """All Task 5/6 checks. Offline: freshness is SKIPPED and the run never passes."""
+    run = run_checks(entry, live=live, offline=offline)
+    return run.passed, run.report
+
+
+def run_checks(entry: ProgramEntry, live: bool, offline: bool) -> CheckRun:
+    """run_check with the per-check results exposed (publish refuses on any FAIL or SKIPPED)."""
     from app.degrees.checks import (
         check_courses_known, check_coverage, check_double_counting, check_freshness, check_known_gaps,
         check_mandatory_offered, check_plannable, check_rules_enforced, check_totals,
@@ -440,14 +464,80 @@ def run_check(entry: ProgramEntry, live: bool, offline: bool) -> tuple[bool, str
         if len(r.problems) > 200:
             lines.append(f"- … {len(r.problems) - 200} more")
         lines.append("")
+    skipped = ["freshness"] if offline else []
     if offline:
         lines += ["## freshness: SKIPPED", "- offline run: evidence is cached, so freshness is not verified", ""]
-    passed = all(r.passed for r in results) and not offline
+    passed = all(r.passed for r in results) and not skipped
     lines.append(f"Result: {'PASS' if passed else 'FAIL'}")
     report = "\n".join(lines) + "\n"
     REPORT_DIR.mkdir(parents=True, exist_ok=True)
     (REPORT_DIR / f"degree_check_{entry.id}.md").write_text(report, encoding="utf-8")
-    return passed, report
+    return CheckRun(results=results, skipped=skipped, items=list(items), report=report, passed=passed)
+
+
+# ---------------------------------------------------------------- publish
+
+RELEASE_NAME = "RELEASE.md"
+
+
+def release_note(entry: ProgramEntry, run: CheckRun, today: str) -> str:
+    """RELEASE.md: date, evidence item counts by kind, check summary, sources with fetch times."""
+    lines = [f"# Release — {entry.id}", "", f"Date: {today}", f"Program: {entry.name_he} ({entry.name_en})",
+             "Status: live", "", f"## Evidence ({len(run.items)} items)"]
+    lines += [f"- {kind}: {n}" for kind, n in sorted(Counter(i.kind for i in run.items).items())]
+    lines += ["", "## Checks (live)"]
+    lines += [f"- {r.name}: {'PASS' if r.passed else 'FAIL'}" for r in run.results]
+    lines += ["", "## Sources"]
+    latest: dict[str, datetime] = {}
+    for i in run.items:
+        if i.source_url not in latest or i.fetched_at > latest[i.source_url]:
+            latest[i.source_url] = i.fetched_at
+    lines += [f"- {url} (fetched_at {t.isoformat()})" for url, t in sorted(latest.items())]
+    return "\n".join(lines) + "\n"
+
+
+def run_publish(entry: ProgramEntry, update: bool) -> int:
+    """build --live into data/ -> a full live check -> (all PASS, none SKIPPED) status "live" +
+    RELEASE.md + the owner's commands, printed, never run."""
+    from app.degrees import registry
+
+    if entry.status == "live":
+        if update:
+            print(f"[publish] {entry.id}: impact analysis not built yet (Plan 3) — an update to a live degree "
+                  f"is not supported", file=sys.stderr)
+        else:
+            print(f"[publish] {entry.id} is already live — refusing; republishing a live degree needs --update",
+                  file=sys.stderr)
+        return 1
+    print(f"[publish] {entry.id}: build --live into data/")
+    build(entry, DATA, offline=False, live=True)
+    # The build's live run refreshes the official facts, not the evidence: the check fetches evidence itself.
+    print(f"[publish] {entry.id}: check --live")
+    run = run_checks(entry, live=True, offline=False)
+    failing = [r for r in run.results if not r.passed]
+    if failing or run.skipped or not run.passed:
+        print(f"[publish] {entry.id}: refused — every check must PASS live:", file=sys.stderr)
+        for r in failing:
+            print(f"  {r.name}: FAIL ({len(r.problems)} problems)", file=sys.stderr)
+            for p in r.problems[:5]:
+                print(f"    - {p}", file=sys.stderr)
+        for name in run.skipped:
+            print(f"  {name}: SKIPPED", file=sys.stderr)
+        print(f"[publish] registry unchanged ({entry.id} stays {entry.status}); the built files remain in the "
+              f"working tree (data/) — review or discard them. Full report: "
+              f"{_show(REPORT_DIR / f'degree_check_{entry.id}.md')}", file=sys.stderr)
+        return 1
+    registry.set_status(entry.id, "live")
+    release = spec_path(entry).with_name(RELEASE_NAME)
+    release.parent.mkdir(parents=True, exist_ok=True)
+    today = datetime.now(timezone.utc).date().isoformat()
+    release.write_bytes(release_note(entry, run, today).encode("utf-8"))
+    board = board_paths(entry)["board"].relative_to(ROOT).as_posix()
+    print(f"[publish] {entry.id}: every check passed; registry status -> live; release note -> {_show(release)}")
+    print("[publish] owner steps (not run):")
+    print(f"  1. ENV_FILE=.env.local node scripts/update-board-json.mjs {entry.base} {entry.year} {board}")
+    print("  2. commit, open a PR, deploy")
+    return 0
 
 
 # ---------------------------------------------------------------- todo
@@ -627,7 +717,7 @@ def run_init(args) -> int:
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("command", choices=["init", "evidence", "build", "check", "refresh", "todo"])
+    ap.add_argument("command", choices=["init", "evidence", "build", "check", "refresh", "todo", "publish"])
     ap.add_argument("--program", help="registry program id, e.g. mechanical_engineering_2027 (all but init)")
     mode = ap.add_mutually_exclusive_group()
     mode.add_argument("--live", action="store_true",
@@ -640,6 +730,8 @@ def main(argv: list[str] | None = None) -> int:
                     help="accepted for compatibility: build always rebuilds stale syllabus summaries")
     ap.add_argument("--apply-suggestions", action="store_true",
                     help="todo: first write the unambiguous suggested coverage entries (never overwriting) to the spec")
+    ap.add_argument("--update", action="store_true",
+                    help="publish: republish an already-live degree (needs Plan 3's impact analysis; not built yet)")
     init = ap.add_argument_group("init (scaffold a draft degree from the official program index)")
     init.add_argument("--institution", default="tau")
     init.add_argument("--title-he", help="the program's official Hebrew title, exactly as the index lists it")
@@ -667,6 +759,12 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.command == "todo":
         return run_todo(entry, args.apply_suggestions)
+    if args.command == "publish":
+        if args.offline:
+            print("publish always builds and checks live (freshness must be verified) — drop --offline",
+                  file=sys.stderr)
+            return 2
+        return run_publish(entry, args.update)
     if args.command == "build":
         out = build(entry, args.out_dir, offline=args.offline, live=args.live)
         for key, path in out.items():

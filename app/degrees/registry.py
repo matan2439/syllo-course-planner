@@ -97,3 +97,18 @@ def add_program(entry: ProgramEntry, path: Path | None = None) -> None:
         row.pop("catalogYearPolicy", None)  # absent = the institution default
     raw["programs"].append(row)
     path.write_bytes((json.dumps(raw, ensure_ascii=False, indent=2) + "\n").encode("utf-8"))
+
+
+def set_status(program_id: str, status: str, path: Path | None = None) -> None:
+    """Set ``program_id``'s ``status`` in the registry file (default: data/config/programs.json),
+    changing nothing else and keeping add_program's layout (indent 2, UTF-8, trailing newline).
+    The whole registry, changed entry included, is validated before anything is written;
+    an unknown id raises KeyError."""
+    path = Path(path or DEFAULT_PATH)
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    rows = [dict(p, status=status) if p.get("id") == program_id else p for p in raw["programs"]]
+    if not any(p.get("id") == program_id for p in raw["programs"]):
+        raise KeyError(program_id)
+    validate_registry([ProgramEntry.model_validate(p) for p in rows])
+    raw["programs"] = rows
+    path.write_bytes((json.dumps(raw, ensure_ascii=False, indent=2) + "\n").encode("utf-8"))
