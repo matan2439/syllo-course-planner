@@ -23,7 +23,8 @@
     "cancelled": false,
     "data": {
       "shana": "תשע\"ט - 2018",
-      "url": "https://engineering.tau.ac.il/yedion/2018-19"
+      "url": "https://engineering.tau.ac.il/yedion/2018-19",
+      "list": "prev_newsletters"
     }
   },
   {
@@ -38,7 +39,8 @@
     "cancelled": false,
     "data": {
       "shana": "תשע\"ז - 2016",
-      "url": "https://engineering.tau.ac.il/yedion/2016-17"
+      "url": "https://engineering.tau.ac.il/yedion/2016-17",
+      "list": "prev_newsletters"
     }
   },
   {
@@ -53,7 +55,8 @@
     "cancelled": false,
     "data": {
       "shana": "תשפ\"ד - 2023",
-      "url": "https://www.tau.ac.il/tochniot/pdf/2023/heb/054211010000.pdf"
+      "url": "https://www.tau.ac.il/tochniot/pdf/2023/heb/054211010000.pdf",
+      "list": "prev_newsletters"
     }
   },
   {
@@ -68,7 +71,8 @@
     "cancelled": false,
     "data": {
       "shana": "תש\"פ - 2019",
-      "url": "https://engineering.tau.ac.il/yedion/2019-20"
+      "url": "https://engineering.tau.ac.il/yedion/2019-20",
+      "list": "prev_newsletters"
     }
   },
   {
@@ -83,7 +87,8 @@
     "cancelled": false,
     "data": {
       "shana": "תשפ\"ה - 2024",
-      "url": "https://www.tau.ac.il/tochniot/pdf/2024/heb/054211010000.pdf"
+      "url": "https://www.tau.ac.il/tochniot/pdf/2024/heb/054211010000.pdf",
+      "list": "prev_newsletters"
     }
   },
   {
@@ -98,7 +103,8 @@
     "cancelled": false,
     "data": {
       "Title": "תקנון הלימודים לתואר ראשון",
-      "url": "https://engineering.tau.ac.il/sites/engineering.tau.ac.il/files/media_server/Engineering/yedion/Terms_BA.pdf"
+      "url": "https://engineering.tau.ac.il/sites/engineering.tau.ac.il/files/media_server/Engineering/yedion/Terms_BA.pdf",
+      "list": "terms"
     }
   },
   {
@@ -113,7 +119,8 @@
     "cancelled": false,
     "data": {
       "shana": "תשפ\"א - 2020",
-      "url": "https://engineering.tau.ac.il/yedion/2020-21"
+      "url": "https://engineering.tau.ac.il/yedion/2020-21",
+      "list": "prev_newsletters"
     }
   },
   {
@@ -128,7 +135,8 @@
     "cancelled": false,
     "data": {
       "shana": "תשפ\"ב - 2021",
-      "url": "https://engineering.tau.ac.il/yedion/2021-22"
+      "url": "https://engineering.tau.ac.il/yedion/2021-22",
+      "list": "prev_newsletters"
     }
   },
   {
@@ -143,7 +151,8 @@
     "cancelled": false,
     "data": {
       "shana": "תשפ\"ו - 2025",
-      "url": "https://www.tau.ac.il/tochniot/pdf/2025/heb/054211010000.pdf"
+      "url": "https://www.tau.ac.il/tochniot/pdf/2025/heb/054211010000.pdf",
+      "list": "prev_newsletters"
     }
   },
   {
@@ -158,7 +167,8 @@
     "cancelled": false,
     "data": {
       "shana": "תשפ\"ג - 2022",
-      "url": "https://www.tau.ac.il/tochniot/pdf/2022/heb/054211010000.pdf"
+      "url": "https://www.tau.ac.il/tochniot/pdf/2022/heb/054211010000.pdf",
+      "list": "prev_newsletters"
     }
   },
   {
@@ -173,7 +183,8 @@
     "cancelled": false,
     "data": {
       "shana": "תשע\"ח - 2017",
-      "url": "https://engineering.tau.ac.il/yedion/2017-18"
+      "url": "https://engineering.tau.ac.il/yedion/2017-18",
+      "list": "prev_newsletters"
     }
   },
   {

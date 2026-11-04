@@ -184,7 +184,8 @@ def tochniot_evidence(program: ProgramEntry, live: bool, offline: bool) -> list[
             for entry in _parse(b.get(key)) or []:
                 if isinstance(entry, dict):
                     title = entry.get("Title") or entry.get("shana") or ""
-                    add(f"{T}:body:terms:{text_id(title)}", "policy_text", [], title, data=dict(entry))
+                    # "list": current documents (terms) vs previous-year archives (prev_newsletters)
+                    add(f"{T}:body:terms:{text_id(title)}", "policy_text", [], title, data=dict(entry, list=key))
         walk(b, [])
     return items
 
