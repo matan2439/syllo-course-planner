@@ -120,12 +120,17 @@ class DegreeSpec(_Strict):
     ``tests/test_degree_spec.py::test_mandatory_courses_match_builder_inputs``. A course the
     two sources place differently appears once here and is listed in ``source_conflicts``.
     A later task makes the builder inputs generated from the spec.
+
+    ``degree_years`` is the degree's standard length (from the program page's year sections).
+    It sets the board windows: the early board is Years 1-2, the main board Years 3..N. It is
+    spec-only (the legacy program has no equivalent) and never reaches ``spec_to_program``.
     """
 
     program_id: str
     institution: str
     source_year: int
     total_required_credits: float
+    degree_years: int = Field(default=4, ge=3, le=6)
     catalog_year_policy: Optional[CatalogYearPolicy] = None
     mandatory_courses: list[MandatoryCourse]
     categories: list[Category]
@@ -415,6 +420,8 @@ def resolve_spec_path(spec: DegreeSpec, path: str) -> bool:
             return spec.general_requirement is not None
         if path == "catalog_year_policy":
             return spec.catalog_year_policy is not None
+        if path == "degree_years":
+            return True  # always set (default 4)
         if m := _PATHS["mandatory"].match(path):
             return any(c.course_id == m.group(1) for c in spec.mandatory_courses)
         if m := _PATHS["category"].match(path):

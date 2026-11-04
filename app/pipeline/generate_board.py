@@ -41,13 +41,15 @@ def generate(
     shana: str,
     offline: bool = False,
     offerings: dict | None = None,
+    years: int = 2,
 ) -> dict:
     """Generate a program's semester board JSON and return it.
 
     ``program`` is the enriched-program dict (``spec_to_program`` output); when omitted
     the committed ME enriched program file is read. ``tcid``/``shana``: the program's
     registry sourceIds.tcid / sourceYear. ``offerings``: this year's official offerings for
-    the program (``semester_board.official_offerings``); None = none known.
+    the program (``semester_board.official_offerings``); None = none known. ``years``: the
+    degree years the board covers from Year 3 (``degree_years - 2``; 2 = Years 3-4).
     """
     if program is None:
         print("[generate] Loading enriched 2027 program…")
@@ -61,6 +63,7 @@ def generate(
         db_path=db_path,
         offerings=offerings,
         shana=int(shana),
+        years=years,
     )
 
     # Count what was placed
@@ -88,7 +91,8 @@ def generate(
         # Step 3: fill still-missing names/hours from GraphQL cache
         print("[generate] Running name/hours enrichment from GraphQL cache…")
         stats = enrich_graphql(board_path=board_path, program=program, db_path=db_path,
-                               tcid=tcid, shana=shana, offline=offline, offerings=offerings)
+                               tcid=tcid, shana=shana, offline=offline, offerings=offerings,
+                               years=years)
         print(f"  enriched {stats.get('enriched_name', 0)} names, "
               f"{stats.get('enriched_hours', 0)} hours")
         if stats.get("still_missing_name"):

@@ -27,6 +27,7 @@ COURSES = {
     "0599-3002": ("פרויקט סינתטי", "B", 3, 3.0),
     "0599-4101": ("בחירה סינתטית א", "A", 3, 3.0),
     "0599-4102": ("בחירה סינתטית ב", "B", 2, 2.0),
+    "0599-5001": ("סמינר מתקדם סינתטי", "B", 2, 2.0),
 }
 
 
@@ -150,29 +151,83 @@ def test_build_minimal_synthetic_degree(tmp_path, monkeypatch, capsys, page_cach
     assert [r["courseId"] for r in index[PROGRAM_ID]] == ["0599-1001", "0599-2001"]
 
 
-@pytest.mark.parametrize("years, message", [
-    ((1, 2, 3, 4, 5), "year 5, which no board window covers"),  # a 5-year degree
-    ((1, 2, 3), "expected exactly 1-4"),  # a 3-year degree
-    ((1, 3, 4), "expected exactly 1-4"),  # a year with no mandatory course
-])
-def test_build_refuses_a_degree_that_is_not_four_years(tmp_path, monkeypatch, capsys, years, message):
+def _setup(tmp_path, monkeypatch, mandatory, degree_years=4, general=None):
+    """Registry + spec (+ facts snapshot for a build into tmp_path/out); returns (entry, out)."""
     registry_file = tmp_path / "programs.json"
     registry_file.write_text(json.dumps({"programs": [_entry()]}, ensure_ascii=False), encoding="utf-8")
     monkeypatch.setattr(registry, "DEFAULT_PATH", registry_file)
     monkeypatch.setattr(spec_mod, "DEGREES_DIR", tmp_path / "degrees")
     entry = registry.get_program(PROGRAM_ID)
-    ids = ["0599-1001", "0599-2001", "0599-3002", "0599-4001", "0599-4101"]
+    used = {cid for cid, _ in mandatory}
     spec = DegreeSpec(
         program_id=PROGRAM_ID, institution="tau", source_year=SHANA, total_required_credits=11.5,
-        catalog_year_policy="start_year",
-        mandatory_courses=[MandatoryCourse(course_id=ids[i], year=y, semester="A", placement_rule="fixed_semester")
-                           for i, y in enumerate(years)],
-        categories=[Category(category_id="electives", name_he="בחירה", min_courses=1, course_ids=["0599-4102"])],
-        group_minimums={}, general_requirement=None, ui={}, legacy={},
+        catalog_year_policy="start_year", degree_years=degree_years,
+        mandatory_courses=[MandatoryCourse(course_id=cid, year=y, semester=COURSES[cid][1],
+                                           placement_rule="fixed_semester") for cid, y in mandatory],
+        categories=[Category(category_id="electives", name_he="בחירה", min_courses=1,
+                             course_ids=[c for c in ("0599-4101", "0599-4102") if c not in used])],
+        group_minimums={}, general_requirement=general, ui={}, legacy={},
     )
     write_spec(spec, spec_mod.spec_path(entry))
     out = tmp_path / "out"
+    facts_file = out / "official" / f"tau_course_facts_{SHANA}.json"
+    facts_file.parent.mkdir(parents=True)
+    facts_file.write_text(json.dumps(_facts(), ensure_ascii=False), encoding="utf-8")
+    return entry, out
+
+
+def _semester_ids(year_from, year_to):
+    return [f"year_{y}_semester_{h}" for y in range(year_from, year_to + 1) for h in "ab"]
+
+
+@pytest.mark.parametrize("degree_years, mandatory, main_years", [
+    # A 3-year degree: the main board is Year 3 only (2 semesters).
+    (3, [("0599-1001", 1), ("0599-2001", 2), ("0599-3002", 3)], (3, 3)),
+    # A 5-year degree: the main board is Years 3-5 (6 semesters).
+    (5, [("0599-1001", 1), ("0599-2001", 2), ("0599-3002", 3), ("0599-4001", 4), ("0599-5001", 5)], (3, 5)),
+    # An electives-only final year is not a refusal: Year 4 has no mandatory course.
+    (4, [("0599-1001", 1), ("0599-2001", 2), ("0599-3002", 3)], (3, 4)),
+])
+def test_build_follows_degree_years(tmp_path, monkeypatch, capsys, degree_years, mandatory, main_years):
+    entry, out = _setup(tmp_path, monkeypatch, mandatory, degree_years, general=GENERAL)
+    assert degree.main(["build", "--program", PROGRAM_ID, "--offline", "--out-dir", str(out)]) == 0
+
+    paths = degree.board_paths(entry, out)
+    boards = {key: json.loads(paths[key].read_text(encoding="utf-8"))
+              for key in ("semester_board", "board", "early_years")}
+    for key, board in boards.items():
+        errors = [i for i in audit_board(board) if i.level == "error"]
+        assert errors == [], (key, errors)
+
+    expected = _semester_ids(*main_years)
+    for key in ("semester_board", "board"):
+        assert [s["semester_id"] for s in boards[key]["semesters"]] == expected, key
+        assert boards[key]["metadata"]["start_year"] == 3
+    assert [s["semester_id"] for s in boards["early_years"]["semesters"]] == _semester_ids(1, 2)
+
+    main = boards["board"]
+    placed = {c["course_id"]: s["semester_id"] for s in main["semesters"] for c in s.get("courses", [])}
+    late = {cid: f"year_{y}_semester_{COURSES[cid][1].lower()}" for cid, y in mandatory if y >= 3}
+    assert {cid: placed.get(cid) for cid in late} == late
+    # Every repository course (the general requirement's included) is allowed only in the
+    # board's own semesters.
+    for c in main["metadata"]["program_repository_courses"]:
+        assert set(c.get("effective_allowed_semesters") or []) <= set(expected), c["course_id"]
+    early = boards["early_years"]
+    placed_early = {c["course_id"] for s in early["semesters"] for c in s.get("courses", [])}
+    assert placed_early == {cid for cid, y in mandatory if y <= 2}
+
+
+@pytest.mark.parametrize("degree_years, years, message", [
+    (4, (1, 2, 3, 4, 5), "is in year 5, outside the degree's years 1-4"),  # a 5th year in a 4-year degree
+    (3, (1, 2, 3, 4), "is in year 4, outside the degree's years 1-3"),  # a 4th year in a 3-year degree
+])
+def test_build_refuses_mandatory_years_outside_the_degree(tmp_path, monkeypatch, capsys, degree_years, years,
+                                                          message):
+    ids = ["0599-1001", "0599-2001", "0599-3002", "0599-4001", "0599-5001"]
+    entry, out = _setup(tmp_path, monkeypatch, [(ids[i], y) for i, y in enumerate(years)], degree_years)
+    built = degree.board_paths(entry, out)
     assert degree.main(["build", "--program", PROGRAM_ID, "--offline", "--out-dir", str(out)]) == 2
     err = capsys.readouterr().err
     assert "refusing to build" in err and message in err
-    assert not out.exists()  # refused before anything was written
+    assert not any(p.exists() for p in built.values())  # refused before any board was written

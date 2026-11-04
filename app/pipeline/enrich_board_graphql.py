@@ -143,13 +143,15 @@ def enrich_board(
     shana: str,
     offline: bool = False,
     offerings: dict | None = None,
+    years: int = 2,
 ) -> dict:
     """Run the full board enrichment pipeline for one program.
 
     ``program`` is the enriched-program dict (``spec_to_program`` output); when omitted
     the committed ME enriched program file is read. ``tcid``/``shana``: the program's
     registry sourceIds.tcid / sourceYear; ``offerings``: its official offerings
-    (``semester_board.official_offerings``). Returns final board stats dict.
+    (``semester_board.official_offerings``); ``years``: the degree years the board covers from
+    Year 3 (``build_semester_board(years=...)``). Returns final board stats dict.
     """
 
     # Step 1: Build board from enriched program
@@ -164,6 +166,7 @@ def enrich_board(
         db_path=db_path,
         offerings=offerings,
         shana=int(shana),
+        years=years,
     )
     if not dry_run:
         board_path.write_text(
