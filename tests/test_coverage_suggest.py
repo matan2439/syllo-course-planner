@@ -74,3 +74,39 @@ def test_section_mapped_only_when_legacy_names_its_ramaid():
     out = suggest_coverage(items, _spec(legacy))
     assert out == {f"{T}:rama:7": MappedTo(mapped_to="categories[fluids]")}
     assert suggest_coverage(items, _spec()) == {}
+
+
+def _core_note(id_, course_id, track="אופטיקה ופוטוניקה") -> EvidenceItem:
+    return EvidenceItem(id=id_, source_url="https://example.test", fetched_at=NOW, from_cache=False,
+                        kind="rule_text", path=["x"], raw_text=f"קורס ליבה במסלול {track}", course_id=course_id,
+                        data={"core_of_track": track})
+
+
+def _spec_with_rules(*rules) -> DegreeSpec:
+    spec = _spec().model_dump()
+    spec["course_rules"] = [{"rule_id": rid, "kind": "distinct_categories", "course_ids": ids,
+                             "params": {"min_courses": 1, "min_distinct_categories": 1,
+                                        "category_members": {"fluids": [i for i in ids if i in ("F-1", "TWO")],
+                                                             "solids": [i for i in ids if i not in ("F-1", "TWO")]}},
+                             "source_ids": ["x"], "enforced_by": "none", "note": "n"} for rid, ids in rules]
+    for r in spec["course_rules"]:
+        r["params"]["category_members"] = {k: v for k, v in r["params"]["category_members"].items() if v}
+    return DegreeSpec.model_validate(spec)
+
+
+def test_core_of_track_note_maps_to_the_one_distinct_categories_rule_listing_the_course():
+    spec = _spec_with_rules(("core", ["F-1", "S-1"]), ("other", ["TWO"]))
+    items = [_core_note(f"{T}:rama:1:kurs:F1:hearakurs:a", "F-1"), _core_note(f"{T}:rama:1:kurs:T:hearakurs:a", "TWO")]
+    out = suggest_coverage(items, spec)
+    assert out == {items[0].id: MappedTo(mapped_to="course_rules[core]"),
+                   items[1].id: MappedTo(mapped_to="course_rules[other]")}
+    assert all(resolve_spec_path(spec, t) for e in out.values() for t in e.targets)
+
+
+def test_core_of_track_note_without_exactly_one_rule_is_left_out():
+    two_rules = _spec_with_rules(("a", ["F-1", "S-1"]), ("b", ["F-1", "TWO"]))
+    assert suggest_coverage([_core_note("n1", "F-1")], two_rules) == {}      # two rules list it
+    assert suggest_coverage([_core_note("n2", "G-1")], two_rules) == {}      # no rule lists it
+    assert suggest_coverage([_core_note("n3", "F-1")], _spec()) == {}        # no rules at all
+    plain = _item("n4", "rule_text", "F-1")                                   # an ordinary note
+    assert suggest_coverage([plain], _spec_with_rules(("a", ["F-1", "S-1"]))) == {}

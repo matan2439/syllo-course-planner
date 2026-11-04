@@ -341,3 +341,37 @@ def test_string_encoded_list_note_parses(program, env):
     k["hearakurs"] = repr([{"teurhearakurs": "string encoded note"}])
     items = tau.tochniot_evidence(program, False, False)
     assert any(i.raw_text == "string encoded note" for i in items)
+
+
+# Real note texts from the EE program (course notes naming the track a course is core for).
+EE_CORE_NOTES = [
+    ("קורס ליבה במסלול אופטיקה ופוטוניקה", "אופטיקה ופוטוניקה"),
+    ("קורס ליבה במסלול אופטיקה ופוטוניקה<br />הקורס יינתן באנגלית בסמסטר ב<br />&nbsp;", "אופטיקה ופוטוניקה"),
+    ("1) קורס ליבה במסלול חומרים<br />2) דרישות קדם לקורס: פיזיקה קוונטית ומצב מוצק 05122830", "חומרים"),
+    ("קורס ליבה במסלול חומרים.<br />דירשת הקדם של הקורס כימיה בסיסית היא המלצה .", "חומרים"),
+    ("קורס ליבה במסלול למידת מכונה ובינה מלאוכתית&nbsp;", "למידת מכונה ובינה מלאוכתית"),
+    ("קורס ליבה במסלול מעגלים משולבים VLSI", "מעגלים משולבים VLSI"),
+    ("קורס ליבה מסלול אופטיקה ופוטוניקה<br />קורס ליבה במסלול ביו אלקטורניקה", "ביו אלקטורניקה"),
+]
+
+
+@pytest.mark.parametrize("text,track", EE_CORE_NOTES)
+def test_core_of_track_parsed_from_real_note_text(text, track):
+    assert tau.core_of_track(text) == track
+
+
+@pytest.mark.parametrize("text", ["נלמד בסמסטר 6/8<br />קורס ליבה במערכות", "choose one of courses 3 or 4", "", "קורס ליבה במסלול"])
+def test_core_of_track_absent_for_other_notes(text):
+    assert tau.core_of_track(text) is None
+
+
+def test_core_note_item_carries_core_of_track_without_changing_ids(program, env):
+    _, k = _first_kurs(env)
+    k["hearakurs"] = [{"teurhearakurs": EE_CORE_NOTES[1][0]}]
+    k["idkunkurs"] = "<p>course replaced by 0509.1510</p>"
+    items = tau.tochniot_evidence(program, False, False)
+    notes = [i for i in items if i.kind == "rule_text" and ":kurs:" in i.id]
+    core = [i for i in notes if ":hearakurs:" in i.id and i.data.get("teurhearakurs") == EE_CORE_NOTES[1][0]]
+    assert len(core) == 1 and core[0].data["core_of_track"] == "אופטיקה ופוטוניקה"
+    assert core[0].id.endswith(":" + text_id(EE_CORE_NOTES[1][0]))
+    assert not any("core_of_track" in i.data for i in notes if i is not core[0])

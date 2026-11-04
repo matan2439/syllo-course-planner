@@ -51,7 +51,9 @@ def suggest_coverage(items: list[EvidenceItem], spec: DegreeSpec) -> dict[str, C
       ``categories[<cat>].course_ids[<id>]`` or ``general_requirement``); cancelled listings
       and courses with several homes are left out;
     * a ``section`` item whose ``ramaid`` the spec's legacy names with exactly one category
-      -> ``categories[<cat>]``.
+      -> ``categories[<cat>]``;
+    * a course note carrying ``data.core_of_track`` whose course is listed by exactly one
+      ``distinct_categories`` course rule -> ``course_rules[<rule>]``.
     """
     homes = _course_homes(spec)
     sections = _legacy_ramaids(spec.legacy, {})
@@ -62,6 +64,12 @@ def suggest_coverage(items: list[EvidenceItem], spec: DegreeSpec) -> dict[str, C
             paths = homes.get(item.course_id or "", [])
             if len(paths) == 1 and not item.cancelled:
                 out[item.id] = MappedTo(mapped_to=paths[0])
+        elif item.kind == "rule_text" and item.data.get("core_of_track") and item.course_id:
+            # a core-of-track course note: the one distinct_categories rule that lists the course
+            rules = [r.rule_id for r in spec.course_rules
+                     if r.kind == "distinct_categories" and item.course_id in r.course_ids]
+            if len(rules) == 1:
+                out[item.id] = MappedTo(mapped_to=f"course_rules[{rules[0]}]")
         elif item.kind == "section":
             cats = sections.get(_ramaid(item) or "", set()) & known_categories
             if len(cats) == 1:
