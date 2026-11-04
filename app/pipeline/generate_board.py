@@ -40,11 +40,13 @@ def generate(
     tcid: str = "8715",
     shana: str = "2026",
     offline: bool = False,
+    offerings: dict | None = None,
 ) -> dict:
     """Generate a program's semester board JSON and return it (defaults: ME 2027).
 
     ``program`` is the enriched-program dict (``spec_to_program`` output); when omitted
-    the committed ME enriched program file is read.
+    the committed ME enriched program file is read. ``offerings``: this year's official
+    offerings for the program (``semester_board.official_offerings``); None = legacy default.
     """
     if program is None:
         print("[generate] Loading enriched 2027 program…")
@@ -56,6 +58,7 @@ def generate(
         plan={"selected_courses": []},
         program=program,
         db_path=db_path,
+        offerings=offerings,
     )
 
     # Count what was placed

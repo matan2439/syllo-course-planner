@@ -70,8 +70,11 @@ def as_number(value) -> float | None:
         return None
 
 
-def read_official(tcid: str, shana: int) -> list[dict]:
+def read_official(tcid: str, shana: int, offline: bool = False) -> list[dict]:
+    """The official program page (ydtochnit). ``offline``: the cache only, never the network."""
     cache = ROOT / "data" / "raw_html" / f"tau_program_{tcid}_{shana}.json"
+    if offline and not cache.exists():
+        raise FileNotFoundError(f"offline build: no cached program page {cache} (run once without --offline)")
     body = fetch_program_data(tcid, str(shana), cache_path=cache)
     return body[0].get("rama") or [] if body else []
 
@@ -150,16 +153,18 @@ def early_board_path(program_id: str, start_year: int = 1, boards_dir: Path = BO
 
 
 def build(program_id: str, start_year: int, tcid: str, shana: int,
-          boards_dir: Path = BOARDS_DIR, out_dir: Path | None = None) -> Path:
+          boards_dir: Path = BOARDS_DIR, out_dir: Path | None = None, offline: bool = False,
+          offerings: dict | None = None) -> Path:
     """Read ``<boards_dir>/<program_id>.json``; write the window board into ``out_dir``
-    (default: ``boards_dir``)."""
+    (default: ``boards_dir``). ``offline`` never touches the network; ``offerings`` is the
+    program's official offerings (``semester_board.official_offerings``; None = legacy default)."""
     base, year = re.fullmatch(r"(.+)_(\d{4})", program_id).groups()
     late = json.loads((boards_dir / f"{program_id}.json").read_text(encoding="utf-8"))
     late_meta = late["metadata"]
     late_block = late_meta["program_requirements_categories"]
 
     window_years = [start_year, start_year + 1]
-    sections = read_official(tcid, shana)
+    sections = read_official(tcid, shana, offline)
     specs = mandatory_specs(sections, window_years)
     if not specs:
         raise SystemExit(f"No official mandatory courses for years {window_years} (tcid={tcid}, shana={shana}).")
@@ -183,7 +188,8 @@ def build(program_id: str, start_year: int, tcid: str, shana: int,
             "core_courses_total_min": late_block.get("core_courses_total_min") if any(c.get("is_core") for c in categories) else 0,
         },
     }
-    board = build_semester_board(plan={"selected_courses": []}, program=program, start_year=start_year)
+    board = build_semester_board(plan={"selected_courses": []}, program=program, start_year=start_year,
+                                 offerings=offerings)
 
     # Official program facts win over the local DB for names, hours and credits.
     by_id = {s["course_id"]: s for s in specs}

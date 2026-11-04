@@ -12,7 +12,7 @@ Every registered degree (`data/config/programs.json`) is driven by one CLI, `--p
 | `evidence` | Collects the official sources (TAU GraphQL, regulations PDF, tochniot pages) into `evidence.json` (`--live` fetches, `--offline` replays the stored snapshot). |
 | `build` | spec -> boards: `spec.json` + `curation.json` + official facts -> `data/parsed_json/..._semester_board_<y>.json`, `data/boards/<id>.json`, the Years 1-2 board and `data/config/early_year_courses.json`. `--out-dir DIR` redirects the output. |
 | `check` | Compares the spec against the evidence: every official item covered, course rules enforced, no unresolved conflicts or gaps. Exits non-zero on failure. |
-| `refresh` | Updates the per-year official course facts snapshot (`--apply` patches boards). |
+| `refresh` | Updates the per-year official course facts snapshot; `--apply` then runs `build` into `data/` (the only board write path). |
 
 Flow: `evidence` -> review/edit `spec.json` (+ `curation.json` overlay) -> `check` -> `build`.
 `--live` / `--offline` choose between fetching and replaying stored data.
@@ -21,13 +21,13 @@ Where files live:
 
 - `data/config/programs.json` - the registry (program ids, tcid, source year, board file names).
 - `data/degrees/<inst>/<base>/<year>/{spec,evidence,curation}.json` - e.g. `data/degrees/tau/mechanical_engineering/2027/`.
-- `data/official/tau_course_facts_<shana>.json` - per-year official course facts shared by all programs (TAU `shana` 2026 = TAU year tashpaz).
+- `data/official/tau_course_facts_<shana>.json` - per-year official course facts shared by all programs (TAU `shana` 2026 = TAU year tashpaz). Only the IMS result is course-wide; each program's ydtochnit row, timetable and resolved offering live under `programs.<tcid>` (layout and readers: `app/degrees/facts.py`).
 
 npm scripts:
 
 ```bash
 npm run build:board    # degree.py build --program mechanical_engineering_2027 --offline (byte-identical rebuild)
-npm run degree:check   # degree.py check --program mechanical_engineering_2027 --offline
+npm run degree:report  # degree.py check --program mechanical_engineering_2027 --offline (report; exits 1 by design)
 npm run audit:board    # course_planner_pipeline.py --audit on data/boards/mechanical_engineering_2027.json
 npm run sync:board     # audit, then push that board to Supabase program_versions.board_json
 npm run verify:live    # compare the live API against that board
@@ -38,9 +38,11 @@ step that writes to the DB). Production `program_versions.board_json` holds the 
 `data/boards/mechanical_engineering_2027.json`, so these scripts pass `--board-json` to it;
 the older 56-course `data/parsed_json/...` board must not be synced.
 
-### Known failures of `degree:check` for mechanical engineering 2027
+### Known failures of `degree:report` for mechanical engineering 2027
 
-`npm run degree:check` exits non-zero today, by design, on two pinned checks:
+`npm run degree:report` writes the check report and exits non-zero, by design: offline it never
+passes (freshness is SKIPPED; use `degree.py check --live` for a real gate), and today it also
+fails two pinned checks:
 
 - `rules_enforced`: 6 course rules in the spec are not yet enforced by the planner/board logic.
 - `known_gaps`: the regulations PDF has not been read (recorded as a gap, not silently assumed).
@@ -75,8 +77,14 @@ offline rebuild into `data/` changes only `board_data_version`.
 `tests/test_degree_build_golden.py` proves that byte-for-byte for the ME boards (it skips when
 the gitignored `data/raw_html/` or `data/database.sqlite` are absent). `refresh` covers every
 course the spec references (all mandatory years, every category, the general-requirement pool),
-merges into the per-year facts snapshot shared by all programs, and never touches boards
-without `--apply`. `build --live` re-fetches every source and rewrites the facts snapshot first.
+merges into the per-year facts snapshot shared by all programs (another program's view of a
+shared course is never touched), and never writes boards itself: `refresh --apply` refreshes the
+facts, keeps the general-requirement catalog in step, then runs `build` into `data/`. A failed
+fetch fails closed: an empty ydtochnit/ydmaarechet response raises, and an unknown IMS result or a
+missing program row/timetable never replaces a fact the snapshot already holds.
+`build --live` re-fetches every source and rewrites the facts snapshot first (with `--out-dir`,
+into `<out-dir>/official/`, seeded from the committed snapshot; the committed one is untouched).
+The board builder takes its offerings from the program's view of the `sourceYear` snapshot.
 
 ## Audit-only workflow (safe, no writes)
 
@@ -128,16 +136,16 @@ serverless function cache to refresh) and re-run `verify:live`.
   official sources for the current academic year (TAU year code `2026` = תשפ"ז):
 
   ```bash
-  python scripts/refresh_course_data.py            # fetch + review report (boards untouched)
-  python scripts/refresh_course_data.py --apply --syllabi   # patch boards + rebuild stale summaries
-  npm run build:board && npm run audit:board
+  python scripts/degree.py refresh --program mechanical_engineering_2027           # facts + review report (boards untouched)
+  python scripts/degree.py refresh --program mechanical_engineering_2027 --apply   # then build: boards + stale summaries
+  git diff data/ && npm run audit:board
   ```
 
-  It writes `data/official/tau_course_facts_2026.json` (the snapshot
-  `semester_board.py` also reads) and `data/import_reports/course_data_review_2026.md`
+  It writes `data/official/tau_course_facts_2026.json` (the snapshot the build passes
+  into `semester_board.py` as the program's offerings) and `data/import_reports/course_data_review_2026.md`
   (one row per mismatch). Courses IMS lists as not offered get
-  `offered_in_year: false` and are excluded from planning. Bump `ACADEMIC_YEAR`
-  in the script each year. `tests/test_board_data_integrity.py` fails when the
+  `offered_in_year: false` and are excluded from planning. Each year bump the
+  program's `sourceYear` in `data/config/programs.json`, then run the two commands above. `tests/test_board_data_integrity.py` fails when the
   committed boards drift from the snapshot.
 
 ## Avoiding committing secrets

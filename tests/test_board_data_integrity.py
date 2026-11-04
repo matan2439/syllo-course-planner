@@ -7,11 +7,12 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 
+from app.degrees.facts import load_program_facts  # noqa: E402
 from refresh_course_data import (  # noqa: E402
-    ACADEMIC_YEAR, BOARDS, board_courses, compare, resolve_offering, semesters_from_groups, timetable_semesters,
+    ACADEMIC_YEAR, BOARDS, PROGRAM_TCID, board_courses, compare, resolve_offering, semesters_from_groups, timetable_semesters,
 )
 
-FACTS = json.loads((ROOT / "data" / "official" / f"tau_course_facts_{ACADEMIC_YEAR}.json").read_text(encoding="utf-8"))
+FACTS = load_program_facts(ACADEMIC_YEAR, PROGRAM_TCID)
 
 
 def test_semester_label_mapping():

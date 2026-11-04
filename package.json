@@ -12,7 +12,7 @@
     "typecheck": "tsc --noEmit",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --testPathPattern=tests/api",
     "build:board": "python3 scripts/degree.py build --program mechanical_engineering_2027 --offline",
-    "degree:check": "python3 scripts/degree.py check --program mechanical_engineering_2027 --offline",
+    "degree:report": "python3 scripts/degree.py check --program mechanical_engineering_2027 --offline",
     "audit:board": "python3 scripts/course_planner_pipeline.py --program mechanical_engineering --year 2027 --board-json data/boards/mechanical_engineering_2027.json --audit",
     "sync:board": "python3 scripts/course_planner_pipeline.py --program mechanical_engineering --year 2027 --board-json data/boards/mechanical_engineering_2027.json --audit --sync",
     "verify:live": "python3 scripts/course_planner_pipeline.py --program mechanical_engineering --year 2027 --board-json data/boards/mechanical_engineering_2027.json --verify-live",

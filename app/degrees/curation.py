@@ -155,9 +155,19 @@ def _set(target: dict, path: str, entry: dict) -> None:
 
 
 def _same(a: Any, b: Any) -> bool:
+    """Type-aware equality: a bool never equals a number (``True`` vs ``1``); an int equals a
+    float only when numerically equal (``4`` vs ``4.0``); lists/dicts compare item by item."""
     if a is MISSING or b is MISSING:
         return a is b
-    return a == b
+    if isinstance(a, bool) or isinstance(b, bool):
+        return type(a) is type(b) and a == b
+    if isinstance(a, (int, float)) and isinstance(b, (int, float)):
+        return a == b
+    if isinstance(a, dict) and isinstance(b, dict):
+        return a.keys() == b.keys() and all(_same(a[k], b[k]) for k in a)
+    if isinstance(a, list) and isinstance(b, list):
+        return len(a) == len(b) and all(_same(x, y) for x, y in zip(a, b))
+    return type(a) is type(b) and a == b
 
 
 def _show(value: Any) -> str:

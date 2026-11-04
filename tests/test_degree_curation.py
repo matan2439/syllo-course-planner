@@ -160,3 +160,15 @@ def test_offline_conform_neither_restamps_nor_drops_fetch_times():
     assert "syllabus_last_fetched_at" not in out["courses"][2]
     live = degree.conform(new, old, keep_timestamps=False)
     assert live["courses"][1]["syllabus_last_fetched_at"] == "now"
+
+
+def test_same_is_type_aware():
+    from app.degrees.curation import MISSING, _same
+
+    assert not _same(True, 1) and not _same(1, True) and not _same(False, 0)
+    assert _same(4, 4.0) and not _same(4, 4.5)
+    assert _same(True, True)
+    assert not _same([True], [1]) and _same([4], [4.0])
+    assert not _same({"a": 1}, {"a": True}) and _same({"a": 1}, {"a": 1.0})
+    assert not _same(None, MISSING) and _same(MISSING, MISSING)
+    assert not _same("1", 1)

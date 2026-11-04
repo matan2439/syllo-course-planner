@@ -10,6 +10,7 @@ from app.degrees.checks import (
     check_rules_enforced,
     check_totals,
 )
+from app.degrees.facts import load_program_facts
 from app.degrees.registry import get_program
 from app.degrees.spec import DegreeSpec, load_spec, spec_path
 
@@ -242,7 +243,7 @@ def test_known_gaps_fail_one_problem_per_gap():
 def test_me_spec_passes_all():
     program = get_program("mechanical_engineering_2027")
     spec = load_spec(spec_path(program))
-    facts = json.loads((ROOT / "data/official/tau_course_facts_2026.json").read_text(encoding="utf-8"))
+    facts = load_program_facts(program.source_year, program.source_ids["tcid"])
     board = json.loads((ROOT / "data/boards/mechanical_engineering_2027.json").read_text(encoding="utf-8"))
 
     results = [

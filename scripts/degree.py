@@ -16,12 +16,16 @@ build     spec.json -> spec_to_program -> the legacy generate path (board + cour
           --offline never touches the network; only --live stamps new fetch timestamps
           (otherwise the previous files' syllabus_last_fetched_at values are kept);
           --live first re-fetches every official source and REWRITES the facts snapshot
-          (data/official/tau_course_facts_<year>.json) before building.
+          (data/official/tau_course_facts_<year>.json; with --out-dir: <out>/official/, seeded
+          from the committed snapshot) before building. The build reads its facts from
+          <out>/official/ when that file exists, else from data/official/.
 check     coverage + freshness + consistency + plannability + course-rule enforcement + known gaps; report in
           data/import_reports/degree_check_<id>.md; exit 0 only if every check passes.
           Requires --live (freshness needs a live fetch) or --offline (freshness SKIPPED, exit 1).
 refresh   official facts for every course the spec or boards reference + a mismatch report
-          (data/official/tau_course_facts_<year>.json); --apply also patches the boards.
+          (data/official/tau_course_facts_<year>.json); --apply then runs `build` into data/
+          (the only board write path: curation overlay, byte-stable writer, board_data_version)
+          after keeping the general-requirement catalog in step.
 """
 from __future__ import annotations
 
@@ -41,6 +45,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 from app.analysis.board_audit import compute_board_hash  # noqa: E402
 from app.degrees.curation import apply_curation, curation_path, load_curation  # noqa: E402
+from app.degrees.facts import load_program_facts  # noqa: E402
 from app.degrees.registry import ProgramEntry, get_program  # noqa: E402
 from app.degrees.spec import DegreeSpec, load_spec, spec_path, spec_to_program  # noqa: E402
 
@@ -220,19 +225,35 @@ def write_board(path: Path, board: dict, previous: str | None, keep_timestamps: 
     path.write_text(text, encoding="utf-8")
 
 
-def build(entry: ProgramEntry, out_dir: Path = DATA, offline: bool = False, live: bool = False) -> dict[str, Path]:
+def build_facts_path(entry: ProgramEntry, out_dir: Path = DATA) -> Path:
+    """Where a build into ``out_dir`` keeps its facts snapshot: data/official/ for data/,
+    else <out_dir>/official/ (a build elsewhere never rewrites the committed snapshot)."""
+    rcd = _refresh_module()
+    committed = rcd.facts_path(entry.source_year)
+    if Path(out_dir).resolve() == DATA.resolve():
+        return committed
+    return Path(out_dir) / "official" / committed.name
+
+
+def build(entry: ProgramEntry, out_dir: Path = DATA, offline: bool = False, live: bool = False,
+          refresh: bool = True) -> dict[str, Path]:
+    """``refresh=False``: with ``live``, the caller has just refreshed the facts already."""
+    from app.analysis.semester_board import official_offerings
     from app.pipeline.generate_board import generate
     import build_early_years_board as early
 
     rcd = _refresh_module()
-    if live:  # build from freshly fetched official facts (writes the facts snapshot, not the boards)
-        rcd.refresh(entry, None, offline=False, live=True)
+    facts_file = build_facts_path(entry, out_dir)
+    if live and refresh:  # build from freshly fetched official facts (writes the facts snapshot, not the boards)
+        rcd.refresh(entry, None, offline=False, live=True, facts_file=facts_file)
+    if not facts_file.exists():
+        facts_file = rcd.facts_path(entry.source_year)
     spec_file = spec_path(entry)
     spec = load_spec(spec_file)
     curation = load_curation(curation_path(spec_file))
-    facts_file = rcd.facts_path(entry.source_year)
-    facts = json.loads(facts_file.read_text(encoding="utf-8"))
     tcid, shana = entry.source_ids["tcid"], entry.source_year
+    facts = load_program_facts(shana, tcid, facts_file)
+    offerings = official_offerings(facts)
     paths = board_paths(entry, out_dir)
     # The files being replaced: unchanged content is written back byte-identical (key order,
     # number spelling and, unless this is a live build, the previous fetch timestamps: only a
@@ -257,7 +278,7 @@ def build(entry: ProgramEntry, out_dir: Path = DATA, offline: bool = False, live
             path.parent.mkdir(parents=True, exist_ok=True)
             print(f"[build] {key}: generate -> {path}")
             generate(program=variant, board_path=path, db_path=DB_PATH, tcid=tcid, shana=str(shana),
-                     offline=offline)
+                     offline=offline, offerings=offerings)
             board = json.loads(path.read_text(encoding="utf-8"))
             changed = rcd.apply(board, facts, shana)
             summaries = rcd.refresh_syllabi(board, offline)
@@ -268,7 +289,8 @@ def build(entry: ProgramEntry, out_dir: Path = DATA, offline: bool = False, live
                   f"{bidit} BIDIT records, {n} curation entries")
 
     early_out = early.build(entry.id, EARLY_START_YEAR, tcid, shana,
-                            boards_dir=paths["board"].parent, out_dir=paths["early_years"].parent)
+                            boards_dir=paths["board"].parent, out_dir=paths["early_years"].parent,
+                            offline=offline, offerings=offerings)
     if early_out != paths["early_years"]:
         raise RuntimeError(f"early board written to {early_out}, expected {paths['early_years']}")
     early_board = json.loads(early_out.read_text(encoding="utf-8"))
@@ -309,7 +331,7 @@ def run_check(entry: ProgramEntry, live: bool, offline: bool) -> tuple[bool, str
 
     started = datetime.now(timezone.utc)
     spec = load_spec(spec_path(entry))
-    facts = json.loads(_refresh_module().facts_path(entry.source_year).read_text(encoding="utf-8"))
+    facts = load_program_facts(entry.source_year, entry.source_ids["tcid"])
     board = json.loads(board_paths(entry)["board"].read_text(encoding="utf-8"))
     items = collect(entry, live=live, offline=offline)
 
@@ -355,8 +377,10 @@ def main(argv: list[str] | None = None) -> int:
                       help="re-fetch every official source (build: also rewrites the facts snapshot first)")
     mode.add_argument("--offline", action="store_true", help="cached sources only; never touch the network")
     ap.add_argument("--out-dir", type=Path, default=DATA, help="build: data directory to write boards into")
-    ap.add_argument("--apply", action="store_true", help="refresh: also patch the committed boards")
-    ap.add_argument("--syllabi", action="store_true", help="refresh --apply: rebuild stale syllabus summaries")
+    ap.add_argument("--apply", action="store_true",
+                    help="refresh: then rebuild the committed boards with `build` into data/")
+    ap.add_argument("--syllabi", action="store_true",
+                    help="accepted for compatibility: build always rebuilds stale syllabus summaries")
     args = ap.parse_args(argv)
     args.out_dir = args.out_dir.resolve()
     os.chdir(ROOT)  # the legacy builders resolve data/... relative to the repo root
@@ -383,8 +407,12 @@ def main(argv: list[str] | None = None) -> int:
         print(report)
         return 0 if passed else 1
     if args.command == "refresh":
-        summary = _refresh_module().refresh(entry, None, args.offline, args.live, args.apply, args.syllabi)
+        summary = _refresh_module().refresh(entry, None, args.offline, args.live, update_catalog=args.apply)
         print(json.dumps(summary, ensure_ascii=False))
+        if args.apply:  # the boards are written by build only (curation overlay + byte-stable writer)
+            out = build(entry, DATA, offline=args.offline, live=args.live, refresh=False)
+            for key, path in out.items():
+                print(f"  {key:16s} {path}")
         return 0
     return 2
 

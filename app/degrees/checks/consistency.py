@@ -1,6 +1,7 @@
 """Consistency (spec vs. official course facts) and plannability (built board) gates.
 
-``facts`` is the ``tau_course_facts_<year>.json`` shape:
+``facts`` is one program's flat view of ``tau_course_facts_<year>.json``
+(``app.degrees.facts.load_program_facts``):
 ``course_id -> {"offering": {"offered_semesters": [...], "status": ...}, "program": {"credits",
 "weekly_hours"} | None, ...}``. Problems prefixed ``warn:`` never fail a check.
 """

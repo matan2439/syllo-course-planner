@@ -42,9 +42,13 @@ def build_semester_board(
     start_year: int = 3,
     completed_course_ids: list[str] | None = None,
     db_path: Path = _DB_PATH,
+    offerings: dict[str, dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """
     Distribute selected_courses from a plan JSON into a 4-semester board.
+
+    *offerings* is this year's official offering per course (``official_offerings`` of the
+    program's facts); None uses the legacy default snapshot.
 
     If *program* is provided, mandatory courses defined per-semester in the
     program JSON are placed first (locked, source="program") before electives.
@@ -84,7 +88,7 @@ def build_semester_board(
                     f"Mandatory course {cid}: unknown or missing semester '{sem_id}'."
                 )
                 continue
-            mc, mc_warns = _load_mandatory_course(cid, db_path, sp)
+            mc, mc_warns = _load_mandatory_course(cid, db_path, sp, offerings)
             global_warnings.extend(mc_warns)
             mandatory_by_sem[sem_id].append(mc)
             mandatory_ids.add(cid)
@@ -95,7 +99,7 @@ def build_semester_board(
             cid     = sp["course_id"]
             # Narrow placement candidates to this year's effective offering
             # (program flexibility ∩ actual syllabus offering), if known.
-            effective_sems = _offering_fields(cid, sp["allowed_semesters"])["effective_allowed_semesters"]
+            effective_sems = _offering_fields(cid, sp["allowed_semesters"], offerings)["effective_allowed_semesters"]
             allowed = [s for s in effective_sems if s in mandatory_by_sem]
             if not allowed:
                 global_warnings.append(
@@ -105,7 +109,7 @@ def build_semester_board(
                 continue
             # Least-loaded allowed semester (hours tiebreak: count)
             sem_id = min(allowed, key=lambda s: (mandatory_hours[s], len(mandatory_by_sem[s])))
-            mc, mc_warns = _load_mandatory_course(cid, db_path, sp)
+            mc, mc_warns = _load_mandatory_course(cid, db_path, sp, offerings)
             global_warnings.extend(mc_warns)
             mandatory_by_sem[sem_id].append(mc)
             mandatory_ids.add(cid)
@@ -252,19 +256,21 @@ def _placement_policy_from_rule(placement_rule: str) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Actual yearly offering data (Layer 2) — the official facts snapshot written by
-# scripts/refresh_course_data.py for the current TAU academic year: the
+# Actual yearly offering data (Layer 2) — one program's view of the official facts
+# snapshot written by scripts/refresh_course_data.py (app/degrees/facts.py): the
 # program's official timetable first, IMS course search for anything else.
 # Courses missing from it have unknown offered_semesters (confidence
 # "unverified"; effective == program allowed semesters).
+#
+# degree.py build passes ``offerings=official_offerings(<the program's facts>)`` into
+# build_semester_board. Callers that pass nothing get the legacy default below: the
+# default program's (mechanical_engineering_2027) view of its sourceYear snapshot, loaded
+# on first use.
 # ---------------------------------------------------------------------------
-OFFICIAL_FACTS_PATH = Path(__file__).resolve().parents[2] / "data" / "official" / "tau_course_facts_2026.json"
 
 
-def _load_official_offerings() -> dict[str, dict[str, Any]]:
-    if not OFFICIAL_FACTS_PATH.exists():
-        return {}
-    facts = json.loads(OFFICIAL_FACTS_PATH.read_text(encoding="utf-8"))
+def official_offerings(facts: dict[str, dict]) -> dict[str, dict[str, Any]]:
+    """Placement overrides from a program's flat facts view (offered courses only)."""
     return {
         cid: {
             "offered_semesters": f["offering"]["offered_semesters"],
@@ -272,18 +278,36 @@ def _load_official_offerings() -> dict[str, dict[str, Any]]:
             "offering_source_confidence": "high",
         }
         for cid, f in facts.items()
-        if f["offering"]["status"] == "offered"
+        if (f.get("offering") or {}).get("status") == "offered"
     }
 
 
-OFFERED_SEMESTERS_OVERRIDES: dict[str, dict[str, Any]] = _load_official_offerings()
+def _load_official_offerings() -> dict[str, dict[str, Any]]:
+    from app.degrees.facts import load_program_facts
+    from app.degrees.registry import get_program
+
+    entry = get_program("mechanical_engineering_2027")
+    return official_offerings(load_program_facts(entry.source_year, entry.source_ids["tcid"]))
+
+
+# Legacy default (None until first use); tests may assign a dict here.
+OFFERED_SEMESTERS_OVERRIDES: dict[str, dict[str, Any]] | None = None
+
+
+def _default_offerings() -> dict[str, dict[str, Any]]:
+    global OFFERED_SEMESTERS_OVERRIDES
+    if OFFERED_SEMESTERS_OVERRIDES is None:
+        OFFERED_SEMESTERS_OVERRIDES = _load_official_offerings()
+    return OFFERED_SEMESTERS_OVERRIDES
 
 _PART_TO_SUFFIX = {"A": "_semester_a", "B": "_semester_b"}
 
 
-def _offering_fields(course_id: str, allowed_sems: list[str]) -> dict[str, Any]:
+def _offering_fields(
+    course_id: str, allowed_sems: list[str], offerings: dict[str, dict[str, Any]] | None = None,
+) -> dict[str, Any]:
     """Compute Layer-1/Layer-2/effective allowed-semester fields for a course."""
-    override = OFFERED_SEMESTERS_OVERRIDES.get(course_id)
+    override = (offerings if offerings is not None else _default_offerings()).get(course_id)
     program_allowed = list(allowed_sems)
     if override:
         offered = list(override["offered_semesters"])
@@ -313,6 +337,7 @@ def _load_mandatory_course(
     course_id: str,
     db_path: Path,
     placement_spec: dict[str, Any] | None = None,
+    offerings: dict[str, dict[str, Any]] | None = None,
 ) -> tuple[dict[str, Any], list[str]]:
     """
     Look up *course_id* in the DB and return a fully-formatted mandatory-course
@@ -378,7 +403,7 @@ def _load_mandatory_course(
             "placement_rule":              placement_rule,
             "is_mandatory":                True,
             "placement_policy":            _placement_policy_from_rule(placement_rule),
-            **_offering_fields(course_id, allowed_sems),
+            **_offering_fields(course_id, allowed_sems, offerings),
             "needs_verification":          needs_verif,
             "source_note":                 source_note,
             "source":                      "program",
@@ -448,7 +473,7 @@ def _load_mandatory_course(
         "placement_rule":              placement_rule,
         "is_mandatory":                True,
         "placement_policy":            _placement_policy_from_rule(placement_rule),
-        **_offering_fields(course_id, allowed_sems),
+        **_offering_fields(course_id, allowed_sems, offerings),
         "needs_verification":          needs_verif,
         "source_note":                 source_note,
         "source":                      "program",

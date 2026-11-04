@@ -1,5 +1,7 @@
 """degree.py CLI contract: check modes, spec-generated builder inputs."""
 import sys
+
+import pytest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -48,3 +50,57 @@ def test_mandatory_input_is_generated_from_the_spec():
     assert rows["0512-1204"]["allowed_semesters"] == ["year_3_semester_a"]
     # 0542-2500 is a recorded source conflict; the spec keeps it in Y3/A, so the main board places it.
     assert rows["0542-2500"]["allowed_semesters"] == ["year_3_semester_a"]
+
+
+# ---------------------------------------------------------------- single board write path
+
+
+def test_refresh_apply_refreshes_facts_then_builds_into_data(monkeypatch):
+    calls = []
+    rcd = degree._refresh_module()
+    monkeypatch.setattr(rcd, "refresh", lambda entry, year, offline, live, **kw:
+                        calls.append(("refresh", offline, live, kw)) or {"facts": 0})
+    monkeypatch.setattr(degree, "build", lambda entry, out_dir, offline, live, refresh:
+                        calls.append(("build", out_dir, offline, live, refresh)) or {})
+    assert degree.main(["refresh", "--program", ME.id, "--offline", "--apply"]) == 0
+    assert calls == [("refresh", True, False, {"update_catalog": True}),
+                     ("build", degree.DATA, True, False, False)]
+
+
+def test_refresh_without_apply_never_builds(monkeypatch):
+    rcd = degree._refresh_module()
+    monkeypatch.setattr(rcd, "refresh", lambda *a, **kw: {"facts": 0})
+    monkeypatch.setattr(degree, "build", lambda *a, **kw: (_ for _ in ()).throw(AssertionError("built")))
+    assert degree.main(["refresh", "--program", ME.id, "--offline"]) == 0
+
+
+def test_refresh_course_data_apply_delegates_to_degree(monkeypatch):
+    rcd = degree._refresh_module()
+    seen = {}
+    monkeypatch.setattr(degree, "main", lambda argv: seen.setdefault("argv", argv) and 0)
+    monkeypatch.setattr(rcd, "refresh", lambda *a, **kw: (_ for _ in ()).throw(AssertionError("own write path")))
+    monkeypatch.setattr(sys, "argv", ["refresh_course_data.py", "--apply", "--syllabi", "--offline"])
+    rcd.main()
+    assert seen["argv"] == ["refresh", "--program", ME.id, "--apply", "--offline"]
+
+
+# ---------------------------------------------------------------- build --live --out-dir
+
+
+class _Stop(Exception):
+    pass
+
+
+def test_live_build_into_out_dir_writes_facts_there(monkeypatch, tmp_path):
+    rcd = degree._refresh_module()
+    seen = {}
+
+    def fake_refresh(entry, year, offline, live, facts_file=None, **kw):
+        seen["facts_file"] = facts_file
+        raise _Stop
+
+    monkeypatch.setattr(rcd, "refresh", fake_refresh)
+    with pytest.raises(_Stop):
+        degree.build(ME, tmp_path, live=True)
+    assert seen["facts_file"] == tmp_path / "official" / f"tau_course_facts_{ME.source_year}.json"
+    assert degree.build_facts_path(ME, degree.DATA) == rcd.facts_path(ME.source_year)
