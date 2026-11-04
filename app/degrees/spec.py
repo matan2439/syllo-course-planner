@@ -62,6 +62,14 @@ RuleKind = Literal[
     "mutually_exclusive",
     # A degree-wide requirement on the language of instruction (e.g. N courses in English).
     "language_requirement",
+    # Bounds on what a semester may hold (e.g. under 75% of a full load needs approval; at most
+    # N graduate courses per semester). course_ids empty when it applies to every course.
+    "load_limit",
+    # The degree's standard length or its extension (e.g. 8 semesters; one extra year with
+    # approval).
+    "study_duration",
+    # How prerequisites are interpreted degree-wide (e.g. a prerequisite may be taken in parallel).
+    "prerequisite_policy",
 ]
 
 

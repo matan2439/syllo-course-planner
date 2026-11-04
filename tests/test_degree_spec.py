@@ -146,7 +146,8 @@ def _distinct(**params) -> dict:
                  params={**base, **params})
 
 
-@pytest.mark.parametrize("kind", ["mutually_exclusive", "language_requirement"])
+@pytest.mark.parametrize("kind", ["mutually_exclusive", "language_requirement", "load_limit",
+                                  "study_duration", "prerequisite_policy"])
 def test_course_rule_accepts_new_kinds(me_spec, kind):
     data = me_spec.model_dump(mode="json")
     data["course_rules"] = [_rule(kind=kind, params={})]
