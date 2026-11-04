@@ -251,10 +251,12 @@ def test_me_spec_passes_all():
     referenced |= {c for cat in spec.categories for c in cat.course_ids}
     referenced |= set(spec.general_requirement["course_ids"])
     assert referenced <= set(facts)
-    # Honest remaining warnings: שער רוח courses are not in the program listing, so TAU
-    # publishes no credits for them there (the general requirement's credits land in Task 8).
+    # Honest remaining warning: שער רוח courses are not in the program listing, so TAU
+    # publishes no per-course credits for them there. The requirement's total (6, from the
+    # official שער רוח sections) is stated in credits_required, so totals no longer warns.
     by_name = {r.name: set(r.problems) for r in results}
     assert by_name["courses_known"] == {"warn: general requirement: 88 course(s) have no credits"}
     assert by_name["mandatory_offered"] == set()
-    assert by_name["totals"] == {"warn: general requirement credits unknown (3 courses); excluded from totals"}
+    assert spec.general_requirement["credits_required"] == 6
+    assert by_name["totals"] == set()
     assert not by_name["double_counting"] and not by_name["plannable"]

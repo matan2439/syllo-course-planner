@@ -48,10 +48,22 @@ def test_spec_path_layout():
 
 
 def test_committed_me_spec_matches_migration(me_spec):
+    """The committed spec is the migration plus reviewed spec-only additions: coverage, the
+    official course_rules (Task 8) and the general requirement's official credits_required
+    (no legacy equivalent)."""
     committed = load_spec(spec_path(get_program(ME_ID)))
-    assert committed.coverage == {}
-    fresh = me_spec.model_dump(exclude={"coverage"})
-    assert committed.model_dump(exclude={"coverage"}) == fresh
+    assert committed.coverage  # filled from the official evidence (tests/test_me_coverage_committed.py)
+    general = dict(committed.general_requirement)
+    assert general.pop("credits_required") == 6
+    assert committed.course_rules  # tests/test_me_coverage_committed.py pins them
+    fresh = me_spec.model_dump(exclude={"coverage", "course_rules"})
+    assert {**committed.model_dump(exclude={"coverage", "course_rules"}), "general_requirement": general} == fresh
+
+
+def test_committed_me_spec_round_trips_to_enriched_program():
+    """credits_required is spec-only: it never reaches the legacy program the builder consumes."""
+    committed = load_spec(spec_path(get_program(ME_ID)))
+    assert spec_to_program(committed) == _enriched()
 
 
 def test_me_spec_generic_fields(me_spec):
