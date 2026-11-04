@@ -275,7 +275,7 @@ def test_enrich_links_adds_syllabus_from_fixture(tmp_path):
         json.dumps(board, ensure_ascii=False, indent=2), encoding="utf-8"
     )
 
-    enrich_links(board_path=board_copy, cache_dir=cache)
+    enrich_links(board_path=board_copy, cache_dir=cache, offline=True)  # only the fixture page; no network
 
     updated = json.loads(board_copy.read_text(encoding="utf-8"))
     updated_repo = updated["metadata"]["program_repository_courses"]
@@ -308,7 +308,7 @@ def test_enrich_links_adds_syllabus_to_mandatory_from_fixture(tmp_path):
         json.dumps(board, ensure_ascii=False, indent=2), encoding="utf-8"
     )
 
-    enrich_links(board_path=board_copy, cache_dir=cache)
+    enrich_links(board_path=board_copy, cache_dir=cache, offline=True)  # only the fixture page; no network
 
     updated = json.loads(board_copy.read_text(encoding="utf-8"))
     mandatory_updated = [

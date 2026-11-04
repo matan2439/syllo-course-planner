@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 from app.degrees import evidence as ev
-from app.degrees.adapters import tau
+from app.degrees.adapters import pdf, tau
 from datetime import datetime, timezone
 
 from app.degrees.evidence import EvidenceFetchError, EvidenceItem, collect_evidence, text_id
@@ -37,9 +37,28 @@ def program():
     return get_program("mechanical_engineering_2027")
 
 
+def _tiny_pdf() -> bytes:
+    import io
+
+    from pypdf import PdfWriter
+
+    w = PdfWriter()
+    w.add_blank_page(612, 792)
+    buf = io.BytesIO()
+    w.write(buf)
+    return buf.getvalue()
+
+
+class _PdfResponse:
+    status_code = 200
+
+    def __init__(self, content):
+        self.content = content
+
+
 @pytest.fixture
-def env(tmp_path, monkeypatch):
-    """Hermetic: cache dir in tmp with the fixtures, fetchers + IMS stubbed, no network."""
+def env(tmp_path, monkeypatch, program):
+    """Hermetic: cache dir in tmp with the fixtures, fetchers + IMS + PDF download stubbed, no network."""
     raw = tmp_path / "raw_html"
     raw.mkdir()
     shutil.copy(PROGRAM_FIXTURE, raw / "tau_program_8715_2026.json")
@@ -70,6 +89,21 @@ def env(tmp_path, monkeypatch):
         return {"status": "offered", "url": f"https://ims/{cid}", "offered_semesters": ["A"], "name_he": "קורס"}
 
     monkeypatch.setattr(tau, "_read_ims", fake_ims)
+    # tau_pdf: the fixture's program links the real Terms_BA.pdf. Its cache dir follows the patched
+    # RAW_DIR (raw/pdf); seed it so cached runs stay cached, and stub the download for live runs.
+    tiny = _tiny_pdf()
+    state["pdf_gets"] = []
+
+    def fake_pdf_get(url, timeout=None, **kw):
+        state["pdf_gets"].append(url)
+        return _PdfResponse(tiny)
+
+    monkeypatch.setattr(pdf.requests, "get", fake_pdf_get)
+    docs = pdf._documents(program, live=False, offline=True)
+    assert docs, "fixture program should link a regulations PDF"
+    for _, url in docs:
+        (raw / "pdf").mkdir(exist_ok=True)
+        (raw / "pdf" / f"{pdf.doc_id(url)}.pdf").write_bytes(tiny)
     return state
 
 
@@ -163,6 +197,14 @@ def test_live_sets_from_cache_false(program, env):
     assert live and all(i.from_cache is False for i in live)
     assert all(_fresh(i, start) for i in live)
     assert ("program", True) in env["calls"] and ("schedule", True) in env["calls"]
+    assert env["pdf_gets"] and any(i.id.startswith("pdf:") for i in live)  # PDF re-fetched via the stub
+
+
+def test_pdf_cache_follows_patched_raw_dir(program, env):
+    """One RAW_DIR patch covers the PDF cache too: the cached run reads the seeded PDF, no fetch."""
+    items = collect_evidence(program, live=False, offline=True)
+    assert any(i.id.startswith("pdf:") and i.from_cache for i in items)
+    assert env["pdf_gets"] == [] and pdf.pdf_dir() == tau.RAW_DIR / "pdf"
 
 
 def test_kinds_and_course_facts(program, env):

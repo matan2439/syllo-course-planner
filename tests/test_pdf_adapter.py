@@ -132,7 +132,7 @@ def env(tmp_path, monkeypatch):
         "gets": [],
         "response": None,
     }
-    monkeypatch.setattr(pdf, "PDF_DIR", tmp_path / "pdf")
+    monkeypatch.setattr(tau, "RAW_DIR", tmp_path)  # pdf_dir() follows it: tmp_path / "pdf"
     monkeypatch.setattr(tau, "tochniot_evidence", lambda p, live, offline: list(state["links"]))
 
     def fake_get(url, timeout=None, **kw):
@@ -324,7 +324,7 @@ NO_DROP_PAGES = [
 
 
 def _kept_lines(pages):
-    return [l for p in pages for l in p if l and not pdf._PAGE_NO.match(l)]
+    return [l for p in pages for l in pdf.strip_page_number(p) if l]
 
 
 def test_no_extracted_line_is_dropped_by_split():
@@ -377,3 +377,44 @@ def test_adapters_import_without_pypdf():
     root = Path(__file__).resolve().parents[1]
     out = subprocess.run([sys.executable, "-c", code], cwd=root, capture_output=True, text=True)
     assert out.returncode == 0 and out.stdout.strip() == "ok", out.stderr
+
+
+def test_pdf_dir_follows_raw_dir(tmp_path, monkeypatch):
+    monkeypatch.setattr(tau, "RAW_DIR", tmp_path / "elsewhere")
+    assert pdf.pdf_dir() == tmp_path / "elsewhere" / "pdf"
+
+
+def test_only_the_page_number_is_dropped():
+    assert pdf.strip_page_number(["12", "", "טבלה", "3", "סוף", "", "13", ""]) == ["", "טבלה", "3", "סוף", "", ""]
+    assert pdf.strip_page_number(["טבלה", "3", "סוף"]) == ["טבלה", "3", "סוף"]
+
+
+def test_numeric_table_cell_mid_page_is_kept():
+    page = ["7", "", "שעות לימוד לפי שנה:", "שנה ראשונה", "40", "שנה שניה", "42", "סוף הטבלה.", "", "8"]
+    texts = " ".join(u[1] for u in pdf.split_units([page]))
+    assert "40" in texts.split() and "42" in texts.split()
+    assert "7" not in texts.split() and "8" not in texts.split()
+
+
+@pytest.mark.parametrize("body", [b"%PDF-1.7\n" + b"\x00garbage" * 50, b"%PDF-1.4\n1 0 obj << /Type /Catalog"])
+def test_corrupt_pdf_is_an_evidence_fetch_error(program, env, body):
+    with pytest.raises(ValueError):
+        pdf.extract_pages(body)
+    env["pdf"] = body
+    with pytest.raises(EvidenceFetchError, match="unreadable PDF"):
+        pdf.pdf_evidence(program, live=False, offline=False)
+
+
+def test_any_pypdf_failure_is_an_evidence_fetch_error(program, env, monkeypatch):
+    """pypdf raises far more than PdfReadError on malformed input (KeyError, TypeError, ...)."""
+    import pypdf
+
+    class Broken:
+        def __init__(self, stream):
+            raise KeyError("/Kids")
+
+    monkeypatch.setattr(pypdf, "PdfReader", Broken)
+    with pytest.raises(ValueError, match="KeyError"):
+        pdf.extract_pages(env["pdf"])
+    with pytest.raises(EvidenceFetchError, match="unreadable PDF: KeyError"):
+        pdf.pdf_evidence(program, live=False, offline=False)

@@ -5,8 +5,9 @@ URL is a ``.pdf``. ``prev_newsletters`` entries are previous-year archives and a
 URLs can be PDFs too); without ``list``, an entry with only a ``shana`` label counts as archive.
 
 Splitting (pragmatic, deterministic; Word-exported regulations). One item per sentence:
-- text is extracted per page; whitespace-only lines separate blocks; page-number lines
-  (1-3 digits alone) are dropped - they are the ONLY extracted lines not kept in some item;
+- text is extracted per page; whitespace-only lines separate blocks; a page number (1-3 digits
+  alone as the page's first or last non-blank line) is dropped - the ONLY extracted line not kept
+  in some item (a numeric table cell mid-page is kept);
 - a line is a heading when it is short (<= HEADING_MAX_WORDS words, <= HEADING_MAX_CHARS chars),
   does not end in terminal punctuation (.:;,?!), is not a list item or a URL, and starts a
   sentence (first line of its block, or the previous line ended in . ; ? !). A line after a
@@ -42,7 +43,6 @@ from app.parsing.tau_curriculum_document import restore_rtl_pdf_line
 
 logger = logging.getLogger(__name__)
 
-PDF_DIR = tau.RAW_DIR / "pdf"
 SOURCE = "tau_pdf"
 TIMEOUT = 60
 HEADING_MAX_WORDS = 7
@@ -59,6 +59,11 @@ _DISPLACED_PERIOD = re.compile(r"(?<=[\w\"')]) \.\w+(?=\s|$)")
 _HEB_WORD = re.compile(r"[א-ת]{2,}")
 _FINALS = set("ךםןףץ")
 _WS = re.compile(r"\s+")
+
+
+def pdf_dir() -> Path:
+    """The PDF cache dir, resolved at call time so a patched ``tau.RAW_DIR`` covers it too."""
+    return tau.RAW_DIR / "pdf"
 
 
 def doc_id(url: str) -> str:
@@ -105,14 +110,14 @@ def extract_pages(data: bytes) -> list[str]:
 
     pypdf is imported here, not at module level: the adapters are imported by every
     ``degree.py`` command, and only reading a PDF needs it. An unreadable PDF raises
-    ``ValueError`` (pypdf's ``PdfReadError`` is re-raised as one)."""
+    ``ValueError``: any failure while pypdf parses the file or extracts a page is re-raised as
+    one (pypdf raises far more than ``PdfReadError`` on malformed input)."""
     from pypdf import PdfReader
-    from pypdf.errors import PdfReadError
 
     try:
         return [page.extract_text() or "" for page in PdfReader(io.BytesIO(data)).pages]
-    except PdfReadError as exc:
-        raise ValueError(str(exc)) from exc
+    except Exception as exc:  # noqa: BLE001 - any parse failure means "unreadable PDF"
+        raise ValueError(f"{type(exc).__name__}: {exc}") from exc
 
 
 def _visually_reversed(text: str) -> bool:
@@ -167,15 +172,23 @@ def _sentence_spans(text: str) -> list[str]:
     return out
 
 
+def strip_page_number(lines: list[str]) -> list[str]:
+    """The page's lines without its page number: the first and/or last non-blank line when it is
+    1-3 digits alone. Any other purely numeric line (a table cell) is content and stays."""
+    idx = [n for n, line in enumerate(lines) if line]
+    drop = {n for n in (idx[:1] + idx[-1:]) if _PAGE_NO.match(lines[n])}
+    return [line for n, line in enumerate(lines) if n not in drop]
+
+
 def _page_has_text(lines: list[str]) -> bool:
-    body = "".join(line for line in lines if line and not _PAGE_NO.match(line))
+    body = "".join(line for line in strip_page_number(lines) if line)
     return len(_WS.sub("", body)) >= MIN_PAGE_CHARS
 
 
 def split_units(pages: list[list[str]]) -> list[tuple[str, str, int, bool]]:
     """(heading, text, 1-based page, is_heading) in document order; see the module docstring.
 
-    Every non-blank, non-page-number line ends up in exactly one unit's text (headings are units
+    Every non-blank line except a page number (see ``strip_page_number``) ends up in exactly one unit's text (headings are units
     too), so nothing extracted is dropped. Pages without text are skipped here (see
     ``unread_pages``).
     """
@@ -190,12 +203,10 @@ def split_units(pages: list[list[str]]) -> list[tuple[str, str, int, bool]]:
                 out.extend((heading, s, page_no, False) for s in _sentence_spans(" ".join(current)))
                 current.clear()
 
-        for line in lines:
+        for line in strip_page_number(lines):
             if not line:
                 flush()
                 prev = None
-                continue
-            if _PAGE_NO.match(line):
                 continue
             if _is_heading(line, prev):
                 flush()
@@ -219,7 +230,7 @@ def pdf_evidence(program: ProgramEntry, live: bool, offline: bool) -> list[Evide
     items: list[EvidenceItem] = []
     for title, url in _documents(program, live, offline):
         doc = doc_id(url)
-        cache = PDF_DIR / f"{doc}.pdf"
+        cache = pdf_dir() / f"{doc}.pdf"
         from_cache, fetched_at = tau._provenance(cache, live)
         data = _download(url, cache, live, offline)
         try:
