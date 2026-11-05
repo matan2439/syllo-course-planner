@@ -28,8 +28,9 @@ adapter reads it, so its sentences become `pdf:*` evidence items you map one by 
 other item (hundreds of them: budget for it). A page or document that was not read (fetch
 failed, a scanned page with no text layer, a document the adapter does not follow) is still a
 known gap: a `known_gaps` entry, and `known_gaps` fails until it is read. Course rules the
-board cannot encode (`enforced_by: "none"`) fail `rules_enforced`. Neither is fixed by editing
-entries away (Hard rules). A green check is the exception until the board enforces those rules.
+board cannot encode (`enforced_by: "none"`) fail `rules_enforced`, and spec requirements the
+board cannot carry yet (e.g. a minimum over a non-core group such as EE's 12 track courses)
+fail `board_carries_requirements`. None of these is fixed by editing entries away (Hard rules). A green check is the exception until the board enforces those rules.
 
 What to do with a parked draft — ask the owner, recommending the default:
 
@@ -134,22 +135,54 @@ code PR, not a skill run. `init --institution <other>` refuses with the same mes
    set `general_requirement` to `null` and map the item(s) that say so (or record a
    `known_gaps` entry if the answer is in a document you did not read) — never copy ME's.
 
-3. **todo --apply-suggestions**:
+3. **todo --reuse-from --apply-suggestions**:
 
    ```bash
-   python scripts/degree.py todo --program <id> --apply-suggestions
+   python scripts/degree.py todo --program <id> [--reuse-from <other-id>] --apply-suggestions
    ```
 
-   It writes the unambiguous coverage entries and never overwrites (rerunning applies 0). In
-   practice that is the course items (`course_listing`, timetable/IMS `course_fact`) of a course
-   held in exactly one spec place; sections are suggested only through the ME-only `legacy`
-   block, so a new degree maps its sections by hand. It exits 1 while anything is open, 0 when
-   the worklist is empty.
+   Both write coverage entries into `spec.json` and never overwrite (rerunning applies 0). It
+   exits 1 while anything is open, 0 when the worklist is empty.
+
+   **`--reuse-from <other-id>`** (runs first) — when another degree already mapped a document
+   this one shares. TAU engineering: the faculty regulations PDF Terms_BA.pdf
+   (`pdf:b6a7c762f8db:*`, 364 items) is fully mapped in `mechanical_engineering_2027`, so pass
+   `--reuse-from mechanical_engineering_2027`. It copies the other degree's entry for an evidence
+   id both share with identical `raw_text`, into ids not yet covered here, only when every target
+   resolves in THIS spec. It never copies course items of a course this spec places (suggestions
+   own those). Two lists in `todo.md`, both yours to act on:
+   - **"reused from <other> (verify)"** — every copied entry. Read each against its text and fix
+     what does not hold here: reasons naming the other program (e.g. ME's "read as the
+     `tau:8715:...` items" pointer) and program-specific sentences (the 9-semester exception
+     names specific programs). Copied is not reviewed.
+   - **"needs review"** — not written: a target is missing here (typically the other degree's
+     `course_rules[...]`). Write this degree's own rule (or other entry) from the text; the
+     other degree's entry is a hint, not the answer.
+
+   Retire an `unread-regulations-pdf` known gap only once every item of that document is mapped.
+
+   **`--apply-suggestions`** writes the unambiguous entries:
+   - a course item (`course_listing`, timetable/IMS `course_fact`) of a course held in exactly
+     one spec place -> that place;
+   - a course held in several places: a listing -> the category whose `name_he` equals the
+     section it is listed under (only the LAST path element, or a repeated section's `also_at`
+     location, is compared; none or several match -> left for you, e.g. "מעבדה מתקדמת מסלול X"
+     under "מעבדות מתקדמות"); a fact -> `mandatory_courses[...]` if mandatory, else the list of
+     all its homes;
+   - a "קורס ליבה (ב)מסלול X" course note (`data.core_of_track`, track names verbatim, typos
+     kept) -> `course_rules[<rule>]` when exactly one `distinct_categories` rule lists the course.
+
+   Sections are suggested only through the ME-only `legacy` block, so a new degree maps its
+   sections by hand.
 
 4. **Map every remaining worklist item by hand.** Read each item's `text` in `todo.md` (the raw
    official text) and add exactly one of these to `spec.json`:
    - `"<item id>": {"mapped_to": "<spec path>"}` — the spec already holds what the text says
-     (path syntax in reference.md; it must resolve or todo reports "unresolved mapping");
+     (path syntax in reference.md; it must resolve or todo reports "unresolved mapping").
+     When one item states several rules (a PDF sentence with both the pass and the fail grade, a
+     hesber with the total and the English rule), use a list:
+     `{"mapped_to": ["total_required_credits", "course_rules[english-two-courses]"]}` — every
+     target must resolve (todo prints the targets and names the unresolved ones);
    - a `course_rules` entry (rule_id, kind, course_ids, params, source_ids = the item ids,
      `enforced_by`, note) plus `{"mapped_to": "course_rules[<rule_id>]"}` — a course-level rule
      the generic fields cannot hold;
@@ -159,14 +192,11 @@ code PR, not a skill run. `init --institution <other>` refuses with the same mes
      what the text says (e.g. "Link to a previous year's booklet (archive)").
 
    A `pdf:<doc>:unread-page-<n>` item (`data.unread`: a page with no text layer) can only go to
-   `known_gaps`: any other entry is reported as `(unread page not in known_gaps)` by `todo` and
-   fails `coverage`.
+   `known_gaps` (in a list, every target must be a `known_gaps[...]`): any other entry is
+   reported as `(unread page not in known_gaps)` by `todo` and fails `coverage`.
 
-   A regulations PDF already mapped in another degree (same `pdf:<doc>:*` ids, e.g. ME's
-   Terms_BA.pdf `b6a7c762f8db`): copy its coverage entries as a starting point, then review
-   program-specific sentences (e.g. the 9-semester exception list names specific programs);
-   retire an `unread-regulations-pdf` known gap only once every item of that document is
-   mapped.
+   A regulations PDF already mapped in another degree: use `--reuse-from` (step 3), not a hand
+   copy of its entries.
 
    Where two sources disagree (program page vs. timetable vs. IMS, or two sections), add a
    `source_conflicts` entry naming the item ids. Rerun `todo` until it prints
@@ -214,8 +244,12 @@ code PR, not a skill run. `init --institution <other>` refuses with the same mes
    mandatory_offered -> 2 or 5). `plannable` = board-audit errors in the built board (e.g.
    `annual_not_represented`, `hours_mismatch`): fix the spec, or add a durable `curation.json`
    entry (`retire: null`, a reason citing the source; format in reference.md), then rebuild —
-   never edit the board. `rules_enforced` and `known_gaps` cannot be fixed by editing them
-   away: report them to the owner (see Hard rules).
+   never edit the board. `rules_enforced`, `board_carries_requirements` and `known_gaps`
+   cannot be fixed by editing them away: report them to the owner (see Hard rules).
+   `board_carries_requirements` means "the board can't carry this yet": it fails for a group
+   minimum other than `core`, a category that never reaches the board's category list, a
+   category `min_credits`, and a `general_requirement.credits_required` that is not
+   `min_courses` x the institution's `creditsPerCourse` (causes in reference.md).
 
 8. **Repeat 4-7 until check --live is green.**
 
@@ -250,12 +284,8 @@ python scripts/degree.py check    --program <id> --live
 ```
 
 New or changed official text shows up as unaccounted items and stale keys in `todo`; map them
-as in step 4 and delete the stale keys.
-
-A regulations PDF already mapped in another degree (same `pdf:<doc>:*` ids, e.g. ME's
-Terms_BA.pdf `b6a7c762f8db`): copy its coverage entries as a starting point, then review
-program-specific sentences (e.g. the 9-semester exception list names specific programs); retire
-an `unread-regulations-pdf` known gap only once every item of that document is mapped.
+as in step 4 and delete the stale keys. A shared document another degree already mapped:
+`todo --reuse-from <other-id>` (step 3), then verify every copied entry.
 
 `refresh --apply` is the board write path (curation
 overlay, byte-stable writer); `refresh --apply --syllabi` is accepted for compatibility (build
@@ -287,7 +317,10 @@ facts snapshot and the mismatch report; show `git diff data/official/` and the m
   `data/config/early_year_courses.json`) by hand: change the spec / `curation.json` and rebuild.
 - Never run the DB sync, a deploy, or any `vercel`/prod command: print them for the owner.
 - Record every disagreement between sources in `source_conflicts`; never resolve it silently.
-- Never delete a `known_gaps` or `course_rules` entry to make check pass.
+- Never delete a `known_gaps` or `course_rules` entry to make check pass, and never delete or
+  weaken a requirement (a group minimum, a category, `min_credits`, `credits_required`) to pass
+  `board_carries_requirements`: the requirement is official; the board's gap goes to the owner.
+- Entries copied by `--reuse-from` are unreviewed until you read each one against its text.
 - `degree_years` comes from the program page's year sections; a different length in the
   regulations is a `source_conflicts` entry plus a report to the owner (the draft stays parked,
   `degree_length` red, until they rule), never a silent override or bent rule params. Never
