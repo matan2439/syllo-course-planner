@@ -327,15 +327,13 @@ def test_known_gaps_fail_one_problem_per_gap():
 # ---------------------------------------------------------------- board carries requirements
 
 
-def test_board_carries_fails_on_non_core_group_minimum():
+def test_board_carries_generic_group_minimum():
     spec = _spec(categories=[("c1", ["A"], {"group": "core", "min_courses": 1}),
                              ("t1", ["B"], {"group": "track", "min_courses": 0}),
                              ("e1", ["C"], {})],  # a plain category: every category reaches the board list
                  group_minimums={"core": 6, "track": 12})
     result = check_board_carries_requirements(spec)
-    assert not result.passed and result.name == "board_carries_requirements"
-    assert len(result.problems) == 1
-    assert "group_minimums.track" in result.problems[0] and "12" in result.problems[0]
+    assert result.passed and result.name == "board_carries_requirements"
 
 
 def test_board_carries_passes_core_only_and_plain_categories():

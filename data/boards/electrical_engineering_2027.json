@@ -727,6 +727,16 @@
       "error_count": 0
     },
     "program_requirements_validation": {
+      "group_results": [
+        {
+          "group": "track",
+          "min_courses": 12,
+          "selected_courses": [],
+          "selected_count": 0,
+          "satisfied": false,
+          "missing_count": 12
+        }
+      ],
       "valid": false,
       "total_required_hours": 179,
       "planned_hours": 27.0,
@@ -910,14 +920,16 @@
       "missing_mandatory_courses": [],
       "missing_required_categories": [
         "advanced_labs",
-        "shaar_ruach"
+        "shaar_ruach",
+        "group:track"
       ],
       "warnings": [
         "חלק מהשעות אינן ידועות ולכן חישוב המכסה חלקי (1 קורסים ללא שעות)",
         "קטגוריה לא הושלמה: מעבדות מתקדמות",
-        "קטגוריה לא הושלמה: קורסי שער רוח"
+        "קטגוריה לא הושלמה: קורסי שער רוח",
+        "קבוצת track: 0/12"
       ],
-      "explanation": "דרישות לא מסופקות: 2 קטגוריות לא הושלמו"
+      "explanation": "דרישות לא מסופקות: 3 קטגוריות לא הושלמו"
     },
     "program_requirements_categories": {
       "total_required_hours": 179,
@@ -927,6 +939,7 @@
       "other_category_label": "קורסים באישור ועדת הוראה",
       "categories": [
         {
+          "group": "track",
           "category_id": "communications",
           "name_he": "מסלול תקשורת",
           "min_courses": 0,
@@ -948,6 +961,7 @@
           ]
         },
         {
+          "group": "track",
           "category_id": "signal_processing",
           "name_he": "מסלול עיבוד אותות",
           "min_courses": 0,
@@ -968,6 +982,7 @@
           ]
         },
         {
+          "group": "track",
           "category_id": "computer_systems",
           "name_he": "מסלול מערכות מחשב",
           "min_courses": 0,
@@ -989,6 +1004,7 @@
           ]
         },
         {
+          "group": "track",
           "category_id": "control_autonomous",
           "name_he": "מסלול בקרה ומערכות אוטונומיות",
           "min_courses": 0,
@@ -1004,6 +1020,7 @@
           ]
         },
         {
+          "group": "track",
           "category_id": "energy_renewables",
           "name_he": "מסלול אנרגיה ומקורות מתחדשים",
           "min_courses": 0,
@@ -1022,6 +1039,7 @@
           ]
         },
         {
+          "group": "track",
           "category_id": "optics_photonics",
           "name_he": "מסלול אופטיקה ופוטוניקה",
           "min_courses": 0,
@@ -1040,6 +1058,7 @@
           ]
         },
         {
+          "group": "track",
           "category_id": "devices_nanoelectronics",
           "name_he": "מסלול התקנים וננו אלקטרוניקה",
           "min_courses": 0,
@@ -1057,6 +1076,7 @@
           ]
         },
         {
+          "group": "track",
           "category_id": "electromagnetics_radiation",
           "name_he": "מסלול אלקטרומגנטיות וקרינה",
           "min_courses": 0,
@@ -1071,6 +1091,7 @@
           ]
         },
         {
+          "group": "track",
           "category_id": "bioelectronics",
           "name_he": "מסלול ביו- אלקטרוניקה",
           "min_courses": 0,
@@ -1087,6 +1108,7 @@
           ]
         },
         {
+          "group": "track",
           "category_id": "electronic_materials",
           "name_he": "מסלול חומרים אלקטרוניים",
           "min_courses": 0,
@@ -1102,6 +1124,7 @@
           ]
         },
         {
+          "group": "track",
           "category_id": "quantum",
           "name_he": "מסלול מדע וטכנולוגיה קוונטית",
           "min_courses": 0,
@@ -1116,6 +1139,7 @@
           ]
         },
         {
+          "group": "track",
           "category_id": "multidisciplinary",
           "name_he": "מסלול רב תחומי",
           "min_courses": 0,
@@ -1130,6 +1154,7 @@
           ]
         },
         {
+          "group": "track",
           "category_id": "vlsi",
           "name_he": "מסלול מעגלים משולבים VLSI",
           "min_courses": 0,
@@ -1146,6 +1171,7 @@
           ]
         },
         {
+          "group": "track",
           "category_id": "ml_ai",
           "name_he": "מסלול למידת מכונה ובינה מלאכותית",
           "min_courses": 0,
@@ -1295,7 +1321,10 @@
             "0669-6203"
           ]
         }
-      ]
+      ],
+      "group_minimums": {
+        "track": 12
+      }
     },
     "program_repository_courses": [
       {

@@ -267,8 +267,8 @@ def check_board_carries_requirements(spec: DegreeSpec) -> CheckResult:
     """Every spec requirement reaches the board; one failing problem per one that cannot.
 
     The board consumes only what ``spec_to_program`` emits, read the way the builder reads it
-    (``_get_unified_categories``). Today that drops: a group minimum other than ``core`` (only
-    ``core`` becomes ``core_courses_total_min``), a category the builder never reads (e.g. an
+    (``_get_unified_categories``). Generic group minimums are carried alongside the legacy
+    core minimum. Unsupported requirements include a category the builder never reads (e.g. an
     unkeyed category in a non-core group with no plain category beside it), and a category's
     ``min_credits`` (emitted, but no board or validation code reads it). A dropped requirement
     stays red until the board carries it -- never a silent drop.
@@ -279,8 +279,10 @@ def check_board_carries_requirements(spec: DegreeSpec) -> CheckResult:
     for group, minimum in sorted(spec.group_minimums.items()):
         if group == "core" and reqs.get("core_courses_total_min") == minimum:
             continue
+        if group != "core" and reqs.get("group_minimums", {}).get(group) == minimum:
+            continue
         problems.append(f"group_minimums.{group} ({minimum} courses) cannot reach the board: "
-                        f"it only carries the core group minimum (core_courses_total_min)")
+                        f"its group minimum was not emitted")
     read = {c.get("category_id") for c in _get_unified_categories(program)}
     key_of = {cid: key for key, cid in spec.legacy.get("requirement_category_keys", {}).items()}
     for cat in spec.categories:

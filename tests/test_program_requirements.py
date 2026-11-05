@@ -473,3 +473,37 @@ def test_get_program_categories_for_frontend():
     assert cats[0]["category_id"] == "A"
     assert "C1" in cats[0]["course_ids"]
     assert cats[1]["needs_review"] is True
+
+
+@pytest.mark.parametrize("count", [11, 12])
+def test_generic_group_minimum_from_spec_to_builder_metadata(count):
+    from app.degrees.spec import DegreeSpec, spec_to_program
+    from app.analysis.semester_board import _annotate_program_requirements
+    from unittest.mock import patch
+
+    ids = [f"0599-{i:04d}" for i in range(1001, 1013)]
+    spec = DegreeSpec.model_validate({
+        "program_id": "synthetic", "institution": "tau", "source_year": 2027,
+        "total_required_credits": 12, "mandatory_courses": [], "ui": {}, "legacy": {},
+        "group_minimums": {"track": 12},
+        "categories": [
+            {"category_id": "track_a", "name_he": "a", "group": "track", "course_ids": ids[:8]},
+            {"category_id": "track_b", "name_he": "b", "group": "track", "course_ids": ids[4:]},
+            {"category_id": "labs", "name_he": "labs", "group": "lab", "course_ids": ["LAB"]},
+        ],
+    })
+    program = spec_to_program(spec)
+    # One named completed course is also placed; both cross-category and completion overlap count once.
+    board = _board(("year_3_semester_a", [(cid, 1) for cid in ids[:count] + ["LAB"]]))
+    with patch("app.analysis.semester_board._build_program_repository_courses", return_value=[]):
+        _annotate_program_requirements(board, program, [ids[0]])
+    block = board["metadata"]["program_requirements_categories"]
+    assert block["group_minimums"] == {"track": 12}
+    assert [c["group"] for c in block["categories"]] == ["track", "track", "lab"]
+    result = board["metadata"]["program_requirements_validation"]
+    assert result["valid"] is (count == 12)
+    assert result["group_results"] == [{
+        "group": "track", "min_courses": 12, "selected_courses": sorted(ids[:count]),
+        "selected_count": count, "satisfied": count == 12, "missing_count": 12 - count,
+    }]
+    assert result["missing_required_categories"] == ([] if count == 12 else ["group:track"])

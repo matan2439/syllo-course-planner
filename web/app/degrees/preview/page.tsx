@@ -22,6 +22,11 @@ export default async function DegreePreview({ searchParams }: {
         <a href="?window=late" aria-current={!early ? 'page' : undefined}>שנים ג׳–ד׳</a>
       </nav>
     </header>
+    <section aria-label="דרישות התואר" className="rounded-xl border p-4">
+      <h2 className="text-xl font-bold">דרישות התואר</h2>
+      <p>לפחות {lateBoard.metadata.program_requirements_categories.group_minimums.track} קורסי מסלול לאורך התואר. קורס שמשויך למספר מסלולים נספר פעם אחת; מעבדות מתקדמות נספרות בנפרד.</p>
+      <p>דרישות הליבה ממסלולים שונים ויתר התנאים המיוחדים עדיין דורשים השלמת תמיכה במתכנן.</p>
+    </section>
     <section aria-label="קורסי החובה" className="grid gap-4 md:grid-cols-2">
       {board.semesters.map(semester => <article key={semester.semester_id} className="rounded-xl border p-4">
         <h2 className="mb-3 text-xl font-bold">{semester.display_name}</h2>

@@ -107,10 +107,10 @@ export function requirementsToModel(v: RawRequirementsValidation): BoardRequirem
     totalRequiredHours: v.total_required_hours,
     plannedHours: v.planned_hours,
     remainingHours: v.remaining_hours,
-    coreCoursesTotalMin: v.core_courses_total_min,
-    coreCoursesSelected: v.core_courses_selected,
-    coreCoursesSatisfied: v.core_courses_satisfied,
-    categories: (v.category_results ?? []).map((c: {
+    coreCoursesTotalMin: v.core_courses_total_min ?? 0,
+    coreCoursesSelected: v.core_courses_selected ?? 0,
+    coreCoursesSatisfied: v.core_courses_satisfied ?? true,
+    categories: [...(v.category_results ?? []).map((c: {
       category_id: string;
       name_he: string;
       min_courses: number;
@@ -126,7 +126,11 @@ export function requirementsToModel(v: RawRequirementsValidation): BoardRequirem
       satisfied: c.satisfied,
       missingCount: c.missing_count,
       selectedCourseIds: c.selected_courses ?? [],
-    })),
+    })), ...(v.group_results ?? []).map(g => ({
+      categoryId: `group:${g.group}`, nameHe: g.group === 'track' ? 'קורסי מסלול' : g.group,
+      minCourses: g.min_courses, selectedCount: g.selected_count, satisfied: g.satisfied,
+      missingCount: g.missing_count, selectedCourseIds: g.selected_courses,
+    }))],
     warnings: v.warnings ?? [],
   };
 }
