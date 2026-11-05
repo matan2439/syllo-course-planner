@@ -713,7 +713,9 @@ def run_todo(entry: ProgramEntry, apply_suggestions: bool, reuse_from: str | Non
     spec_file = spec_path(entry)
     spec = load_spec(spec_file)
     lines: list[str] = []
+    reused: list[str] = []
     review: list[str] = []
+    differing: list[str] = []
     if other is not None:
         reuse = reuse_coverage(items, spec, _load_evidence(other), load_spec(spec_path(other)))
         if reuse.copied:
@@ -721,8 +723,10 @@ def run_todo(entry: ProgramEntry, apply_suggestions: bool, reuse_from: str | Non
             write_spec(spec, spec_file)
         lines.append(f"reused {len(reuse.copied)} coverage entries from {other.id} into {_show(spec_file)}; "
                      f"{len(reuse.needs_review)} need review; {len(reuse.differing)} skipped (evidence text differs)")
-        for id_, e in reuse.needs_review.items():
-            review.append(f"- {id_}: {json.dumps(e.model_dump(), ensure_ascii=False)}")
+        show = lambda e: json.dumps(e.model_dump(), ensure_ascii=False)  # noqa: E731
+        reused = [f"- {id_}: {show(e)}" for id_, e in reuse.copied.items()]
+        review = [f"- {id_}: {show(e)}" for id_, e in reuse.needs_review.items()]
+        differing = [f"- {id_}" for id_ in reuse.differing]
     if apply_suggestions:
         fresh = {k: v for k, v in suggest_coverage(items, spec).items() if k not in spec.coverage}
         if fresh:
@@ -755,9 +759,16 @@ def run_todo(entry: ProgramEntry, apply_suggestions: bool, reuse_from: str | Non
                     where += f" [unresolved: {', '.join(bad)}]"
             lines += [f"- id: {item.id}" + ("" if reasons[item.id] == "unaccounted" else f" ({reasons[item.id]})") + where,
                       f"  source_url: {item.source_url}", f"  text: {strip_html(item.raw_text)}"]
+    if reused:
+        lines += ["", f"## reused from {other.id} (verify)"]
+        lines += reused
     if review:
-        lines += ["", f"## needs review (reused from {other.id}: a target does not resolve here; not written)"]
+        lines += ["", f"## needs review (from {other.id}, not written: a target does not resolve here, "
+                      f"or a course this spec places — suggestions own those)"]
         lines += review
+    if differing:
+        lines += ["", f"## not reused from {other.id} (evidence text differs)"]
+        lines += differing
     if stale:
         lines += ["", "## stale coverage keys (not in evidence; remove from the spec)"]
         lines += [f"- {k}" for k in stale]

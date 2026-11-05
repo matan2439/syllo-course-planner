@@ -212,3 +212,19 @@ def test_reuse_copies_identical_evidence_only_into_uncovered_resolvable_ids():
     assert result.needs_review == {"unresolved": other.coverage["unresolved"]}
     assert result.differing == ["differs"]
     assert "kept" not in result.copied  # never overwrites
+
+
+def test_reuse_leaves_course_items_homed_here_to_suggestions():
+    # ME-style: a shared tau:ims id with a degree-specific reason must not leak into another degree
+    other = _spec().model_copy(update={"coverage": {
+        "tau:ims:2026:F-1": NotPlanningRule(not_planning_rule="Specialization-track elective TAU marks as not taught"),
+        "tau:ims:2026:ZZ-9": NotPlanningRule(not_planning_rule="not in this degree"),
+        "pdf:sentence": NotPlanningRule(not_planning_rule="admin policy"),
+    }})
+    mine = [_ev("tau:ims:2026:F-1", "same", kind="course_fact").model_copy(update={"course_id": "F-1"}),
+            _ev("tau:ims:2026:ZZ-9", "same", kind="course_fact").model_copy(update={"course_id": "ZZ-9"}),
+            _ev("pdf:sentence", "same", kind="policy_text")]
+    result = reuse_coverage(mine, _spec(), list(mine), other)
+    assert result.needs_review == {"tau:ims:2026:F-1": other.coverage["tau:ims:2026:F-1"]}
+    assert result.copied == {"tau:ims:2026:ZZ-9": other.coverage["tau:ims:2026:ZZ-9"],   # no home here
+                             "pdf:sentence": other.coverage["pdf:sentence"]}

@@ -129,10 +129,14 @@ def reuse_coverage(items: list[EvidenceItem], spec: DegreeSpec,
     """Another degree's coverage entries for the evidence both degrees share verbatim.
 
     Only ids present in both evidence sets with identical ``raw_text``, mapped by the other spec
-    and not yet covered here, are considered. A ``not_planning_rule`` entry copies as-is; a
+    and not yet covered here, are considered. A course item (``course_listing`` / ``course_fact``)
+    whose course this spec places anywhere always needs review: its reasons in the other degree
+    (e.g. "elective not taught" on a shared ``tau:ims:...`` id) need not hold here, and
+    ``suggest_coverage`` owns it. Otherwise a ``not_planning_rule`` entry copies as-is and a
     ``mapped_to`` entry copies only when every target resolves in THIS spec, else it needs review.
     Nothing here is ever overwritten.
     """
+    homes = _course_homes(spec)
     theirs = {i.id: i for i in other_items}
     copied: dict[str, CoverageEntry] = {}
     needs_review: dict[str, CoverageEntry] = {}
@@ -143,6 +147,8 @@ def reuse_coverage(items: list[EvidenceItem], spec: DegreeSpec,
             continue
         if other.raw_text != item.raw_text:
             differing.append(item.id)
+        elif item.kind in _COURSE_KINDS and homes.get(item.course_id or ""):
+            needs_review[item.id] = entry
         elif isinstance(entry, NotPlanningRule) or (
                 entry.targets and all(resolve_spec_path(spec, t) for t in entry.targets)):
             copied[item.id] = entry
