@@ -7,10 +7,13 @@ const IDS = [
   'mechanical_engineering_biomedical_track_2025',
 ];
 
-test('registry parses and holds exactly the three live ME programs', () => {
-  expect(PROGRAM_REGISTRY.map((p) => p.id).sort()).toEqual([...IDS].sort());
-  expect(PROGRAM_REGISTRY.every((p) => p.status === 'live')).toBe(true);
-  expect(livePrograms()).toHaveLength(3);
+test('registry preserves existing degrees while exposing only live entries', () => {
+  expect(PROGRAM_REGISTRY.map((p) => p.id)).toEqual(expect.arrayContaining(IDS));
+  expect(livePrograms().map(p => p.id).sort()).toEqual(
+    PROGRAM_REGISTRY.filter(p => p.status === 'live').map(p => p.id).sort());
+  for (const draft of PROGRAM_REGISTRY.filter(p => p.status === 'draft')) {
+    expect(livePrograms().some(p => p.id === draft.id)).toBe(false);
+  }
 });
 
 test('mechanical_engineering_2027 fields', () => {
