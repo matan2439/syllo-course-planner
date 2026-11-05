@@ -34,7 +34,11 @@ export function validateSavedPlan(plan: SavedPlan, boardJson: any, context: Acad
     }
   }
   for (const [id, homes] of courseHomes) {
-    if (homes.length > 1 && !model.profiles.get(id)?.is_annual) errors.push(`Duplicate course across semesters: ${id}`);
+    const profile = model.profiles.get(id);
+    const spans = profile?.spans_semesters ?? [];
+    const legitimateAnnualSpan = profile?.is_annual && spans.length > 1
+      && homes.length === spans.length && homes.every(home => spans.includes(home));
+    if (homes.length > 1 && !legitimateAnnualSpan) errors.push(`Duplicate course across semesters: ${id}`);
   }
   const placed = new Set(Object.values(state.semesters).flat());
   for (const id of model.requiredMandatoryCourseIds) if (!placed.has(id)) academicWarnings.push(`Missing mandatory: ${id}`);

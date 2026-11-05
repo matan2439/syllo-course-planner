@@ -39,6 +39,7 @@ test('unknown courses and duplicate entries remain structural errors', () => {
   expect(check(plan(['unknown']), []).valid).toBe(false);
   expect(check(plan(['C1', 'C1']), [course('C1')]).valid).toBe(false);
   expect(check(plan(['C1'], ['C1']), [course('C1')]).valid).toBe(false);
+  expect(check(plan(['Y1'], ['Y1']), [course('Y1', { is_annual: true, spans_semesters: [A, 'year_4_semester_a'] })]).valid).toBe(false);
   const duplicate = plan(['C1']);
   duplicate.semesters.push({ semesterId: A, courseIds: [] });
   expect(check(duplicate, [course('C1')]).valid).toBe(false);
