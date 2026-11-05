@@ -124,6 +124,18 @@ export default async function ProgramsPage({
             index={i}
           />
         ))}
+        {process.env.ENABLE_EE_EXPLORER === '1' && (
+          <Link href="/degrees/electrical-engineering" className="group block">
+            <Card className="px-5 py-5">
+              <div className="flex items-start justify-between gap-2">
+                <h2 className="text-base font-bold">הנדסת חשמל</h2>
+                <Badge>בטא</Badge>
+              </div>
+              <p className="mt-2 text-sm text-[var(--text-muted)]">מסלולים, קורסי חובה וליבה ותוכנית הלימודים. כלי התכנון האישי לתואר זה עדיין בפיתוח.</p>
+              <p className="mt-3 text-sm font-medium text-[var(--purple)]">לצפייה בתוכנית ←</p>
+            </Card>
+          </Link>
+        )}
       </div>
     </ProductShell>
   )

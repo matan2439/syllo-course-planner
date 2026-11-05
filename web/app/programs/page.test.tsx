@@ -21,4 +21,17 @@ describe('/programs', () => {
     expect(screen.queryByText(/גרסה קודמת/)).toBeNull()
     expect(screen.queryByText(/ביו-רפואית/)).toBeNull()
   })
+
+  it('offers the EE explorer separately from student planning only when enabled', async () => {
+    const previous = process.env.ENABLE_EE_EXPLORER
+    process.env.ENABLE_EE_EXPLORER = '1'
+    try {
+      render(await ProgramsPage({ searchParams: Promise.resolve({}) }))
+      expect(screen.getByRole('link', { name: /הנדסת חשמל/ })).toHaveAttribute('href', '/degrees/electrical-engineering')
+      expect(screen.queryByRole('link', { name: /הנדסת חשמל/ })?.getAttribute('href')).not.toContain('/planner')
+    } finally {
+      if (previous === undefined) delete process.env.ENABLE_EE_EXPLORER
+      else process.env.ENABLE_EE_EXPLORER = previous
+    }
+  })
 })
