@@ -43,6 +43,14 @@ What to do with a parked draft — ask the owner, recommending the default:
 
 ## Inputs to confirm with the owner first
 
+For a batch, keep an inventory of institution, official title, track, year and program id
+for each requested degree. Resolve unambiguous identities from official sources and use
+the owner's established defaults; ask only when several programs match or the year is
+unclear. Process each degree through its own evidence, spec, build and check. Fetch shared
+documents once per run and reuse their evidence without claiming a second fresh download.
+Review copied rule interpretations for applicability to each degree. Keep a per-degree
+result so one unresolved program does not hide successful or blocked siblings.
+
 Confirm exactly these four, then ask nothing else (everything else comes from the sources):
 
 1. the official degree title (Hebrew, as the institution publishes it),
@@ -315,7 +323,11 @@ facts snapshot and the mismatch report; show `git diff data/official/` and the m
   its `curation.json`; a copy of its spec without that overlay is not.)
 - Never edit committed boards (`data/boards/`, `data/parsed_json/`,
   `data/config/early_year_courses.json`) by hand: change the spec / `curation.json` and rebuild.
-- Never run the DB sync, a deploy, or any `vercel`/prod command: print them for the owner.
+- Run database sync and deployment only when the owner explicitly authorizes publication
+  (including standing authorization in this chat), all release checks pass, and the
+  target project is verified. Otherwise print the commands. Deploy a preview first,
+  verify the degree and saved-copy workflow, then release the tested revision and
+  verify the live domain. A red degree stays draft even when deployment is authorized.
 - Record every disagreement between sources in `source_conflicts`; never resolve it silently.
 - Never delete a `known_gaps` or `course_rules` entry to make check pass, and never delete or
   weaken a requirement (a group minimum, a category, `min_credits`, `credits_required`) to pass
