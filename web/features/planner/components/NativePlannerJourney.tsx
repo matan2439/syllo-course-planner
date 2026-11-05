@@ -1,4 +1,6 @@
 'use client'
+import DegreeRulesPanel from './DegreeRulesPanel'
+import type { DegreeRule } from '../../../../shared/planner/degree-rules'
 
 /**
  * The planner journey: the one owner of planning state, composed over the shared client
@@ -92,6 +94,7 @@ export default function NativePlannerJourney({
   onDragStateChange,
   onAcademicContextMissing,
   onBoardSnapshot,
+  degreeRules = [],
   onPrepareRestore,
   companion,
   degreeSemesterIds,
@@ -130,6 +133,7 @@ export default function NativePlannerJourney({
   /** The server has no academic context for the current owner: the parent re-reads everything. */
   onAcademicContextMissing?: () => void
   onBoardSnapshot?: (snapshot: BoardSnapshot) => void
+  degreeRules?: readonly DegreeRule[]
   onPrepareRestore?: (prepare: (() => Promise<void>) | null) => void
   /** Another window's read-only columns shown beside this board ("whole degree" view). */
   companion?: { placement: 'before' | 'after'; node: ReactNode }
@@ -428,6 +432,8 @@ export default function NativePlannerJourney({
           programId={programId}
           getStudentContext={courseChatContext}
         />
+        <DegreeRulesPanel rules={degreeRules} semesters={current?.semesters.map(s => ({ semesterId: s.semesterId, courseIds: s.courses.map(c => c.courseId) })) ?? []}
+          completedCourseIds={academicStatus.confirmed ? completedCourseIdsOf(academicStatus) : []} />
         {manualEditPhase === 'saving' && <p role="status" aria-live="polite" className="text-sm text-[var(--text-muted)]">{t('שומר ומאמת…', 'Saving and validating…')}</p>}
       </div>
 

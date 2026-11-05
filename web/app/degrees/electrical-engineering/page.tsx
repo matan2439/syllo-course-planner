@@ -1,15 +1,10 @@
-import { notFound } from 'next/navigation'
-import Explorer from '../../../features/degrees/ElectricalEngineeringExplorer'
-import ProductShell from '../../../features/shell/components/ProductShell'
+import { notFound, redirect } from 'next/navigation'
+import { isServableProgramId } from '../../../../shared/programs'
 
 export const metadata = { title: 'הנדסת חשמל — Syllo' }
 export const dynamic = 'force-dynamic'
 
-export default async function ElectricalEngineeringPage(props: {
-  searchParams: Promise<{ window?: string; track?: string }>
-}) {
-  if (process.env.ENABLE_EE_EXPLORER !== '1') notFound()
-  return <ProductShell width="full" title="הנדסת חשמל" subtitle="אוניברסיטת תל אביב · תצוגת בטא">
-    <Explorer {...props} />
-  </ProductShell>
+export default async function ElectricalEngineeringPage() {
+  if (!isServableProgramId('electrical_engineering_2027')) notFound()
+  redirect('/planner?program=electrical_engineering_2027')
 }

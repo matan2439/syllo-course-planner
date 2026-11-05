@@ -22,13 +22,12 @@ describe('/programs', () => {
     expect(screen.queryByText(/ביו-רפואית/)).toBeNull()
   })
 
-  it('offers the EE explorer separately from student planning only when enabled', async () => {
+  it('does not create a separate explorer as a substitute for a degree planner', async () => {
     const previous = process.env.ENABLE_EE_EXPLORER
     process.env.ENABLE_EE_EXPLORER = '1'
     try {
       render(await ProgramsPage({ searchParams: Promise.resolve({}) }))
-      expect(screen.getByRole('link', { name: /הנדסת חשמל/ })).toHaveAttribute('href', '/degrees/electrical-engineering')
-      expect(screen.queryByRole('link', { name: /הנדסת חשמל/ })?.getAttribute('href')).not.toContain('/planner')
+      expect(screen.queryByRole('link', { name: /הנדסת חשמל/ })).toBeNull()
     } finally {
       if (previous === undefined) delete process.env.ENABLE_EE_EXPLORER
       else process.env.ENABLE_EE_EXPLORER = previous

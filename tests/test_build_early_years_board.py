@@ -10,6 +10,29 @@ ROOT = Path(__file__).resolve().parent.parent
 EARLY_BOARD = ROOT / "data" / "boards" / "mechanical_engineering_years_1_2_2027.json"
 
 
+def test_preview_index_is_generated_from_built_boards_without_changing_standard(tmp_path):
+    from scripts.build_early_years_board import write_early_year_index
+
+    standard_path = ROOT / "data" / "config" / "early_year_courses.json"
+    before = standard_path.read_bytes()
+    standard = write_early_year_index(path=tmp_path / "standard.json")
+    assert standard.read_bytes() == before
+    preview = write_early_year_index(path=tmp_path / "preview.json", include_drafts=True)
+    index = json.loads(preview.read_text(encoding="utf-8"))
+    ee = "electrical_engineering_2027"
+    assert ee not in json.loads(standard.read_text(encoding="utf-8"))
+    board = json.loads((ROOT / "data" / "boards" / "electrical_engineering_years_1_2_2027.json").read_text(encoding="utf-8"))
+    expected = [
+        {"courseId": c["course_id"], "nameHe": c["name_he"],
+         "semesterId": s["semester_id"], "creditHours": c.get("credits") or 0}
+        for s in board["semesters"] for c in s["courses"] if c.get("is_mandatory")
+    ]
+    assert len(expected) == 21
+    assert index[ee] == expected
+    assert preview.read_bytes() == (ROOT / "data" / "config" / "preview_early_year_courses.json").read_bytes()
+    assert standard_path.read_bytes() == before
+
+
 def section(title, subs):
     return {"teurrama": title, "rama": [{"teurrama": t, "kurs": [{"kursshow": c, "teurkurs": c, "shaotuni": "4", "mishkal": "3"} for c in ids]} for t, ids in subs]}
 

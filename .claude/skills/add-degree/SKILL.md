@@ -343,17 +343,23 @@ facts snapshot and the mismatch report; show `git diff data/official/` and the m
 ## Verify the student experience before release
 
 Adding a degree is complete only after a deployed preview has been checked with the
-degree's real data. Check both year windows, course names and hours, every track's
+degree's real data IN THE EXISTING EDITABLE STUDENT PLANNER. A standalone course catalog,
+rules page, explorer or read-only semester layout does not satisfy this outcome. The
+degree must open through the ordinary program picker into the same workspace used by
+Mechanical Engineering. Check both year windows, course names and hours, every track's
 course membership, core markings, requirements progress, and weekly group choices.
+Add, move and remove courses, mark completed studies, and verify AI proposals and their
+application use this degree's catalog and rules. Never substitute another degree's data.
 Save two different course copies, switch both ways, reload, and verify that each copy
 retains its courses and weekly choices. An unfinished draft must remain accessible:
 academic warnings must not become a gate on restoring the student's own saved copy.
 Owner authorization, version conflicts and malformed content remain blocking checks.
 
-When publication checks are red, a preview-only read-only page can show the generated
-boards and catalog with a clear draft notice. Keep that page unavailable in production
-and keep the degree registry status draft. Never label such a preview as a published
-or fully validated planner. Record the actual preview URL and the checks performed.
+When publication checks are red, keep the degree draft. An explicitly enabled editable
+integration preview may exercise the ordinary planner and APIs with its own program id,
+while explaining unresolved validation rules. Keep the release gate and unsupported-rule
+report intact. A read-only explorer can help inspect sources, but is not a delivered degree.
+Record the actual planner URL and the interactions tested.
 
 ## Report to the owner
 

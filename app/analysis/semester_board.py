@@ -1367,6 +1367,8 @@ def _annotate_program_requirements(
         "program_requirements_categories": frontend_cats,
         "program_repository_courses":      repo_courses,
     })
+    if program.get("course_rules"):
+        board["metadata"]["degree_rules"] = program["course_rules"]
 
 
 # ---------------------------------------------------------------------------

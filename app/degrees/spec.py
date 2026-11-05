@@ -271,6 +271,8 @@ def spec_to_program(spec: DegreeSpec) -> dict:
     program["total_required_hours"] = _number(spec.total_required_credits)
     program["requirements"] = requirements
     program["ui"] = spec.ui
+    if spec.ui.get("validate_course_rules"):
+        program["course_rules"] = [rule.model_dump() for rule in spec.course_rules]
 
     order = legacy.get("key_order", {})
     return {

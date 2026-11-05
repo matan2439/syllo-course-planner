@@ -143,6 +143,8 @@ def test_build_minimal_synthetic_degree(tmp_path, monkeypatch, capsys, page_cach
     # A draft's window board never enters the early-year index (it ships in the frontend bundle) ...
     index = json.loads(degree.early_index_path(out).read_text(encoding="utf-8"))
     assert PROGRAM_ID not in index
+    preview = json.loads(degree.early_index_path(out).with_name("preview_early_year_courses.json").read_text(encoding="utf-8"))
+    assert [r["courseId"] for r in preview[PROGRAM_ID]] == ["0599-1001", "0599-2001"]
     # ... and does once the degree is live.
     import build_early_years_board as early
     registry.set_status(PROGRAM_ID, "live", path=registry_file)

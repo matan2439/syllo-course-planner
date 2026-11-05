@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { RepositoryVM } from '../../../lib/repository'
+import type { DegreeRule } from '../../../../shared/planner/degree-rules'
 import NativePlannerJourney, { type ManualAddIntent } from './NativePlannerJourney'
 import CompanionWindowBoard from './CompanionWindowBoard'
 import { CLOSE_PANELS_EVENT } from '../../billing/ai_access'
@@ -61,6 +62,7 @@ export default function UnifiedPlannerWorkspace({
   onRequestAdd = () => undefined,
   semesterDestinations: programDestinations = DEFAULT_SEMESTER_DESTINATIONS,
   windowBoards = {},
+  degreeRules = [],
 }: {
   programId: string
   repo: RepositoryVM
@@ -70,6 +72,7 @@ export default function UnifiedPlannerWorkspace({
   semesterDestinations?: readonly SemesterDestination[]
   /** The board each two-year window plans over; a window without one falls back to the program's board. */
   windowBoards?: Partial<Record<SemesterWindow, WindowBoard>>
+  degreeRules?: readonly DegreeRule[]
 }) {
   const { t, dir, locale } = useLocale()
   // Profile fact → derived window → the board it plans over and the weekly schedule's four tabs.
@@ -396,6 +399,7 @@ export default function UnifiedPlannerWorkspace({
           className="planner-board-canvas planner-board-canvas-stable min-w-0"
         >
           <NativePlannerJourney
+            degreeRules={degreeRules}
             key={`${boardId}:${owner.epoch}`}
             companion={companionBoardId
               ? { placement: companionPlacement, node: <CompanionWindowBoard key={`${companionBoardId}:${owner.epoch}`} boardId={companionBoardId} placement={companionPlacement} /> }

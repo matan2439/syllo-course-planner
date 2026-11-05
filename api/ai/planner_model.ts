@@ -267,6 +267,7 @@ export function buildConstraintModel(boardJson: any, opts: BuildModelOptions = {
 
   return {
     profiles,
+    degreeRules: boardJson?.metadata?.degree_rules,
     knownSemesterIds,
     completedCourseIds,
     currentlyPlannedCourseIds,

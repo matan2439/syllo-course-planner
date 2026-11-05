@@ -7,6 +7,8 @@ import { SEMESTER_WINDOWS, windowBoardIdFor } from '../../lib/planner/semester-w
 import type { RawBoard } from '../../lib/board'
 import ProductShell from '../../features/shell/components/ProductShell'
 import UnifiedPlannerWorkspace from '../../features/planner/components/UnifiedPlannerWorkspace'
+import { isEditableDegreePreview } from '../../../shared/programs'
+import type { DegreeRule } from '../../../shared/planner/degree-rules'
 
 export const metadata = { title: 'מרחב התכנון — Syllo' }
 export const dynamic = 'force-dynamic'
@@ -41,7 +43,11 @@ export default async function PlannerPage({
       programId={program.id}
       preferLightweightBackground={false}
     >
+      {isEditableDegreePreview(program.id) && <p role="status" className="mx-4 my-3 rounded border border-amber-500 p-3" dir="rtl">
+        סביבת בדיקה לתכנון הנדסת חשמל: ניתן לערוך ולשמור תוכניות. אימות התנאים המיוחדים לתואר עדיין בפיתוח.
+      </p>}
       <UnifiedPlannerWorkspace
+        degreeRules={(raw.metadata as { degree_rules?: DegreeRule[] })?.degree_rules}
         programId={program.id}
         repo={repo}
         semesterDestinations={destinationsOf(raw)}

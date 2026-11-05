@@ -603,7 +603,8 @@
       "ml_ai",
       "advanced_labs",
       "hardware_exposure_elective"
-    ]
+    ],
+    "validate_course_rules": true
   },
   "legacy": {},
   "coverage": {

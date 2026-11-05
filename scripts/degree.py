@@ -426,6 +426,8 @@ def build(entry: ProgramEntry, out_dir: Path = DATA, offline: bool = False, live
     apply_curation(early_board, curation, "early_years")
     write_board(early_out, early_board, previous["early_years"], keep_timestamps=not live)
     index = early.write_early_year_index(boards_dir=paths["early_years"].parent, path=early_index_path(out_dir))
+    early.write_early_year_index(boards_dir=paths["early_years"].parent,
+                               path=index.with_name("preview_early_year_courses.json"), include_drafts=True)
     print(f"[build] early_years -> {early_out}; index -> {index}")
     return {**paths, "early_year_index": index}
 
@@ -606,7 +608,10 @@ def refresh_early_index() -> Path:
     """Rewrite data/config/early_year_courses.json from data/boards/ (drafts excluded)."""
     import build_early_years_board as early
 
-    return early.write_early_year_index(boards_dir=DATA / "boards", path=early_index_path())
+    index = early.write_early_year_index(boards_dir=DATA / "boards", path=early_index_path())
+    early.write_early_year_index(boards_dir=DATA / "boards",
+                               path=index.with_name("preview_early_year_courses.json"), include_drafts=True)
+    return index
 
 
 def run_publish(entry: ProgramEntry, update: bool) -> int:
