@@ -16,6 +16,7 @@ export function validateSavedPlan(plan: SavedPlan, boardJson: any, context: Acad
   const errors: string[] = [];
   const academicWarnings: string[] = [];
   const seen = new Set<string>();
+  const courseHomes = new Map<string, string[]>();
   const state = { semesters: Object.fromEntries(model.knownSemesterIds.map((id) => [id, [] as string[]])) };
   for (const semester of plan.semesters) {
     if (!known.has(semester.semesterId)) { errors.push(`Unknown semester: ${semester.semesterId}`); continue; }
@@ -25,9 +26,15 @@ export function validateSavedPlan(plan: SavedPlan, boardJson: any, context: Acad
     state.semesters[semester.semesterId] = [...semester.courseIds];
     for (const id of semester.courseIds) {
       const profile = model.profiles.get(id);
+      const homes = courseHomes.get(id) ?? [];
+      homes.push(semester.semesterId);
+      courseHomes.set(id, homes);
       if (!profile?.name_he?.trim()) errors.push(`Unknown course: ${id}`);
       if (profile?.excluded || model.disallowedCourseIds.has(id)) academicWarnings.push(`Excluded course: ${id}`);
     }
+  }
+  for (const [id, homes] of courseHomes) {
+    if (homes.length > 1 && !model.profiles.get(id)?.is_annual) errors.push(`Duplicate course across semesters: ${id}`);
   }
   const placed = new Set(Object.values(state.semesters).flat());
   for (const id of model.requiredMandatoryCourseIds) if (!placed.has(id)) academicWarnings.push(`Missing mandatory: ${id}`);
