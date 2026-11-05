@@ -328,6 +328,21 @@ facts snapshot and the mismatch report; show `git diff data/official/` and the m
 - A red run is a parked draft: commit it on a separate branch (default) or not at all; never
   merge a draft to `main` to "save" it.
 
+## Verify the student experience before release
+
+Adding a degree is complete only after a deployed preview has been checked with the
+degree's real data. Check both year windows, course names and hours, every track's
+course membership, core markings, requirements progress, and weekly group choices.
+Save two different course copies, switch both ways, reload, and verify that each copy
+retains its courses and weekly choices. An unfinished draft must remain accessible:
+academic warnings must not become a gate on restoring the student's own saved copy.
+Owner authorization, version conflicts and malformed content remain blocking checks.
+
+When publication checks are red, a preview-only read-only page can show the generated
+boards and catalog with a clear draft notice. Keep that page unavailable in production
+and keep the degree registry status draft. Never label such a preview as a published
+or fully validated planner. Record the actual preview URL and the checks performed.
+
 ## Report to the owner
 
 End every run with:
