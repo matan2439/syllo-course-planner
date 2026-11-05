@@ -114,6 +114,26 @@ def _note_entries(field: str, value) -> list[tuple[str, dict]]:
     return out
 
 
+_CORE_OF_TRACK_RE = re.compile(r"קורס ליבה (?:ב)?מסלול\s+(.+)")
+_LINE_BREAK_RE = re.compile(r"<br\s*/?>|[\r\n]+", re.IGNORECASE)
+
+
+def core_of_track(text: str) -> list[str]:
+    """Every track a course note calls this course the core of ("קורס ליבה במסלול <X>"), in order.
+
+    Track names are verbatim (typos kept); later matching to spec tracks must be alias/fuzzy.
+    A track name runs to the end of its line, so following lines (language, prerequisites) are
+    not part of it.
+    """
+    tracks: list[str] = []
+    for line in _LINE_BREAK_RE.split(text or ""):
+        m = _CORE_OF_TRACK_RE.search(strip_html(line))
+        track = m.group(1).strip(" .,;:") if m else ""
+        if track and track not in tracks:
+            tracks.append(track)
+    return tracks
+
+
 def tochniot_evidence(program: ProgramEntry, live: bool, offline: bool) -> list[EvidenceItem]:
     tcid, shana = program.source_ids["tcid"], str(program.source_year)
     cache = RAW_DIR / f"tau_program_{tcid}_{shana}.json"
@@ -170,6 +190,9 @@ def tochniot_evidence(program: ProgramEntry, live: bool, offline: bool) -> list[
                         if nid in seen_notes:
                             continue
                         seen_notes.add(nid)
+                        tracks = core_of_track(text)
+                        if tracks:
+                            entry = dict(entry, core_of_track=tracks)
                         add(nid, "rule_text", rpath, text, course_id=dashed(show), data=entry)
             walk(r, rpath)
 

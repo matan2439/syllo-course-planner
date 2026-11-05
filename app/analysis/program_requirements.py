@@ -296,7 +296,7 @@ def get_program_categories_for_frontend(
             {
                 "category_id":  cat.get("category_id", ""),
                 "name_he":      cat.get("name_he", ""),
-                "min_courses":  cat.get("min_courses", 1),
+                "min_courses":  cat.get("min_courses", 0),
                 "needs_review": bool(cat.get("needs_review", False)),
                 "is_core":      cat.get("category_id") in core_cat_ids,
                 "course_ids":   resolve_category_course_ids(cat),
@@ -387,7 +387,7 @@ def validate_program_plan(
 
     for cat in all_cats:
         cat_id    = cat.get("category_id", "")
-        min_c     = cat.get("min_courses", 1)
+        min_c     = cat.get("min_courses", 0)
         needs_rev = bool(cat.get("needs_review", False))
         pool      = set(resolve_category_course_ids(cat))
 

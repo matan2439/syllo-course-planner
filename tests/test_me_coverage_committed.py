@@ -69,7 +69,7 @@ def test_every_course_rule_is_backed_by_mapped_evidence():
     for rule in spec.course_rules:
         assert rule.source_ids and set(rule.source_ids) <= ids, rule.rule_id
         for sid in rule.source_ids:
-            assert spec.coverage[sid].mapped_to == f"course_rules[{rule.rule_id}]"
+            assert spec.coverage[sid].maps_to(f"course_rules[{rule.rule_id}]")
 
 
 def test_failing_checks_are_exactly_the_unenforced_rules():
@@ -96,7 +96,7 @@ def test_known_gaps_are_backed_by_mapped_evidence():
     for gap in spec.known_gaps:
         assert gap.source_ids
         for sid in gap.source_ids:
-            assert spec.coverage[sid].mapped_to == f"known_gaps[{gap.gap_id}]"
+            assert spec.coverage[sid].maps_to(f"known_gaps[{gap.gap_id}]")
 
 
 def test_source_conflict_sources_are_covered_evidence():
