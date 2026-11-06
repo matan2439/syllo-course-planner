@@ -366,7 +366,10 @@ Treat any failed preview step as a release blocker.
 
 When publication checks are red, keep the degree draft. An explicitly enabled editable
 integration preview may exercise the ordinary planner and APIs with its own program id,
-while explaining unresolved validation rules. Keep the release gate and unsupported-rule
+while explaining unresolved validation rules. On an isolated preview deployment, set
+`NEXT_PUBLIC_EDITABLE_DEGREE_PREVIEWS` to the comma-separated registry ids to test in
+both the build and runtime environment. Use the same path for one degree or a batch.
+Keep the release gate and unsupported-rule
 report intact. A read-only explorer can help inspect sources, but is not a delivered degree.
 Record the actual planner URL and the interactions tested.
 

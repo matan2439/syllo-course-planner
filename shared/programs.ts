@@ -67,18 +67,21 @@ export function livePrograms(): ProgramEntry[] {
   return PROGRAM_REGISTRY.filter((p) => p.status === 'live');
 }
 
-/** Explicit integration test for EE in the real editable planner. This does not
- * change its publication status or make arbitrary draft programs accessible. */
+/** Allowlisted draft programs for the editable planner on an isolated preview. */
 export function isEditableDegreePreview(id: string): boolean {
-  return process.env.NEXT_PUBLIC_ENABLE_EE_PLANNER === '1'
-    && programIdOfBoard(id) === 'electrical_engineering_2027';
+  if (process.env.VERCEL_ENV === 'production' || process.env.NEXT_PUBLIC_VERCEL_ENV === 'production') return false;
+  const programId = programIdOfBoard(id);
+  if (getProgramEntry(programId)?.status !== 'draft') return false;
+  const allowed = process.env.NEXT_PUBLIC_EDITABLE_DEGREE_PREVIEWS?.split(',').map(value => value.trim());
+  return allowed?.includes(programId) === true
+    || (process.env.NEXT_PUBLIC_ENABLE_EE_PLANNER === '1' && programId === 'electrical_engineering_2027');
 }
 
 /**
  * Whether the API may serve a board/catalog for this program or window-board id. The owning
  * program decides (a `<base>_years_1_2_<year>` window board belongs to `<base>_<year>`):
  * Drafts and their window boards are hidden, except the explicitly enabled editable
- * EE integration test. Ids unknown to the registry
+ * integration previews. Ids unknown to the registry
  * (committed test boards) stay servable; live/archived are served.
  */
 export function isServableProgramId(id: string): boolean {

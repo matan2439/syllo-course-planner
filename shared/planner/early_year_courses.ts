@@ -54,7 +54,8 @@ const baseOf = (programId: string) => programId.replace(/_\d{4}$/, '')
  */
 export function earlyYearCoursesFor(programId: string): EarlyYearCourse[] {
   const program = programIdOfBoard(programId)
-  const index = isEditableDegreePreview(program) ? PREVIEW_EARLY_YEARS_BY_PROGRAM : EARLY_YEARS_BY_PROGRAM
+  if (isEditableDegreePreview(program)) return PREVIEW_EARLY_YEARS_BY_PROGRAM[program] ?? []
+  const index = EARLY_YEARS_BY_PROGRAM
   const own = index[program]
   if (own) return own
   const family = Object.keys(index)
