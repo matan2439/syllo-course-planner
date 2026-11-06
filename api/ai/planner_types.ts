@@ -35,6 +35,7 @@ export type DistributionPolicy = 'balanced' | 'compact' | 'neutral';
 
 export interface ConstraintModel {
   degreeRules?: readonly DegreeRule[];
+  degreeRuleExclusionCourseIds?: Set<string>;
   /** CourseProfile for every course in the eligible universe. */
   profiles: Map<string, CourseProfile>;
   /** Canonical semester ids for this plan, in chronological order. */

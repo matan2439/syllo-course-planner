@@ -9,6 +9,11 @@ const LABELS: Record<string, string> = {
   load_limit: 'היקף הלימודים', study_duration: 'משך הלימודים', prerequisite_policy: 'דרישות קדם',
 }
 
+export function currentCourseIdsFromStatus(status: unknown): string[] {
+  const rows = (status as { currently_taking?: unknown } | null)?.currently_taking
+  return Array.isArray(rows) ? rows.flatMap(row => typeof row?.course_id === 'string' ? [row.course_id] : []) : []
+}
+
 export default function DegreeRulesPanel({ rules, semesters, completedCourseIds = [], currentCourseIds = [] }: {
   rules: readonly DegreeRule[]
   semesters: readonly { semesterId: string; courseIds: readonly string[] }[]

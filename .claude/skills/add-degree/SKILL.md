@@ -1,12 +1,12 @@
 ---
 name: add-degree
-description: Drives Syllo's degree pipeline (scripts/degree.py) from official sources to a published board. Use when the owner says "add <degree> at <university>", "add a degree", "add a university", "refresh <degree>", "update <degree> for the new year", or asks "is <degree> up to date".
+description: Adds and refreshes degrees in Syllo's editable student planner using official sources and the degree pipeline (scripts/degree.py). Use when the owner says "add <degree> at <university>", "add a degree", "add a university", "refresh <degree>", "update <degree> for the new year", or asks "is <degree> up to date".
 ---
 
 # add-degree
 
-Turns an official degree into a Syllo board through `scripts/degree.py`: evidence from the
-official sources -> a reviewed `spec.json` -> generated boards -> a live check -> publish.
+Uses `scripts/degree.py` to turn official evidence into a reviewed `spec.json` and generated
+boards, then verifies the degree through the editable planner before publication.
 Every requirement comes from a source you actually read. Reference material (id scheme, spec
 path syntax, TAU conventions, file locations, the Mechanical Engineering worked example):
 [reference.md](reference.md).
@@ -354,6 +354,15 @@ Save two different course copies, switch both ways, reload, and verify that each
 retains its courses and weekly choices. An unfinished draft must remain accessible:
 academic warnings must not become a gate on restoring the student's own saved copy.
 Owner authorization, version conflicts and malformed content remain blocking checks.
+
+Run the save and reload check against the deployed preview using a fresh test session.
+Open both windows from the normal picker. Create two alternatives with distinct course
+placements and weekly choices, switch from the first to the second and back, then reload
+and reopen both. Also open the Mechanical Engineering workspace in the same session and
+verify that neither degree's test copies appear under the other program. Inspect failed
+save or restore responses and check the preview database schema when a response reports
+a storage error. Local tests with an in-memory store cannot verify deployed persistence.
+Treat any failed preview step as a release blocker.
 
 When publication checks are red, keep the degree draft. An explicitly enabled editable
 integration preview may exercise the ordinary planner and APIs with its own program id,

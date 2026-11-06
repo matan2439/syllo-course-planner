@@ -17,6 +17,20 @@ test('the planner model enforces declared course exclusions during placement', (
   expect(invalid.errors.some(e => e.includes('overlap'))).toBe(true);
 });
 
+test('a reported external exclusion counterpart blocks overlap without creating catalog credit', () => {
+  const m = buildConstraintModel({ semesters: [{ semester_id: A, courses: [] }], metadata: {
+    degree_rules: [{ rule_id: 'external-overlap', kind: 'mutually_exclusive', course_ids: ['0512-4264', '0368-3235'], params: {} }],
+    program_requirements_categories: { total_required_hours: 3, categories: [] },
+    program_repository_courses: [{ course_id: '0512-4264', name_he: 'EE course', weekly_hours: 3,
+      offered_semesters: [A], prerequisites: [], is_mandatory: false, placement_policy: 'elective' }],
+  } }, { completedCourseIds: ['0368-3235'] });
+  expect(m.completedCourseIds.has('0368-3235')).toBe(false);
+  expect(m.priorHours).toBe(0);
+  const result = validatePlanState({ semesters: { [A]: ['0512-4264'] } }, m);
+  expect(result.valid).toBe(false);
+  expect(result.errors.some(e => e.includes('external-overlap'))).toBe(true);
+});
+
 test('a partial selection stays editable but cannot be certified complete', () => {
   const m = model([{ rule_id: 'two-tracks', kind: 'distinct_categories', course_ids: ['ONE', 'TWO'],
     params: { min_courses: 2, min_distinct_categories: 2, category_members: { a: ['ONE'], b: ['TWO'] } } }]);

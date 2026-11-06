@@ -18,6 +18,7 @@ export function degreeRuleResults(state: PlanState, model: ConstraintModel) {
     placements: Object.entries(state.semesters).flatMap(([semesterId, ids]) => ids.map(courseId => ({ semesterId, courseId }))),
     completedCourseIds: model.completedCourseIds,
     currentCourseIds: model.currentlyPlannedCourseIds,
+    exclusionCourseIds: model.degreeRuleExclusionCourseIds,
   });
 }
 // Type-only — erased at compile time, so this does NOT create a runtime

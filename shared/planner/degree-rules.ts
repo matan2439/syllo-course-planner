@@ -23,6 +23,8 @@ export interface DegreeRulePlacement {
 }
 
 export interface DegreeRuleContext {
+  /** Reported external identities may trigger an exclusion, never earn credit. */
+  readonly exclusionCourseIds?: Iterable<string>;
   readonly placements?: readonly DegreeRulePlacement[];
   /** Exact spec ids; no fuzzy matching, aliases, or inferred equivalences. */
   readonly completedCourseIds?: Iterable<string>;
@@ -79,6 +81,7 @@ export function evaluateDegreeRules(
   context: DegreeRuleContext = {},
 ): DegreeRuleResult[] {
   const placements = context.placements ?? [];
+  const exclusionIds = new Set(context.exclusionCourseIds ?? []);
   const selected = new Set<string>();
   for (const ids of [context.completedCourseIds ?? [], context.currentCourseIds ?? []]) {
     for (const id of ids) if (courseId(id)) selected.add(id);
@@ -98,7 +101,7 @@ export function evaluateDegreeRules(
     const review = (reason: string) => result('needs_review', `נדרשת בדיקה ידנית: ${reason}`);
     const params = rule.params ?? {};
     const ids = new Set(rule.course_ids);
-    const active = [...ids].filter(id => selected.has(id));
+    const active = [...ids].filter(id => selected.has(id) || (rule.kind === 'mutually_exclusive' && exclusionIds.has(id)));
     const unknownParams = (supported: readonly string[]) =>
       Object.keys(params).filter(key => !supported.includes(key));
     const finish = (explanation: string, supported: readonly string[]) => {

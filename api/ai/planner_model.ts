@@ -268,6 +268,9 @@ export function buildConstraintModel(boardJson: any, opts: BuildModelOptions = {
   return {
     profiles,
     degreeRules: boardJson?.metadata?.degree_rules,
+    degreeRuleExclusionCourseIds: boardJson?.metadata?.degree_rules ? new Set([
+      ...reportedCompletedCourseIds, ...reportedCurrentlyPlannedCourseIds,
+    ]) : undefined,
     knownSemesterIds,
     completedCourseIds,
     currentlyPlannedCourseIds,

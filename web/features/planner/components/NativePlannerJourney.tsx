@@ -1,5 +1,5 @@
 'use client'
-import DegreeRulesPanel from './DegreeRulesPanel'
+import DegreeRulesPanel, { currentCourseIdsFromStatus } from './DegreeRulesPanel'
 import type { DegreeRule } from '../../../../shared/planner/degree-rules'
 
 /**
@@ -433,7 +433,8 @@ export default function NativePlannerJourney({
           getStudentContext={courseChatContext}
         />
         <DegreeRulesPanel rules={degreeRules} semesters={current?.semesters.map(s => ({ semesterId: s.semesterId, courseIds: s.courses.map(c => c.courseId) })) ?? []}
-          completedCourseIds={academicStatus.confirmed ? completedCourseIdsOf(academicStatus) : []} />
+          completedCourseIds={academicStatus.confirmed ? completedCourseIdsOf(academicStatus) : []}
+          currentCourseIds={currentCourseIdsFromStatus(loadedAcademicContext?.personalStatus)} />
         {manualEditPhase === 'saving' && <p role="status" aria-live="polite" className="text-sm text-[var(--text-muted)]">{t('שומר ומאמת…', 'Saving and validating…')}</p>}
       </div>
 
