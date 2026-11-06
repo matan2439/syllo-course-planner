@@ -7634,15 +7634,11 @@
         "mailing_list_url": "http://listserv.tau.ac.il/archives/0512-4013-06.html",
         "credits": 2,
         "weekly_hours_source": "tau_program_2026",
-        "effective_allowed_semesters": [
-          "year_3_semester_a",
-          "year_3_semester_b",
-          "year_4_semester_a",
-          "year_4_semester_b"
-        ],
+        "effective_allowed_semesters": [],
         "offering_source_url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622",
         "offering_source_confidence": "high",
-        "official_data_year": 2026
+        "official_data_year": 2026,
+        "offering_window_semesters": []
       },
       {
         "course_id": "0609-1005",
@@ -12423,8 +12419,8 @@
           "tau:7622:2026:rama:47:hesber:b50d6d836b1d",
           "tau:7622:2026:rama:50:hesber:b50d6d836b1d"
         ],
-        "enforced_by": "none",
-        "note": "TAU: in semester 2 or 3 one may take one elective, 0512-4013 (מעבדת חשיפה לחומרה). Optional (\"ניתן לקחת\"): category hardware_exposure_elective has min_courses 0. The built boards do not encode the window: data/boards/electrical_engineering_years_1_2_2027.json offers it in all of year_1_semester_a..year_2_semester_b (semesters 1-4) and data/boards/electrical_engineering_2027.json in year_3_semester_a..year_4_semester_b."
+        "enforced_by": "board",
+        "note": "TAU: 0512-4013 is an optional elective in study semester 2 or 3. The generated boards carry the verified placement intersection in program_repository_courses[].offering_window_semesters. Student eligibility is a separate rule."
       },
       {
         "rule_id": "cohort-0512-4013",
@@ -12567,7 +12563,7 @@
         "note": "TAU engineering regulations (Terms_BA.pdf p11, p13): a student kept by reserve duty, or a pregnancy/parenthood-eligible student, from completing a prerequisite course may take the advanced course conditionally until the prerequisite is completed. Neither the spec nor the board models these statuses."
       }
     ],
-    "board_data_version": "25baef73515fe817"
+    "board_data_version": "693d8c5c3c0e5b40"
   },
   "summary": {
     "total_courses": 8,

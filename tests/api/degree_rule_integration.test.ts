@@ -1,5 +1,9 @@
 import { buildConstraintModel } from '../../api/ai/planner_model';
 import { validateCandidate, validatePlanState } from '../../api/ai/planner_validate';
+import { addCourseActionsFor } from '../../api/ai/planner_actions';
+import { boardResponseToModel } from '../../shared/planner/adapters';
+import eeMainBoard from '../../data/boards/electrical_engineering_2027.json';
+import eeEarlyBoard from '../../data/boards/electrical_engineering_years_1_2_2027.json';
 
 const A = 'year_3_semester_a';
 const model = (rules: unknown[]) => buildConstraintModel({ semesters: [{ semester_id: A, courses: [] }], metadata: {
@@ -45,4 +49,24 @@ test('an unimplemented personal eligibility condition is disclosed and cannot ce
   expect(validatePlanState(state, m).valid).toBe(true);
   expect(validatePlanState(state, m).warnings.some(w => w.includes('eligibility'))).toBe(true);
   expect(validateCandidate(state, m)).toMatchObject({ valid: false, complete: false });
+});
+
+test('generated EE boards restrict hardware lab placement before the degree rule is evaluated', () => {
+  const courseId = '0512-4013';
+  for (const [board, allowed] of [
+    [eeEarlyBoard, ['year_1_semester_b', 'year_2_semester_a']],
+    [eeMainBoard, []],
+  ] as const) {
+    const { metadata } = board;
+    const withoutRules = { ...board, metadata: { ...metadata, degree_rules: [] } };
+    const model = buildConstraintModel(withoutRules, { extraSemesterIds: ['year_5_semester_a'] });
+    expect(boardResponseToModel(board).courseCatalog[courseId].offeredSemesters).toEqual(allowed);
+    expect(buildConstraintModel(board, { completedCourseIds: [courseId] }).completedCourseIds.has(courseId)).toBe(true);
+    expect(addCourseActionsFor(model, courseId)).toEqual(allowed.map(semesterId =>
+      ({ type: 'ADD_COURSE', courseId, semesterId })));
+    for (const semesterId of model.knownSemesterIds) {
+      const result = validatePlanState({ semesters: { [semesterId]: [courseId] } }, model);
+      expect(result.valid).toBe((allowed as readonly string[]).includes(semesterId));
+    }
+  }
 });

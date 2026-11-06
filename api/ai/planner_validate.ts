@@ -38,6 +38,7 @@ export function buildValidationContext(
       // Only restrict to legal semesters when the offering is high-confidence;
       // otherwise leave unrestricted (a warning, not a hard block).
       effective_allowed_semesters: legal.confident ? legal.semesters : undefined,
+      offering_window_semesters: p.offering_window_semesters,
       prerequisites: p.prerequisites,
       missing_prerequisites: [],
       is_mandatory: p.is_mandatory,

@@ -38,6 +38,7 @@ from app.analysis.program_requirements import validate_program_plan  # noqa: E40
 from app.analysis.semester_board import build_semester_board  # noqa: E402
 from app.scraping.tau_program_scraper import fetch_program_data  # noqa: E402
 from app.degrees.registry import get_program  # noqa: E402
+from app.degrees.offering_windows import apply_offering_windows  # noqa: E402
 
 BOARDS_DIR = ROOT / "data" / "boards"
 EARLY_YEAR_INDEX = ROOT / "data" / "config" / "early_year_courses.json"
@@ -231,6 +232,7 @@ def build(program_id: str, start_year: int, tcid: str, shana: int,
     if late_meta.get("degree_rules"):
         board["metadata"]["degree_rules"] = [rule for rule in late_meta["degree_rules"]
                                             if rule.get("kind") in ("mutually_exclusive", "year_restriction", "offering_window")]
+    apply_offering_windows(board)
     board["metadata"]["board_data_version"] = compute_board_hash(board)
 
     out = early_board_path(program_id, start_year, out_dir or boards_dir)

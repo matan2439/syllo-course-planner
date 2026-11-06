@@ -12,6 +12,7 @@ from app.analysis.board_audit import audit_board
 # exactly what the builder/validation read (a parallel re-implementation could drift from it).
 from app.analysis.program_requirements import _get_unified_categories
 from app.degrees.checks import CheckResult
+from app.degrees.offering_windows import offering_window_ordinals, window_semesters
 from app.degrees.registry import load_institution
 from app.degrees.spec import DegreeSpec, spec_to_program
 
@@ -249,11 +250,40 @@ def check_totals(
     return _result("totals", problems)
 
 
-def check_rules_enforced(spec: DegreeSpec) -> CheckResult:
+def check_rules_enforced(
+    spec: DegreeSpec, boards: dict | None = None, facts: dict | None = None,
+) -> CheckResult:
     """Every recorded course rule is enforced somewhere; ``enforced_by: none`` fails."""
     problems = [
         f"unenforced rule {r.rule_id}: {r.note}" for r in spec.course_rules if r.enforced_by == "none"
     ]
+    for rule in spec.course_rules:
+        if rule.kind != "offering_window" or rule.enforced_by != "board":
+            continue
+        definition = rule.model_dump()
+        ordinals = offering_window_ordinals(definition)
+        if ordinals is None:
+            problems.append(f"{rule.rule_id}: unsupported board offering window")
+            continue
+        course_id = rule.course_ids[0]
+        offering = (facts or {}).get(course_id, {}).get("offering", {})
+        status = offering.get("status")
+        if status not in {"offered", "not_offered"}:
+            problems.append(f"{rule.rule_id}: missing verified offering for {course_id}")
+            continue
+        offered = offering["offered_semesters"] if status == "offered" else []
+        for name in ("board", "early_years"):
+            board = (boards or {}).get(name)
+            if board is None:
+                problems.append(f"{rule.rule_id}: missing built {name}")
+                continue
+            meta = board.get("metadata", {})
+            expected = window_semesters(board, ordinals, offered)
+            rows = [c for c in meta.get("program_repository_courses", []) if c["course_id"] == course_id]
+            if (definition not in meta.get("degree_rules", []) or len(rows) != 1
+                    or rows[0].get("offering_window_semesters") != expected
+                    or rows[0].get("effective_allowed_semesters") != expected):
+                problems.append(f"{rule.rule_id}: {name} does not encode the offering window {expected}")
     return _result("rules_enforced", problems)
 
 

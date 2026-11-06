@@ -28,6 +28,8 @@ const boardCourseSchema = z
     offered_semesters: z.array(z.string().min(1)).nullable().optional(),
     /** Fully-qualified policy result; when present it is narrower than a bare A/B offering code. */
     effective_allowed_semesters: z.array(z.string().min(1)).nullable().optional(),
+    /** Verified placement scope for an elective with a study-semester window, possibly empty. */
+    offering_window_semesters: z.array(z.string().min(1)).optional(),
     /** false = TAU lists no groups this year (verified); absent/null = unknown. */
     offered_in_year: z.boolean().nullable().optional(),
     // Elective category (fluids/solids/systems/advanced_labs/other_specialization/…);

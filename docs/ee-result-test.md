@@ -146,5 +146,17 @@ storage can use the separate planner override.
 The deployed smoke test verified two saved alternatives with separate course placements
 and weekly groups, restoring A → B → A, reloading saved plans, and adding, moving and
 removing a real EE elective. A lookup for the baseline ME program in the same test
-session found no EE copies. This validates the deployed API workflow. Browser interaction,
-source freshness, and complete academic validation remain release checks.
+session found no EE copies. Both EE boards passed the deployed API smoke test. In Chrome,
+the normal degree picker opened the EE planner, and the year selector rendered both
+the first two years and the later semesters.
+
+A separate `degree.py check --program electrical_engineering_2027 --live` run against
+the preview revision passed freshness and coverage for all 996 official evidence items.
+All other checks passed except `rules_enforced`. EE remains draft until academic
+validation passes.
+
+The next board revision implements the [TAU hardware exposure lab offering window](https://www.tau.ac.il/study-program?safa=1&shana=2026&tcid=7622).
+Course 0512-4013 can be placed in study semesters 2 and 3, intersected with verified term offerings.
+The later-year board has no legal destination for the course. The release check verifies
+that both generated boards carry the restriction. The 85+ average and recommended-plan
+eligibility conditions remain separate, unresolved checks.

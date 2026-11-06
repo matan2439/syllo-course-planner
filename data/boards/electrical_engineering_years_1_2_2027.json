@@ -8451,14 +8451,16 @@
         "credits": 2,
         "weekly_hours_source": "tau_program_2026",
         "effective_allowed_semesters": [
-          "year_1_semester_a",
           "year_1_semester_b",
-          "year_2_semester_a",
-          "year_2_semester_b"
+          "year_2_semester_a"
         ],
         "offering_source_url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622",
         "offering_source_confidence": "high",
-        "official_data_year": 2026
+        "official_data_year": 2026,
+        "offering_window_semesters": [
+          "year_1_semester_b",
+          "year_2_semester_a"
+        ]
       },
       {
         "course_id": "0609-1005",
@@ -13142,8 +13144,8 @@
           "tau:7622:2026:rama:47:hesber:b50d6d836b1d",
           "tau:7622:2026:rama:50:hesber:b50d6d836b1d"
         ],
-        "enforced_by": "none",
-        "note": "TAU: in semester 2 or 3 one may take one elective, 0512-4013 (מעבדת חשיפה לחומרה). Optional (\"ניתן לקחת\"): category hardware_exposure_elective has min_courses 0. The built boards do not encode the window: data/boards/electrical_engineering_years_1_2_2027.json offers it in all of year_1_semester_a..year_2_semester_b (semesters 1-4) and data/boards/electrical_engineering_2027.json in year_3_semester_a..year_4_semester_b."
+        "enforced_by": "board",
+        "note": "TAU: 0512-4013 is an optional elective in study semester 2 or 3. The generated boards carry the verified placement intersection in program_repository_courses[].offering_window_semesters. Student eligibility is a separate rule."
       },
       {
         "rule_id": "year-progression",
@@ -13159,7 +13161,7 @@
         "note": "TAU engineering regulations (Terms_BA.pdf p2, registration item 6): a student cannot register for courses of an advanced year without finishing all the courses of the current year and meeting the prerequisites. The boards place courses by year but do not block a later-year course while current-year courses are open."
       }
     ],
-    "board_data_version": "11bc5b478d4f000c"
+    "board_data_version": "d16026394972439e"
   },
   "summary": {
     "total_courses": 21,

@@ -74,6 +74,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 from app.analysis.board_audit import compute_board_hash  # noqa: E402
 from app.degrees.curation import apply_curation, curation_path, load_curation  # noqa: E402
 from app.degrees.facts import load_program_facts  # noqa: E402
+from app.degrees.offering_windows import apply_offering_windows  # noqa: E402
 from app.degrees.registry import ProgramEntry, get_program  # noqa: E402
 from app.degrees.spec import DegreeSpec, load_spec, spec_path, spec_to_program  # noqa: E402
 
@@ -404,6 +405,7 @@ def build(entry: ProgramEntry, out_dir: Path = DATA, offline: bool = False, live
             summaries = rcd.refresh_syllabi(board, offline)
             bidit = copy_bidit_schedule(board, shana) if "general_requirements" in variant["requirements"] else 0
             n = apply_curation(board, curation, key)
+            apply_offering_windows(board)
             write_board(path, board, previous[key], keep_timestamps=not live)
             print(f"[build] {key}: facts patched {changed} records, {summaries} summaries, "
                   f"{bidit} BIDIT records, {n} curation entries")
@@ -424,6 +426,7 @@ def build(entry: ProgramEntry, out_dir: Path = DATA, offline: bool = False, live
         raise RuntimeError(f"early board written to {early_out}, expected {paths['early_years']}")
     early_board = json.loads(early_out.read_text(encoding="utf-8"))
     apply_curation(early_board, curation, "early_years")
+    apply_offering_windows(early_board)
     write_board(early_out, early_board, previous["early_years"], keep_timestamps=not live)
     index = early.write_early_year_index(boards_dir=paths["early_years"].parent, path=early_index_path(out_dir))
     early.write_early_year_index(boards_dir=paths["early_years"].parent,
@@ -481,11 +484,16 @@ def run_checks(entry: ProgramEntry, live: bool, offline: bool) -> CheckRun:
     started = datetime.now(timezone.utc)
     spec = load_spec(spec_path(entry))
     facts = load_program_facts(entry.source_year, entry.source_ids["tcid"])
-    board_file = board_paths(entry)["board"]
+    paths = board_paths(entry)
+    board_file = paths["board"]
     if not board_file.exists():
         raise DegreeCliError(f"{entry.id}: no built board at {_show(board_file)} — build first: "
                              f"python scripts/degree.py build --program {entry.id} --offline")
     board = json.loads(board_file.read_text(encoding="utf-8"))
+    rule_boards = {"board": board}
+    if any(rule.kind == "offering_window" and rule.enforced_by == "board" for rule in spec.course_rules):
+        if paths["early_years"].exists():
+            rule_boards["early_years"] = json.loads(paths["early_years"].read_text(encoding="utf-8"))
     items = collect(entry, live=live, offline=offline)
 
     results = [check_coverage(items, spec)]
@@ -499,7 +507,7 @@ def run_checks(entry: ProgramEntry, live: bool, offline: bool) -> CheckRun:
         check_totals(spec, facts),
         check_board_carries_requirements(spec),
         check_plannable(board),
-        check_rules_enforced(spec),
+        check_rules_enforced(spec, rule_boards, facts),
         check_known_gaps(spec),
     ]
     lines = [f"# Degree check — {entry.id}", "",

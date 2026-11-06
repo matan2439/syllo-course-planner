@@ -16,6 +16,7 @@ type RawCourse = {
   is_mandatory?: boolean;
   offered_semesters?: string[] | null;
   effective_allowed_semesters?: string[] | null;
+  offering_window_semesters?: string[];
   offered_in_year?: boolean | null;
   // See the matching field comment in wire.ts: repository entries ship
   // category_id, placed entries ship program_category_id — both accepted.
@@ -73,6 +74,9 @@ function normalizeSemesterIds(raw: string[], knownSemesterIds: string[]): string
  * solver's getLegalSemesters) unless the course is verified as not offered this year.
  */
 function offeredSemestersField(c: RawCourse, knownSemesterIds: string[]): { offeredSemesters?: string[] } {
+  if (c.offering_window_semesters) {
+    return { offeredSemesters: normalizeSemesterIds(c.offering_window_semesters, knownSemesterIds) };
+  }
   const raw = c.effective_allowed_semesters ?? c.offered_semesters;
   if (c.offered_in_year === false) return { offeredSemesters: [] };
   if (raw == null || raw.length === 0) return {};
