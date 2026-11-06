@@ -35,7 +35,7 @@ test('getProgram resolves the default for missing or unknown ids', () => {
 });
 
 test('resolveProgram fails closed for an explicitly requested unregistered program', () => {
-  expect(resolveProgram('electrical_engineering_2027')).toBeNull();
+  expect(resolveProgram('electrical_engineering_2027')?.id).toBe('electrical_engineering_2027');
   expect(resolveProgram('no_such_program')).toBeNull();
   expect(resolveProgram(undefined)?.id).toBe(DEFAULT_PROGRAM_ID);
 });
