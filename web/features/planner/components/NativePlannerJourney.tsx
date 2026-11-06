@@ -436,6 +436,7 @@ export default function NativePlannerJourney({
           getStudentContext={courseChatContext}
         />
         <DegreeRulesPanel rules={degreeRules} requirements={degreeRequirements ?? (current ? adaptRequirementsFromModel(current) : null)} semesters={current?.semesters.map(s => ({ semesterId: s.semesterId, courseIds: s.courses.map(c => c.courseId) })) ?? []}
+          trackCourseCount={current?.requirementsValidation?.categories.find(category => category.categoryId === 'group:track')?.selectedCount}
           completedCourseIds={academicStatus.confirmed ? completedCourseIdsOf(academicStatus) : []}
           currentCourseIds={currentCourseIdsFromStatus(loadedAcademicContext?.personalStatus)} />
         {manualEditPhase === 'saving' && <p role="status" aria-live="polite" className="text-sm text-[var(--text-muted)]">{t('שומר ומאמת…', 'Saving and validating…')}</p>}

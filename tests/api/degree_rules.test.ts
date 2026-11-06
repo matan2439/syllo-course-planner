@@ -71,16 +71,23 @@ describe('generic degree rules', () => {
     }), { completedCourseIds: ['unknown'] }).status).toBe('needs_review');
   });
 
-  test('does not certify compound core or ambiguous third-lab rules', () => {
+  test('checks core coverage alongside the track pool and leaves third-lab credit unresolved', () => {
     expect(evaluate({ ...core, params: { ...core.params, within_track_courses_min: 12 } }, {
       completedCourseIds: ['shared', 'only-a', 'only-c'],
     }).status).toBe('needs_review');
+    const combinedCore = { ...core, params: {
+      ...core.params, within_track_courses_min: 12, labs_excluded_from_track_count: true,
+    } };
+    const completedCourseIds = ['shared', 'only-a', 'only-c'];
+    expect(evaluate(combinedCore, { completedCourseIds, trackCourseCount: 11 }).status).toBe('fail');
+    expect(evaluate(combinedCore, { completedCourseIds, trackCourseCount: 12 }).status).toBe('pass');
     const labs = rule('distinct_categories', ['a', 'b', 'c'], {
       min_courses: 2, min_distinct_categories: 2,
       category_members: { x: ['a', 'b'], y: ['c'] }, same_track_requires_third_lab: true,
     });
-    expect(evaluate(labs, { completedCourseIds: ['a', 'b'] }).status).toBe('needs_review');
-    expect(evaluate(labs, { completedCourseIds: ['a', 'c'] }).status).toBe('needs_review');
+    expect(evaluate(labs, { completedCourseIds: ['a', 'b'] }).status).toBe('fail');
+    expect(evaluate(labs, { completedCourseIds: ['a', 'c'] }).status).toBe('pass');
+    expect(evaluate(labs, { completedCourseIds: ['a', 'b', 'c'] }).status).toBe('needs_review');
   });
 
   test('exclusions span completed, current, and planned courses, including external counterparts', () => {
@@ -162,7 +169,7 @@ describe('generic degree rules', () => {
     const byId = Object.fromEntries(results.map(r => [r.rule_id, r.status]));
     expect(results).toHaveLength(eeSpec.course_rules.length);
     expect(byId['core-four-distinct-tracks']).toBe('fail');
-    expect(byId['labs-two-distinct-tracks']).toBe('needs_review');
+    expect(byId['labs-two-distinct-tracks']).toBe('fail');
     expect(byId['excl-0512-4506-as-printed']).toBe('needs_review');
     expect(byId['year-0509-4010']).toBe('needs_review');
     expect(byId['english-two-courses']).toBe('needs_review');

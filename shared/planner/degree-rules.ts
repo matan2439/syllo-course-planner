@@ -29,6 +29,8 @@ export interface DegreeRuleContext {
   /** Exact spec ids; no fuzzy matching, aliases, or inferred equivalences. */
   readonly completedCourseIds?: Iterable<string>;
   readonly currentCourseIds?: Iterable<string>;
+  /** Unique selected courses in the board's declared track pool, excluding labs. */
+  readonly trackCourseCount?: number;
 }
 
 const positiveInteger = (value: unknown): value is number =>
@@ -74,7 +76,7 @@ function matchedCategoryCount(courses: readonly string[], categories: readonly S
  * registration eligibility. Missing required category counts fail even for a
  * partial plan. Optional timing/exclusion rules do not require taking a course.
  * Unknown params prevent pass; a definite supported violation still fails.
- * The third-lab alternative is deliberately unresolved, including its counts.
+ * The third-lab alternative needs separate credit accounting.
  */
 export function evaluateDegreeRules(
   rules: readonly DegreeRule[],
@@ -122,11 +124,7 @@ export function evaluateDegreeRules(
         return finish('לא נבחרו יחד קורסים חופפים מתוך הכלל.', []);
       }
       case 'distinct_categories': {
-        // This alternative may change both the count and category interpretation.
-        // Do not infer its semantics or certify its credit accounting.
-        if (params.same_track_requires_third_lab !== undefined && params.same_track_requires_third_lab !== false) {
-          return review('חריג המעבדה השלישית ושיוך המעבדות למסלולים אינם ממומשים.');
-        }
+        const thirdLabRule = params.same_track_requires_third_lab === true;
         const minimum = params.min_courses;
         const distinct = params.min_distinct_categories;
         const members = params.category_members;
@@ -147,8 +145,27 @@ export function evaluateDegreeRules(
         const matched = matchedCategoryCount(active, categories);
         const explanation = `נבחרו ${active.length} קורסים ייחודיים מתוך ${minimum} נדרשים; ` +
           `ניתן לשייך קורסים נפרדים ל־${matched} קטגוריות מתוך ${distinct} נדרשות.`;
+        const supported = ['min_courses', 'min_distinct_categories', 'category_members', 'same_track_requires_third_lab'];
+        if (thirdLabRule) {
+          if (minimum !== 2 || distinct !== 2 || active.length > 2) {
+            return review('יש לאמת את שיוך המעבדה השלישית ואת אופן חישוב השעות שלה.');
+          }
+          if (params.third_lab_counts_toward_theory_credits === false) supported.push('third_lab_counts_toward_theory_credits');
+        } else if (params.same_track_requires_third_lab !== undefined && params.same_track_requires_third_lab !== false) {
+          return review('הגדרת המעבדה השלישית אינה תקינה.');
+        }
         if (active.length < minimum || matched < distinct) return result('fail', explanation);
-        return finish(explanation, ['min_courses', 'min_distinct_categories', 'category_members', 'same_track_requires_third_lab']);
+        if (params.within_track_courses_min !== undefined || params.labs_excluded_from_track_count !== undefined) {
+          if (!positiveInteger(params.within_track_courses_min) || params.labs_excluded_from_track_count !== true ||
+              !nonnegativeInteger(context.trackCourseCount)) {
+            return review('חסרה ספירה מאומתת של קורסי המסלול ללא מעבדות.');
+          }
+          if (context.trackCourseCount < params.within_track_courses_min) {
+            return result('fail', `נבחרו ${context.trackCourseCount} קורסי מסלול מתוך ${params.within_track_courses_min} נדרשים, ללא מעבדות.`);
+          }
+          supported.push('within_track_courses_min', 'labs_excluded_from_track_count');
+        }
+        return finish(explanation, supported);
       }
       case 'year_restriction':
       case 'offering_window': {

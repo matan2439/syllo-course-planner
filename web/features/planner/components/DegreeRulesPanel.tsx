@@ -15,9 +15,10 @@ export function currentCourseIdsFromStatus(status: unknown): string[] {
   return Array.isArray(rows) ? rows.flatMap(row => typeof row?.course_id === 'string' ? [row.course_id] : []) : []
 }
 
-export default function DegreeRulesPanel({ rules, requirements, semesters, completedCourseIds = [], currentCourseIds = [] }: {
+export default function DegreeRulesPanel({ rules, requirements, trackCourseCount, semesters, completedCourseIds = [], currentCourseIds = [] }: {
   rules: readonly DegreeRule[]
   requirements?: RequirementsVM | null
+  trackCourseCount?: number
   semesters: readonly { semesterId: string; courseIds: readonly string[] }[]
   completedCourseIds?: readonly string[]
   currentCourseIds?: readonly string[]
@@ -25,7 +26,7 @@ export default function DegreeRulesPanel({ rules, requirements, semesters, compl
   if (!rules.length && !requirements) return null
   const results = evaluateDegreeRules(rules, {
     placements: semesters.flatMap(s => s.courseIds.map(courseId => ({ courseId, semesterId: s.semesterId }))),
-    completedCourseIds, currentCourseIds,
+    completedCourseIds, currentCourseIds, trackCourseCount,
   })
   return <details className="my-3 rounded-lg border border-[var(--border)] p-3" dir="rtl">
     <summary className="cursor-pointer font-semibold">כללי התואר</summary>

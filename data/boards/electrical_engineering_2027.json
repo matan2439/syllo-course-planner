@@ -12273,8 +12273,8 @@
           "tau:7622:2026:rama:21:kurs:0512-4264:idkunkurs:a81260ef19bb",
           "tau:7622:2026:rama:44:kurs:0512-4264:idkunkurs:a81260ef19bb"
         ],
-        "enforced_by": "none",
-        "note": "TAU: 0512-4264 overlaps 0368-3235 (מבוא ללמידה חישובית); both cannot be taken during the degree. The board has no exclusion data."
+        "enforced_by": "board",
+        "note": "TAU: 0512-4264 overlaps 0368-3235 (מבוא ללמידה חישובית); both cannot be taken during the degree. Both board windows encode the pair in metadata.degree_rules."
       },
       {
         "rule_id": "excl-0512-1820-0368-2161",
@@ -12287,8 +12287,8 @@
         "source_ids": [
           "tau:7622:2026:rama:20:kurs:0512-1820:idkunkurs:07ad8f8baeb6"
         ],
-        "enforced_by": "none",
-        "note": "TAU: 0512-1820 partly overlaps 0368-2161 (פרויקט תוכנה); both cannot be taken. The board has no exclusion data."
+        "enforced_by": "board",
+        "note": "TAU: 0512-1820 partly overlaps 0368-2161 (פרויקט תוכנה); both cannot be taken. Both board windows encode the pair in metadata.degree_rules."
       },
       {
         "rule_id": "excl-0512-4400-0512-4495",
@@ -12302,8 +12302,8 @@
           "tau:7622:2026:rama:20:kurs:0512-4400:hearakurs:e1a2dc85d93d",
           "tau:7622:2026:rama:43:kurs:0512-4400:hearakurs:e1a2dc85d93d"
         ],
-        "enforced_by": "none",
-        "note": "TAU: 0512-4400 overlaps 0512-4495 (מבנה המחשב ומערכות הפעלה); both cannot be taken. The note items are mapped to core-four-distinct-tracks (the same note marks 0512-4400 core). The board has no exclusion data."
+        "enforced_by": "board",
+        "note": "TAU: 0512-4400 overlaps 0512-4495 (מבנה המחשב ומערכות הפעלה); both cannot be taken. The note items are mapped to core-four-distinct-tracks (the same note marks 0512-4400 core). Both board windows encode the pair in metadata.degree_rules."
       },
       {
         "rule_id": "excl-0512-4402-0368-2162",
@@ -12316,8 +12316,8 @@
         "source_ids": [
           "tau:7622:2026:rama:20:kurs:0512-4402:idkunkurs:7a918577edd7"
         ],
-        "enforced_by": "none",
-        "note": "TAU: 0512-4402 overlaps 0368-2162 (מערכות הפעלה); both cannot be taken (the same note says it is not meant for computer-engineering students, which does not restrict this program). The board has no exclusion data."
+        "enforced_by": "board",
+        "note": "TAU: 0512-4402 overlaps 0368-2162 (מערכות הפעלה); both cannot be taken (the same note says it is not meant for computer-engineering students, which does not restrict this program). Both board windows encode the pair in metadata.degree_rules."
       },
       {
         "rule_id": "excl-0512-4861-0512-4860",
@@ -12330,8 +12330,8 @@
         "source_ids": [
           "tau:7622:2026:rama:25:kurs:0512-4861:hearakurs:558d7dc9476d"
         ],
-        "enforced_by": "none",
-        "note": "TAU: 0512-4861 overlaps 0512-4860 (מעגלי RF); both cannot be taken. The board has no exclusion data."
+        "enforced_by": "board",
+        "note": "TAU: 0512-4861 overlaps 0512-4860 (מעגלי RF); both cannot be taken. Both board windows encode the pair in metadata.degree_rules."
       },
       {
         "rule_id": "excl-0512-4506-as-printed",

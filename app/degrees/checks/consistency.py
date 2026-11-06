@@ -258,7 +258,18 @@ def check_rules_enforced(
         f"unenforced rule {r.rule_id}: {r.note}" for r in spec.course_rules if r.enforced_by == "none"
     ]
     for rule in spec.course_rules:
-        if rule.kind != "offering_window" or rule.enforced_by != "board":
+        if rule.enforced_by != "board":
+            continue
+        if rule.kind == "mutually_exclusive":
+            if len(set(rule.course_ids)) < 2 or len(set(rule.course_ids)) != len(rule.course_ids) or rule.params:
+                problems.append(f"{rule.rule_id}: unsupported board exclusion")
+                continue
+            for name in ("board", "early_years"):
+                metadata = (boards or {}).get(name, {}).get("metadata", {})
+                if rule.model_dump() not in metadata.get("degree_rules", []):
+                    problems.append(f"{rule.rule_id}: {name} does not encode the course exclusion")
+            continue
+        if rule.kind != "offering_window":
             continue
         definition = rule.model_dump()
         ordinals = offering_window_ordinals(definition)

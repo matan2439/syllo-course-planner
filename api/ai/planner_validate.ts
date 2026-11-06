@@ -14,11 +14,17 @@ import { assessCompleteness, missingMustIncludeCourseIds } from './planner_goals
 import { evaluateDegreeRules } from '../../shared/planner/degree-rules';
 
 export function degreeRuleResults(state: PlanState, model: ConstraintModel) {
+  if (!model.degreeRules?.length) return [];
+  const track = model.categories.find(c => c.id === 'group:track');
+  const planned = new Set(placedCourseIds(state));
+  const trackCourseCount = track?.candidateIds.filter(id =>
+    planned.has(id) || model.completedCourseIds.has(id) || model.currentlyPlannedCourseIds?.has(id)).length;
   return evaluateDegreeRules(model.degreeRules ?? [], {
     placements: Object.entries(state.semesters).flatMap(([semesterId, ids]) => ids.map(courseId => ({ semesterId, courseId }))),
     completedCourseIds: model.completedCourseIds,
     currentCourseIds: model.currentlyPlannedCourseIds,
     exclusionCourseIds: model.degreeRuleExclusionCourseIds,
+    trackCourseCount,
   });
 }
 // Type-only — erased at compile time, so this does NOT create a runtime
