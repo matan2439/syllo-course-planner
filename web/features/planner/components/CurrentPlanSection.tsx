@@ -7,6 +7,7 @@ import type { PlannerDragPayload } from '../../../lib/planner/drag-payload'
 import { adaptRequirementsFromModel } from '../../../lib/requirements'
 import AlternativeBoardSwitcher from './AlternativeBoardSwitcher'
 import NativePlannerBoard from './NativePlannerBoard'
+import type { LegendCategory } from './CategoryLegend'
 import ProgressBadge, { type CategoryProgress } from './ProgressBadge'
 import { useLocale } from '../../locale/LocaleProvider'
 
@@ -35,9 +36,10 @@ export default function CurrentPlanSection({
   current, previewBoard, diffMarkers, alternatives, selectedAlternativeId, onSelectAlternative, stale,
   commitManualRemove, commitManualAdd, commitManualMove, selectBoardCourse, manualEditPhase,
   activeDrag, rejectedDrop, justPlaced, onDragStateChange, completedCredit, completedCategoryCounts = {},
-  onAddSemester, removableSemesterIds, onRemoveSemester, companion,
+  onAddSemester, removableSemesterIds, onRemoveSemester, companion, legendCategories,
 }: {
   current: BoardModel
+  legendCategories?: readonly LegendCategory[]
   /** The proposal (or selected alternative) applied to the current board, or null when none is being previewed. */
   previewBoard: BoardModel | null
   /** `${semesterId}|${courseId}` → how that placement differs from the committed plan (preview only). */
@@ -111,6 +113,7 @@ export default function CurrentPlanSection({
         />
       )}
       <NativePlannerBoard
+        legendCategories={legendCategories ?? requirements?.categories}
         board={withDiffMarkers(boardModelToVM(previewBoard ?? current), previewBoard ? diffMarkers : undefined)}
         onRemoveCourse={commitManualRemove}
         onAddCourse={(courseId, semesterId) => commitManualAdd(semesterId, courseId)}

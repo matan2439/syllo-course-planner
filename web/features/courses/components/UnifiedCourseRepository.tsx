@@ -7,7 +7,7 @@ import CourseDetailsPanel from './CourseDetailsPanel'
 import { filterRepository, repositorySemester, type RepositoryFilters } from '../../../lib/repository-filters'
 import { Badge, Card, EmptyState } from '../../../components/ui'
 import { writeRepositoryDrag, type PlannerDragPayload } from '../../../lib/planner/drag-payload'
-import { categoryAccentClass } from './course-category'
+import { categoryAccentClass, categoryAccentStyle } from './course-category'
 import { useLocale } from '../../locale/LocaleProvider'
 import { useAuth } from '../../auth/AuthProvider'
 import RepositoryDiscoveryControls, { assessmentLabel, RepositoryAppliedFilters, RepositorySortControl } from './RepositoryDiscoveryControls'
@@ -199,7 +199,7 @@ export default function UnifiedCourseRepository({
                     setDraggingCourseId(null)
                   }}
                 >
-                <Card className={`flex flex-col gap-3 px-3.5 py-3 ${categoryAccentClass(category.id)}`}>
+                <Card style={categoryAccentStyle(category.id)} className={`flex flex-col gap-3 px-3.5 py-3 ${categoryAccentClass(category.id)}`}>
                   <div>
                     <div className="flex items-start justify-between gap-2">
                     <h4 className="text-sm font-semibold leading-6">{course.name}</h4>

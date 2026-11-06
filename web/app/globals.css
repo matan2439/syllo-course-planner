@@ -99,7 +99,9 @@
 .card-cat-systems,
 .card-cat-labs,
 .card-cat-other_specialization,
-.card-cat-shaar_ruach { border-inline-end-width: 3px !important; }
+.card-cat-shaar_ruach,
+.card-cat-track { border-inline-end-width: 3px !important; }
+.card-cat-track { border-inline-end-color: var(--track-accent) !important; }
 .card-cat-fluids  { border-inline-end-color: var(--cat-fluids-accent)  !important; }
 .card-cat-solids  { border-inline-end-color: var(--cat-solids-accent)  !important; }
 .card-cat-systems { border-inline-end-color: var(--cat-systems-accent) !important; }

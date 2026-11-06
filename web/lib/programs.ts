@@ -1,4 +1,4 @@
-import { PROGRAM_REGISTRY, isEditableDegreePreview, type ProgramEntry } from '../../shared/programs'
+import { PROGRAM_REGISTRY, isServableProgramId, type ProgramEntry } from '../../shared/programs'
 
 /**
  * UI view of the degree registry (data/config/programs.json). Drafts are
@@ -35,7 +35,7 @@ function toVM(e: ProgramEntry): ProgramVM {
   }
 }
 
-const VISIBLE = PROGRAM_REGISTRY.filter((e) => e.status !== 'draft' || isEditableDegreePreview(e.id))
+const VISIBLE = PROGRAM_REGISTRY.filter((e) => isServableProgramId(e.id))
 
 const PROGRAMS: Record<string, ProgramVM> = Object.fromEntries(VISIBLE.map((e) => [e.id, toVM(e)]))
 

@@ -24,6 +24,7 @@ export const programSchema = z.object({
   boardJsonFile: z.string().min(1),
   sourceIds: z.record(z.string()),
   status: z.enum(['draft', 'live', 'archived']),
+  publicPlanner: z.boolean().optional(),
   isFamilyDefault: z.boolean(),
   capabilities: z.array(z.string()),
   catalogYearPolicy: z.enum(CATALOG_YEAR_POLICIES).optional(),
@@ -77,6 +78,12 @@ export function isEditableDegreePreview(id: string): boolean {
     || (process.env.NEXT_PUBLIC_ENABLE_EE_PLANNER === '1' && programId === 'electrical_engineering_2027');
 }
 
+/** Explicit public access to a draft planner while academic certification is pending. */
+export function isPublicDraftPlanner(id: string): boolean {
+  const program = getProgramEntry(programIdOfBoard(id));
+  return program?.status === 'draft' && program.publicPlanner === true;
+}
+
 /**
  * Whether the API may serve a board/catalog for this program or window-board id. The owning
  * program decides (a `<base>_years_1_2_<year>` window board belongs to `<base>_<year>`):
@@ -85,5 +92,6 @@ export function isEditableDegreePreview(id: string): boolean {
  * (committed test boards) stay servable; live/archived are served.
  */
 export function isServableProgramId(id: string): boolean {
-  return getProgramEntry(programIdOfBoard(id))?.status !== 'draft' || isEditableDegreePreview(id);
+  return getProgramEntry(programIdOfBoard(id))?.status !== 'draft'
+    || isPublicDraftPlanner(id) || isEditableDegreePreview(id);
 }

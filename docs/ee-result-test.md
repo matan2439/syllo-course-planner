@@ -160,3 +160,10 @@ Course 0512-4013 can be placed in study semesters 2 and 3, intersected with veri
 The later-year board has no legal destination for the course. The release check verifies
 that both generated boards carry the restriction. The 85+ average and recommended-plan
 eligibility conditions remain separate, unresolved checks.
+
+## Public editable planner
+
+The owner approved public access to the editable EE planner while academic validation
+is still in progress. The registry's `publicPlanner` flag exposes the committed boards
+and the standard workspace. The degree retains draft status for academic publication,
+and the planner tells students to verify outstanding requirements with TAU.

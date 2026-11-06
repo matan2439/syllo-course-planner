@@ -20,7 +20,7 @@ import { databaseUrl } from './db_env';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import postgres from 'postgres';
 import { loadLocalBoardJson } from './ai/board_loader';
-import { isServableProgramId } from '../shared/programs';
+import { isPublicDraftPlanner, isServableProgramId } from '../shared/programs';
 
 // ── Parsing ───────────────────────────────────────────────────────────────────
 
@@ -175,6 +175,13 @@ async function _handle(req: VercelRequest, res: VercelResponse): Promise<void> {
       error: `Program "${rawId}" not found or board data not yet populated.`,
       code: 'NOT_FOUND',
     });
+    return;
+  }
+
+  if (isPublicDraftPlanner(rawId)) {
+    const board = loadLocalBoardJson(rawId);
+    if (board) { res.status(200).json(board); return; }
+    res.status(404).json({ error: 'Planner board is not available.', code: 'NOT_FOUND' });
     return;
   }
 

@@ -8,16 +8,8 @@ afterEach(() => {
   else process.env.NEXT_PUBLIC_ENABLE_EE_PLANNER = flag;
 });
 
-test.each([undefined, '0', 'true'])('EE early courses stay hidden with flag %s', (value) => {
-  if (value === undefined) delete process.env.NEXT_PUBLIC_ENABLE_EE_PLANNER;
-  else process.env.NEXT_PUBLIC_ENABLE_EE_PLANNER = value;
-  expect(earlyYearCoursesFor('electrical_engineering_2027')).toEqual([]);
-  expect(earlyYearCoursesFor('electrical_engineering_years_1_2_2027')).toEqual([]);
-  expect(earlyYearHoursById('electrical_engineering_2027')).toEqual({});
-});
-
-test('editable EE preview recognizes all 21 official early mandatory completions', () => {
-  process.env.NEXT_PUBLIC_ENABLE_EE_PLANNER = '1';
+test('public EE planner recognizes all 21 official early mandatory completions', () => {
+  delete process.env.NEXT_PUBLIC_ENABLE_EE_PLANNER;
   const courses = earlyYearCoursesFor('electrical_engineering_2027');
   expect(courses).toHaveLength(21);
   expect(new Set(courses.map((c) => c.courseId)).size).toBe(21);

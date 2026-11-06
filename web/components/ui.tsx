@@ -2,17 +2,20 @@
  * Minimal design primitives for the Next frontend. Tokens live in
  * globals.css (:root); keep variants limited to what's actually used.
  */
-import type { ReactNode } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 
 export function Card({
   children,
   className = '',
+  style,
 }: {
   children: ReactNode
   className?: string
+  style?: CSSProperties
 }) {
   return (
     <div
+      style={style}
       className={`rounded-xl border border-[var(--border)] bg-[var(--surface)] backdrop-blur-sm ${className}`}
     >
       {children}

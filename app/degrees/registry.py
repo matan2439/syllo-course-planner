@@ -29,6 +29,7 @@ class ProgramEntry(BaseModel):
     board_json_file: str = Field(alias="boardJsonFile")
     source_ids: dict[str, str] = Field(alias="sourceIds")
     status: Literal["draft", "live", "archived"]
+    public_planner: Optional[bool] = Field(default=None, alias="publicPlanner")
     is_family_default: bool = Field(alias="isFamilyDefault")
     capabilities: list[str]
     catalog_year_policy: Optional[Literal["start_year", "may_opt_newer", "always_latest"]] = Field(

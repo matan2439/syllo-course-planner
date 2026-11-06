@@ -24,11 +24,8 @@ afterEach(() => {
   installStudentWorkspaceStoreForTests(undefined); resetApplyRuntime();
 });
 
-test('only the explicit EE integration flag opens its actual boards', () => {
+test('the public editable EE planner serves its actual boards without a preview flag', () => {
   delete process.env.NEXT_PUBLIC_ENABLE_EE_PLANNER;
-  expect(loadLocalBoardJson(PROGRAM)).toBeNull();
-  expect(loadLocalBoardJson(EARLY)).toBeNull();
-  process.env.NEXT_PUBLIC_ENABLE_EE_PLANNER = '1';
   expect(loadLocalBoardJson(PROGRAM).metadata.program_requirements_categories.group_minimums.track).toBe(12);
   expect(loadLocalBoardJson(EARLY).metadata.window_of_program_id).toBe(PROGRAM);
   expect(isServableProgramId(PROGRAM)).toBe(true);

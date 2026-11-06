@@ -15,7 +15,7 @@
 
 import earlyYearIndex from '../../data/config/early_year_courses.json'
 import previewEarlyYearIndex from '../../data/config/preview_early_year_courses.json'
-import { isEditableDegreePreview } from '../programs'
+import { isEditableDegreePreview, isPublicDraftPlanner } from '../programs'
 import { programIdOfBoard } from './window_board'
 
 export interface EarlyYearCourse {
@@ -54,7 +54,7 @@ const baseOf = (programId: string) => programId.replace(/_\d{4}$/, '')
  */
 export function earlyYearCoursesFor(programId: string): EarlyYearCourse[] {
   const program = programIdOfBoard(programId)
-  if (isEditableDegreePreview(program)) return PREVIEW_EARLY_YEARS_BY_PROGRAM[program] ?? []
+  if (isPublicDraftPlanner(program) || isEditableDegreePreview(program)) return PREVIEW_EARLY_YEARS_BY_PROGRAM[program] ?? []
   const index = EARLY_YEARS_BY_PROGRAM
   const own = index[program]
   if (own) return own

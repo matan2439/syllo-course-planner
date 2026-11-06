@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import SemesterColumn from './SemesterColumn'
 import SemesterColumnHeader from './SemesterColumnHeader'
 import AnnualCourseBand from './AnnualCourseBand'
-import CategoryLegend from './CategoryLegend'
+import CategoryLegend, { type LegendCategory } from './CategoryLegend'
 import { EmptyState } from '../../../components/ui'
 import type { BoardVM, CourseVM } from '../../../lib/board'
 import type { PlannerDragPayload } from '../../../lib/planner/drag-payload'
@@ -23,8 +23,9 @@ import { semesterLabel } from '../../locale/semester-label'
  * as everything else, instead of a separately-styled block elsewhere on the
  * page. A year-pair with no annual course simply has no row 2.
  */
-export default function NativePlannerBoard({ board, onRemoveCourse, onAddCourse, onMoveCourse, onSelectCourse, mutationPending = false, activeDrag, rejectedSemesterId, rejectedDropKey, justPlacedSemesterId, justPlacedKey, onDragStateChange, readOnly = false, editableCourseIds, onAddSemester, removableSemesterIds, onRemoveSemester, chrome = true, companion }: {
+export default function NativePlannerBoard({ board, legendCategories = [], onRemoveCourse, onAddCourse, onMoveCourse, onSelectCourse, mutationPending = false, activeDrag, rejectedSemesterId, rejectedDropKey, justPlacedSemesterId, justPlacedKey, onDragStateChange, readOnly = false, editableCourseIds, onAddSemester, removableSemesterIds, onRemoveSemester, chrome = true, companion }: {
   board: BoardVM
+  legendCategories?: readonly LegendCategory[]
   onRemoveCourse?: (courseId: string) => void
   onAddCourse?: (courseId: string, semesterId: string) => void
   onMoveCourse?: (courseId: string, semesterId: string) => void
@@ -159,7 +160,7 @@ export default function NativePlannerBoard({ board, onRemoveCourse, onAddCourse,
       {companion?.placement === 'after' && companion.node}
     </div>
     </div>
-    <CategoryLegend />
+    <CategoryLegend categories={legendCategories} />
     </div>
   )
 }

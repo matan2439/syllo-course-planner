@@ -8,14 +8,17 @@ afterEach(() => {
   else process.env.NEXT_PUBLIC_ENABLE_EE_PLANNER = legacy
 })
 
-test('a preview allowlist cannot publish a draft in production', () => {
+test('public EE is available in production without activating preview access', () => {
   const originalVercelEnv = process.env.VERCEL_ENV
   process.env.VERCEL_ENV = 'production'
   process.env.NEXT_PUBLIC_EDITABLE_DEGREE_PREVIEWS = 'electrical_engineering_2027'
   try {
     jest.isolateModules(() => {
       const { resolveProgram } = require('./programs') as typeof import('./programs')
-      expect(resolveProgram('electrical_engineering_2027')).toBeNull()
+      const { isEditableDegreePreview, livePrograms } = require('../../shared/programs') as typeof import('../../shared/programs')
+      expect(resolveProgram('electrical_engineering_2027')?.id).toBe('electrical_engineering_2027')
+      expect(isEditableDegreePreview('electrical_engineering_2027')).toBe(false)
+      expect(livePrograms().some(p => p.id === 'electrical_engineering_2027')).toBe(false)
     })
   } finally {
     if (originalVercelEnv === undefined) delete process.env.VERCEL_ENV
@@ -38,7 +41,7 @@ test('EE resolves to its own editable-planner identity and picker link when enab
 test('the preview allowlist matches full ids rather than prefixes', () => {
   process.env.NEXT_PUBLIC_EDITABLE_DEGREE_PREVIEWS = 'electrical_engineering'
   jest.isolateModules(() => {
-    const { resolveProgram } = require('./programs') as typeof import('./programs')
-    expect(resolveProgram('electrical_engineering_2027')).toBeNull()
+    const { isEditableDegreePreview } = require('../../shared/programs') as typeof import('../../shared/programs')
+    expect(isEditableDegreePreview('electrical_engineering_2027')).toBe(false)
   })
 })
