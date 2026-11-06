@@ -364,6 +364,12 @@ save or restore responses and check the preview database schema when a response 
 a storage error. Local tests with an in-memory store cannot verify deployed persistence.
 Treat any failed preview step as a release blocker.
 
+Use `python scripts/smoke_editable_degree.py --help` for the deployed API smoke test.
+Run it for each new board with two different course and weekly group choices and a
+third course that can be added, moved and removed. The helper checks the exact Vercel
+deployment is a ready preview and creates a fresh anonymous session. Verify the
+program picker and planner controls in the browser as well.
+
 When publication checks are red, keep the degree draft. An explicitly enabled editable
 integration preview may exercise the ordinary planner and APIs with its own program id,
 while explaining unresolved validation rules. On an isolated preview deployment, set

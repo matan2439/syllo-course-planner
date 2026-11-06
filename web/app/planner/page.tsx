@@ -44,7 +44,7 @@ export default async function PlannerPage({
       preferLightweightBackground={false}
     >
       {isEditableDegreePreview(program.id) && <p role="status" className="mx-4 my-3 rounded border border-amber-500 p-3" dir="rtl">
-        סביבת בדיקה לתכנון הנדסת חשמל: ניתן לערוך ולשמור תוכניות. אימות התנאים המיוחדים לתואר עדיין בפיתוח.
+        סביבת בדיקה לתכנון {program.name}: ניתן לערוך ולשמור תוכניות. אימות התנאים המיוחדים לתואר עדיין בפיתוח.
       </p>}
       <UnifiedPlannerWorkspace
         degreeRules={(raw.metadata as { degree_rules?: DegreeRule[] })?.degree_rules}

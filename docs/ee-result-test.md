@@ -135,3 +135,16 @@ Unrelated worktree changes observed under `.claude/skills/add-degree/SKILL.md` a
 The twelve-track-course minimum is now emitted in board metadata and enforced by Python validation, TypeScript requirements recomputation, and the planner candidate gate. Overlapping track membership counts once; labs are outside the track pool. Identified completed and in-progress courses contribute once. Anonymous category totals cannot manufacture group credit. The shared frontend adapter shows the group progress.
 
 The rebuilt EE main board contains `group_minimums.track = 12`. `board_carries_requirements` now passes. All 20 course-rule blockers remain recorded; this change does not implement distinct core tracks, English-course requirements, eligibility approvals or the unresolved source conflict. EE stays draft. The historical check output above describes the earlier result before this implementation.
+
+## Editable preview verification
+
+Vercel preview `dpl_DrDNtPwJhPSqi6amw1ZySodSi4QW` serves EE through the normal
+`/planner?program=electrical_engineering_2027` page with both year windows. The preview
+workspace uses its isolated Supabase accounts database. Its planner board and proposal
+storage can use the separate planner override.
+
+The deployed smoke test verified two saved alternatives with separate course placements
+and weekly groups, restoring A → B → A, reloading saved plans, and adding, moving and
+removing a real EE elective. A lookup for the baseline ME program in the same test
+session found no EE copies. This validates the deployed API workflow. Browser interaction,
+source freshness, and complete academic validation remain release checks.
