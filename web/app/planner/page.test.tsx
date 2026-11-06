@@ -73,7 +73,7 @@ describe('canonical public planner route', () => {
 
   test('does not render mechanical data for an explicitly requested unregistered program', async () => {
     await expect(PlannerPage({
-      searchParams: Promise.resolve({ program: 'electrical_engineering_2027' }),
+      searchParams: Promise.resolve({ program: 'no_such_program' }),
     })).rejects.toThrow('NEXT_NOT_FOUND')
 
     expect(notFound).toHaveBeenCalledTimes(1)

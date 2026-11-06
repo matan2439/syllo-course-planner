@@ -38,9 +38,11 @@ from app.analysis.program_requirements import validate_program_plan  # noqa: E40
 from app.analysis.semester_board import build_semester_board  # noqa: E402
 from app.scraping.tau_program_scraper import fetch_program_data  # noqa: E402
 from app.degrees.registry import get_program  # noqa: E402
+from app.degrees.offering_windows import apply_offering_windows  # noqa: E402
 
 BOARDS_DIR = ROOT / "data" / "boards"
 EARLY_YEAR_INDEX = ROOT / "data" / "config" / "early_year_courses.json"
+PREVIEW_EARLY_YEAR_INDEX = ROOT / "data" / "config" / "preview_early_year_courses.json"
 HEBREW_NUMERALS = "אבגדהוזחט"  # א=1, ב=2, …
 _YEARS_TITLE = re.compile(r"שנ(?:ה|ים)\s+([א-ט'׳\s+]+)")
 _SEMESTER_TITLE = re.compile(r"סמסטר\s+([אב])")
@@ -227,6 +229,10 @@ def build(program_id: str, start_year: int, tcid: str, shana: int,
     semester_ids = [s["semester_id"] for s in board["semesters"]]
     board["metadata"]["program_repository_courses"] = [remap_repository_course(c, semester_ids) for c in repository]
     board["metadata"]["window_of_program_id"] = program_id
+    if late_meta.get("degree_rules"):
+        board["metadata"]["degree_rules"] = [rule for rule in late_meta["degree_rules"]
+                                            if rule.get("kind") in ("mutually_exclusive", "year_restriction", "offering_window")]
+    apply_offering_windows(board)
     board["metadata"]["board_data_version"] = compute_board_hash(board)
 
     out = early_board_path(program_id, start_year, out_dir or boards_dir)
@@ -235,14 +241,15 @@ def build(program_id: str, start_year: int, tcid: str, shana: int,
     return out
 
 
-def write_early_year_index(boards_dir: Path = BOARDS_DIR, path: Path = EARLY_YEAR_INDEX) -> Path:
+def write_early_year_index(boards_dir: Path = BOARDS_DIR, path: Path = EARLY_YEAR_INDEX,
+                           include_drafts: bool = False) -> Path:
     """
     The official Years 1–2 mandatory courses of every program that has an early window
     board, keyed by program id — shared/planner/early_year_courses.ts reads it (client and
     server), so "which courses are Years 1–2" never lives in code.
 
-    The index ships in the frontend bundle, so a registry DRAFT's window board is never indexed
-    (drafts are never served); live, archived and unregistered ids are.
+    Drafts are excluded by default; ``include_drafts`` is only for the separate preview
+    index, whose entries the frontend gates with isEditableDegreePreview.
     """
     from app.degrees.registry import load_registry
 
@@ -253,7 +260,7 @@ def write_early_year_index(boards_dir: Path = BOARDS_DIR, path: Path = EARLY_YEA
         meta = board.get("metadata") or {}
         if meta.get("start_year") != 1 or not meta.get("window_of_program_id"):
             continue
-        if meta["window_of_program_id"] in drafts:
+        if not include_drafts and meta["window_of_program_id"] in drafts:
             continue
         index[meta["window_of_program_id"]] = [
             {
@@ -289,6 +296,7 @@ def main() -> int:
     board = json.loads(out.read_text(encoding="utf-8"))
     print(f"[early-board] wrote {out.relative_to(ROOT)}")
     print(f"[early-board] wrote {write_early_year_index().relative_to(ROOT)}")
+    print(f"[early-board] wrote {write_early_year_index(path=PREVIEW_EARLY_YEAR_INDEX, include_drafts=True).relative_to(ROOT)}")
     for sem in board["semesters"]:
         print(f"  {sem['semester_id']:20s} {len(sem['courses'])} courses  {sem['total_weekly_hours']} h")
     meta = board["metadata"]

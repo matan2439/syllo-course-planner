@@ -8,8 +8,13 @@
 from typing import Any, Optional
 
 from app.analysis.board_audit import audit_board
+# Deliberate coupling: the board's own category reader, so check_board_carries_requirements sees
+# exactly what the builder/validation read (a parallel re-implementation could drift from it).
+from app.analysis.program_requirements import _get_unified_categories
 from app.degrees.checks import CheckResult
-from app.degrees.spec import DegreeSpec
+from app.degrees.offering_windows import offering_window_ordinals, window_semesters
+from app.degrees.registry import load_institution
+from app.degrees.spec import DegreeSpec, spec_to_program
 
 WARN = "warn:"
 
@@ -245,11 +250,40 @@ def check_totals(
     return _result("totals", problems)
 
 
-def check_rules_enforced(spec: DegreeSpec) -> CheckResult:
+def check_rules_enforced(
+    spec: DegreeSpec, boards: dict | None = None, facts: dict | None = None,
+) -> CheckResult:
     """Every recorded course rule is enforced somewhere; ``enforced_by: none`` fails."""
     problems = [
         f"unenforced rule {r.rule_id}: {r.note}" for r in spec.course_rules if r.enforced_by == "none"
     ]
+    for rule in spec.course_rules:
+        if rule.kind != "offering_window" or rule.enforced_by != "board":
+            continue
+        definition = rule.model_dump()
+        ordinals = offering_window_ordinals(definition)
+        if ordinals is None:
+            problems.append(f"{rule.rule_id}: unsupported board offering window")
+            continue
+        course_id = rule.course_ids[0]
+        offering = (facts or {}).get(course_id, {}).get("offering", {})
+        status = offering.get("status")
+        if status not in {"offered", "not_offered"}:
+            problems.append(f"{rule.rule_id}: missing verified offering for {course_id}")
+            continue
+        offered = offering["offered_semesters"] if status == "offered" else []
+        for name in ("board", "early_years"):
+            board = (boards or {}).get(name)
+            if board is None:
+                problems.append(f"{rule.rule_id}: missing built {name}")
+                continue
+            meta = board.get("metadata", {})
+            expected = window_semesters(board, ordinals, offered)
+            rows = [c for c in meta.get("program_repository_courses", []) if c["course_id"] == course_id]
+            if (definition not in meta.get("degree_rules", []) or len(rows) != 1
+                    or rows[0].get("offering_window_semesters") != expected
+                    or rows[0].get("effective_allowed_semesters") != expected):
+                problems.append(f"{rule.rule_id}: {name} does not encode the offering window {expected}")
     return _result("rules_enforced", problems)
 
 
@@ -257,6 +291,69 @@ def check_known_gaps(spec: DegreeSpec) -> CheckResult:
     """Official sources not yet read: one failing problem per recorded gap."""
     problems = [f"known gap {g.gap_id}: {g.description}" for g in spec.known_gaps]
     return _result("known_gaps", problems)
+
+
+def check_board_carries_requirements(spec: DegreeSpec) -> CheckResult:
+    """Every spec requirement reaches the board; one failing problem per one that cannot.
+
+    The board consumes only what ``spec_to_program`` emits, read the way the builder reads it
+    (``_get_unified_categories``). Generic group minimums are carried alongside the legacy
+    core minimum. Unsupported requirements include a category the builder never reads (e.g. an
+    unkeyed category in a non-core group with no plain category beside it), and a category's
+    ``min_credits`` (emitted, but no board or validation code reads it). A dropped requirement
+    stays red until the board carries it -- never a silent drop.
+    """
+    problems: list[str] = []
+    program = spec_to_program(spec)
+    reqs = program["requirements"]
+    for group, minimum in sorted(spec.group_minimums.items()):
+        if group == "core" and reqs.get("core_courses_total_min") == minimum:
+            continue
+        if group != "core" and reqs.get("group_minimums", {}).get(group) == minimum:
+            continue
+        problems.append(f"group_minimums.{group} ({minimum} courses) cannot reach the board: "
+                        f"its group minimum was not emitted")
+    read = {c.get("category_id") for c in _get_unified_categories(program)}
+    key_of = {cid: key for key, cid in spec.legacy.get("requirement_category_keys", {}).items()}
+    for cat in spec.categories:
+        if cat.category_id not in read:
+            key = key_of.get(cat.category_id)
+            if key and "elective_categories" in reqs:
+                cause = (f"keyed as requirements.{key}, but shadowed: elective_categories takes precedence "
+                         f"over the PDF-format reader that reads requirement keys")
+            elif key:
+                cause = f"keyed as requirements.{key}, a key the board's reader does not read"
+            else:
+                cause = (f"no requirement key, and group {cat.group!r} is not core while no plain category "
+                         f"emits an elective_categories list")
+            problems.append(f"categories[{cat.category_id}] never reaches the board's category list: {cause}")
+        if cat.min_credits is not None:
+            problems.append(f"categories[{cat.category_id}].min_credits ({_fmt(cat.min_credits)}) cannot reach "
+                            f"the board: it enforces min_courses only")
+    problems += _general_credits_problems(spec)
+    return _result("board_carries_requirements", problems)
+
+
+def _general_credits_problems(spec: DegreeSpec) -> list[str]:
+    """``general_requirement.credits_required`` is spec-only (the board enforces ``min_courses``),
+    so it is carried only when it equals min_courses x the institution's
+    ``generalRequirement.creditsPerCourse``. If that can't be verified, it counts as not carried."""
+    gen = spec.general_requirement or {}
+    stated = gen.get("credits_required")
+    if stated is None:
+        return []
+    try:
+        per_course = load_institution(spec.institution)["generalRequirement"]["creditsPerCourse"]
+    except (KeyError, TypeError):
+        per_course = None
+    n = gen.get("min_courses") or 0
+    if per_course is not None and float(stated) == n * float(per_course):
+        return []
+    why = (f"{spec.institution} states no generalRequirement.creditsPerCourse to verify it"
+           if per_course is None else f"min_courses {n} x {_fmt(float(per_course))} credits per course "
+                                      f"= {_fmt(n * float(per_course))}")
+    return [f"general_requirement.credits_required ({_fmt(float(stated))}) cannot reach the board: it "
+            f"enforces min_courses only, and {why}"]
 
 
 def check_plannable(board: dict[str, Any]) -> CheckResult:

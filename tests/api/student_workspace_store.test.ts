@@ -1,11 +1,31 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { PGlite } from '@electric-sql/pglite';
-import { MemoryStudentWorkspaceStore, PostgresStudentWorkspaceStore } from '../../api/ai/student_workspace_store';
+import { getStudentWorkspaceStore, installStudentWorkspaceStoreForTests, MemoryStudentWorkspaceStore, PostgresStudentWorkspaceStore } from '../../api/ai/student_workspace_store';
 import { aggregateBiddingHistory } from '../../api/ai/student_bidding_history';
 import { programWorkspaceSchema } from '../../shared/planner/student-workspace';
 
 const preferences = { locale: 'he' as const };
+
+test('workspace uses the accounts database even with a separate planner override', () => {
+  const env = process.env;
+  try {
+    process.env = {
+      ...env, VERCEL_ENV: 'preview', VERCEL: '1',
+      SYLLO_PLANNER_DATABASE_URL: 'postgres://planner:password@planner.test/planner',
+      DATABASE_URL: 'postgres://accounts:password@accounts.test/accounts',
+    };
+    const store = getStudentWorkspaceStore();
+    expect(store).toBeInstanceOf(PostgresStudentWorkspaceStore);
+    process.env.SYLLO_PLANNER_DATABASE_URL = 'postgres://planner:password@another-planner.test/planner';
+    expect(getStudentWorkspaceStore()).toBe(store);
+    delete process.env.DATABASE_URL;
+    expect(() => getStudentWorkspaceStore()).toThrow('WORKSPACE_UNAVAILABLE');
+  } finally {
+    process.env = env;
+    installStudentWorkspaceStoreForTests();
+  }
+});
 
 describe('personal workspace ownership and optimistic concurrency', () => {
   test('keeps owners isolated and refuses a stale writer', async () => {

@@ -7,6 +7,7 @@
 
 import type { CourseProfile } from './course_profile';
 import type { AcademicProgress } from './academic_progress';
+import type { DegreeRule } from '../../shared/planner/degree-rules';
 
 /** An elective/requirement category the plan must satisfy. */
 export interface CategoryReq {
@@ -33,6 +34,8 @@ export interface CategoryReq {
 export type DistributionPolicy = 'balanced' | 'compact' | 'neutral';
 
 export interface ConstraintModel {
+  degreeRules?: readonly DegreeRule[];
+  degreeRuleExclusionCourseIds?: Set<string>;
   /** CourseProfile for every course in the eligible universe. */
   profiles: Map<string, CourseProfile>;
   /** Canonical semester ids for this plan, in chronological order. */

@@ -7,6 +7,9 @@ import { SEMESTER_WINDOWS, windowBoardIdFor } from '../../lib/planner/semester-w
 import type { RawBoard } from '../../lib/board'
 import ProductShell from '../../features/shell/components/ProductShell'
 import UnifiedPlannerWorkspace from '../../features/planner/components/UnifiedPlannerWorkspace'
+import { isEditableDegreePreview, isPublicDraftPlanner } from '../../../shared/programs'
+import type { DegreeRule } from '../../../shared/planner/degree-rules'
+import { adaptRequirements } from '../../lib/requirements'
 
 export const metadata = { title: 'מרחב התכנון — Syllo' }
 export const dynamic = 'force-dynamic'
@@ -41,7 +44,12 @@ export default async function PlannerPage({
       programId={program.id}
       preferLightweightBackground={false}
     >
+      {(isPublicDraftPlanner(program.id) || isEditableDegreePreview(program.id)) && <p role="status" className="mx-4 my-3 rounded border border-amber-500 p-3" dir="rtl">
+        ניתן לערוך ולשמור תוכניות. חלק מכללי התואר עדיין אינם נבדקים אוטומטית, ולכן יש לאמת את העמידה בדרישות מול הידיעון.
+      </p>}
       <UnifiedPlannerWorkspace
+        degreeRequirements={adaptRequirements(raw)}
+        degreeRules={(raw.metadata as { degree_rules?: DegreeRule[] })?.degree_rules}
         programId={program.id}
         repo={repo}
         semesterDestinations={destinationsOf(raw)}

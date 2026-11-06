@@ -1855,6 +1855,7 @@ export function getSemesterLoad(
 }
 
 export interface CourseLegalityInfo {
+  offering_window_semesters?: string[] | null;
   course_id?: string;
   name_he?: string | null;
   placement_policy?: string | null;
@@ -1891,6 +1892,9 @@ export interface LegalSemestersResult {
  * kept verbatim (vocabularies that don't use term letters behave as before).
  */
 export function getLegalSemesters(course: CourseLegalityInfo, knownSemesterIds: string[] = []): LegalSemestersResult {
+  if (course.offering_window_semesters) {
+    return { semesters: course.offering_window_semesters, confident: true };
+  }
   const effective = course.effective_allowed_semesters?.length ? course.effective_allowed_semesters : null;
   const program = course.program_allowed_semesters?.length
     ? course.program_allowed_semesters
@@ -1926,7 +1930,7 @@ export function getLegalSemesters(course: CourseLegalityInfo, knownSemesterIds: 
 /** PART B — single helper for "is this course legal in this semester?". */
 export function isCourseAllowedInSemester(course: CourseLegalityInfo, semesterId: string, knownSemesterIds: string[] = []): boolean {
   const { semesters } = getLegalSemesters(course, knownSemesterIds);
-  return semesters.length === 0 || semesters.includes(semesterId);
+  return (!course.offering_window_semesters && semesters.length === 0) || semesters.includes(semesterId);
 }
 
 /** PART B — debug/explanatory reason for a legality result (Hebrew, user-facing). */
@@ -1938,7 +1942,7 @@ export function getCourseSemesterLegalityReason(
 ): { allowed: boolean; confident: boolean; reason: string } {
   const name = course.name_he || course.course_id || 'הקורס';
   const { semesters, confident } = getLegalSemesters(course, knownSemesterIds);
-  const allowed = semesters.length === 0 || semesters.includes(semesterId);
+  const allowed = (!course.offering_window_semesters && semesters.length === 0) || semesters.includes(semesterId);
   const label = (id: string) => semesterLabels?.[id] || id;
 
   if (!confident) {
@@ -1964,7 +1968,9 @@ export function getCourseSemesterLegalityReason(
   return {
     allowed: false,
     confident: true,
-    reason: `${name} אינו מותר בסמסטר זה — הסמסטרים המותרים הם: ${semesters.map(label).join(', ')}`,
+    reason: semesters.length
+      ? `${name} אינו מותר בסמסטר זה — הסמסטרים המותרים הם: ${semesters.map(label).join(', ')}`
+      : `אין סמסטר מותר עבור ${name} בחלון התכנון.`,
   };
 }
 

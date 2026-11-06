@@ -156,7 +156,7 @@ def _get_required_category_ids(
     return {
         cat["category_id"]
         for cat in reqs.get("elective_categories", [])
-        if cat.get("min_courses", 1) > 0 and not cat.get("needs_review")
+        if cat.get("min_courses", 0) > 0 and not cat.get("needs_review")
     }
 
 

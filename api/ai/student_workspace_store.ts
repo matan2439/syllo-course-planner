@@ -1,6 +1,6 @@
 import postgres from 'postgres';
 import { PG_OPTS } from './_quota';
-import { isolatedUrl } from '../db_env';
+import { databaseUrl } from '../db_env';
 import { ownerStorageKey } from './owner_key';
 import type { BiddingObservation, ObservationInput } from './student_bidding_history';
 import { randomUUID } from 'crypto';
@@ -212,9 +212,10 @@ let injected: StudentWorkspaceStore | undefined;
 export function installStudentWorkspaceStoreForTests(store?: StudentWorkspaceStore) { injected = store; selected = undefined; }
 export function getStudentWorkspaceStore(): StudentWorkspaceStore {
   if (injected) return injected;
-  const raw = process.env.SYLLO_PLANNER_DATABASE_URL?.trim() || process.env.DATABASE_URL?.trim();
-  const url = isolatedUrl(raw, 'student workspace database');
-  if (raw && !url) throw new Error('WORKSPACE_UNAVAILABLE');
+  // Workspace documents and contributions reference Supabase auth.users.
+  // The separate planner database override is for planner boards and proposals.
+  const url = databaseUrl();
+  if (process.env.DATABASE_URL?.trim() && !url) throw new Error('WORKSPACE_UNAVAILABLE');
   if (selected?.url === url) return selected.store;
   if (!url && (process.env.VERCEL === '1' || process.env.NODE_ENV === 'production')) throw new Error('WORKSPACE_UNAVAILABLE');
   const store = url ? new PostgresStudentWorkspaceStore(postgres(url, { ...PG_OPTS, max: 3 }) as unknown as WorkspaceSql) : new MemoryStudentWorkspaceStore();

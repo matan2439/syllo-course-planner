@@ -11,6 +11,7 @@ class CheckResult(BaseModel):
 from app.degrees.checks.coverage import check_coverage, check_freshness  # noqa: E402
 
 from app.degrees.checks.consistency import (  # noqa: E402
+    check_board_carries_requirements,
     check_courses_known,
     check_degree_length,
     check_double_counting,
@@ -23,6 +24,7 @@ from app.degrees.checks.consistency import (  # noqa: E402
 
 __all__ = [
     "CheckResult",
+    "check_board_carries_requirements",
     "check_coverage",
     "check_freshness",
     "check_courses_known",

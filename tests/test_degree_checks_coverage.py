@@ -124,3 +124,35 @@ def test_coverage_gaps_is_shared_with_todo():
     spec = _gap_spec({"pdf:d:unread-page-2": {"not_planning_rule": "x"}})
     gaps, _ = coverage_gaps([_item("pdf:d:unread-page-2", data=UNREAD)], spec)
     assert [(i.id, r) for i, r in gaps] == [("pdf:d:unread-page-2", UNREAD_NOT_GAP)]
+
+
+def test_list_with_two_resolving_targets_passes():
+    spec = _gap_spec({"a": {"mapped_to": ["categories[fluids]", "known_gaps[scanned]"]}})
+    assert check_coverage([_item("a")], spec).passed
+
+
+def test_list_with_one_unresolved_target_fails_naming_it():
+    spec = _spec({"a": {"mapped_to": ["categories[fluids]", "categories[nope]"]}})
+    result = check_coverage([_item("a")], spec)
+    assert not result.passed
+    assert result.problems[0].startswith("unresolved mapping: a")
+    assert "categories[nope]" in result.problems[0].split("[unresolved:")[1]
+    assert "categories[fluids]" not in result.problems[0].split("[unresolved:")[1]
+
+
+def test_empty_list_fails():
+    result = check_coverage([_item("a")], _spec({"a": {"mapped_to": []}}))
+    assert not result.passed and "unresolved mapping: a" in result.problems[0]
+
+
+def test_unread_page_needs_every_target_in_known_gaps():
+    both = _gap_spec({"pdf:d:unread-page-2": {"mapped_to": ["known_gaps[scanned]", "known_gaps[scanned]"]}})
+    assert check_coverage([_item("pdf:d:unread-page-2", data=UNREAD)], both).passed
+    mixed = _gap_spec({"pdf:d:unread-page-2": {"mapped_to": ["known_gaps[scanned]", "categories[fluids]"]}})
+    result = check_coverage([_item("pdf:d:unread-page-2", data=UNREAD)], mixed)
+    assert not result.passed and result.problems[0].startswith("unread page not in known_gaps:")
+
+
+def test_maps_to_treats_a_list_as_each_of_its_targets():
+    assert MappedTo(mapped_to=["a", "b"]).maps_to("b") and MappedTo(mapped_to="a").maps_to("a")
+    assert not MappedTo(mapped_to=["a"]).maps_to("b")

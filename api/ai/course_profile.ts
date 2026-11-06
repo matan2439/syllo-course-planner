@@ -50,6 +50,7 @@ export interface CourseProfile {
   // ── offering / legal-semester inputs (consumed by getLegalSemesters) ──────
   offered_semesters: string[] | null;
   effective_allowed_semesters: string[] | null;
+  offering_window_semesters?: string[] | null;
   /** False when TAU lists no groups for the course this academic year. */
   offered_in_year?: boolean | null;
   recommended_semester: string | null;
@@ -237,6 +238,8 @@ function toProfile(raw: any, opts: BuildProfilesOptions): CourseProfile {
 
     offered_semesters: nullableStrArr(raw.offered_semesters),
     effective_allowed_semesters: nullableStrArr(raw.effective_allowed_semesters),
+    ...(Array.isArray(raw.offering_window_semesters)
+      ? { offering_window_semesters: strArr(raw.offering_window_semesters) } : {}),
     offered_in_year: typeof raw.offered_in_year === 'boolean' ? raw.offered_in_year : null,
     recommended_semester: typeof raw.recommended_semester === 'string' ? raw.recommended_semester : null,
     allowed_semesters: nullableStrArr(raw.allowed_semesters),

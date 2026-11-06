@@ -1,4 +1,6 @@
 'use client'
+import DegreeRulesPanel, { currentCourseIdsFromStatus } from './DegreeRulesPanel'
+import type { DegreeRule } from '../../../../shared/planner/degree-rules'
 
 /**
  * The planner journey: the one owner of planning state, composed over the shared client
@@ -38,7 +40,7 @@ import CurrentPlanSection from './CurrentPlanSection'
 import { BoardError, BoardLoading } from './BoardStatus'
 import ManualAddPrompt from './ManualAddPrompt'
 import AgentPreferencePanel from './AgentPreferencePanel'
-import { adaptRequirementsFromModel } from '../../../lib/requirements'
+import { adaptRequirementsFromModel, type RequirementsVM } from '../../../lib/requirements'
 import { GATEWAY_CATEGORY_ID } from '../../courses/components/course-category'
 import { buildGeneratePlanRequest } from '../lib/build-plan-request'
 import { useCommittedBoard } from '../hooks/use-committed-board'
@@ -92,6 +94,8 @@ export default function NativePlannerJourney({
   onDragStateChange,
   onAcademicContextMissing,
   onBoardSnapshot,
+  degreeRules = [],
+  degreeRequirements,
   onPrepareRestore,
   companion,
   degreeSemesterIds,
@@ -130,6 +134,8 @@ export default function NativePlannerJourney({
   /** The server has no academic context for the current owner: the parent re-reads everything. */
   onAcademicContextMissing?: () => void
   onBoardSnapshot?: (snapshot: BoardSnapshot) => void
+  degreeRules?: readonly DegreeRule[]
+  degreeRequirements?: RequirementsVM | null
   onPrepareRestore?: (prepare: (() => Promise<void>) | null) => void
   /** Another window's read-only columns shown beside this board ("whole degree" view). */
   companion?: { placement: 'before' | 'after'; node: ReactNode }
@@ -416,6 +422,7 @@ export default function NativePlannerJourney({
             .map((semester) => semester.semesterId))}
           onRemoveSemester={(semesterId) => void commitSemesterChange('remove_semester', semesterId)}
           companion={companion}
+          legendCategories={degreeRequirements?.categories}
           completedCredit={academicStatus.confirmed ? Object.fromEntries(completedCourseIdsOf(academicStatus).flatMap((id) => {
             // Same credit rule as the profile panel and the server: Years 1–2 table, else catalog hours.
             const hours = earlyYearHoursById(programId)[id] ?? catalogHoursById[id]
@@ -428,6 +435,9 @@ export default function NativePlannerJourney({
           programId={programId}
           getStudentContext={courseChatContext}
         />
+        <DegreeRulesPanel rules={degreeRules} requirements={degreeRequirements ?? (current ? adaptRequirementsFromModel(current) : null)} semesters={current?.semesters.map(s => ({ semesterId: s.semesterId, courseIds: s.courses.map(c => c.courseId) })) ?? []}
+          completedCourseIds={academicStatus.confirmed ? completedCourseIdsOf(academicStatus) : []}
+          currentCourseIds={currentCourseIdsFromStatus(loadedAcademicContext?.personalStatus)} />
         {manualEditPhase === 'saving' && <p role="status" aria-live="polite" className="text-sm text-[var(--text-muted)]">{t('שומר ומאמת…', 'Saving and validating…')}</p>}
       </div>
 

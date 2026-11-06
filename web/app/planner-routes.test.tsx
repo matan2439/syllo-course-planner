@@ -50,7 +50,7 @@ describe('canonical planner entry routes', () => {
     ['planner/native', NativePlannerPage],
   ])('%s fails closed for an explicitly requested unregistered program', async (_name, Page) => {
     await expect(Page({
-      searchParams: Promise.resolve({ program: 'electrical_engineering_2027' }),
+      searchParams: Promise.resolve({ program: 'no_such_program' }),
     })).rejects.toThrow('NEXT_NOT_FOUND')
 
     expect(notFound).toHaveBeenCalledTimes(1)

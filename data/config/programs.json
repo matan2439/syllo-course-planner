@@ -69,6 +69,28 @@
       "capabilities": [
         "mechanical_design"
       ]
+    },
+    {
+      "id": "electrical_engineering_2027",
+      "institution": "tau",
+      "base": "electrical_engineering",
+      "year": 2027,
+      "sourceYear": 2026,
+      "nameHe": "תוכנית חד-חוגית בהנדסת חשמל",
+      "nameEn": "Electrical Engineering",
+      "track": null,
+      "familyId": "electrical_engineering",
+      "familyDescriptionHe": "תוכנית חד-חוגית בהנדסת חשמל",
+      "descriptionHe": "תוכנית חד-חוגית בהנדסת חשמל",
+      "yearLabelHe": "2027 (תשפ\"ז)",
+      "boardJsonFile": "electrical_engineering_semester_board_2027.json",
+      "sourceIds": {
+        "tcid": "7622"
+      },
+      "status": "draft",
+      "publicPlanner": true,
+      "isFamilyDefault": true,
+      "capabilities": []
     }
   ]
 }

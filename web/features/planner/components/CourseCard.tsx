@@ -2,7 +2,7 @@ import type { CourseVM } from '../../../lib/board'
 import { useState } from 'react'
 import { Badge, Card } from '../../../components/ui'
 import { writeBoardDrag, type PlannerDragPayload } from '../../../lib/planner/drag-payload'
-import { categoryAccentClass } from '../../courses/components/course-category'
+import { categoryAccentClass, categoryAccentStyle } from '../../courses/components/course-category'
 import { MARKER_LABEL } from '../constants'
 import { useLocale } from '../../locale/LocaleProvider'
 
@@ -88,7 +88,7 @@ export default function CourseCard({ course, onRemove, onMove, onSelect, moveDes
         onDragStateChange?.(null)
       }}
     >
-    <Card className={`group px-3.5 py-3 transition-[transform,box-shadow,border-color] duration-150 ease-out hover:-translate-y-px hover:border-purple-500/30 hover:shadow-[var(--shadow-premium)] ${onSelect ? 'cursor-pointer' : ''} ${categoryAccentClass(course.categoryId)}`}>
+    <Card style={categoryAccentStyle(course.categoryId)} className={`group px-3.5 py-3 transition-[transform,box-shadow,border-color] duration-150 ease-out hover:-translate-y-px hover:border-purple-500/30 hover:shadow-[var(--shadow-premium)] ${onSelect ? 'cursor-pointer' : ''} ${categoryAccentClass(course.categoryId)}`}>
       <div className="flex items-start justify-between gap-2">
         <h3 className="text-sm font-semibold leading-snug">{course.name}</h3>
         {course.hasWarnings && (

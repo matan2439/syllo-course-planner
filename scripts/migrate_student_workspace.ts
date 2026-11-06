@@ -1,11 +1,11 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import postgres from 'postgres';
-import { isolatedUrl } from '../api/db_env';
+import { databaseUrl } from '../api/db_env';
 
 async function main() {
-  const url = isolatedUrl(process.env.SYLLO_PLANNER_DATABASE_URL || process.env.DATABASE_URL, 'student workspace migration');
-  if (!url) throw new Error('An isolated planner database URL is required.');
+  const url = databaseUrl();
+  if (!url) throw new Error('An isolated Supabase DATABASE_URL is required.');
   if (process.env.VERCEL_ENV === 'production' && !process.argv.includes('--production')) throw new Error('Production migration requires --production.');
   const sql = postgres(url, { max: 1 });
   try {

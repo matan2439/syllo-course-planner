@@ -42,7 +42,15 @@ class Category(_Strict):
 
 
 class MappedTo(_Strict):
-    mapped_to: str
+    # One spec home, or several when a single evidence item states several rules.
+    mapped_to: Union[str, list[str]]
+
+    @property
+    def targets(self) -> list[str]:
+        return [self.mapped_to] if isinstance(self.mapped_to, str) else list(self.mapped_to)
+
+    def maps_to(self, path: str) -> bool:
+        return path in self.targets
 
 
 class NotPlanningRule(_Strict):
@@ -213,11 +221,13 @@ def _number(value: float):
 
 
 def _category_to_legacy(cat: Category) -> dict:
-    out: dict = {"category_id": cat.category_id, "name_he": cat.name_he}
-    if cat.min_courses is not None:
-        out["min_courses"] = cat.min_courses
+    # min_courses is always explicit: an unstated minimum is "no minimum" (0), never the board's
+    # old implicit "at least 1". (Every migrated legacy category states it, so ME round-trips.)
+    out: dict = {"category_id": cat.category_id, "name_he": cat.name_he, "min_courses": cat.min_courses or 0}
     if cat.min_credits is not None:
         out["min_credits"] = _number(cat.min_credits)
+    if cat.group is not None and cat.group != _CORE:
+        out["group"] = cat.group
     out["course_ids"] = list(cat.course_ids)
     return out
 
@@ -234,6 +244,9 @@ def spec_to_program(spec: DegreeSpec) -> dict:
     requirements: dict = dict(legacy.get("requirements", {}))
     if _CORE in spec.group_minimums:
         requirements["core_courses_total_min"] = spec.group_minimums[_CORE]
+    generic_minimums = {g: n for g, n in spec.group_minimums.items() if g != _CORE}
+    if generic_minimums:
+        requirements["group_minimums"] = generic_minimums
     core = [_category_to_legacy(c) for c in spec.categories if c.group == _CORE]
     if core:
         requirements["core_categories"] = core
@@ -244,7 +257,7 @@ def spec_to_program(spec: DegreeSpec) -> dict:
     # builder's classic ``elective_categories`` list. That format is read INSTEAD of the PDF
     # one, so it then lists every unkeyed category, core ones included.
     keyed_ids = set(keyed.values())
-    if any(c.group is None and c.category_id not in keyed_ids for c in spec.categories):
+    if generic_minimums or any(c.group is None and c.category_id not in keyed_ids for c in spec.categories):
         requirements["elective_categories"] = [
             _category_to_legacy(c) for c in spec.categories if c.category_id not in keyed_ids
         ]
@@ -258,6 +271,8 @@ def spec_to_program(spec: DegreeSpec) -> dict:
     program["total_required_hours"] = _number(spec.total_required_credits)
     program["requirements"] = requirements
     program["ui"] = spec.ui
+    if spec.ui.get("validate_course_rules"):
+        program["course_rules"] = [rule.model_dump() for rule in spec.course_rules]
 
     order = legacy.get("key_order", {})
     return {

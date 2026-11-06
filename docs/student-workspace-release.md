@@ -32,7 +32,7 @@ Final production smoke after promotion: named-plan edit persisted through full r
 
 Apply `scripts/migrations/planner/002_student_workspace.sql` after existing Auth/planner migrations, first to the isolated Preview database. This is additive and does not advance the old planner schema version. RLS and revoked browser grants keep both new tables behind authenticated server ownership checks; account foreign keys cascade on deletion.
 
-Use `npm run migrate:student-workspace` with the isolated planner database environment. Production additionally requires `-- --production` and `VERCEL_ENV=production`. The runner does not load or print secrets.
+Use `npm run migrate:student-workspace` with the isolated Supabase `DATABASE_URL`. The workspace tables reference `auth.users` in that database. The `SYLLO_PLANNER_DATABASE_URL` override serves planner boards and proposals. Production additionally requires `-- --production` and `VERCEL_ENV=production`. The runner does not load or print secrets.
 
 The endpoint is wired into `vercel.json` and the local dev API. Deploy the root project (including the handler and board data) with the frontend. Verify Preview save/reload, a second signed-in device, account switch, restore, sharing and withdrawal before production promotion. Missing tables disable new persistence clearly; the existing planner storage schema gate is unchanged.
 

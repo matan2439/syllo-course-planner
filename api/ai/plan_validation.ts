@@ -180,6 +180,7 @@ export interface PlanValidationCourseInfo {
   hours?: number | null;
   /** Allowed semester_ids for this course, if restricted (effective_allowed_semesters). */
   effective_allowed_semesters?: string[] | null;
+  offering_window_semesters?: string[] | null;
   /** Prerequisite course_ids still missing for this course (from prerequisite_issues). */
   missing_prerequisites?: string[];
   /** Hard prerequisite course_ids (resolved). Issue 4 — the validator enforces
@@ -387,13 +388,13 @@ export function validatePlanProposal(
       }
 
       // 3. placement must be within effective_allowed_semesters
-      if (info?.effective_allowed_semesters && info.effective_allowed_semesters.length > 0) {
-        if (!info.effective_allowed_semesters.includes(sem.semester_id)) {
-          const allowedNames = info.effective_allowed_semesters.map(s => semesterLabel(s, ctx.semesterLabels)).join(', ');
-          errors.push(
-            `קורס ${cName} משובץ ב${semName} אך מותר רק ב${allowedNames}.`,
-          );
-        }
+      const allowedSemesters = info?.offering_window_semesters
+        ?? (info?.effective_allowed_semesters?.length ? info.effective_allowed_semesters : undefined);
+      if (allowedSemesters && !allowedSemesters.includes(sem.semester_id)) {
+        const allowedNames = allowedSemesters.map(s => semesterLabel(s, ctx.semesterLabels)).join(', ');
+        errors.push(allowedNames
+          ? `קורס ${cName} משובץ ב${semName} אך מותר רק ב${allowedNames}.`
+          : `לקורס ${cName} אין סמסטר מותר בחלון התכנון.`);
       }
 
       // 4. prerequisites — Issue 4: STRICT timing rule, enforced as an ERROR

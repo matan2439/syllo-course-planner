@@ -28,6 +28,8 @@ const boardCourseSchema = z
     offered_semesters: z.array(z.string().min(1)).nullable().optional(),
     /** Fully-qualified policy result; when present it is narrower than a bare A/B offering code. */
     effective_allowed_semesters: z.array(z.string().min(1)).nullable().optional(),
+    /** Verified placement scope for an elective with a study-semester window, possibly empty. */
+    offering_window_semesters: z.array(z.string().min(1)).optional(),
     /** false = TAU lists no groups this year (verified); absent/null = unknown. */
     offered_in_year: z.boolean().nullable().optional(),
     // Elective category (fluids/solids/systems/advanced_labs/other_specialization/…);
@@ -74,9 +76,13 @@ export const boardRequirementsValidationSchema = z
     total_required_hours: z.number(),
     planned_hours: z.number(),
     remaining_hours: z.number(),
-    core_courses_total_min: z.number(),
-    core_courses_selected: z.number(),
-    core_courses_satisfied: z.boolean(),
+    core_courses_total_min: z.number().nullable(),
+    core_courses_selected: z.number().nullable(),
+    core_courses_satisfied: z.boolean().nullable(),
+    group_results: z.array(z.object({
+      group: z.string(), min_courses: z.number(), selected_courses: z.array(z.string()),
+      selected_count: z.number(), satisfied: z.boolean(), missing_count: z.number(),
+    })).optional(),
     category_results: z.array(boardRequirementCategoryResultSchema).optional(),
     warnings: z.array(z.string()).optional(),
   })

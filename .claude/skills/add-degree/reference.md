@@ -29,7 +29,7 @@ One argparse parser for all subcommands (`<cmd> --help` prints the same full hel
 | --- | --- | --- |
 | `init --institution tau --title-he .. --level .. --school .. --shana .. --name-en .. [--base ..] [--track-he ..]` | always (index search + `evidence --live`) | registry entry (draft), spec skeleton, evidence.json |
 | `evidence --program <id> [--live\|--offline]` | per flag | evidence.json; prints counts by kind |
-| `todo --program <id> [--apply-suggestions]` | never (reads evidence.json) | todo.md; with the flag, suggested coverage into spec.json. Exit 0 iff nothing open and no stale keys. |
+| `todo --program <id> [--reuse-from <other-id>] [--apply-suggestions]` | never (reads evidence.json) | todo.md; `--reuse-from` (first) copies the other degree's entries for identical evidence, `--apply-suggestions` writes suggested coverage, both into spec.json. Exit 0 iff nothing open and no stale keys. |
 | `refresh --program <id> [--live\|--offline] [--apply]` | per flag | facts snapshot + review report; `--apply` then builds into `data/` |
 | `build --program <id> [--live\|--offline] [--out-dir DIR]` | per flag (none = caches, fetch missing) | the four board files (into DIR with `--out-dir`) |
 | `check --program <id> --live\|--offline` | per flag (a flag is required) | the check report; exit 0 only if all pass |
@@ -39,8 +39,22 @@ One argparse parser for all subcommands (`<cmd> --help` prints the same full hel
 - `--program` must be a bare id: `<inst>:`-prefixed ids validate in the registry but
   degree.py refuses them ("prefixed ids need a filesystem slug — not supported yet").
 - `check` runs: coverage, freshness (live only; SKIPPED offline, so offline never passes),
-  courses_known, double_counting, mandatory_offered, totals, plannable (board audit errors),
-  rules_enforced, known_gaps. Problems prefixed `warn:` never fail a check.
+  courses_known, double_counting, mandatory_offered, degree_length, totals,
+  board_carries_requirements, plannable (board audit errors), rules_enforced, known_gaps.
+  Problems prefixed `warn:` never fail a check.
+- `board_carries_requirements`: every spec requirement must reach the board (what
+  `spec_to_program` emits, read the way the builder reads categories). One problem per
+  requirement that cannot:
+  - a `group_minimums` entry other than `core` (only `core` becomes `core_courses_total_min`;
+    EE's `{"track": 12}` fails);
+  - a category that never reaches the board's category list: shadowed (keyed as
+    `requirements.<key>` while `elective_categories` takes precedence), keyed under a key the
+    reader does not read, or unkeyed in a non-core group with no plain category beside it;
+  - any category `min_credits` (the board enforces `min_courses` only);
+  - `general_requirement.credits_required` != `min_courses` x `institutions.json`
+    `generalRequirement.creditsPerCourse` (or not verifiable).
+  It means "the board can't carry this yet". Report it to the owner like `rules_enforced`;
+  never delete or weaken the requirement to pass.
 - `publish` refuses an already-`live` degree (`--update` = Plan 3, not built, exit 1), refuses
   `--offline`, and on any FAIL/SKIP exits 1 with the registry unchanged (built files stay in
   the working tree — review or discard them). On success it prints, never runs:
@@ -63,7 +77,7 @@ turns stale).
 | `T:rama:<ramaid>` | section | a section of the program tree (title, hours, weight) |
 | `T:rama:<ramaid>:hesber:<sha12>` | rule_text | a section's explanation |
 | `T:rama:<ramaid>:kurs:<kursshow>` | course_listing | a course listed in a section (`cancelled` when mevutal=1) |
-| `T:rama:<ramaid>:kurs:<kursshow>:hearakurs:<sha12>` / `:idkunkurs:<sha12>` | rule_text | a course note / dated update |
+| `T:rama:<ramaid>:kurs:<kursshow>:hearakurs:<sha12>` / `:idkunkurs:<sha12>` | rule_text | a course note / dated update; a "קורס ליבה (ב)מסלול X" note carries `data.core_of_track` (list of the track names it names, verbatim, typos kept) |
 | `T:timetable:<course>` | course_fact | program timetable (ydmaarechet); `data.semesters` |
 | `tau:ims:<shana>:<course>` | course_fact | IMS course search (course-wide) |
 
@@ -74,10 +88,10 @@ The same course in two sections gives two listing ids (and two note ids).
 Regulations PDFs (`tau_pdf`): `pdf:<doc>:<sha12>` (rule_text, one per sentence or heading;
 `<doc>` = first 12 hex of sha1 of the PDF URL) and `pdf:<doc>:unread-page-<n>` (a page with no
 text layer, `data.unread`; `coverage` fails unless it is `mapped_to: known_gaps[...]`).
-A regulations PDF already mapped in another degree (same `pdf:<doc>:*` ids, e.g. ME's
-Terms_BA.pdf `b6a7c762f8db`): copy its coverage entries as a starting point, then review
-program-specific sentences (e.g. the 9-semester exception list names specific programs); retire
-an `unread-regulations-pdf` known gap only once every item of that document is mapped.
+TAU engineering's Terms_BA.pdf is `pdf:b6a7c762f8db:*` (364 sentence items), fully mapped in
+`mechanical_engineering_2027`: an engineering degree reuses it with `todo --reuse-from
+mechanical_engineering_2027` (see "Reusing another degree's coverage" below); retire an
+`unread-regulations-pdf` known gap only once every item of that document is mapped.
 
 ## Spec paths (`resolve_spec_path`)
 
@@ -93,6 +107,12 @@ A `mapped_to` value must be one of:
 
 Course ids are dashed (`0542-3792`). Anything else, or a target missing from the spec, is an
 "unresolved mapping".
+
+`mapped_to` may also be a list of these paths, when one item states several rules (a PDF
+sentence giving both the pass and the fail grade; a hesber with the total and the English
+rule): `{"mapped_to": ["total_required_credits", "course_rules[english-two-courses]"]}`. Every
+target must resolve; `todo` prints the targets and names the unresolved ones. An unread-page
+item's list may hold only `known_gaps[...]` targets.
 
 ## DegreeSpec fields
 
@@ -125,9 +145,36 @@ All models forbid unknown keys.
   `rules_enforced` until the planner enforces it.
 - `known_gaps[]`: `gap_id`, `description`, `source_ids`. Fails `known_gaps` while present;
   closed by reading the source and mapping what it says.
-- Suggestions (`todo --apply-suggestions`) cover: course_listing / course_fact items whose
-  course has exactly one home (not cancelled), and section items whose `ramaid` maps to one
-  category through `legacy`. Everything else is mapped by hand.
+- Suggestions (`todo --apply-suggestions`) cover (cancelled items never):
+  - course_listing / course_fact items whose course has exactly one home -> that home;
+  - a multi-home course's listing -> the one category holding it whose `name_he` equals the
+    section it is listed under: the LAST path element, or a repeated section's `also_at`
+    location (HTML-stripped). None or several -> by hand. Limitation: only the last element is
+    compared, so "מעבדה מתקדמת מסלול X" listed under "מעבדות מתקדמות" gets nothing;
+  - a multi-home course's fact -> `mandatory_courses[<id>]` if mandatory, else the list of all
+    its homes;
+  - a course note with `data.core_of_track` -> `course_rules[<rule>]` when exactly one
+    `distinct_categories` rule lists the course;
+  - section items whose `ramaid` maps to one category through `legacy` (ME only).
+  Everything else is mapped by hand.
+
+## Reusing another degree's coverage (`todo --reuse-from`)
+
+Runs before suggestions. For each evidence id present in both degrees with identical
+`raw_text`, mapped there and not yet covered here: a `not_planning_rule` copies as-is; a
+`mapped_to` copies only when every target resolves in this spec, else it lands under "needs
+review" (not written). A course item (`course_listing` / `course_fact`) of a course this spec
+places always lands under "needs review" — suggestions own it. Ids whose text differs are
+skipped and counted. Every copied entry is listed under "reused from <other> (verify)": read
+each one; a copy is a starting point, not a review.
+
+Dry run, EE <- ME (2026-11-05, `electrical_engineering_2027` draft rebased onto the tools):
+of EE's 364 Terms_BA.pdf items, 348 copied (346 not-a-rule + 2 `catalog_year_policy`), 16
+needs review (ME's `course_rules`: duration, extension, load, graduate-course cap,
+prerequisite semantics, year progression, reserve-duty prerequisites — EE writes its own). To
+fix in the copies: `pdf:b6a7c762f8db:054faa375f0f`'s reason names ME's program page
+(`tau:8715:...`); the duration sentence `4c0e7bbf7f85` lists the 9-semester programs, and EE
+is not among them (8 semesters, matching `degree_years` 4).
 
 ## TAU conventions
 

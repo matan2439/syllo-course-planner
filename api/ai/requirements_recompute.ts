@@ -19,9 +19,10 @@ export type RecomputedRequirements = {
   planned_hours: number;
   unknown_hours_courses: number;
   remaining_hours: number;
-  core_courses_total_min: number;
-  core_courses_selected: number;
-  core_courses_satisfied: boolean;
+  core_courses_total_min: number | null;
+  core_courses_selected: number | null;
+  core_courses_satisfied: boolean | null;
+  group_results?: Array<{ group: string; min_courses: number; selected_courses: string[]; selected_count: number; satisfied: boolean; missing_count: number }>;
   category_results: Array<{
     category_id: string;
     name_he: string;
@@ -39,6 +40,7 @@ export type RecomputedRequirements = {
 };
 
 interface CategoryBlock {
+  group?: string;
   category_id: string;
   name_he?: string;
   min_courses?: number;
@@ -68,11 +70,22 @@ export function completedCategoryCountsFromContext(planContext: unknown): Record
   return Object.keys(counts).length ? counts : undefined;
 }
 
+/** Course identities, not anonymous category totals, can satisfy group unions. */
+export function identifiedCourseIdsFromContext(planContext: unknown): string[] {
+  const status = (planContext as { personal_status?: Record<string, unknown> } | null)?.personal_status;
+  return [...new Set(['completed', 'currently_taking'].flatMap(key => {
+    const entries = status?.[key];
+    if (!Array.isArray(entries)) return [];
+    return entries.flatMap(entry => typeof entry?.course_id === 'string' ? [normalizeCourseIdLikePython(entry.course_id)] : []);
+  }))];
+}
+
 export function recomputeRequirements(
   boardJson: any,
   semesters: ReadonlyArray<{ semesterId: string; courseIds: readonly string[] }>,
   /** Unnamed completed courses per category (see completedCategoryCountsFromContext). Counted, never listed. */
   unidentifiedCompletedByCategory: Readonly<Record<string, number>> = {},
+  identifiedProgress: readonly string[] = [],
 ): RecomputedRequirements | null {
   const meta = boardJson?.metadata;
   const block = meta?.program_requirements_categories;
@@ -80,7 +93,9 @@ export function recomputeRequirements(
   if (!meta?.program_requirements_validation || !block) return null;
   const totalHours = block.total_required_hours;
   const coreTotalMin = block.core_courses_total_min;
-  if (typeof totalHours !== 'number' || typeof coreTotalMin !== 'number') return null;
+  const groupMinimums = block.group_minimums as Record<string, number> | undefined;
+  if (typeof totalHours !== 'number') return null;
+  if (typeof coreTotalMin !== 'number' && !(coreTotalMin == null && groupMinimums && Object.keys(groupMinimums).length)) return null;
   if (!Array.isArray(block.mandatory_course_ids) || !Array.isArray(block.categories)) return null;
   const categories = block.categories as CategoryBlock[];
   if (categories.some((c) => typeof c.is_core !== 'boolean' || !Array.isArray(c.course_ids))) return null;
@@ -153,8 +168,19 @@ export function recomputeRequirements(
     else unknownHoursCount += count;
   }
 
-  const coreSatisfied = coreSelected >= coreTotalMin;
-  if (!coreSatisfied) missingRequiredCategories.push('core_total');
+  const coreSatisfied = coreTotalMin == null ? null : coreSelected >= coreTotalMin;
+  if (coreSatisfied === false) missingRequiredCategories.push('core_total');
+
+  const groupResults = Object.entries(groupMinimums ?? {}).map(([group, minimum]) => {
+    const pool = new Set(categories.filter(cat => cat.group === group)
+      .flatMap(cat => cat.course_ids.map(normalizeCourseIdLikePython)));
+    const progress = identifiedProgress.map(normalizeCourseIdLikePython).filter(id => hoursById.has(id));
+    const selected = [...new Set([...allCourseIds, ...progress])].filter(id => pool.has(id)).sort();
+    const satisfied = selected.length >= minimum;
+    if (!satisfied) missingRequiredCategories.push(`group:${group}`);
+    return { group, min_courses: minimum, selected_courses: selected, selected_count: selected.length,
+      satisfied, missing_count: Math.max(0, minimum - selected.length) };
+  });
 
   const warnings: string[] = [];
   if (unknownHoursCount > 0) {
@@ -164,6 +190,9 @@ export function recomputeRequirements(
   for (const catId of missingRequiredCategories) {
     if (catId === 'core_total') {
       warnings.push(`נדרשים לפחות ${coreTotalMin} קורסי ליבה; נבחרו ${coreSelected}`);
+    } else if (catId.startsWith('group:')) {
+      const group = groupResults.find(g => `group:${g.group}` === catId)!;
+      warnings.push(`קבוצת ${group.group}: ${group.selected_count}/${group.min_courses}`);
     } else {
       const cat = categories.find((c) => c.category_id === catId);
       warnings.push(`קטגוריה לא הושלמה: ${cat ? (cat.name_he ?? catId) : catId}`);
@@ -179,7 +208,7 @@ export function recomputeRequirements(
     if (missingMandatory.length > 0) parts.push(`${missingMandatory.length} קורסי חובה חסרים`);
     const realMissing = missingRequiredCategories.filter((c) => c !== 'core_total');
     if (realMissing.length > 0) parts.push(`${realMissing.length} קטגוריות לא הושלמו`);
-    if (!coreSatisfied) parts.push(`קורסי ליבה: ${coreSelected}/${coreTotalMin}`);
+    if (coreSatisfied === false) parts.push(`קורסי ליבה: ${coreSelected}/${coreTotalMin}`);
     explanation = `דרישות לא מסופקות: ${parts.join('; ')}`;
   }
 
@@ -189,9 +218,10 @@ export function recomputeRequirements(
     planned_hours: round1(plannedHours),
     unknown_hours_courses: unknownHoursCount,
     remaining_hours: round1(Math.max(0, totalHours - plannedHours)),
-    core_courses_total_min: coreTotalMin,
-    core_courses_selected: coreSelected,
+    core_courses_total_min: coreTotalMin ?? null,
+    core_courses_selected: coreTotalMin == null ? null : coreSelected,
     core_courses_satisfied: coreSatisfied,
+    ...(groupResults.length ? { group_results: groupResults } : {}),
     category_results: categoryResults,
     missing_mandatory_courses: missingMandatory,
     missing_required_categories: missingRequiredCategories,

@@ -1,3 +1,4 @@
+import { normalizeCourseIdLikePython } from './requirements_recompute';
 /**
  * buildConstraintModel — assembles the ConstraintModel: the single source of
  * truth for a planning run. It represents the COMPLETE planning world derived
@@ -233,6 +234,17 @@ export function buildConstraintModel(boardJson: any, opts: BuildModelOptions = {
       candidateIds: (c.course_ids ?? []) as string[],
     }));
 
+  // A generic group is one requirement over a union, so overlapping categories
+  // cannot manufacture extra courses. Anonymous category counts have no identity.
+  for (const [group, minimum] of Object.entries(catMeta?.group_minimums ?? {}) as Array<[string, number]>) {
+    const candidateIds = uniq(((catMeta?.categories ?? []) as any[])
+      .filter(c => c.group === group)
+      .flatMap(c => (c.course_ids ?? []).map(normalizeCourseIdLikePython))) as string[];
+    const completedCount = candidateIds.filter(id => completedCourseIds.has(id) || currentlyPlannedCourseIds.has(id)).length;
+    categories.push({ id: `group:${group}`, name: group,
+      required: Math.max(0, minimum - completedCount), candidateIds });
+  }
+
   // Mandatory courses still required: is_mandatory and not yet accounted for.
   // A currently-taking course is prior progress: rule 2a forbids re-proposing
   // it, so keeping it "required" would be an impossible requirement.
@@ -255,6 +267,10 @@ export function buildConstraintModel(boardJson: any, opts: BuildModelOptions = {
 
   return {
     profiles,
+    degreeRules: boardJson?.metadata?.degree_rules,
+    degreeRuleExclusionCourseIds: boardJson?.metadata?.degree_rules ? new Set([
+      ...reportedCompletedCourseIds, ...reportedCurrentlyPlannedCourseIds,
+    ]) : undefined,
     knownSemesterIds,
     completedCourseIds,
     currentlyPlannedCourseIds,

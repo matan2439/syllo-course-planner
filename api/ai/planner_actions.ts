@@ -60,7 +60,7 @@ export function legalSemestersFor(model: ConstraintModel, id: string): string[] 
   const p = model.profiles.get(id);
   if (!p) return model.knownSemesterIds;
   const { semesters } = getLegalSemesters(p as CourseLegalityInfo, model.knownSemesterIds);
-  return semesters.length ? semesters : model.knownSemesterIds;
+  return (p.offering_window_semesters || semesters.length) ? semesters : model.knownSemesterIds;
 }
 
 /**

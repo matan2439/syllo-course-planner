@@ -16,6 +16,7 @@ type RawCourse = {
   is_mandatory?: boolean;
   offered_semesters?: string[] | null;
   effective_allowed_semesters?: string[] | null;
+  offering_window_semesters?: string[];
   offered_in_year?: boolean | null;
   // See the matching field comment in wire.ts: repository entries ship
   // category_id, placed entries ship program_category_id — both accepted.
@@ -73,6 +74,9 @@ function normalizeSemesterIds(raw: string[], knownSemesterIds: string[]): string
  * solver's getLegalSemesters) unless the course is verified as not offered this year.
  */
 function offeredSemestersField(c: RawCourse, knownSemesterIds: string[]): { offeredSemesters?: string[] } {
+  if (c.offering_window_semesters) {
+    return { offeredSemesters: normalizeSemesterIds(c.offering_window_semesters, knownSemesterIds) };
+  }
   const raw = c.effective_allowed_semesters ?? c.offered_semesters;
   if (c.offered_in_year === false) return { offeredSemesters: [] };
   if (raw == null || raw.length === 0) return {};
@@ -107,10 +111,10 @@ export function requirementsToModel(v: RawRequirementsValidation): BoardRequirem
     totalRequiredHours: v.total_required_hours,
     plannedHours: v.planned_hours,
     remainingHours: v.remaining_hours,
-    coreCoursesTotalMin: v.core_courses_total_min,
-    coreCoursesSelected: v.core_courses_selected,
-    coreCoursesSatisfied: v.core_courses_satisfied,
-    categories: (v.category_results ?? []).map((c: {
+    coreCoursesTotalMin: v.core_courses_total_min ?? 0,
+    coreCoursesSelected: v.core_courses_selected ?? 0,
+    coreCoursesSatisfied: v.core_courses_satisfied ?? true,
+    categories: [...(v.category_results ?? []).map((c: {
       category_id: string;
       name_he: string;
       min_courses: number;
@@ -126,7 +130,11 @@ export function requirementsToModel(v: RawRequirementsValidation): BoardRequirem
       satisfied: c.satisfied,
       missingCount: c.missing_count,
       selectedCourseIds: c.selected_courses ?? [],
-    })),
+    })), ...(v.group_results ?? []).map(g => ({
+      categoryId: `group:${g.group}`, nameHe: g.group === 'track' ? 'קורסי מסלול' : g.group,
+      minCourses: g.min_courses, selectedCount: g.selected_count, satisfied: g.satisfied,
+      missingCount: g.missing_count, selectedCourseIds: g.selected_courses,
+    }))],
     warnings: v.warnings ?? [],
   };
 }

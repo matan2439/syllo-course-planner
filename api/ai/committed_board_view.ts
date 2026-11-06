@@ -7,7 +7,7 @@
  */
 import { loadLocalBoardJson } from './board_loader';
 import type { CommittedBoard } from './board_repository';
-import { completedCategoryCountsFromContext, recomputeRequirements } from './requirements_recompute';
+import { completedCategoryCountsFromContext, identifiedCourseIdsFromContext, recomputeRequirements } from './requirements_recompute';
 
 /** `planContext` is the owner's stored planning context; its unnamed completions count toward categories. */
 export function committedBoardView(board: CommittedBoard, planContext?: unknown) {
@@ -20,6 +20,7 @@ export function committedBoardView(board: CommittedBoard, planContext?: unknown)
   };
   const requirements = recomputeRequirements(
     loadLocalBoardJson(board.programId), view.semesters, completedCategoryCountsFromContext(planContext),
+    identifiedCourseIdsFromContext(planContext),
   );
   return requirements ? { ...view, requirements_validation: requirements } : view;
 }

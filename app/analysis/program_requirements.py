@@ -294,9 +294,10 @@ def get_program_categories_for_frontend(
         ),
         "categories": [
             {
+                **({"group": cat["group"]} if cat.get("group") is not None else {}),
                 "category_id":  cat.get("category_id", ""),
                 "name_he":      cat.get("name_he", ""),
-                "min_courses":  cat.get("min_courses", 1),
+                "min_courses":  cat.get("min_courses", 0),
                 "needs_review": bool(cat.get("needs_review", False)),
                 "is_core":      cat.get("category_id") in core_cat_ids,
                 "course_ids":   resolve_category_course_ids(cat),
@@ -304,6 +305,8 @@ def get_program_categories_for_frontend(
             for cat in cats
         ],
     }
+    if reqs.get("group_minimums"):
+        result["group_minimums"] = dict(reqs["group_minimums"])
     return result
 
 
@@ -387,7 +390,7 @@ def validate_program_plan(
 
     for cat in all_cats:
         cat_id    = cat.get("category_id", "")
-        min_c     = cat.get("min_courses", 1)
+        min_c     = cat.get("min_courses", 0)
         needs_rev = bool(cat.get("needs_review", False))
         pool      = set(resolve_category_course_ids(cat))
 
@@ -419,6 +422,19 @@ def validate_program_plan(
         if not core_satisfied:
             missing_required_categories.append("core_total")
 
+    # Generic groups count the union of named course identities, never category sums.
+    group_results = []
+    for group, minimum in reqs.get("group_minimums", {}).items():
+        pool = {cid for cat in all_cats if cat.get("group") == group
+                for cid in resolve_category_course_ids(cat)}
+        selected = sorted(all_course_ids & pool)
+        satisfied = len(selected) >= minimum
+        group_results.append({"group": group, "min_courses": minimum,
+                              "selected_courses": selected, "selected_count": len(selected),
+                              "satisfied": satisfied, "missing_count": max(0, minimum - len(selected))})
+        if not satisfied:
+            missing_required_categories.append(f"group:{group}")
+
     # ── Warnings ────────────────────────────────────────────────────────────
     warnings: list[str] = []
     if unknown_hours_ct > 0:
@@ -433,6 +449,9 @@ def validate_program_plan(
             warnings.append(
                 f"נדרשים לפחות {core_total_min} קורסי ליבה; נבחרו {core_selected}"
             )
+        elif cat_id.startswith("group:"):
+            group = next(g for g in group_results if f"group:{g['group']}" == cat_id)
+            warnings.append(f"קבוצת {group['group']}: {group['selected_count']}/{group['min_courses']}")
         else:
             cat  = next((c for c in all_cats if c.get("category_id") == cat_id), None)
             name = cat.get("name_he", cat_id) if cat else cat_id
@@ -457,6 +476,7 @@ def validate_program_plan(
         explanation = "דרישות לא מסופקות: " + "; ".join(parts)
 
     return {
+        **({"group_results": group_results} if group_results else {}),
         "valid":                       valid,
         "total_required_hours":        total_hours,
         "planned_hours":               round(planned_hours, 1),

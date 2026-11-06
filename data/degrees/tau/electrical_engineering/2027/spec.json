@@ -1,0 +1,4223 @@
+{
+  "program_id": "electrical_engineering_2027",
+  "institution": "tau",
+  "source_year": 2026,
+  "total_required_credits": 179.0,
+  "degree_years": 4,
+  "catalog_year_policy": "start_year",
+  "mandatory_courses": [
+    {
+      "course_id": "0509-1117",
+      "year": 1,
+      "semester": "A",
+      "placement_rule": "fixed_semester"
+    },
+    {
+      "course_id": "0509-1118",
+      "year": 1,
+      "semester": "A",
+      "placement_rule": "fixed_semester"
+    },
+    {
+      "course_id": "0509-1724",
+      "year": 1,
+      "semester": "A",
+      "placement_rule": "fixed_semester"
+    },
+    {
+      "course_id": "0509-1746",
+      "year": 1,
+      "semester": "A",
+      "placement_rule": "fixed_semester"
+    },
+    {
+      "course_id": "0509-1820",
+      "year": 1,
+      "semester": "A",
+      "placement_rule": "fixed_semester"
+    },
+    {
+      "course_id": "0509-1745",
+      "year": 1,
+      "semester": "B",
+      "placement_rule": "fixed_semester"
+    },
+    {
+      "course_id": "0509-1747",
+      "year": 1,
+      "semester": "B",
+      "placement_rule": "fixed_semester"
+    },
+    {
+      "course_id": "0509-1829",
+      "year": 1,
+      "semester": "B",
+      "placement_rule": "fixed_semester"
+    },
+    {
+      "course_id": "0512-3561",
+      "year": 1,
+      "semester": "B",
+      "placement_rule": "fixed_semester"
+    },
+    {
+      "course_id": "0509-1834",
+      "year": 2,
+      "semester": "A",
+      "placement_rule": "fixed_semester"
+    },
+    {
+      "course_id": "0509-2801",
+      "year": 2,
+      "semester": "A",
+      "placement_rule": "fixed_semester"
+    },
+    {
+      "course_id": "0509-2843",
+      "year": 2,
+      "semester": "A",
+      "placement_rule": "fixed_semester"
+    },
+    {
+      "course_id": "0509-2844",
+      "year": 2,
+      "semester": "A",
+      "placement_rule": "fixed_semester"
+    },
+    {
+      "course_id": "0512-2830",
+      "year": 2,
+      "semester": "A",
+      "placement_rule": "fixed_semester"
+    },
+    {
+      "course_id": "0512-2832",
+      "year": 2,
+      "semester": "A",
+      "placement_rule": "fixed_semester"
+    },
+    {
+      "course_id": "0509-2846",
+      "year": 2,
+      "semester": "B",
+      "placement_rule": "fixed_semester"
+    },
+    {
+      "course_id": "0512-2508",
+      "year": 2,
+      "semester": "B",
+      "placement_rule": "fixed_semester"
+    },
+    {
+      "course_id": "0512-2510",
+      "year": 2,
+      "semester": "B",
+      "placement_rule": "fixed_semester"
+    },
+    {
+      "course_id": "0512-2525",
+      "year": 2,
+      "semester": "B",
+      "placement_rule": "fixed_semester"
+    },
+    {
+      "course_id": "0512-2532",
+      "year": 2,
+      "semester": "B",
+      "placement_rule": "fixed_semester"
+    },
+    {
+      "course_id": "0512-2835",
+      "year": 2,
+      "semester": "B",
+      "placement_rule": "fixed_semester"
+    },
+    {
+      "course_id": "0512-3513",
+      "year": 3,
+      "semester": "A",
+      "placement_rule": "fixed_semester"
+    },
+    {
+      "course_id": "0512-3526",
+      "year": 3,
+      "semester": "A",
+      "placement_rule": "fixed_semester"
+    },
+    {
+      "course_id": "0512-3543",
+      "year": 3,
+      "semester": "A",
+      "placement_rule": "fixed_semester"
+    },
+    {
+      "course_id": "0512-3514",
+      "year": 3,
+      "semester": "B",
+      "placement_rule": "fixed_semester"
+    },
+    {
+      "course_id": "0512-3581",
+      "year": 3,
+      "semester": "B",
+      "placement_rule": "fixed_semester"
+    },
+    {
+      "course_id": "0512-3582",
+      "year": 4,
+      "semester": "A",
+      "placement_rule": "fixed_semester"
+    },
+    {
+      "course_id": "0512-4001",
+      "year": 4,
+      "semester": "A",
+      "placement_rule": "fixed_semester"
+    },
+    {
+      "course_id": "0512-4000",
+      "year": 4,
+      "semester": "B",
+      "placement_rule": "fixed_semester"
+    }
+  ],
+  "categories": [
+    {
+      "category_id": "communications",
+      "name_he": "מסלול תקשורת",
+      "min_courses": 0,
+      "min_credits": null,
+      "course_ids": [
+        "0510-6101",
+        "0510-6102",
+        "0512-4009",
+        "0512-4100",
+        "0512-4161",
+        "0512-4162",
+        "0512-4163",
+        "0512-4164",
+        "0512-4264",
+        "0512-4462",
+        "0512-4602",
+        "0512-4652"
+      ],
+      "group": "track"
+    },
+    {
+      "category_id": "signal_processing",
+      "name_he": "מסלול עיבוד אותות",
+      "min_courses": 0,
+      "min_credits": null,
+      "course_ids": [
+        "0510-6202",
+        "0510-7255",
+        "0512-4162",
+        "0512-4200",
+        "0512-4261",
+        "0512-4263",
+        "0512-4264",
+        "0512-4295",
+        "0512-4296",
+        "0512-4603",
+        "0555-4570"
+      ],
+      "group": "track"
+    },
+    {
+      "category_id": "computer_systems",
+      "name_he": "מסלול מערכות מחשב",
+      "min_courses": 0,
+      "min_credits": null,
+      "course_ids": [
+        "0368-3065",
+        "0510-6401",
+        "0510-7255",
+        "0512-1820",
+        "0512-4009",
+        "0512-4163",
+        "0512-4264",
+        "0512-4400",
+        "0512-4402",
+        "0512-4461",
+        "0512-4462",
+        "0512-4703"
+      ],
+      "group": "track"
+    },
+    {
+      "category_id": "control_autonomous",
+      "name_he": "מסלול בקרה ומערכות אוטונומיות",
+      "min_courses": 0,
+      "min_credits": null,
+      "course_ids": [
+        "0512-4264",
+        "0512-4300",
+        "0512-4360",
+        "0512-4362",
+        "0512-4365",
+        "0542-4621"
+      ],
+      "group": "track"
+    },
+    {
+      "category_id": "energy_renewables",
+      "name_he": "מסלול אנרגיה ומקורות מתחדשים",
+      "min_courses": 0,
+      "min_credits": null,
+      "course_ids": [
+        "0512-3571",
+        "0512-3572",
+        "0512-4362",
+        "0512-4502",
+        "0512-4503",
+        "0512-4504",
+        "0512-4505",
+        "0512-4506",
+        "0512-4510"
+      ],
+      "group": "track"
+    },
+    {
+      "category_id": "optics_photonics",
+      "name_he": "מסלול אופטיקה ופוטוניקה",
+      "min_courses": 0,
+      "min_credits": null,
+      "course_ids": [
+        "0510-6610",
+        "0512-4601",
+        "0512-4602",
+        "0512-4603",
+        "0512-4605",
+        "0512-4660",
+        "0512-4670",
+        "0512-4704",
+        "0512-4862"
+      ],
+      "group": "track"
+    },
+    {
+      "category_id": "devices_nanoelectronics",
+      "name_he": "מסלול התקנים וננו אלקטרוניקה",
+      "min_courses": 0,
+      "min_credits": null,
+      "course_ids": [
+        "0510-6701",
+        "0512-4165",
+        "0512-4601",
+        "0512-4700",
+        "0512-4702",
+        "0512-4704",
+        "0512-4705",
+        "0512-4802"
+      ],
+      "group": "track"
+    },
+    {
+      "category_id": "electromagnetics_radiation",
+      "name_he": "מסלול אלקטרומגנטיות וקרינה",
+      "min_courses": 0,
+      "min_credits": null,
+      "course_ids": [
+        "0512-4800",
+        "0512-4802",
+        "0512-4804",
+        "0512-4861",
+        "0512-4862"
+      ],
+      "group": "track"
+    },
+    {
+      "category_id": "bioelectronics",
+      "name_he": "מסלול ביו- אלקטרוניקה",
+      "min_courses": 0,
+      "min_credits": null,
+      "course_ids": [
+        "0512-4138",
+        "0512-4601",
+        "0555-2106",
+        "0555-3240",
+        "0555-4520",
+        "0555-4550",
+        "0555-4560"
+      ],
+      "group": "track"
+    },
+    {
+      "category_id": "electronic_materials",
+      "name_he": "מסלול חומרים אלקטרוניים",
+      "min_courses": 0,
+      "min_credits": null,
+      "course_ids": [
+        "0509-1815",
+        "0510-6701",
+        "0512-4700",
+        "0581-1111",
+        "0581-3121",
+        "0581-3122"
+      ],
+      "group": "track"
+    },
+    {
+      "category_id": "quantum",
+      "name_he": "מסלול מדע וטכנולוגיה קוונטית",
+      "min_courses": 0,
+      "min_credits": null,
+      "course_ids": [
+        "0321-3818",
+        "0321-3819",
+        "0510-5004",
+        "0512-4125",
+        "0512-4804"
+      ],
+      "group": "track"
+    },
+    {
+      "category_id": "multidisciplinary",
+      "name_he": "מסלול רב תחומי",
+      "min_courses": 0,
+      "min_credits": null,
+      "course_ids": [
+        "0509-4010",
+        "0512-3000",
+        "0512-3010",
+        "0512-4125",
+        "0512-4820"
+      ],
+      "group": "track"
+    },
+    {
+      "category_id": "vlsi",
+      "name_he": "מסלול מעגלים משולבים VLSI",
+      "min_courses": 0,
+      "min_credits": null,
+      "course_ids": [
+        "0512-4164",
+        "0512-4400",
+        "0512-4652",
+        "0512-4703",
+        "0512-4706",
+        "0512-4707",
+        "0512-4711"
+      ],
+      "group": "track"
+    },
+    {
+      "category_id": "ml_ai",
+      "name_he": "מסלול למידת מכונה ובינה מלאכותית",
+      "min_courses": 0,
+      "min_credits": null,
+      "course_ids": [
+        "0510-5210",
+        "0510-6202",
+        "0510-6404",
+        "0510-7255",
+        "0512-4263",
+        "0512-4264",
+        "0512-4265",
+        "0512-4266",
+        "0512-4360",
+        "0542-4621"
+      ],
+      "group": "track"
+    },
+    {
+      "category_id": "advanced_labs",
+      "name_he": "מעבדות מתקדמות",
+      "min_courses": 2,
+      "min_credits": null,
+      "course_ids": [
+        "0512-4290",
+        "0512-4291",
+        "0512-4490",
+        "0512-4491",
+        "0512-4492",
+        "0512-4494",
+        "0512-3542",
+        "0512-4390",
+        "0512-4590",
+        "0512-4690",
+        "0512-4790",
+        "0512-4890",
+        "0555-4282",
+        "0512-4791",
+        "0512-4126"
+      ],
+      "group": null
+    },
+    {
+      "category_id": "hardware_exposure_elective",
+      "name_he": "קורס בחירה - מעבדת חשיפה לחומרה",
+      "min_courses": 0,
+      "min_credits": null,
+      "course_ids": [
+        "0512-4013"
+      ],
+      "group": null
+    }
+  ],
+  "group_minimums": {
+    "track": 12
+  },
+  "general_requirement": {
+    "category_id": "shaar_ruach",
+    "name_he": "קורסי שער רוח",
+    "min_courses": 3,
+    "credits_required": 6,
+    "needs_review": false,
+    "note": "במהלך התואר יש ללמוד 3 קורסים (6 ש\"ס) במסגרת קורסי שאר רוח. הציון נכלל בממוצע התואר.",
+    "course_ids": [
+      "0609-1005",
+      "0609-1003",
+      "0609-1008",
+      "0609-1007",
+      "0609-1013",
+      "0609-1014",
+      "1880-0901",
+      "1880-0710",
+      "0609-1002",
+      "0609-1011",
+      "0609-1018",
+      "0609-1017",
+      "0609-1201",
+      "0609-1225",
+      "0609-1226",
+      "0609-1303",
+      "0612-6041",
+      "0612-6044",
+      "0618-1059",
+      "0622-1001",
+      "0627-1010",
+      "0631-1130",
+      "0631-2468",
+      "0631-3496",
+      "0671-1045",
+      "0671-2215",
+      "0671-2331",
+      "0671-2669",
+      "0671-2670",
+      "0672-1102",
+      "0677-1514",
+      "0687-1113",
+      "0687-1115",
+      "0616-1311",
+      "0672-1109",
+      "0723-2047",
+      "0723-2022",
+      "0621-1194",
+      "0621-1219",
+      "0669-6175",
+      "0662-1011",
+      "0662-1757",
+      "0662-2642",
+      "0662-2649",
+      "0608-1110",
+      "0608-1177",
+      "0608-1152",
+      "0608-1153",
+      "0669-6198",
+      "0609-1006",
+      "0609-1021",
+      "0609-1004",
+      "0609-1009",
+      "0609-1015",
+      "0609-1010",
+      "0609-1019",
+      "0609-1020",
+      "0609-1209",
+      "0609-1211",
+      "0609-1212",
+      "0618-1016",
+      "0618-1042",
+      "0622-1004",
+      "0622-2001",
+      "0631-2503",
+      "0671-1031",
+      "0671-1091",
+      "0671-1130",
+      "0671-1238",
+      "0671-2383",
+      "0671-2649",
+      "0671-2668",
+      "0671-4389",
+      "0672-1202",
+      "0672-1557",
+      "0677-1283",
+      "1673-4026",
+      "0723-2052",
+      "0621-1101",
+      "0621-1220",
+      "0662-1180",
+      "0662-2253",
+      "0662-2615",
+      "0662-2620",
+      "0662-2653",
+      "0662-2656",
+      "0608-1010",
+      "0669-6203"
+    ]
+  },
+  "double_counting": "allowed_listed",
+  "allowed_double_counted": [
+    "0510-6202",
+    "0510-6701",
+    "0510-7255",
+    "0512-4009",
+    "0512-4125",
+    "0512-4162",
+    "0512-4163",
+    "0512-4164",
+    "0512-4263",
+    "0512-4264",
+    "0512-4360",
+    "0512-4362",
+    "0512-4400",
+    "0512-4462",
+    "0512-4601",
+    "0512-4602",
+    "0512-4603",
+    "0512-4652",
+    "0512-4700",
+    "0512-4703",
+    "0512-4704",
+    "0512-4802",
+    "0512-4804",
+    "0512-4862",
+    "0542-4621"
+  ],
+  "ui": {
+    "other_category_label": "קורסים באישור ועדת הוראה",
+    "sidebar_order": [
+      "communications",
+      "signal_processing",
+      "computer_systems",
+      "control_autonomous",
+      "energy_renewables",
+      "optics_photonics",
+      "devices_nanoelectronics",
+      "electromagnetics_radiation",
+      "bioelectronics",
+      "electronic_materials",
+      "quantum",
+      "multidisciplinary",
+      "vlsi",
+      "ml_ai",
+      "advanced_labs",
+      "hardware_exposure_elective"
+    ],
+    "validate_course_rules": true
+  },
+  "legacy": {},
+  "coverage": {
+    "tau:7622:2026:rama:10:kurs:0509-2846": {
+      "mapped_to": "mandatory_courses[0509-2846]"
+    },
+    "tau:7622:2026:rama:10:kurs:0512-2508": {
+      "mapped_to": "mandatory_courses[0512-2508]"
+    },
+    "tau:7622:2026:rama:10:kurs:0512-2510": {
+      "mapped_to": "mandatory_courses[0512-2510]"
+    },
+    "tau:7622:2026:rama:10:kurs:0512-2525": {
+      "mapped_to": "mandatory_courses[0512-2525]"
+    },
+    "tau:7622:2026:rama:10:kurs:0512-2532": {
+      "mapped_to": "mandatory_courses[0512-2532]"
+    },
+    "tau:7622:2026:rama:10:kurs:0512-2835": {
+      "mapped_to": "mandatory_courses[0512-2835]"
+    },
+    "tau:7622:2026:rama:11:kurs:0512-3513": {
+      "mapped_to": "mandatory_courses[0512-3513]"
+    },
+    "tau:7622:2026:rama:11:kurs:0512-3526": {
+      "mapped_to": "mandatory_courses[0512-3526]"
+    },
+    "tau:7622:2026:rama:11:kurs:0512-3543": {
+      "mapped_to": "mandatory_courses[0512-3543]"
+    },
+    "tau:7622:2026:rama:12:kurs:0512-3514": {
+      "mapped_to": "mandatory_courses[0512-3514]"
+    },
+    "tau:7622:2026:rama:12:kurs:0512-3581": {
+      "mapped_to": "mandatory_courses[0512-3581]"
+    },
+    "tau:7622:2026:rama:14:kurs:0512-3582": {
+      "mapped_to": "mandatory_courses[0512-3582]"
+    },
+    "tau:7622:2026:rama:14:kurs:0512-4001": {
+      "mapped_to": "mandatory_courses[0512-4001]"
+    },
+    "tau:7622:2026:rama:15:kurs:0512-4000": {
+      "mapped_to": "mandatory_courses[0512-4000]"
+    },
+    "tau:7622:2026:rama:18:kurs:0510-6101": {
+      "mapped_to": "categories[communications].course_ids[0510-6101]"
+    },
+    "tau:7622:2026:rama:18:kurs:0510-6102": {
+      "mapped_to": "categories[communications].course_ids[0510-6102]"
+    },
+    "tau:7622:2026:rama:18:kurs:0512-4100": {
+      "mapped_to": "categories[communications].course_ids[0512-4100]"
+    },
+    "tau:7622:2026:rama:18:kurs:0512-4161": {
+      "mapped_to": "categories[communications].course_ids[0512-4161]"
+    },
+    "tau:7622:2026:rama:19:kurs:0512-4200": {
+      "mapped_to": "categories[signal_processing].course_ids[0512-4200]"
+    },
+    "tau:7622:2026:rama:19:kurs:0512-4261": {
+      "mapped_to": "categories[signal_processing].course_ids[0512-4261]"
+    },
+    "tau:7622:2026:rama:19:kurs:0512-4295": {
+      "mapped_to": "categories[signal_processing].course_ids[0512-4295]"
+    },
+    "tau:7622:2026:rama:19:kurs:0512-4296": {
+      "mapped_to": "categories[signal_processing].course_ids[0512-4296]"
+    },
+    "tau:7622:2026:rama:19:kurs:0555-4570": {
+      "mapped_to": "categories[signal_processing].course_ids[0555-4570]"
+    },
+    "tau:7622:2026:rama:20:kurs:0368-3065": {
+      "mapped_to": "categories[computer_systems].course_ids[0368-3065]"
+    },
+    "tau:7622:2026:rama:20:kurs:0510-6401": {
+      "mapped_to": "categories[computer_systems].course_ids[0510-6401]"
+    },
+    "tau:7622:2026:rama:20:kurs:0512-1820": {
+      "mapped_to": "categories[computer_systems].course_ids[0512-1820]"
+    },
+    "tau:7622:2026:rama:20:kurs:0512-4402": {
+      "mapped_to": "categories[computer_systems].course_ids[0512-4402]"
+    },
+    "tau:7622:2026:rama:20:kurs:0512-4461": {
+      "mapped_to": "categories[computer_systems].course_ids[0512-4461]"
+    },
+    "tau:7622:2026:rama:21:kurs:0512-4300": {
+      "mapped_to": "categories[control_autonomous].course_ids[0512-4300]"
+    },
+    "tau:7622:2026:rama:21:kurs:0512-4365": {
+      "mapped_to": "categories[control_autonomous].course_ids[0512-4365]"
+    },
+    "tau:7622:2026:rama:22:kurs:0512-3571": {
+      "mapped_to": "categories[energy_renewables].course_ids[0512-3571]"
+    },
+    "tau:7622:2026:rama:22:kurs:0512-3572": {
+      "mapped_to": "categories[energy_renewables].course_ids[0512-3572]"
+    },
+    "tau:7622:2026:rama:22:kurs:0512-4502": {
+      "mapped_to": "categories[energy_renewables].course_ids[0512-4502]"
+    },
+    "tau:7622:2026:rama:22:kurs:0512-4503": {
+      "mapped_to": "categories[energy_renewables].course_ids[0512-4503]"
+    },
+    "tau:7622:2026:rama:22:kurs:0512-4504": {
+      "mapped_to": "categories[energy_renewables].course_ids[0512-4504]"
+    },
+    "tau:7622:2026:rama:22:kurs:0512-4505": {
+      "mapped_to": "categories[energy_renewables].course_ids[0512-4505]"
+    },
+    "tau:7622:2026:rama:22:kurs:0512-4506": {
+      "mapped_to": "categories[energy_renewables].course_ids[0512-4506]"
+    },
+    "tau:7622:2026:rama:22:kurs:0512-4510": {
+      "mapped_to": "categories[energy_renewables].course_ids[0512-4510]"
+    },
+    "tau:7622:2026:rama:23:kurs:0510-6610": {
+      "mapped_to": "categories[optics_photonics].course_ids[0510-6610]"
+    },
+    "tau:7622:2026:rama:23:kurs:0512-4605": {
+      "mapped_to": "categories[optics_photonics].course_ids[0512-4605]"
+    },
+    "tau:7622:2026:rama:23:kurs:0512-4660": {
+      "mapped_to": "categories[optics_photonics].course_ids[0512-4660]"
+    },
+    "tau:7622:2026:rama:23:kurs:0512-4670": {
+      "mapped_to": "categories[optics_photonics].course_ids[0512-4670]"
+    },
+    "tau:7622:2026:rama:24:kurs:0512-4165": {
+      "mapped_to": "categories[devices_nanoelectronics].course_ids[0512-4165]"
+    },
+    "tau:7622:2026:rama:24:kurs:0512-4702": {
+      "mapped_to": "categories[devices_nanoelectronics].course_ids[0512-4702]"
+    },
+    "tau:7622:2026:rama:24:kurs:0512-4705": {
+      "mapped_to": "categories[devices_nanoelectronics].course_ids[0512-4705]"
+    },
+    "tau:7622:2026:rama:25:kurs:0512-4800": {
+      "mapped_to": "categories[electromagnetics_radiation].course_ids[0512-4800]"
+    },
+    "tau:7622:2026:rama:25:kurs:0512-4861": {
+      "mapped_to": "categories[electromagnetics_radiation].course_ids[0512-4861]"
+    },
+    "tau:7622:2026:rama:26:kurs:0512-4138": {
+      "mapped_to": "categories[bioelectronics].course_ids[0512-4138]"
+    },
+    "tau:7622:2026:rama:26:kurs:0555-2106": {
+      "mapped_to": "categories[bioelectronics].course_ids[0555-2106]"
+    },
+    "tau:7622:2026:rama:26:kurs:0555-3240": {
+      "mapped_to": "categories[bioelectronics].course_ids[0555-3240]"
+    },
+    "tau:7622:2026:rama:26:kurs:0555-4520": {
+      "mapped_to": "categories[bioelectronics].course_ids[0555-4520]"
+    },
+    "tau:7622:2026:rama:26:kurs:0555-4550": {
+      "mapped_to": "categories[bioelectronics].course_ids[0555-4550]"
+    },
+    "tau:7622:2026:rama:26:kurs:0555-4560": {
+      "mapped_to": "categories[bioelectronics].course_ids[0555-4560]"
+    },
+    "tau:7622:2026:rama:27:kurs:0509-1815": {
+      "mapped_to": "categories[electronic_materials].course_ids[0509-1815]"
+    },
+    "tau:7622:2026:rama:27:kurs:0581-1111": {
+      "mapped_to": "categories[electronic_materials].course_ids[0581-1111]"
+    },
+    "tau:7622:2026:rama:27:kurs:0581-3121": {
+      "mapped_to": "categories[electronic_materials].course_ids[0581-3121]"
+    },
+    "tau:7622:2026:rama:27:kurs:0581-3122": {
+      "mapped_to": "categories[electronic_materials].course_ids[0581-3122]"
+    },
+    "tau:7622:2026:rama:32:kurs:0512-4290": {
+      "mapped_to": "categories[advanced_labs].course_ids[0512-4290]"
+    },
+    "tau:7622:2026:rama:32:kurs:0512-4291": {
+      "mapped_to": "categories[advanced_labs].course_ids[0512-4291]"
+    },
+    "tau:7622:2026:rama:33:kurs:0512-4490": {
+      "mapped_to": "categories[advanced_labs].course_ids[0512-4490]"
+    },
+    "tau:7622:2026:rama:33:kurs:0512-4491": {
+      "mapped_to": "categories[advanced_labs].course_ids[0512-4491]"
+    },
+    "tau:7622:2026:rama:33:kurs:0512-4492": {
+      "mapped_to": "categories[advanced_labs].course_ids[0512-4492]"
+    },
+    "tau:7622:2026:rama:33:kurs:0512-4494": {
+      "mapped_to": "categories[advanced_labs].course_ids[0512-4494]"
+    },
+    "tau:7622:2026:rama:34:kurs:0512-3542": {
+      "mapped_to": "categories[advanced_labs].course_ids[0512-3542]"
+    },
+    "tau:7622:2026:rama:34:kurs:0512-4390": {
+      "mapped_to": "categories[advanced_labs].course_ids[0512-4390]"
+    },
+    "tau:7622:2026:rama:35:kurs:0512-4590": {
+      "mapped_to": "categories[advanced_labs].course_ids[0512-4590]"
+    },
+    "tau:7622:2026:rama:36:kurs:0512-4690": {
+      "mapped_to": "categories[advanced_labs].course_ids[0512-4690]"
+    },
+    "tau:7622:2026:rama:37:kurs:0512-4790": {
+      "mapped_to": "categories[advanced_labs].course_ids[0512-4790]"
+    },
+    "tau:7622:2026:rama:38:kurs:0512-4890": {
+      "mapped_to": "categories[advanced_labs].course_ids[0512-4890]"
+    },
+    "tau:7622:2026:rama:39:kurs:0555-4282": {
+      "mapped_to": "categories[advanced_labs].course_ids[0555-4282]"
+    },
+    "tau:7622:2026:rama:40:kurs:0321-3818": {
+      "mapped_to": "categories[quantum].course_ids[0321-3818]"
+    },
+    "tau:7622:2026:rama:40:kurs:0321-3819": {
+      "mapped_to": "categories[quantum].course_ids[0321-3819]"
+    },
+    "tau:7622:2026:rama:40:kurs:0510-5004": {
+      "mapped_to": "categories[quantum].course_ids[0510-5004]"
+    },
+    "tau:7622:2026:rama:41:kurs:0509-4010": {
+      "mapped_to": "categories[multidisciplinary].course_ids[0509-4010]"
+    },
+    "tau:7622:2026:rama:41:kurs:0512-3000": {
+      "mapped_to": "categories[multidisciplinary].course_ids[0512-3000]"
+    },
+    "tau:7622:2026:rama:41:kurs:0512-3010": {
+      "mapped_to": "categories[multidisciplinary].course_ids[0512-3010]"
+    },
+    "tau:7622:2026:rama:41:kurs:0512-4820": {
+      "mapped_to": "categories[multidisciplinary].course_ids[0512-4820]"
+    },
+    "tau:7622:2026:rama:43:kurs:0512-4706": {
+      "mapped_to": "categories[vlsi].course_ids[0512-4706]"
+    },
+    "tau:7622:2026:rama:43:kurs:0512-4707": {
+      "mapped_to": "categories[vlsi].course_ids[0512-4707]"
+    },
+    "tau:7622:2026:rama:43:kurs:0512-4711": {
+      "mapped_to": "categories[vlsi].course_ids[0512-4711]"
+    },
+    "tau:7622:2026:rama:44:kurs:0510-5210": {
+      "mapped_to": "categories[ml_ai].course_ids[0510-5210]"
+    },
+    "tau:7622:2026:rama:44:kurs:0510-6404": {
+      "mapped_to": "categories[ml_ai].course_ids[0510-6404]"
+    },
+    "tau:7622:2026:rama:44:kurs:0512-4265": {
+      "mapped_to": "categories[ml_ai].course_ids[0512-4265]"
+    },
+    "tau:7622:2026:rama:44:kurs:0512-4266": {
+      "mapped_to": "categories[ml_ai].course_ids[0512-4266]"
+    },
+    "tau:7622:2026:rama:45:kurs:0512-4791": {
+      "mapped_to": "categories[advanced_labs].course_ids[0512-4791]"
+    },
+    "tau:7622:2026:rama:46:kurs:0512-4291": {
+      "mapped_to": "categories[advanced_labs].course_ids[0512-4291]"
+    },
+    "tau:7622:2026:rama:47:kurs:0512-4013": {
+      "mapped_to": "categories[hardware_exposure_elective].course_ids[0512-4013]"
+    },
+    "tau:7622:2026:rama:49:kurs:0512-4126": {
+      "mapped_to": "categories[advanced_labs].course_ids[0512-4126]"
+    },
+    "tau:7622:2026:rama:50:kurs:0512-4013": {
+      "mapped_to": "categories[hardware_exposure_elective].course_ids[0512-4013]"
+    },
+    "tau:7622:2026:rama:6:kurs:0509-1117": {
+      "mapped_to": "mandatory_courses[0509-1117]"
+    },
+    "tau:7622:2026:rama:6:kurs:0509-1118": {
+      "mapped_to": "mandatory_courses[0509-1118]"
+    },
+    "tau:7622:2026:rama:6:kurs:0509-1724": {
+      "mapped_to": "mandatory_courses[0509-1724]"
+    },
+    "tau:7622:2026:rama:6:kurs:0509-1746": {
+      "mapped_to": "mandatory_courses[0509-1746]"
+    },
+    "tau:7622:2026:rama:6:kurs:0509-1820": {
+      "mapped_to": "mandatory_courses[0509-1820]"
+    },
+    "tau:7622:2026:rama:7:kurs:0509-1745": {
+      "mapped_to": "mandatory_courses[0509-1745]"
+    },
+    "tau:7622:2026:rama:7:kurs:0509-1747": {
+      "mapped_to": "mandatory_courses[0509-1747]"
+    },
+    "tau:7622:2026:rama:7:kurs:0509-1829": {
+      "mapped_to": "mandatory_courses[0509-1829]"
+    },
+    "tau:7622:2026:rama:7:kurs:0512-3561": {
+      "mapped_to": "mandatory_courses[0512-3561]"
+    },
+    "tau:7622:2026:rama:9:kurs:0509-1834": {
+      "mapped_to": "mandatory_courses[0509-1834]"
+    },
+    "tau:7622:2026:rama:9:kurs:0509-2801": {
+      "mapped_to": "mandatory_courses[0509-2801]"
+    },
+    "tau:7622:2026:rama:9:kurs:0509-2843": {
+      "mapped_to": "mandatory_courses[0509-2843]"
+    },
+    "tau:7622:2026:rama:9:kurs:0509-2844": {
+      "mapped_to": "mandatory_courses[0509-2844]"
+    },
+    "tau:7622:2026:rama:9:kurs:0512-2830": {
+      "mapped_to": "mandatory_courses[0512-2830]"
+    },
+    "tau:7622:2026:rama:9:kurs:0512-2832": {
+      "mapped_to": "mandatory_courses[0512-2832]"
+    },
+    "tau:7622:2026:timetable:0321-3818": {
+      "mapped_to": "categories[quantum].course_ids[0321-3818]"
+    },
+    "tau:7622:2026:timetable:0321-3819": {
+      "mapped_to": "categories[quantum].course_ids[0321-3819]"
+    },
+    "tau:7622:2026:timetable:0368-3065": {
+      "mapped_to": "categories[computer_systems].course_ids[0368-3065]"
+    },
+    "tau:7622:2026:timetable:0509-1117": {
+      "mapped_to": "mandatory_courses[0509-1117]"
+    },
+    "tau:7622:2026:timetable:0509-1118": {
+      "mapped_to": "mandatory_courses[0509-1118]"
+    },
+    "tau:7622:2026:timetable:0509-1724": {
+      "mapped_to": "mandatory_courses[0509-1724]"
+    },
+    "tau:7622:2026:timetable:0509-1745": {
+      "mapped_to": "mandatory_courses[0509-1745]"
+    },
+    "tau:7622:2026:timetable:0509-1746": {
+      "mapped_to": "mandatory_courses[0509-1746]"
+    },
+    "tau:7622:2026:timetable:0509-1747": {
+      "mapped_to": "mandatory_courses[0509-1747]"
+    },
+    "tau:7622:2026:timetable:0509-1815": {
+      "mapped_to": "categories[electronic_materials].course_ids[0509-1815]"
+    },
+    "tau:7622:2026:timetable:0509-1820": {
+      "mapped_to": "mandatory_courses[0509-1820]"
+    },
+    "tau:7622:2026:timetable:0509-1829": {
+      "mapped_to": "mandatory_courses[0509-1829]"
+    },
+    "tau:7622:2026:timetable:0509-1834": {
+      "mapped_to": "mandatory_courses[0509-1834]"
+    },
+    "tau:7622:2026:timetable:0509-2801": {
+      "mapped_to": "mandatory_courses[0509-2801]"
+    },
+    "tau:7622:2026:timetable:0509-2843": {
+      "mapped_to": "mandatory_courses[0509-2843]"
+    },
+    "tau:7622:2026:timetable:0509-2844": {
+      "mapped_to": "mandatory_courses[0509-2844]"
+    },
+    "tau:7622:2026:timetable:0509-2846": {
+      "mapped_to": "mandatory_courses[0509-2846]"
+    },
+    "tau:7622:2026:timetable:0509-4010": {
+      "mapped_to": "categories[multidisciplinary].course_ids[0509-4010]"
+    },
+    "tau:7622:2026:timetable:0510-5004": {
+      "mapped_to": "categories[quantum].course_ids[0510-5004]"
+    },
+    "tau:7622:2026:timetable:0510-5210": {
+      "mapped_to": "categories[ml_ai].course_ids[0510-5210]"
+    },
+    "tau:7622:2026:timetable:0510-6101": {
+      "mapped_to": "categories[communications].course_ids[0510-6101]"
+    },
+    "tau:7622:2026:timetable:0510-6102": {
+      "mapped_to": "categories[communications].course_ids[0510-6102]"
+    },
+    "tau:7622:2026:timetable:0510-6401": {
+      "mapped_to": "categories[computer_systems].course_ids[0510-6401]"
+    },
+    "tau:7622:2026:timetable:0510-6610": {
+      "mapped_to": "categories[optics_photonics].course_ids[0510-6610]"
+    },
+    "tau:7622:2026:timetable:0512-1820": {
+      "mapped_to": "categories[computer_systems].course_ids[0512-1820]"
+    },
+    "tau:7622:2026:timetable:0512-2508": {
+      "mapped_to": "mandatory_courses[0512-2508]"
+    },
+    "tau:7622:2026:timetable:0512-2510": {
+      "mapped_to": "mandatory_courses[0512-2510]"
+    },
+    "tau:7622:2026:timetable:0512-2525": {
+      "mapped_to": "mandatory_courses[0512-2525]"
+    },
+    "tau:7622:2026:timetable:0512-2532": {
+      "mapped_to": "mandatory_courses[0512-2532]"
+    },
+    "tau:7622:2026:timetable:0512-2830": {
+      "mapped_to": "mandatory_courses[0512-2830]"
+    },
+    "tau:7622:2026:timetable:0512-2832": {
+      "mapped_to": "mandatory_courses[0512-2832]"
+    },
+    "tau:7622:2026:timetable:0512-2835": {
+      "mapped_to": "mandatory_courses[0512-2835]"
+    },
+    "tau:7622:2026:timetable:0512-3000": {
+      "mapped_to": "categories[multidisciplinary].course_ids[0512-3000]"
+    },
+    "tau:7622:2026:timetable:0512-3010": {
+      "mapped_to": "categories[multidisciplinary].course_ids[0512-3010]"
+    },
+    "tau:7622:2026:timetable:0512-3513": {
+      "mapped_to": "mandatory_courses[0512-3513]"
+    },
+    "tau:7622:2026:timetable:0512-3514": {
+      "mapped_to": "mandatory_courses[0512-3514]"
+    },
+    "tau:7622:2026:timetable:0512-3526": {
+      "mapped_to": "mandatory_courses[0512-3526]"
+    },
+    "tau:7622:2026:timetable:0512-3542": {
+      "mapped_to": "categories[advanced_labs].course_ids[0512-3542]"
+    },
+    "tau:7622:2026:timetable:0512-3543": {
+      "mapped_to": "mandatory_courses[0512-3543]"
+    },
+    "tau:7622:2026:timetable:0512-3561": {
+      "mapped_to": "mandatory_courses[0512-3561]"
+    },
+    "tau:7622:2026:timetable:0512-3571": {
+      "mapped_to": "categories[energy_renewables].course_ids[0512-3571]"
+    },
+    "tau:7622:2026:timetable:0512-3572": {
+      "mapped_to": "categories[energy_renewables].course_ids[0512-3572]"
+    },
+    "tau:7622:2026:timetable:0512-3581": {
+      "mapped_to": "mandatory_courses[0512-3581]"
+    },
+    "tau:7622:2026:timetable:0512-3582": {
+      "mapped_to": "mandatory_courses[0512-3582]"
+    },
+    "tau:7622:2026:timetable:0512-4000": {
+      "mapped_to": "mandatory_courses[0512-4000]"
+    },
+    "tau:7622:2026:timetable:0512-4001": {
+      "mapped_to": "mandatory_courses[0512-4001]"
+    },
+    "tau:7622:2026:timetable:0512-4013": {
+      "mapped_to": "categories[hardware_exposure_elective].course_ids[0512-4013]"
+    },
+    "tau:7622:2026:timetable:0512-4100": {
+      "mapped_to": "categories[communications].course_ids[0512-4100]"
+    },
+    "tau:7622:2026:timetable:0512-4126": {
+      "mapped_to": "categories[advanced_labs].course_ids[0512-4126]"
+    },
+    "tau:7622:2026:timetable:0512-4138": {
+      "mapped_to": "categories[bioelectronics].course_ids[0512-4138]"
+    },
+    "tau:7622:2026:timetable:0512-4161": {
+      "mapped_to": "categories[communications].course_ids[0512-4161]"
+    },
+    "tau:7622:2026:timetable:0512-4165": {
+      "mapped_to": "categories[devices_nanoelectronics].course_ids[0512-4165]"
+    },
+    "tau:7622:2026:timetable:0512-4200": {
+      "mapped_to": "categories[signal_processing].course_ids[0512-4200]"
+    },
+    "tau:7622:2026:timetable:0512-4261": {
+      "mapped_to": "categories[signal_processing].course_ids[0512-4261]"
+    },
+    "tau:7622:2026:timetable:0512-4265": {
+      "mapped_to": "categories[ml_ai].course_ids[0512-4265]"
+    },
+    "tau:7622:2026:timetable:0512-4266": {
+      "mapped_to": "categories[ml_ai].course_ids[0512-4266]"
+    },
+    "tau:7622:2026:timetable:0512-4290": {
+      "mapped_to": "categories[advanced_labs].course_ids[0512-4290]"
+    },
+    "tau:7622:2026:timetable:0512-4291": {
+      "mapped_to": "categories[advanced_labs].course_ids[0512-4291]"
+    },
+    "tau:7622:2026:timetable:0512-4295": {
+      "mapped_to": "categories[signal_processing].course_ids[0512-4295]"
+    },
+    "tau:7622:2026:timetable:0512-4296": {
+      "mapped_to": "categories[signal_processing].course_ids[0512-4296]"
+    },
+    "tau:7622:2026:timetable:0512-4300": {
+      "mapped_to": "categories[control_autonomous].course_ids[0512-4300]"
+    },
+    "tau:7622:2026:timetable:0512-4365": {
+      "mapped_to": "categories[control_autonomous].course_ids[0512-4365]"
+    },
+    "tau:7622:2026:timetable:0512-4390": {
+      "mapped_to": "categories[advanced_labs].course_ids[0512-4390]"
+    },
+    "tau:7622:2026:timetable:0512-4402": {
+      "mapped_to": "categories[computer_systems].course_ids[0512-4402]"
+    },
+    "tau:7622:2026:timetable:0512-4461": {
+      "mapped_to": "categories[computer_systems].course_ids[0512-4461]"
+    },
+    "tau:7622:2026:timetable:0512-4490": {
+      "mapped_to": "categories[advanced_labs].course_ids[0512-4490]"
+    },
+    "tau:7622:2026:timetable:0512-4491": {
+      "mapped_to": "categories[advanced_labs].course_ids[0512-4491]"
+    },
+    "tau:7622:2026:timetable:0512-4492": {
+      "mapped_to": "categories[advanced_labs].course_ids[0512-4492]"
+    },
+    "tau:7622:2026:timetable:0512-4494": {
+      "mapped_to": "categories[advanced_labs].course_ids[0512-4494]"
+    },
+    "tau:7622:2026:timetable:0512-4502": {
+      "mapped_to": "categories[energy_renewables].course_ids[0512-4502]"
+    },
+    "tau:7622:2026:timetable:0512-4503": {
+      "mapped_to": "categories[energy_renewables].course_ids[0512-4503]"
+    },
+    "tau:7622:2026:timetable:0512-4504": {
+      "mapped_to": "categories[energy_renewables].course_ids[0512-4504]"
+    },
+    "tau:7622:2026:timetable:0512-4505": {
+      "mapped_to": "categories[energy_renewables].course_ids[0512-4505]"
+    },
+    "tau:7622:2026:timetable:0512-4506": {
+      "mapped_to": "categories[energy_renewables].course_ids[0512-4506]"
+    },
+    "tau:7622:2026:timetable:0512-4510": {
+      "mapped_to": "categories[energy_renewables].course_ids[0512-4510]"
+    },
+    "tau:7622:2026:timetable:0512-4590": {
+      "mapped_to": "categories[advanced_labs].course_ids[0512-4590]"
+    },
+    "tau:7622:2026:timetable:0512-4605": {
+      "mapped_to": "categories[optics_photonics].course_ids[0512-4605]"
+    },
+    "tau:7622:2026:timetable:0512-4660": {
+      "mapped_to": "categories[optics_photonics].course_ids[0512-4660]"
+    },
+    "tau:7622:2026:timetable:0512-4670": {
+      "mapped_to": "categories[optics_photonics].course_ids[0512-4670]"
+    },
+    "tau:7622:2026:timetable:0512-4690": {
+      "mapped_to": "categories[advanced_labs].course_ids[0512-4690]"
+    },
+    "tau:7622:2026:timetable:0512-4702": {
+      "mapped_to": "categories[devices_nanoelectronics].course_ids[0512-4702]"
+    },
+    "tau:7622:2026:timetable:0512-4705": {
+      "mapped_to": "categories[devices_nanoelectronics].course_ids[0512-4705]"
+    },
+    "tau:7622:2026:timetable:0512-4706": {
+      "mapped_to": "categories[vlsi].course_ids[0512-4706]"
+    },
+    "tau:7622:2026:timetable:0512-4707": {
+      "mapped_to": "categories[vlsi].course_ids[0512-4707]"
+    },
+    "tau:7622:2026:timetable:0512-4711": {
+      "mapped_to": "categories[vlsi].course_ids[0512-4711]"
+    },
+    "tau:7622:2026:timetable:0512-4790": {
+      "mapped_to": "categories[advanced_labs].course_ids[0512-4790]"
+    },
+    "tau:7622:2026:timetable:0512-4791": {
+      "mapped_to": "categories[advanced_labs].course_ids[0512-4791]"
+    },
+    "tau:7622:2026:timetable:0512-4800": {
+      "mapped_to": "categories[electromagnetics_radiation].course_ids[0512-4800]"
+    },
+    "tau:7622:2026:timetable:0512-4820": {
+      "mapped_to": "categories[multidisciplinary].course_ids[0512-4820]"
+    },
+    "tau:7622:2026:timetable:0512-4861": {
+      "mapped_to": "categories[electromagnetics_radiation].course_ids[0512-4861]"
+    },
+    "tau:7622:2026:timetable:0512-4890": {
+      "mapped_to": "categories[advanced_labs].course_ids[0512-4890]"
+    },
+    "tau:7622:2026:timetable:0555-2106": {
+      "mapped_to": "categories[bioelectronics].course_ids[0555-2106]"
+    },
+    "tau:7622:2026:timetable:0555-3240": {
+      "mapped_to": "categories[bioelectronics].course_ids[0555-3240]"
+    },
+    "tau:7622:2026:timetable:0555-4282": {
+      "mapped_to": "categories[advanced_labs].course_ids[0555-4282]"
+    },
+    "tau:7622:2026:timetable:0555-4520": {
+      "mapped_to": "categories[bioelectronics].course_ids[0555-4520]"
+    },
+    "tau:7622:2026:timetable:0555-4550": {
+      "mapped_to": "categories[bioelectronics].course_ids[0555-4550]"
+    },
+    "tau:7622:2026:timetable:0555-4560": {
+      "mapped_to": "categories[bioelectronics].course_ids[0555-4560]"
+    },
+    "tau:7622:2026:timetable:0555-4570": {
+      "mapped_to": "categories[signal_processing].course_ids[0555-4570]"
+    },
+    "tau:7622:2026:timetable:0581-1111": {
+      "mapped_to": "categories[electronic_materials].course_ids[0581-1111]"
+    },
+    "tau:7622:2026:timetable:0581-3121": {
+      "mapped_to": "categories[electronic_materials].course_ids[0581-3121]"
+    },
+    "tau:7622:2026:timetable:0581-3122": {
+      "mapped_to": "categories[electronic_materials].course_ids[0581-3122]"
+    },
+    "tau:ims:2026:0321-3818": {
+      "mapped_to": "categories[quantum].course_ids[0321-3818]"
+    },
+    "tau:ims:2026:0321-3819": {
+      "mapped_to": "categories[quantum].course_ids[0321-3819]"
+    },
+    "tau:ims:2026:0368-3065": {
+      "mapped_to": "categories[computer_systems].course_ids[0368-3065]"
+    },
+    "tau:ims:2026:0509-1117": {
+      "mapped_to": "mandatory_courses[0509-1117]"
+    },
+    "tau:ims:2026:0509-1118": {
+      "mapped_to": "mandatory_courses[0509-1118]"
+    },
+    "tau:ims:2026:0509-1724": {
+      "mapped_to": "mandatory_courses[0509-1724]"
+    },
+    "tau:ims:2026:0509-1745": {
+      "mapped_to": "mandatory_courses[0509-1745]"
+    },
+    "tau:ims:2026:0509-1746": {
+      "mapped_to": "mandatory_courses[0509-1746]"
+    },
+    "tau:ims:2026:0509-1747": {
+      "mapped_to": "mandatory_courses[0509-1747]"
+    },
+    "tau:ims:2026:0509-1815": {
+      "mapped_to": "categories[electronic_materials].course_ids[0509-1815]"
+    },
+    "tau:ims:2026:0509-1820": {
+      "mapped_to": "mandatory_courses[0509-1820]"
+    },
+    "tau:ims:2026:0509-1829": {
+      "mapped_to": "mandatory_courses[0509-1829]"
+    },
+    "tau:ims:2026:0509-1834": {
+      "mapped_to": "mandatory_courses[0509-1834]"
+    },
+    "tau:ims:2026:0509-2801": {
+      "mapped_to": "mandatory_courses[0509-2801]"
+    },
+    "tau:ims:2026:0509-2843": {
+      "mapped_to": "mandatory_courses[0509-2843]"
+    },
+    "tau:ims:2026:0509-2844": {
+      "mapped_to": "mandatory_courses[0509-2844]"
+    },
+    "tau:ims:2026:0509-2846": {
+      "mapped_to": "mandatory_courses[0509-2846]"
+    },
+    "tau:ims:2026:0509-4010": {
+      "mapped_to": "categories[multidisciplinary].course_ids[0509-4010]"
+    },
+    "tau:ims:2026:0510-5004": {
+      "mapped_to": "categories[quantum].course_ids[0510-5004]"
+    },
+    "tau:ims:2026:0510-5210": {
+      "mapped_to": "categories[ml_ai].course_ids[0510-5210]"
+    },
+    "tau:ims:2026:0510-6101": {
+      "mapped_to": "categories[communications].course_ids[0510-6101]"
+    },
+    "tau:ims:2026:0510-6102": {
+      "mapped_to": "categories[communications].course_ids[0510-6102]"
+    },
+    "tau:ims:2026:0510-6401": {
+      "mapped_to": "categories[computer_systems].course_ids[0510-6401]"
+    },
+    "tau:ims:2026:0510-6404": {
+      "mapped_to": "categories[ml_ai].course_ids[0510-6404]"
+    },
+    "tau:ims:2026:0510-6610": {
+      "mapped_to": "categories[optics_photonics].course_ids[0510-6610]"
+    },
+    "tau:ims:2026:0512-1820": {
+      "mapped_to": "categories[computer_systems].course_ids[0512-1820]"
+    },
+    "tau:ims:2026:0512-2508": {
+      "mapped_to": "mandatory_courses[0512-2508]"
+    },
+    "tau:ims:2026:0512-2510": {
+      "mapped_to": "mandatory_courses[0512-2510]"
+    },
+    "tau:ims:2026:0512-2525": {
+      "mapped_to": "mandatory_courses[0512-2525]"
+    },
+    "tau:ims:2026:0512-2532": {
+      "mapped_to": "mandatory_courses[0512-2532]"
+    },
+    "tau:ims:2026:0512-2830": {
+      "mapped_to": "mandatory_courses[0512-2830]"
+    },
+    "tau:ims:2026:0512-2832": {
+      "mapped_to": "mandatory_courses[0512-2832]"
+    },
+    "tau:ims:2026:0512-2835": {
+      "mapped_to": "mandatory_courses[0512-2835]"
+    },
+    "tau:ims:2026:0512-3000": {
+      "mapped_to": "categories[multidisciplinary].course_ids[0512-3000]"
+    },
+    "tau:ims:2026:0512-3010": {
+      "mapped_to": "categories[multidisciplinary].course_ids[0512-3010]"
+    },
+    "tau:ims:2026:0512-3513": {
+      "mapped_to": "mandatory_courses[0512-3513]"
+    },
+    "tau:ims:2026:0512-3514": {
+      "mapped_to": "mandatory_courses[0512-3514]"
+    },
+    "tau:ims:2026:0512-3526": {
+      "mapped_to": "mandatory_courses[0512-3526]"
+    },
+    "tau:ims:2026:0512-3542": {
+      "mapped_to": "categories[advanced_labs].course_ids[0512-3542]"
+    },
+    "tau:ims:2026:0512-3543": {
+      "mapped_to": "mandatory_courses[0512-3543]"
+    },
+    "tau:ims:2026:0512-3561": {
+      "mapped_to": "mandatory_courses[0512-3561]"
+    },
+    "tau:ims:2026:0512-3571": {
+      "mapped_to": "categories[energy_renewables].course_ids[0512-3571]"
+    },
+    "tau:ims:2026:0512-3572": {
+      "mapped_to": "categories[energy_renewables].course_ids[0512-3572]"
+    },
+    "tau:ims:2026:0512-3581": {
+      "mapped_to": "mandatory_courses[0512-3581]"
+    },
+    "tau:ims:2026:0512-3582": {
+      "mapped_to": "mandatory_courses[0512-3582]"
+    },
+    "tau:ims:2026:0512-4000": {
+      "mapped_to": "mandatory_courses[0512-4000]"
+    },
+    "tau:ims:2026:0512-4001": {
+      "mapped_to": "mandatory_courses[0512-4001]"
+    },
+    "tau:ims:2026:0512-4013": {
+      "mapped_to": "categories[hardware_exposure_elective].course_ids[0512-4013]"
+    },
+    "tau:ims:2026:0512-4100": {
+      "mapped_to": "categories[communications].course_ids[0512-4100]"
+    },
+    "tau:ims:2026:0512-4126": {
+      "mapped_to": "categories[advanced_labs].course_ids[0512-4126]"
+    },
+    "tau:ims:2026:0512-4138": {
+      "mapped_to": "categories[bioelectronics].course_ids[0512-4138]"
+    },
+    "tau:ims:2026:0512-4161": {
+      "mapped_to": "categories[communications].course_ids[0512-4161]"
+    },
+    "tau:ims:2026:0512-4165": {
+      "mapped_to": "categories[devices_nanoelectronics].course_ids[0512-4165]"
+    },
+    "tau:ims:2026:0512-4200": {
+      "mapped_to": "categories[signal_processing].course_ids[0512-4200]"
+    },
+    "tau:ims:2026:0512-4261": {
+      "mapped_to": "categories[signal_processing].course_ids[0512-4261]"
+    },
+    "tau:ims:2026:0512-4265": {
+      "mapped_to": "categories[ml_ai].course_ids[0512-4265]"
+    },
+    "tau:ims:2026:0512-4266": {
+      "mapped_to": "categories[ml_ai].course_ids[0512-4266]"
+    },
+    "tau:ims:2026:0512-4290": {
+      "mapped_to": "categories[advanced_labs].course_ids[0512-4290]"
+    },
+    "tau:ims:2026:0512-4291": {
+      "mapped_to": "categories[advanced_labs].course_ids[0512-4291]"
+    },
+    "tau:ims:2026:0512-4295": {
+      "mapped_to": "categories[signal_processing].course_ids[0512-4295]"
+    },
+    "tau:ims:2026:0512-4296": {
+      "mapped_to": "categories[signal_processing].course_ids[0512-4296]"
+    },
+    "tau:ims:2026:0512-4300": {
+      "mapped_to": "categories[control_autonomous].course_ids[0512-4300]"
+    },
+    "tau:ims:2026:0512-4365": {
+      "mapped_to": "categories[control_autonomous].course_ids[0512-4365]"
+    },
+    "tau:ims:2026:0512-4390": {
+      "mapped_to": "categories[advanced_labs].course_ids[0512-4390]"
+    },
+    "tau:ims:2026:0512-4402": {
+      "mapped_to": "categories[computer_systems].course_ids[0512-4402]"
+    },
+    "tau:ims:2026:0512-4461": {
+      "mapped_to": "categories[computer_systems].course_ids[0512-4461]"
+    },
+    "tau:ims:2026:0512-4490": {
+      "mapped_to": "categories[advanced_labs].course_ids[0512-4490]"
+    },
+    "tau:ims:2026:0512-4491": {
+      "mapped_to": "categories[advanced_labs].course_ids[0512-4491]"
+    },
+    "tau:ims:2026:0512-4492": {
+      "mapped_to": "categories[advanced_labs].course_ids[0512-4492]"
+    },
+    "tau:ims:2026:0512-4494": {
+      "mapped_to": "categories[advanced_labs].course_ids[0512-4494]"
+    },
+    "tau:ims:2026:0512-4502": {
+      "mapped_to": "categories[energy_renewables].course_ids[0512-4502]"
+    },
+    "tau:ims:2026:0512-4503": {
+      "mapped_to": "categories[energy_renewables].course_ids[0512-4503]"
+    },
+    "tau:ims:2026:0512-4504": {
+      "mapped_to": "categories[energy_renewables].course_ids[0512-4504]"
+    },
+    "tau:ims:2026:0512-4505": {
+      "mapped_to": "categories[energy_renewables].course_ids[0512-4505]"
+    },
+    "tau:ims:2026:0512-4506": {
+      "mapped_to": "categories[energy_renewables].course_ids[0512-4506]"
+    },
+    "tau:ims:2026:0512-4510": {
+      "mapped_to": "categories[energy_renewables].course_ids[0512-4510]"
+    },
+    "tau:ims:2026:0512-4590": {
+      "mapped_to": "categories[advanced_labs].course_ids[0512-4590]"
+    },
+    "tau:ims:2026:0512-4605": {
+      "mapped_to": "categories[optics_photonics].course_ids[0512-4605]"
+    },
+    "tau:ims:2026:0512-4660": {
+      "mapped_to": "categories[optics_photonics].course_ids[0512-4660]"
+    },
+    "tau:ims:2026:0512-4670": {
+      "mapped_to": "categories[optics_photonics].course_ids[0512-4670]"
+    },
+    "tau:ims:2026:0512-4690": {
+      "mapped_to": "categories[advanced_labs].course_ids[0512-4690]"
+    },
+    "tau:ims:2026:0512-4702": {
+      "mapped_to": "categories[devices_nanoelectronics].course_ids[0512-4702]"
+    },
+    "tau:ims:2026:0512-4705": {
+      "mapped_to": "categories[devices_nanoelectronics].course_ids[0512-4705]"
+    },
+    "tau:ims:2026:0512-4706": {
+      "mapped_to": "categories[vlsi].course_ids[0512-4706]"
+    },
+    "tau:ims:2026:0512-4707": {
+      "mapped_to": "categories[vlsi].course_ids[0512-4707]"
+    },
+    "tau:ims:2026:0512-4711": {
+      "mapped_to": "categories[vlsi].course_ids[0512-4711]"
+    },
+    "tau:ims:2026:0512-4790": {
+      "mapped_to": "categories[advanced_labs].course_ids[0512-4790]"
+    },
+    "tau:ims:2026:0512-4791": {
+      "mapped_to": "categories[advanced_labs].course_ids[0512-4791]"
+    },
+    "tau:ims:2026:0512-4800": {
+      "mapped_to": "categories[electromagnetics_radiation].course_ids[0512-4800]"
+    },
+    "tau:ims:2026:0512-4820": {
+      "mapped_to": "categories[multidisciplinary].course_ids[0512-4820]"
+    },
+    "tau:ims:2026:0512-4861": {
+      "mapped_to": "categories[electromagnetics_radiation].course_ids[0512-4861]"
+    },
+    "tau:ims:2026:0512-4890": {
+      "mapped_to": "categories[advanced_labs].course_ids[0512-4890]"
+    },
+    "tau:ims:2026:0555-2106": {
+      "mapped_to": "categories[bioelectronics].course_ids[0555-2106]"
+    },
+    "tau:ims:2026:0555-3240": {
+      "mapped_to": "categories[bioelectronics].course_ids[0555-3240]"
+    },
+    "tau:ims:2026:0555-4282": {
+      "mapped_to": "categories[advanced_labs].course_ids[0555-4282]"
+    },
+    "tau:ims:2026:0555-4520": {
+      "mapped_to": "categories[bioelectronics].course_ids[0555-4520]"
+    },
+    "tau:ims:2026:0555-4550": {
+      "mapped_to": "categories[bioelectronics].course_ids[0555-4550]"
+    },
+    "tau:ims:2026:0555-4560": {
+      "mapped_to": "categories[bioelectronics].course_ids[0555-4560]"
+    },
+    "tau:ims:2026:0555-4570": {
+      "mapped_to": "categories[signal_processing].course_ids[0555-4570]"
+    },
+    "tau:ims:2026:0581-1111": {
+      "mapped_to": "categories[electronic_materials].course_ids[0581-1111]"
+    },
+    "tau:ims:2026:0581-3121": {
+      "mapped_to": "categories[electronic_materials].course_ids[0581-3121]"
+    },
+    "tau:ims:2026:0581-3122": {
+      "mapped_to": "categories[electronic_materials].course_ids[0581-3122]"
+    },
+    "tau:7622:2026:body:hesbernosaf:aa55c5c97c7b": {
+      "mapped_to": "total_required_credits"
+    },
+    "tau:7622:2026:body:terms:038a1f3d66af": {
+      "not_planning_rule": "Link to a previous year's program booklet (archive); this spec follows the current תשפ\"ז program tree."
+    },
+    "tau:7622:2026:body:terms:3654e1f75808": {
+      "not_planning_rule": "Link to a previous year's program booklet (archive); this spec follows the current תשפ\"ז program tree."
+    },
+    "tau:7622:2026:body:terms:3ec196486867": {
+      "not_planning_rule": "Link to a previous year's program booklet (archive); this spec follows the current תשפ\"ז program tree."
+    },
+    "tau:7622:2026:body:terms:563222606199": {
+      "not_planning_rule": "Link to a previous year's program booklet (archive); this spec follows the current תשפ\"ז program tree."
+    },
+    "tau:7622:2026:body:terms:5d14156e4221": {
+      "not_planning_rule": "Link to a previous year's program booklet (archive); this spec follows the current תשפ\"ז program tree."
+    },
+    "tau:7622:2026:body:terms:8026588cd798": {
+      "mapped_to": [
+        "catalog_year_policy",
+        "course_rules[load-min-75pct-approval]",
+        "course_rules[duration-8-semesters]",
+        "course_rules[duration-extension]",
+        "course_rules[prereq-before-or-concurrent]",
+        "course_rules[year-progression]",
+        "course_rules[graduate-courses-max-2-per-semester]",
+        "course_rules[prereq-conditional-reserve-or-eligible-student]"
+      ]
+    },
+    "tau:7622:2026:body:terms:94a41bd710ac": {
+      "not_planning_rule": "Link to a previous year's program booklet (archive); this spec follows the current תשפ\"ז program tree."
+    },
+    "tau:7622:2026:body:terms:af00ab942e7e": {
+      "not_planning_rule": "Link to a previous year's program booklet (archive); this spec follows the current תשפ\"ז program tree."
+    },
+    "tau:7622:2026:body:terms:c5e1f668e848": {
+      "not_planning_rule": "Link to a previous year's program booklet (archive); this spec follows the current תשפ\"ז program tree."
+    },
+    "tau:7622:2026:body:terms:d6d67e2105ad": {
+      "not_planning_rule": "Link to a previous year's program booklet (archive); this spec follows the current תשפ\"ז program tree."
+    },
+    "tau:7622:2026:body:terms:d9d8c77d61b6": {
+      "not_planning_rule": "Link to a previous year's program booklet (archive); this spec follows the current תשפ\"ז program tree."
+    },
+    "tau:7622:2026:body:teurshaot": {
+      "not_planning_rule": "Unit label of the program (credits counted in semester hours, ש\"ס); not a rule."
+    },
+    "tau:7622:2026:body:teurtoar": {
+      "not_planning_rule": "Degree title awarded (B.Sc. in Electrical Engineering); not a planning rule."
+    },
+    "tau:7622:2026:body:teurtochnit": {
+      "not_planning_rule": "Program description (single-major program in electrical engineering); not a planning rule."
+    },
+    "tau:7622:2026:rama:1": {
+      "not_planning_rule": "Subtotal of the recommended-plan courses listed under this year/semester; every listed course is mapped on its own and the sum follows from their credits, so it states no independent requirement."
+    },
+    "tau:7622:2026:rama:10": {
+      "not_planning_rule": "Subtotal of the recommended-plan courses listed under this year/semester; every listed course is mapped on its own and the sum follows from their credits, so it states no independent requirement."
+    },
+    "tau:7622:2026:rama:11": {
+      "not_planning_rule": "Subtotal of the recommended-plan courses listed under this year/semester; every listed course is mapped on its own and the sum follows from their credits, so it states no independent requirement."
+    },
+    "tau:7622:2026:rama:11:hesber:79fd936e603a": {
+      "not_planning_rule": "Recommended-plan load only (\"לפי תכנית הלימודים המומלצת\"): how many track courses / labs / שאר רוח courses to add in this semester; the binding totals are mapped elsewhere."
+    },
+    "tau:7622:2026:rama:12": {
+      "not_planning_rule": "Subtotal of the recommended-plan courses listed under this year/semester; every listed course is mapped on its own and the sum follows from their credits, so it states no independent requirement."
+    },
+    "tau:7622:2026:rama:12:hesber:422dc414c46e": {
+      "not_planning_rule": "Recommended-plan load only (\"לפי תכנית הלימודים המומלצת\"): how many track courses / labs / שאר רוח courses to add in this semester; the binding totals are mapped elsewhere."
+    },
+    "tau:7622:2026:rama:13": {
+      "mapped_to": "general_requirement"
+    },
+    "tau:7622:2026:rama:13:hesber:2e1fa9ccecda": {
+      "mapped_to": "general_requirement"
+    },
+    "tau:7622:2026:rama:14": {
+      "not_planning_rule": "Subtotal of the recommended-plan courses listed under this year/semester; every listed course is mapped on its own and the sum follows from their credits, so it states no independent requirement."
+    },
+    "tau:7622:2026:rama:14:hesber:baeee63de4c3": {
+      "not_planning_rule": "Recommended-plan load only (\"לפי תכנית הלימודים המומלצת\"): how many track courses / labs / שאר רוח courses to add in this semester; the binding totals are mapped elsewhere."
+    },
+    "tau:7622:2026:rama:15": {
+      "not_planning_rule": "Subtotal of the recommended-plan courses listed under this year/semester; every listed course is mapped on its own and the sum follows from their credits, so it states no independent requirement."
+    },
+    "tau:7622:2026:rama:15:hesber:e90d24d9b19c": {
+      "not_planning_rule": "Recommended-plan load only (\"לפי תכנית הלימודים המומלצת\"): how many track courses / labs / שאר רוח courses to add in this semester; the binding totals are mapped elsewhere."
+    },
+    "tau:7622:2026:rama:16": {
+      "mapped_to": "categories[advanced_labs]"
+    },
+    "tau:7622:2026:rama:16:hesber:0c5d71de7064": {
+      "mapped_to": "course_rules[labs-two-distinct-tracks]"
+    },
+    "tau:7622:2026:rama:17": {
+      "mapped_to": "general_requirement"
+    },
+    "tau:7622:2026:rama:17:hesber:040e93ac6fcf": {
+      "mapped_to": "general_requirement"
+    },
+    "tau:7622:2026:rama:18": {
+      "mapped_to": "categories[communications]"
+    },
+    "tau:7622:2026:rama:18:hesber:19d08f8eeed8": {
+      "not_planning_rule": "Descriptive text of a specialization track (its subject matter); no planning constraint."
+    },
+    "tau:7622:2026:rama:18:kurs:0510-7400": {
+      "not_planning_rule": "Specialization-track course that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups; listings cancelled or not); it cannot be planned this catalog year, so it is not in the spec elective pools (see source_conflicts for the uncancelled ones)."
+    },
+    "tau:7622:2026:rama:18:kurs:0512-4009": {
+      "mapped_to": "categories[communications].course_ids[0512-4009]"
+    },
+    "tau:7622:2026:rama:18:kurs:0512-4100:idkunkurs:6a055eada8b5": {
+      "mapped_to": "course_rules[core-four-distinct-tracks]"
+    },
+    "tau:7622:2026:rama:18:kurs:0512-4161:hearakurs:6a055eada8b5": {
+      "mapped_to": "course_rules[core-four-distinct-tracks]"
+    },
+    "tau:7622:2026:rama:18:kurs:0512-4162": {
+      "mapped_to": "categories[communications].course_ids[0512-4162]"
+    },
+    "tau:7622:2026:rama:18:kurs:0512-4162:hearakurs:7cf7a94ba233": {
+      "mapped_to": "course_rules[cohort-spring-0512-4162]"
+    },
+    "tau:7622:2026:rama:18:kurs:0512-4163": {
+      "mapped_to": "categories[communications].course_ids[0512-4163]"
+    },
+    "tau:7622:2026:rama:18:kurs:0512-4163:hearakurs:cb81de264e62": {
+      "not_planning_rule": "Language-of-instruction note (taught in English); it does not constrain which courses, when, or how they count toward the degree."
+    },
+    "tau:7622:2026:rama:18:kurs:0512-4164": {
+      "mapped_to": "categories[communications].course_ids[0512-4164]"
+    },
+    "tau:7622:2026:rama:18:kurs:0512-4264": {
+      "mapped_to": "categories[communications].course_ids[0512-4264]"
+    },
+    "tau:7622:2026:rama:18:kurs:0512-4264:hearakurs:3db092bb8e16": {
+      "mapped_to": "course_rules[core-four-distinct-tracks]"
+    },
+    "tau:7622:2026:rama:18:kurs:0512-4264:idkunkurs:a81260ef19bb": {
+      "mapped_to": "course_rules[excl-0512-4264-0368-3235]"
+    },
+    "tau:7622:2026:rama:18:kurs:0512-4462": {
+      "mapped_to": "categories[communications].course_ids[0512-4462]"
+    },
+    "tau:7622:2026:rama:18:kurs:0512-4602": {
+      "mapped_to": "categories[communications].course_ids[0512-4602]"
+    },
+    "tau:7622:2026:rama:18:kurs:0512-4602:hearakurs:b0a1414e0864": {
+      "mapped_to": "course_rules[core-four-distinct-tracks]"
+    },
+    "tau:7622:2026:rama:18:kurs:0512-4652": {
+      "mapped_to": "categories[communications].course_ids[0512-4652]"
+    },
+    "tau:7622:2026:rama:19": {
+      "mapped_to": "categories[signal_processing]"
+    },
+    "tau:7622:2026:rama:19:hesber:7e7404da2c64": {
+      "not_planning_rule": "Descriptive text of a specialization track (its subject matter); no planning constraint."
+    },
+    "tau:7622:2026:rama:19:kurs:0510-6202": {
+      "mapped_to": "categories[signal_processing].course_ids[0510-6202]"
+    },
+    "tau:7622:2026:rama:19:kurs:0510-7255": {
+      "mapped_to": "categories[signal_processing].course_ids[0510-7255]"
+    },
+    "tau:7622:2026:rama:19:kurs:0512-4162": {
+      "mapped_to": "categories[signal_processing].course_ids[0512-4162]"
+    },
+    "tau:7622:2026:rama:19:kurs:0512-4162:hearakurs:7cf7a94ba233": {
+      "mapped_to": "course_rules[cohort-spring-0512-4162]"
+    },
+    "tau:7622:2026:rama:19:kurs:0512-4200:hearakurs:691254672f82": {
+      "mapped_to": "course_rules[core-four-distinct-tracks]"
+    },
+    "tau:7622:2026:rama:19:kurs:0512-4261:hearakurs:d6e51e3491ec": {
+      "mapped_to": "course_rules[core-four-distinct-tracks]"
+    },
+    "tau:7622:2026:rama:19:kurs:0512-4262": {
+      "not_planning_rule": "Specialization-track course that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups; listings cancelled or not); it cannot be planned this catalog year, so it is not in the spec elective pools (see source_conflicts for the uncancelled ones)."
+    },
+    "tau:7622:2026:rama:19:kurs:0512-4262:hearakurs:d6e51e3491ec": {
+      "mapped_to": "course_rules[core-four-distinct-tracks]"
+    },
+    "tau:7622:2026:rama:19:kurs:0512-4263": {
+      "mapped_to": "categories[signal_processing].course_ids[0512-4263]"
+    },
+    "tau:7622:2026:rama:19:kurs:0512-4264": {
+      "mapped_to": "categories[signal_processing].course_ids[0512-4264]"
+    },
+    "tau:7622:2026:rama:19:kurs:0512-4264:hearakurs:3db092bb8e16": {
+      "mapped_to": "course_rules[core-four-distinct-tracks]"
+    },
+    "tau:7622:2026:rama:19:kurs:0512-4264:idkunkurs:a81260ef19bb": {
+      "mapped_to": "course_rules[excl-0512-4264-0368-3235]"
+    },
+    "tau:7622:2026:rama:19:kurs:0512-4603": {
+      "mapped_to": "categories[signal_processing].course_ids[0512-4603]"
+    },
+    "tau:7622:2026:rama:19:kurs:0512-4603:hearakurs:bb096a9840a1": {
+      "not_planning_rule": "Registration exception for spring-intake students (concurrent enrollment with 0512-4660 \"אופטיקה קלאסית\") granted case by case by lecturer approval; not a degree-requirement constraint the planner can evaluate."
+    },
+    "tau:7622:2026:rama:2": {
+      "not_planning_rule": "Subtotal of the recommended-plan courses listed under this year/semester; every listed course is mapped on its own and the sum follows from their credits, so it states no independent requirement."
+    },
+    "tau:7622:2026:rama:20": {
+      "mapped_to": "categories[computer_systems]"
+    },
+    "tau:7622:2026:rama:20:hesber:6278a64e0cdf": {
+      "not_planning_rule": "Descriptive text of a specialization track (its subject matter); no planning constraint."
+    },
+    "tau:7622:2026:rama:20:kurs:0368-3065:hearakurs:7c1da6000129": {
+      "not_planning_rule": "Registration condition (lecturer / committee approval, limited seats, or manual registration) decided case by case at enrollment; not a degree-requirement constraint the planner can evaluate."
+    },
+    "tau:7622:2026:rama:20:kurs:0510-7255": {
+      "mapped_to": "categories[computer_systems].course_ids[0510-7255]"
+    },
+    "tau:7622:2026:rama:20:kurs:0510-7400": {
+      "not_planning_rule": "Specialization-track course that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups; listings cancelled or not); it cannot be planned this catalog year, so it is not in the spec elective pools (see source_conflicts for the uncancelled ones)."
+    },
+    "tau:7622:2026:rama:20:kurs:0510-7438": {
+      "not_planning_rule": "Specialization-track course that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups; listings cancelled or not); it cannot be planned this catalog year, so it is not in the spec elective pools (see source_conflicts for the uncancelled ones)."
+    },
+    "tau:7622:2026:rama:20:kurs:0512-1820:hearakurs:90e13af501e1": {
+      "mapped_to": "course_rules[core-four-distinct-tracks]"
+    },
+    "tau:7622:2026:rama:20:kurs:0512-1820:idkunkurs:07ad8f8baeb6": {
+      "mapped_to": "course_rules[excl-0512-1820-0368-2161]"
+    },
+    "tau:7622:2026:rama:20:kurs:0512-4009": {
+      "mapped_to": "categories[computer_systems].course_ids[0512-4009]"
+    },
+    "tau:7622:2026:rama:20:kurs:0512-4163": {
+      "mapped_to": "categories[computer_systems].course_ids[0512-4163]"
+    },
+    "tau:7622:2026:rama:20:kurs:0512-4163:hearakurs:cb81de264e62": {
+      "not_planning_rule": "Language-of-instruction note (taught in English); it does not constrain which courses, when, or how they count toward the degree."
+    },
+    "tau:7622:2026:rama:20:kurs:0512-4262": {
+      "not_planning_rule": "Specialization-track course that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups; listings cancelled or not); it cannot be planned this catalog year, so it is not in the spec elective pools (see source_conflicts for the uncancelled ones)."
+    },
+    "tau:7622:2026:rama:20:kurs:0512-4262:hearakurs:d6e51e3491ec": {
+      "mapped_to": "course_rules[core-four-distinct-tracks]"
+    },
+    "tau:7622:2026:rama:20:kurs:0512-4264": {
+      "mapped_to": "categories[computer_systems].course_ids[0512-4264]"
+    },
+    "tau:7622:2026:rama:20:kurs:0512-4264:hearakurs:3db092bb8e16": {
+      "mapped_to": "course_rules[core-four-distinct-tracks]"
+    },
+    "tau:7622:2026:rama:20:kurs:0512-4264:idkunkurs:a81260ef19bb": {
+      "mapped_to": "course_rules[excl-0512-4264-0368-3235]"
+    },
+    "tau:7622:2026:rama:20:kurs:0512-4400": {
+      "mapped_to": "categories[computer_systems].course_ids[0512-4400]"
+    },
+    "tau:7622:2026:rama:20:kurs:0512-4400:hearakurs:e1a2dc85d93d": {
+      "mapped_to": "course_rules[core-four-distinct-tracks]"
+    },
+    "tau:7622:2026:rama:20:kurs:0512-4402:hearakurs:ec6606edd512": {
+      "mapped_to": "course_rules[core-four-distinct-tracks]"
+    },
+    "tau:7622:2026:rama:20:kurs:0512-4402:idkunkurs:7a918577edd7": {
+      "mapped_to": "course_rules[excl-0512-4402-0368-2162]"
+    },
+    "tau:7622:2026:rama:20:kurs:0512-4462": {
+      "mapped_to": "categories[computer_systems].course_ids[0512-4462]"
+    },
+    "tau:7622:2026:rama:20:kurs:0512-4493": {
+      "not_planning_rule": "Specialization-track course that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups; listings cancelled or not); it cannot be planned this catalog year, so it is not in the spec elective pools (see source_conflicts for the uncancelled ones)."
+    },
+    "tau:7622:2026:rama:20:kurs:0512-4493:hearakurs:7be87d9c068c": {
+      "not_planning_rule": "Specialization-track course that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups; listings cancelled or not); it cannot be planned this catalog year, so it is not in the spec elective pools (see source_conflicts for the uncancelled ones)."
+    },
+    "tau:7622:2026:rama:20:kurs:0512-4703": {
+      "mapped_to": "categories[computer_systems].course_ids[0512-4703]"
+    },
+    "tau:7622:2026:rama:20:kurs:0512-4703:hearakurs:7c112c4fe348": {
+      "mapped_to": "course_rules[core-four-distinct-tracks]"
+    },
+    "tau:7622:2026:rama:21": {
+      "mapped_to": "categories[control_autonomous]"
+    },
+    "tau:7622:2026:rama:21:hesber:072782f02679": {
+      "not_planning_rule": "Descriptive text of a specialization track (its subject matter); no planning constraint."
+    },
+    "tau:7622:2026:rama:21:kurs:0512-4264": {
+      "mapped_to": "categories[control_autonomous].course_ids[0512-4264]"
+    },
+    "tau:7622:2026:rama:21:kurs:0512-4264:hearakurs:3db092bb8e16": {
+      "mapped_to": "course_rules[core-four-distinct-tracks]"
+    },
+    "tau:7622:2026:rama:21:kurs:0512-4264:idkunkurs:a81260ef19bb": {
+      "mapped_to": "course_rules[excl-0512-4264-0368-3235]"
+    },
+    "tau:7622:2026:rama:21:kurs:0512-4300:hearakurs:903c962a3c1f": {
+      "not_planning_rule": "Language-of-instruction note (taught in English); it does not constrain which courses, when, or how they count toward the degree."
+    },
+    "tau:7622:2026:rama:21:kurs:0512-4360": {
+      "mapped_to": "categories[control_autonomous].course_ids[0512-4360]"
+    },
+    "tau:7622:2026:rama:21:kurs:0512-4360:hearakurs:8801b1f56509": {
+      "mapped_to": "course_rules[core-four-distinct-tracks]"
+    },
+    "tau:7622:2026:rama:21:kurs:0512-4362": {
+      "mapped_to": "categories[control_autonomous].course_ids[0512-4362]"
+    },
+    "tau:7622:2026:rama:21:kurs:0512-4362:hearakurs:0a6ce337b044": {
+      "not_planning_rule": "Language-of-instruction note (taught in English); it does not constrain which courses, when, or how they count toward the degree."
+    },
+    "tau:7622:2026:rama:21:kurs:0512-4362:hearakurs:d8ba271fff9b": {
+      "mapped_to": "course_rules[core-four-distinct-tracks]"
+    },
+    "tau:7622:2026:rama:21:kurs:0512-4364": {
+      "not_planning_rule": "Specialization-track course that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups; listings cancelled or not); it cannot be planned this catalog year, so it is not in the spec elective pools (see source_conflicts for the uncancelled ones)."
+    },
+    "tau:7622:2026:rama:21:kurs:0542-4621": {
+      "mapped_to": "categories[control_autonomous].course_ids[0542-4621]"
+    },
+    "tau:7622:2026:rama:22": {
+      "mapped_to": "categories[energy_renewables]"
+    },
+    "tau:7622:2026:rama:22:hesber:5c512c46be42": {
+      "not_planning_rule": "Descriptive text of the energy track plus an optional path for registration in the engineers' register (high-current licence): its course list and final-project condition are set by the Ministry of Labour, not by the degree, and are optional; no degree-requirement constraint."
+    },
+    "tau:7622:2026:rama:22:kurs:0512-3571:hearakurs:6d1ec413fe1f": {
+      "mapped_to": "course_rules[core-four-distinct-tracks]"
+    },
+    "tau:7622:2026:rama:22:kurs:0512-3572:hearakurs:968521b4da9e": {
+      "mapped_to": "categories[energy_renewables].course_ids[0512-3572]"
+    },
+    "tau:7622:2026:rama:22:kurs:0512-4362": {
+      "mapped_to": "categories[energy_renewables].course_ids[0512-4362]"
+    },
+    "tau:7622:2026:rama:22:kurs:0512-4362:hearakurs:0a6ce337b044": {
+      "not_planning_rule": "Language-of-instruction note (taught in English); it does not constrain which courses, when, or how they count toward the degree."
+    },
+    "tau:7622:2026:rama:22:kurs:0512-4362:hearakurs:d8ba271fff9b": {
+      "mapped_to": "course_rules[core-four-distinct-tracks]"
+    },
+    "tau:7622:2026:rama:22:kurs:0512-4502:hearakurs:6d1ec413fe1f": {
+      "mapped_to": "course_rules[core-four-distinct-tracks]"
+    },
+    "tau:7622:2026:rama:22:kurs:0512-4503:hearakurs:6d1ec413fe1f": {
+      "mapped_to": "course_rules[core-four-distinct-tracks]"
+    },
+    "tau:7622:2026:rama:22:kurs:0512-4505:hearakurs:6d1ec413fe1f": {
+      "mapped_to": "course_rules[core-four-distinct-tracks]"
+    },
+    "tau:7622:2026:rama:22:kurs:0512-4506:hearakurs:22ef221619a4": {
+      "mapped_to": "course_rules[excl-0512-4506-as-printed]"
+    },
+    "tau:7622:2026:rama:22:kurs:0512-4507": {
+      "not_planning_rule": "Specialization-track course that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups; listings cancelled or not); it cannot be planned this catalog year, so it is not in the spec elective pools (see source_conflicts for the uncancelled ones)."
+    },
+    "tau:7622:2026:rama:22:kurs:0512-4631": {
+      "not_planning_rule": "Specialization-track course that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups; listings cancelled or not); it cannot be planned this catalog year, so it is not in the spec elective pools (see source_conflicts for the uncancelled ones)."
+    },
+    "tau:7622:2026:rama:22:kurs:0512-4631:idkunkurs:d956684e7d75": {
+      "not_planning_rule": "Course note saying the course is not given (תשפ\"ז); the course is left out of the elective pools."
+    },
+    "tau:7622:2026:rama:23": {
+      "mapped_to": "categories[optics_photonics]"
+    },
+    "tau:7622:2026:rama:23:hesber:4d58348cbd96": {
+      "not_planning_rule": "Descriptive text of a specialization track (its subject matter); no planning constraint."
+    },
+    "tau:7622:2026:rama:23:kurs:0510-7650": {
+      "not_planning_rule": "Specialization-track course that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups; listings cancelled or not); it cannot be planned this catalog year, so it is not in the spec elective pools (see source_conflicts for the uncancelled ones)."
+    },
+    "tau:7622:2026:rama:23:kurs:0512-4601": {
+      "mapped_to": "categories[optics_photonics].course_ids[0512-4601]"
+    },
+    "tau:7622:2026:rama:23:kurs:0512-4601:hearakurs:07ed077765e4": {
+      "mapped_to": "course_rules[core-four-distinct-tracks]"
+    },
+    "tau:7622:2026:rama:23:kurs:0512-4602": {
+      "mapped_to": "categories[optics_photonics].course_ids[0512-4602]"
+    },
+    "tau:7622:2026:rama:23:kurs:0512-4602:hearakurs:b0a1414e0864": {
+      "mapped_to": "course_rules[core-four-distinct-tracks]"
+    },
+    "tau:7622:2026:rama:23:kurs:0512-4603": {
+      "mapped_to": "categories[optics_photonics].course_ids[0512-4603]"
+    },
+    "tau:7622:2026:rama:23:kurs:0512-4603:hearakurs:bb096a9840a1": {
+      "not_planning_rule": "Registration exception for spring-intake students (concurrent enrollment with 0512-4660 \"אופטיקה קלאסית\") granted case by case by lecturer approval; not a degree-requirement constraint the planner can evaluate."
+    },
+    "tau:7622:2026:rama:23:kurs:0512-4660:hearakurs:aad28dac733f": {
+      "mapped_to": "course_rules[core-four-distinct-tracks]"
+    },
+    "tau:7622:2026:rama:23:kurs:0512-4704": {
+      "mapped_to": "categories[optics_photonics].course_ids[0512-4704]"
+    },
+    "tau:7622:2026:rama:23:kurs:0512-4704:hearakurs:8eb63fdf5fa5": {
+      "mapped_to": "course_rules[core-four-distinct-tracks]"
+    },
+    "tau:7622:2026:rama:23:kurs:0512-4862": {
+      "mapped_to": "categories[optics_photonics].course_ids[0512-4862]"
+    },
+    "tau:7622:2026:rama:24": {
+      "mapped_to": "categories[devices_nanoelectronics]"
+    },
+    "tau:7622:2026:rama:24:hesber:77efbc197bc3": {
+      "not_planning_rule": "Descriptive text of a specialization track (its subject matter); no planning constraint."
+    },
+    "tau:7622:2026:rama:24:kurs:0510-6701": {
+      "mapped_to": "categories[devices_nanoelectronics].course_ids[0510-6701]"
+    },
+    "tau:7622:2026:rama:24:kurs:0510-6701:hearakurs:307b5d64cd18": {
+      "mapped_to": "course_rules[core-four-distinct-tracks]"
+    },
+    "tau:7622:2026:rama:24:kurs:0512-4601": {
+      "mapped_to": "categories[devices_nanoelectronics].course_ids[0512-4601]"
+    },
+    "tau:7622:2026:rama:24:kurs:0512-4601:hearakurs:07ed077765e4": {
+      "mapped_to": "course_rules[core-four-distinct-tracks]"
+    },
+    "tau:7622:2026:rama:24:kurs:0512-4631": {
+      "not_planning_rule": "Specialization-track course that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups; listings cancelled or not); it cannot be planned this catalog year, so it is not in the spec elective pools (see source_conflicts for the uncancelled ones)."
+    },
+    "tau:7622:2026:rama:24:kurs:0512-4631:idkunkurs:d956684e7d75": {
+      "not_planning_rule": "Course note saying the course is not given (תשפ\"ז); the course is left out of the elective pools."
+    },
+    "tau:7622:2026:rama:24:kurs:0512-4700": {
+      "mapped_to": "categories[devices_nanoelectronics].course_ids[0512-4700]"
+    },
+    "tau:7622:2026:rama:24:kurs:0512-4702:hearakurs:b7ae362c2d10": {
+      "not_planning_rule": "Language-of-instruction note (taught in English); it does not constrain which courses, when, or how they count toward the degree."
+    },
+    "tau:7622:2026:rama:24:kurs:0512-4704": {
+      "mapped_to": "categories[devices_nanoelectronics].course_ids[0512-4704]"
+    },
+    "tau:7622:2026:rama:24:kurs:0512-4704:hearakurs:8eb63fdf5fa5": {
+      "mapped_to": "course_rules[core-four-distinct-tracks]"
+    },
+    "tau:7622:2026:rama:24:kurs:0512-4705:hearakurs:4e53c82aef40": {
+      "mapped_to": "course_rules[core-four-distinct-tracks]"
+    },
+    "tau:7622:2026:rama:24:kurs:0512-4710": {
+      "not_planning_rule": "Specialization-track course that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups; listings cancelled or not); it cannot be planned this catalog year, so it is not in the spec elective pools (see source_conflicts for the uncancelled ones)."
+    },
+    "tau:7622:2026:rama:24:kurs:0512-4710:idkunkurs:2bdf00d7af4a": {
+      "not_planning_rule": "Course note saying the course is not given (תשפ\"ז); the course is left out of the elective pools."
+    },
+    "tau:7622:2026:rama:24:kurs:0512-4802": {
+      "mapped_to": "categories[devices_nanoelectronics].course_ids[0512-4802]"
+    },
+    "tau:7622:2026:rama:24:kurs:0512-4803": {
+      "not_planning_rule": "Specialization-track course that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups; listings cancelled or not); it cannot be planned this catalog year, so it is not in the spec elective pools (see source_conflicts for the uncancelled ones)."
+    },
+    "tau:7622:2026:rama:24:kurs:0512-4803:idkunkurs:d956684e7d75": {
+      "not_planning_rule": "Course note saying the course is not given (תשפ\"ז); the course is left out of the elective pools."
+    },
+    "tau:7622:2026:rama:25": {
+      "mapped_to": "categories[electromagnetics_radiation]"
+    },
+    "tau:7622:2026:rama:25:hesber:5e1dec177f70": {
+      "not_planning_rule": "Descriptive text of a specialization track (its subject matter); no planning constraint."
+    },
+    "tau:7622:2026:rama:25:kurs:0512-4800:hearakurs:30290894f4f1": {
+      "mapped_to": "course_rules[core-four-distinct-tracks]"
+    },
+    "tau:7622:2026:rama:25:kurs:0512-4802": {
+      "mapped_to": "categories[electromagnetics_radiation].course_ids[0512-4802]"
+    },
+    "tau:7622:2026:rama:25:kurs:0512-4803": {
+      "not_planning_rule": "Specialization-track course that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups; listings cancelled or not); it cannot be planned this catalog year, so it is not in the spec elective pools (see source_conflicts for the uncancelled ones)."
+    },
+    "tau:7622:2026:rama:25:kurs:0512-4803:idkunkurs:d956684e7d75": {
+      "not_planning_rule": "Course note saying the course is not given (תשפ\"ז); the course is left out of the elective pools."
+    },
+    "tau:7622:2026:rama:25:kurs:0512-4804": {
+      "mapped_to": "categories[electromagnetics_radiation].course_ids[0512-4804]"
+    },
+    "tau:7622:2026:rama:25:kurs:0512-4861:hearakurs:558d7dc9476d": {
+      "mapped_to": "course_rules[excl-0512-4861-0512-4860]"
+    },
+    "tau:7622:2026:rama:25:kurs:0512-4862": {
+      "mapped_to": "categories[electromagnetics_radiation].course_ids[0512-4862]"
+    },
+    "tau:7622:2026:rama:26": {
+      "mapped_to": "categories[bioelectronics]"
+    },
+    "tau:7622:2026:rama:26:hesber:a37516343d26": {
+      "not_planning_rule": "Descriptive text of a specialization track (its subject matter); no planning constraint."
+    },
+    "tau:7622:2026:rama:26:kurs:0512-4138:hearakurs:d587647cdd27": {
+      "not_planning_rule": "Language-of-instruction note (taught in English); it does not constrain which courses, when, or how they count toward the degree."
+    },
+    "tau:7622:2026:rama:26:kurs:0512-4262": {
+      "not_planning_rule": "Specialization-track course that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups; listings cancelled or not); it cannot be planned this catalog year, so it is not in the spec elective pools (see source_conflicts for the uncancelled ones)."
+    },
+    "tau:7622:2026:rama:26:kurs:0512-4262:hearakurs:d6e51e3491ec": {
+      "mapped_to": "course_rules[core-four-distinct-tracks]"
+    },
+    "tau:7622:2026:rama:26:kurs:0512-4601": {
+      "mapped_to": "categories[bioelectronics].course_ids[0512-4601]"
+    },
+    "tau:7622:2026:rama:26:kurs:0512-4601:hearakurs:07ed077765e4": {
+      "mapped_to": "course_rules[core-four-distinct-tracks]"
+    },
+    "tau:7622:2026:rama:26:kurs:0555-3240:hearakurs:8df369907fc1": {
+      "mapped_to": "course_rules[core-four-distinct-tracks]"
+    },
+    "tau:7622:2026:rama:26:kurs:0555-4551": {
+      "not_planning_rule": "Specialization-track course that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups; listings cancelled or not); it cannot be planned this catalog year, so it is not in the spec elective pools (see source_conflicts for the uncancelled ones)."
+    },
+    "tau:7622:2026:rama:26:kurs:0555-4551:hearakurs:ad6329e6dcde": {
+      "mapped_to": "course_rules[core-four-distinct-tracks]"
+    },
+    "tau:7622:2026:rama:26:kurs:0555-4551:idkunkurs:689953838af0": {
+      "not_planning_rule": "Course note saying the course is not given (תשפ\"ז); the course is left out of the elective pools."
+    },
+    "tau:7622:2026:rama:26:kurs:0555-4551:idkunkurs:d956684e7d75": {
+      "not_planning_rule": "Course note saying the course is not given (תשפ\"ז); the course is left out of the elective pools."
+    },
+    "tau:7622:2026:rama:27": {
+      "mapped_to": "categories[electronic_materials]"
+    },
+    "tau:7622:2026:rama:27:hesber:acba350711fa": {
+      "not_planning_rule": "Descriptive text of a specialization track (its subject matter); no planning constraint."
+    },
+    "tau:7622:2026:rama:27:kurs:0510-6701": {
+      "mapped_to": "categories[electronic_materials].course_ids[0510-6701]"
+    },
+    "tau:7622:2026:rama:27:kurs:0510-6701:hearakurs:307b5d64cd18": {
+      "mapped_to": "course_rules[core-four-distinct-tracks]"
+    },
+    "tau:7622:2026:rama:27:kurs:0512-4700": {
+      "mapped_to": "categories[electronic_materials].course_ids[0512-4700]"
+    },
+    "tau:7622:2026:rama:27:kurs:0581-1111:hearakurs:b9345617d971": {
+      "mapped_to": "course_rules[core-four-distinct-tracks]"
+    },
+    "tau:7622:2026:rama:27:kurs:0581-3121:hearakurs:6c28169925bf": {
+      "mapped_to": "course_rules[core-four-distinct-tracks]"
+    },
+    "tau:7622:2026:rama:27:kurs:0581-4321": {
+      "not_planning_rule": "Specialization-track course that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups; listings cancelled or not); it cannot be planned this catalog year, so it is not in the spec elective pools (see source_conflicts for the uncancelled ones)."
+    },
+    "tau:7622:2026:rama:27:kurs:0581-5312": {
+      "not_planning_rule": "Specialization-track course that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups; listings cancelled or not); it cannot be planned this catalog year, so it is not in the spec elective pools (see source_conflicts for the uncancelled ones)."
+    },
+    "tau:7622:2026:rama:28": {
+      "not_planning_rule": "Recommended-plan split of track-course hours by year (Y3 12-20 / Y4 26-37 ש\"ס); the binding count (12 track courses, 4 core from 4 tracks) is mapped via group_minimums.track and course_rules[core-four-distinct-tracks]."
+    },
+    "tau:7622:2026:rama:28:hesber:d44979c2696d": {
+      "mapped_to": "course_rules[core-four-distinct-tracks]"
+    },
+    "tau:7622:2026:rama:29": {
+      "not_planning_rule": "Recommended-plan split of track-course hours by year (Y3 12-20 / Y4 26-37 ש\"ס); the binding count (12 track courses, 4 core from 4 tracks) is mapped via group_minimums.track and course_rules[core-four-distinct-tracks]."
+    },
+    "tau:7622:2026:rama:29:hesber:3775233ea2e7": {
+      "mapped_to": "course_rules[core-four-distinct-tracks]"
+    },
+    "tau:7622:2026:rama:3": {
+      "not_planning_rule": "Subtotal of the recommended-plan courses listed under this year/semester; every listed course is mapped on its own and the sum follows from their credits, so it states no independent requirement."
+    },
+    "tau:7622:2026:rama:30": {
+      "mapped_to": "categories[advanced_labs]"
+    },
+    "tau:7622:2026:rama:30:hesber:8440fe3988ad": {
+      "mapped_to": "course_rules[labs-two-distinct-tracks]"
+    },
+    "tau:7622:2026:rama:31": {
+      "mapped_to": "categories[advanced_labs]"
+    },
+    "tau:7622:2026:rama:31:kurs:0512-4190": {
+      "not_planning_rule": "Specialization-track course that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups; listings cancelled or not); it cannot be planned this catalog year, so it is not in the spec elective pools (see source_conflicts for the uncancelled ones)."
+    },
+    "tau:7622:2026:rama:31:kurs:0512-4190:idkunkurs:f02bb7fb5495": {
+      "not_planning_rule": "Course note saying the course is not given (תשפ\"ז); the course is left out of the elective pools."
+    },
+    "tau:7622:2026:rama:32": {
+      "mapped_to": "categories[advanced_labs]"
+    },
+    "tau:7622:2026:rama:33": {
+      "mapped_to": "categories[advanced_labs]"
+    },
+    "tau:7622:2026:rama:34": {
+      "mapped_to": "categories[advanced_labs]"
+    },
+    "tau:7622:2026:rama:34:kurs:0512-4390:hearakurs:7a72583caef0": {
+      "not_planning_rule": "Language-of-instruction note (taught in English); it does not constrain which courses, when, or how they count toward the degree."
+    },
+    "tau:7622:2026:rama:35": {
+      "mapped_to": "categories[advanced_labs]"
+    },
+    "tau:7622:2026:rama:36": {
+      "mapped_to": "categories[advanced_labs]"
+    },
+    "tau:7622:2026:rama:37": {
+      "mapped_to": "categories[advanced_labs]"
+    },
+    "tau:7622:2026:rama:38": {
+      "mapped_to": "categories[advanced_labs]"
+    },
+    "tau:7622:2026:rama:39": {
+      "mapped_to": "categories[advanced_labs]"
+    },
+    "tau:7622:2026:rama:4": {
+      "not_planning_rule": "Subtotal of the recommended-plan courses listed under this year/semester; every listed course is mapped on its own and the sum follows from their credits, so it states no independent requirement."
+    },
+    "tau:7622:2026:rama:40": {
+      "mapped_to": "categories[quantum]"
+    },
+    "tau:7622:2026:rama:40:hesber:b56a2dbb6c9b": {
+      "not_planning_rule": "Descriptive text of a specialization track (its subject matter); no planning constraint."
+    },
+    "tau:7622:2026:rama:40:kurs:0321-3818:hearakurs:a92605f63616": {
+      "not_planning_rule": "Registration condition (lecturer / committee approval, limited seats, or manual registration) decided case by case at enrollment; not a degree-requirement constraint the planner can evaluate."
+    },
+    "tau:7622:2026:rama:40:kurs:0321-3819:hearakurs:4cd5dba1f3dc": {
+      "mapped_to": "course_rules[core-four-distinct-tracks]"
+    },
+    "tau:7622:2026:rama:40:kurs:0321-3819:hearakurs:a92605f63616": {
+      "not_planning_rule": "Registration condition (lecturer / committee approval, limited seats, or manual registration) decided case by case at enrollment; not a degree-requirement constraint the planner can evaluate."
+    },
+    "tau:7622:2026:rama:40:kurs:0512-4125": {
+      "mapped_to": "categories[quantum].course_ids[0512-4125]"
+    },
+    "tau:7622:2026:rama:40:kurs:0512-4125:hearakurs:4cd5dba1f3dc": {
+      "mapped_to": "course_rules[core-four-distinct-tracks]"
+    },
+    "tau:7622:2026:rama:40:kurs:0512-4804": {
+      "mapped_to": "categories[quantum].course_ids[0512-4804]"
+    },
+    "tau:7622:2026:rama:41": {
+      "mapped_to": "categories[multidisciplinary]"
+    },
+    "tau:7622:2026:rama:41:kurs:0509-4010:hearakurs:ede4eaeafe57": {
+      "mapped_to": "course_rules[year-0509-4010]"
+    },
+    "tau:7622:2026:rama:41:kurs:0512-3000:hearakurs:9039898829ed": {
+      "mapped_to": "course_rules[year-0512-3000]"
+    },
+    "tau:7622:2026:rama:41:kurs:0512-4125": {
+      "mapped_to": "categories[multidisciplinary].course_ids[0512-4125]"
+    },
+    "tau:7622:2026:rama:41:kurs:0512-4125:hearakurs:4cd5dba1f3dc": {
+      "mapped_to": "course_rules[core-four-distinct-tracks]"
+    },
+    "tau:7622:2026:rama:41:kurs:0555-4000": {
+      "not_planning_rule": "Specialization-track course that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups; listings cancelled or not); it cannot be planned this catalog year, so it is not in the spec elective pools (see source_conflicts for the uncancelled ones)."
+    },
+    "tau:7622:2026:rama:42": {
+      "mapped_to": "general_requirement"
+    },
+    "tau:7622:2026:rama:42:hesber:050f28256b73": {
+      "mapped_to": "general_requirement"
+    },
+    "tau:7622:2026:rama:43": {
+      "mapped_to": "categories[vlsi]"
+    },
+    "tau:7622:2026:rama:43:hesber:8c97454c83a7": {
+      "not_planning_rule": "Descriptive text of a specialization track (its subject matter); no planning constraint."
+    },
+    "tau:7622:2026:rama:43:kurs:0512-4164": {
+      "mapped_to": "categories[vlsi].course_ids[0512-4164]"
+    },
+    "tau:7622:2026:rama:43:kurs:0512-4400": {
+      "mapped_to": "categories[vlsi].course_ids[0512-4400]"
+    },
+    "tau:7622:2026:rama:43:kurs:0512-4400:hearakurs:e1a2dc85d93d": {
+      "mapped_to": "course_rules[core-four-distinct-tracks]"
+    },
+    "tau:7622:2026:rama:43:kurs:0512-4652": {
+      "mapped_to": "categories[vlsi].course_ids[0512-4652]"
+    },
+    "tau:7622:2026:rama:43:kurs:0512-4703": {
+      "mapped_to": "categories[vlsi].course_ids[0512-4703]"
+    },
+    "tau:7622:2026:rama:43:kurs:0512-4703:hearakurs:7c112c4fe348": {
+      "mapped_to": "course_rules[core-four-distinct-tracks]"
+    },
+    "tau:7622:2026:rama:43:kurs:0512-4710": {
+      "not_planning_rule": "Specialization-track course that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups; listings cancelled or not); it cannot be planned this catalog year, so it is not in the spec elective pools (see source_conflicts for the uncancelled ones)."
+    },
+    "tau:7622:2026:rama:43:kurs:0512-4710:idkunkurs:2bdf00d7af4a": {
+      "not_planning_rule": "Course note saying the course is not given (תשפ\"ז); the course is left out of the elective pools."
+    },
+    "tau:7622:2026:rama:43:kurs:0512-4711:idkunkurs:bbdbf8ba0598": {
+      "not_planning_rule": "Prerequisites that change only from תשפ\"ח; no bearing on the תשפ\"ז plan."
+    },
+    "tau:7622:2026:rama:44": {
+      "mapped_to": "categories[ml_ai]"
+    },
+    "tau:7622:2026:rama:44:hesber:60320d623f52": {
+      "not_planning_rule": "Descriptive text of a specialization track (its subject matter); no planning constraint."
+    },
+    "tau:7622:2026:rama:44:kurs:0510-6202": {
+      "mapped_to": "categories[ml_ai].course_ids[0510-6202]"
+    },
+    "tau:7622:2026:rama:44:kurs:0510-6404:hearakurs:d0494bf23e75": {
+      "not_planning_rule": "Registration condition (lecturer / committee approval, limited seats, or manual registration) decided case by case at enrollment; not a degree-requirement constraint the planner can evaluate."
+    },
+    "tau:7622:2026:rama:44:kurs:0510-7255": {
+      "mapped_to": "categories[ml_ai].course_ids[0510-7255]"
+    },
+    "tau:7622:2026:rama:44:kurs:0512-4262": {
+      "not_planning_rule": "Specialization-track course that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups; listings cancelled or not); it cannot be planned this catalog year, so it is not in the spec elective pools (see source_conflicts for the uncancelled ones)."
+    },
+    "tau:7622:2026:rama:44:kurs:0512-4262:hearakurs:d6e51e3491ec": {
+      "mapped_to": "course_rules[core-four-distinct-tracks]"
+    },
+    "tau:7622:2026:rama:44:kurs:0512-4263": {
+      "mapped_to": "categories[ml_ai].course_ids[0512-4263]"
+    },
+    "tau:7622:2026:rama:44:kurs:0512-4264": {
+      "mapped_to": "categories[ml_ai].course_ids[0512-4264]"
+    },
+    "tau:7622:2026:rama:44:kurs:0512-4264:hearakurs:3db092bb8e16": {
+      "mapped_to": "course_rules[core-four-distinct-tracks]"
+    },
+    "tau:7622:2026:rama:44:kurs:0512-4264:idkunkurs:a81260ef19bb": {
+      "mapped_to": "course_rules[excl-0512-4264-0368-3235]"
+    },
+    "tau:7622:2026:rama:44:kurs:0512-4360": {
+      "mapped_to": "categories[ml_ai].course_ids[0512-4360]"
+    },
+    "tau:7622:2026:rama:44:kurs:0512-4360:hearakurs:8801b1f56509": {
+      "mapped_to": "course_rules[core-four-distinct-tracks]"
+    },
+    "tau:7622:2026:rama:44:kurs:0542-4621": {
+      "mapped_to": "categories[ml_ai].course_ids[0542-4621]"
+    },
+    "tau:7622:2026:rama:45": {
+      "mapped_to": "categories[advanced_labs]"
+    },
+    "tau:7622:2026:rama:46": {
+      "mapped_to": "categories[advanced_labs]"
+    },
+    "tau:7622:2026:rama:47": {
+      "mapped_to": "categories[hardware_exposure_elective]"
+    },
+    "tau:7622:2026:rama:47:hesber:b50d6d836b1d": {
+      "mapped_to": "course_rules[window-0512-4013]"
+    },
+    "tau:7622:2026:rama:47:kurs:0512-4013:hearakurs:551ea090eac3": {
+      "mapped_to": "course_rules[cohort-0512-4013]"
+    },
+    "tau:7622:2026:rama:47:kurs:0512-4013:idkunkurs:5873d0ce8baa": {
+      "mapped_to": "categories[hardware_exposure_elective].course_ids[0512-4013]"
+    },
+    "tau:7622:2026:rama:49": {
+      "mapped_to": "categories[advanced_labs]"
+    },
+    "tau:7622:2026:rama:49:kurs:0512-4126:idkunkurs:477ed1cf3f89": {
+      "not_planning_rule": "Applies to students of the EE + Physics double degree (\"physics\" advanced-lab requirement); not this program."
+    },
+    "tau:7622:2026:rama:5": {
+      "mapped_to": "group_minimums.track"
+    },
+    "tau:7622:2026:rama:50": {
+      "mapped_to": "categories[hardware_exposure_elective]"
+    },
+    "tau:7622:2026:rama:50:hesber:b50d6d836b1d": {
+      "mapped_to": "course_rules[window-0512-4013]"
+    },
+    "tau:7622:2026:rama:50:kurs:0512-4013:hearakurs:551ea090eac3": {
+      "mapped_to": "course_rules[cohort-0512-4013]"
+    },
+    "tau:7622:2026:rama:50:kurs:0512-4013:idkunkurs:5873d0ce8baa": {
+      "mapped_to": "categories[hardware_exposure_elective].course_ids[0512-4013]"
+    },
+    "tau:7622:2026:rama:5:hesber:d2b09fb26885": {
+      "mapped_to": "group_minimums.track"
+    },
+    "tau:7622:2026:rama:6": {
+      "not_planning_rule": "Subtotal of the recommended-plan courses listed under this year/semester; every listed course is mapped on its own and the sum follows from their credits, so it states no independent requirement."
+    },
+    "tau:7622:2026:rama:7": {
+      "not_planning_rule": "Subtotal of the recommended-plan courses listed under this year/semester; every listed course is mapped on its own and the sum follows from their credits, so it states no independent requirement."
+    },
+    "tau:7622:2026:rama:7:hesber:2aceec236feb": {
+      "not_planning_rule": "Recommended-plan load only (\"לפי תכנית הלימודים המומלצת\"): how many track courses / labs / שאר רוח courses to add in this semester; the binding totals are mapped elsewhere."
+    },
+    "tau:7622:2026:rama:8": {
+      "mapped_to": "general_requirement"
+    },
+    "tau:7622:2026:rama:8:hesber:a6ae8119b235": {
+      "mapped_to": "general_requirement"
+    },
+    "tau:7622:2026:rama:9": {
+      "not_planning_rule": "Subtotal of the recommended-plan courses listed under this year/semester; every listed course is mapped on its own and the sum follows from their credits, so it states no independent requirement."
+    },
+    "tau:7622:2026:timetable:0510-6202": {
+      "mapped_to": "categories[signal_processing].course_ids[0510-6202]"
+    },
+    "tau:7622:2026:timetable:0510-6701": {
+      "mapped_to": "categories[devices_nanoelectronics].course_ids[0510-6701]"
+    },
+    "tau:7622:2026:timetable:0510-7255": {
+      "mapped_to": "categories[signal_processing].course_ids[0510-7255]"
+    },
+    "tau:7622:2026:timetable:0512-4009": {
+      "mapped_to": "categories[communications].course_ids[0512-4009]"
+    },
+    "tau:7622:2026:timetable:0512-4125": {
+      "mapped_to": "categories[quantum].course_ids[0512-4125]"
+    },
+    "tau:7622:2026:timetable:0512-4162": {
+      "mapped_to": "categories[communications].course_ids[0512-4162]"
+    },
+    "tau:7622:2026:timetable:0512-4163": {
+      "mapped_to": "categories[communications].course_ids[0512-4163]"
+    },
+    "tau:7622:2026:timetable:0512-4164": {
+      "mapped_to": "categories[communications].course_ids[0512-4164]"
+    },
+    "tau:7622:2026:timetable:0512-4263": {
+      "mapped_to": "categories[signal_processing].course_ids[0512-4263]"
+    },
+    "tau:7622:2026:timetable:0512-4264": {
+      "mapped_to": "categories[communications].course_ids[0512-4264]"
+    },
+    "tau:7622:2026:timetable:0512-4360": {
+      "mapped_to": "categories[control_autonomous].course_ids[0512-4360]"
+    },
+    "tau:7622:2026:timetable:0512-4362": {
+      "mapped_to": "categories[control_autonomous].course_ids[0512-4362]"
+    },
+    "tau:7622:2026:timetable:0512-4400": {
+      "mapped_to": "categories[computer_systems].course_ids[0512-4400]"
+    },
+    "tau:7622:2026:timetable:0512-4462": {
+      "mapped_to": "categories[communications].course_ids[0512-4462]"
+    },
+    "tau:7622:2026:timetable:0512-4601": {
+      "mapped_to": "categories[optics_photonics].course_ids[0512-4601]"
+    },
+    "tau:7622:2026:timetable:0512-4602": {
+      "mapped_to": "categories[communications].course_ids[0512-4602]"
+    },
+    "tau:7622:2026:timetable:0512-4603": {
+      "mapped_to": "categories[signal_processing].course_ids[0512-4603]"
+    },
+    "tau:7622:2026:timetable:0512-4652": {
+      "mapped_to": "categories[communications].course_ids[0512-4652]"
+    },
+    "tau:7622:2026:timetable:0512-4700": {
+      "mapped_to": "categories[devices_nanoelectronics].course_ids[0512-4700]"
+    },
+    "tau:7622:2026:timetable:0512-4703": {
+      "mapped_to": "categories[computer_systems].course_ids[0512-4703]"
+    },
+    "tau:7622:2026:timetable:0512-4704": {
+      "mapped_to": "categories[optics_photonics].course_ids[0512-4704]"
+    },
+    "tau:7622:2026:timetable:0512-4802": {
+      "mapped_to": "categories[devices_nanoelectronics].course_ids[0512-4802]"
+    },
+    "tau:7622:2026:timetable:0512-4804": {
+      "mapped_to": "categories[electromagnetics_radiation].course_ids[0512-4804]"
+    },
+    "tau:7622:2026:timetable:0512-4862": {
+      "mapped_to": "categories[optics_photonics].course_ids[0512-4862]"
+    },
+    "tau:7622:2026:timetable:0542-4621": {
+      "mapped_to": "categories[control_autonomous].course_ids[0542-4621]"
+    },
+    "tau:ims:2026:0510-6202": {
+      "mapped_to": "categories[signal_processing].course_ids[0510-6202]"
+    },
+    "tau:ims:2026:0510-6701": {
+      "mapped_to": "categories[devices_nanoelectronics].course_ids[0510-6701]"
+    },
+    "tau:ims:2026:0510-7255": {
+      "mapped_to": "categories[signal_processing].course_ids[0510-7255]"
+    },
+    "tau:ims:2026:0510-7400": {
+      "not_planning_rule": "Specialization-track course that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups; listings cancelled or not); it cannot be planned this catalog year, so it is not in the spec elective pools (see source_conflicts for the uncancelled ones)."
+    },
+    "tau:ims:2026:0510-7438": {
+      "not_planning_rule": "Specialization-track course that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups; listings cancelled or not); it cannot be planned this catalog year, so it is not in the spec elective pools (see source_conflicts for the uncancelled ones)."
+    },
+    "tau:ims:2026:0510-7650": {
+      "not_planning_rule": "Specialization-track course that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups; listings cancelled or not); it cannot be planned this catalog year, so it is not in the spec elective pools (see source_conflicts for the uncancelled ones)."
+    },
+    "tau:ims:2026:0512-4009": {
+      "mapped_to": "categories[communications].course_ids[0512-4009]"
+    },
+    "tau:ims:2026:0512-4125": {
+      "mapped_to": "categories[quantum].course_ids[0512-4125]"
+    },
+    "tau:ims:2026:0512-4162": {
+      "mapped_to": "categories[communications].course_ids[0512-4162]"
+    },
+    "tau:ims:2026:0512-4163": {
+      "mapped_to": "categories[communications].course_ids[0512-4163]"
+    },
+    "tau:ims:2026:0512-4164": {
+      "mapped_to": "categories[communications].course_ids[0512-4164]"
+    },
+    "tau:ims:2026:0512-4190": {
+      "not_planning_rule": "Specialization-track course that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups; listings cancelled or not); it cannot be planned this catalog year, so it is not in the spec elective pools (see source_conflicts for the uncancelled ones)."
+    },
+    "tau:ims:2026:0512-4262": {
+      "not_planning_rule": "Specialization-track course that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups; listings cancelled or not); it cannot be planned this catalog year, so it is not in the spec elective pools (see source_conflicts for the uncancelled ones)."
+    },
+    "tau:ims:2026:0512-4263": {
+      "mapped_to": "categories[signal_processing].course_ids[0512-4263]"
+    },
+    "tau:ims:2026:0512-4264": {
+      "mapped_to": "categories[communications].course_ids[0512-4264]"
+    },
+    "tau:ims:2026:0512-4360": {
+      "mapped_to": "categories[control_autonomous].course_ids[0512-4360]"
+    },
+    "tau:ims:2026:0512-4362": {
+      "mapped_to": "categories[control_autonomous].course_ids[0512-4362]"
+    },
+    "tau:ims:2026:0512-4364": {
+      "not_planning_rule": "Specialization-track course that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups; listings cancelled or not); it cannot be planned this catalog year, so it is not in the spec elective pools (see source_conflicts for the uncancelled ones)."
+    },
+    "tau:ims:2026:0512-4400": {
+      "mapped_to": "categories[computer_systems].course_ids[0512-4400]"
+    },
+    "tau:ims:2026:0512-4462": {
+      "mapped_to": "categories[communications].course_ids[0512-4462]"
+    },
+    "tau:ims:2026:0512-4493": {
+      "not_planning_rule": "Specialization-track course that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups; listings cancelled or not); it cannot be planned this catalog year, so it is not in the spec elective pools (see source_conflicts for the uncancelled ones)."
+    },
+    "tau:ims:2026:0512-4507": {
+      "not_planning_rule": "Specialization-track course that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups; listings cancelled or not); it cannot be planned this catalog year, so it is not in the spec elective pools (see source_conflicts for the uncancelled ones)."
+    },
+    "tau:ims:2026:0512-4601": {
+      "mapped_to": "categories[optics_photonics].course_ids[0512-4601]"
+    },
+    "tau:ims:2026:0512-4602": {
+      "mapped_to": "categories[communications].course_ids[0512-4602]"
+    },
+    "tau:ims:2026:0512-4603": {
+      "mapped_to": "categories[signal_processing].course_ids[0512-4603]"
+    },
+    "tau:ims:2026:0512-4631": {
+      "not_planning_rule": "Specialization-track course that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups; listings cancelled or not); it cannot be planned this catalog year, so it is not in the spec elective pools (see source_conflicts for the uncancelled ones)."
+    },
+    "tau:ims:2026:0512-4652": {
+      "mapped_to": "categories[communications].course_ids[0512-4652]"
+    },
+    "tau:ims:2026:0512-4700": {
+      "mapped_to": "categories[devices_nanoelectronics].course_ids[0512-4700]"
+    },
+    "tau:ims:2026:0512-4703": {
+      "mapped_to": "categories[computer_systems].course_ids[0512-4703]"
+    },
+    "tau:ims:2026:0512-4704": {
+      "mapped_to": "categories[optics_photonics].course_ids[0512-4704]"
+    },
+    "tau:ims:2026:0512-4710": {
+      "not_planning_rule": "Specialization-track course that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups; listings cancelled or not); it cannot be planned this catalog year, so it is not in the spec elective pools (see source_conflicts for the uncancelled ones)."
+    },
+    "tau:ims:2026:0512-4802": {
+      "mapped_to": "categories[devices_nanoelectronics].course_ids[0512-4802]"
+    },
+    "tau:ims:2026:0512-4803": {
+      "not_planning_rule": "Specialization-track course that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups; listings cancelled or not); it cannot be planned this catalog year, so it is not in the spec elective pools (see source_conflicts for the uncancelled ones)."
+    },
+    "tau:ims:2026:0512-4804": {
+      "mapped_to": "categories[electromagnetics_radiation].course_ids[0512-4804]"
+    },
+    "tau:ims:2026:0512-4862": {
+      "mapped_to": "categories[optics_photonics].course_ids[0512-4862]"
+    },
+    "tau:ims:2026:0542-4621": {
+      "mapped_to": "categories[control_autonomous].course_ids[0542-4621]"
+    },
+    "tau:ims:2026:0555-4000": {
+      "not_planning_rule": "Specialization-track course that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups; listings cancelled or not); it cannot be planned this catalog year, so it is not in the spec elective pools (see source_conflicts for the uncancelled ones)."
+    },
+    "tau:ims:2026:0555-4551": {
+      "not_planning_rule": "Specialization-track course that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups; listings cancelled or not); it cannot be planned this catalog year, so it is not in the spec elective pools (see source_conflicts for the uncancelled ones)."
+    },
+    "tau:ims:2026:0581-4321": {
+      "not_planning_rule": "Specialization-track course that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups; listings cancelled or not); it cannot be planned this catalog year, so it is not in the spec elective pools (see source_conflicts for the uncancelled ones)."
+    },
+    "tau:ims:2026:0581-5312": {
+      "not_planning_rule": "Specialization-track course that TAU marks as not taught in תשפ\"ז (IMS 2026: not_offered, no timetable groups; listings cancelled or not); it cannot be planned this catalog year, so it is not in the spec elective pools (see source_conflicts for the uncancelled ones)."
+    },
+    "pdf:b6a7c762f8db:00099565646a": {
+      "not_planning_rule": "Honours degree: cum laude criteria set yearly, final grade at least 85."
+    },
+    "pdf:b6a7c762f8db:003731b6b3b3": {
+      "not_planning_rule": "Exam accommodation (medical): written request with documents to the student secretariat (first half of the sentence)."
+    },
+    "pdf:b6a7c762f8db:0238b51ee4ec": {
+      "not_planning_rule": "Grading: the final grade weights all the semester's required work."
+    },
+    "pdf:b6a7c762f8db:0292cad40dcb": {
+      "not_planning_rule": "Exam accommodation: Hebrew-language accommodations for new immigrants (arrived within seven years)."
+    },
+    "pdf:b6a7c762f8db:02ffe90f7f64": {
+      "not_planning_rule": "Final grade: weighted average formula (sum of grade x weight over sum of weights)."
+    },
+    "pdf:b6a7c762f8db:037cc0cfa7bc": {
+      "not_planning_rule": "section heading: הפסקת לימודים"
+    },
+    "pdf:b6a7c762f8db:040525879ab9": {
+      "not_planning_rule": "section heading: זכאות למועד נוסף"
+    },
+    "pdf:b6a7c762f8db:0513a4b744e4": {
+      "not_planning_rule": "Excellence: always for the previous year's achievements."
+    },
+    "pdf:b6a7c762f8db:0536ccd68c99": {
+      "not_planning_rule": "Extra exam date eligibility: introduces the list."
+    },
+    "pdf:b6a7c762f8db:054faa375f0f": {
+      "not_planning_rule": "Pointer: each track's chapter publishes its detailed program (course names, prerequisites); EE's is the tochniot program page, read as the tau:7622:2026:* items."
+    },
+    "pdf:b6a7c762f8db:05a503563b11": {
+      "not_planning_rule": "Pregnancy/parenthood accommodations: combined absence capped at 30%."
+    },
+    "pdf:b6a7c762f8db:0760f2da0050": {
+      "not_planning_rule": "Registration procedure: registration dates and instructions are sent to the university email."
+    },
+    "pdf:b6a7c762f8db:08a119c3f3ac": {
+      "mapped_to": "catalog_year_policy"
+    },
+    "pdf:b6a7c762f8db:0a6be5854015": {
+      "not_planning_rule": "section heading: התאמות לימודיות בבחינות בשל סיבות רפואיות"
+    },
+    "pdf:b6a7c762f8db:0aba715ee136": {
+      "not_planning_rule": "Grade-contingent retake: a repeated course adds no credits toward the total (the spec counts each course once)."
+    },
+    "pdf:b6a7c762f8db:0b926f336d1e": {
+      "not_planning_rule": "Final grade: surplus electives may be excluded from the final average on request."
+    },
+    "pdf:b6a7c762f8db:0dd6a37d863d": {
+      "not_planning_rule": "Return after dismissal: accept and recognise past courses (resume studies)."
+    },
+    "pdf:b6a7c762f8db:0eb51cd39178": {
+      "not_planning_rule": "section heading: נוהל הגשת בקשה לקבלת פטור"
+    },
+    "pdf:b6a7c762f8db:0eefd431040e": {
+      "not_planning_rule": "Degree eligibility (grade-contingent): every required course must be passed; an eligibility rule on grades, which the planner does not plan."
+    },
+    "pdf:b6a7c762f8db:0f3f88f78722": {
+      "not_planning_rule": "section heading: הקפאת לימודים"
+    },
+    "pdf:b6a7c762f8db:103ba15c27c9": {
+      "not_planning_rule": "Academic dismissal (grade-contingent): probation after a restart following an earlier dismissal."
+    },
+    "pdf:b6a7c762f8db:10e62bb2b953": {
+      "not_planning_rule": "Lapse of studies: after a break of more than five calendar years all earlier courses lapse; a rule for students returning from a break, not course planning."
+    },
+    "pdf:b6a7c762f8db:10f7d786e951": {
+      "not_planning_rule": "Track transfer: capacity of the requested track."
+    },
+    "pdf:b6a7c762f8db:1151bb302df0": {
+      "not_planning_rule": "Academic status (grade-contingent): good standing needs a pass in every course of the year."
+    },
+    "pdf:b6a7c762f8db:11d238f6fbba": {
+      "not_planning_rule": "Probation (grade-contingent): must retake the finally failed courses in the next semester; the planner does not model grades or probation."
+    },
+    "pdf:b6a7c762f8db:13a7a0b3c386": {
+      "not_planning_rule": "Final grade: no record changes or grade improvement after eligibility."
+    },
+    "pdf:b6a7c762f8db:16361fb475ee": {
+      "not_planning_rule": "Pregnancy/parenthood accommodations: who is an eligible student."
+    },
+    "pdf:b6a7c762f8db:16ceaa601312": {
+      "not_planning_rule": "Status table (grade-contingent): probation below 70 for EE and physics students."
+    },
+    "pdf:b6a7c762f8db:175943d1045d": {
+      "not_planning_rule": "Exemptions procedure: practical engineers/technicians attach their diploma."
+    },
+    "pdf:b6a7c762f8db:17ad2222f031": {
+      "not_planning_rule": "Extra exam date for illness: the student sat one of the two scheduled dates."
+    },
+    "pdf:b6a7c762f8db:187597e16421": {
+      "not_planning_rule": "Extra exam date eligibility: approved by the faculty student-affairs committee."
+    },
+    "pdf:b6a7c762f8db:1a374fea14b7": {
+      "not_planning_rule": "Registration procedure: registration is done online by bidding."
+    },
+    "pdf:b6a7c762f8db:1a4a296bfe65": {
+      "not_planning_rule": "Special exam date eligibility: introduces the list."
+    },
+    "pdf:b6a7c762f8db:1a4bd9a41fdb": {
+      "not_planning_rule": "Exam scheduling: exams are held at semester end, usually within about six weeks."
+    },
+    "pdf:b6a7c762f8db:1ad93e5257f2": {
+      "not_planning_rule": "Special exam date eligibility: the lecturer/TA attendance procedure was not kept at the exam."
+    },
+    "pdf:b6a7c762f8db:1b6dc2593503": {
+      "not_planning_rule": "Status-table footnote: final failure is failing both dates, or grade 260 at both without cause."
+    },
+    "pdf:b6a7c762f8db:1c0800404039": {
+      "not_planning_rule": "Pregnancy/parenthood accommodations: restroom breaks during exams."
+    },
+    "pdf:b6a7c762f8db:1c4100ce68e5": {
+      "not_planning_rule": "Track transfer: needs the admissions committee's approval."
+    },
+    "pdf:b6a7c762f8db:1c5154b179e4": {
+      "not_planning_rule": "Academic status (grade-contingent): probation after final failure in two courses in a year."
+    },
+    "pdf:b6a7c762f8db:1d7b2bfa0d38": {
+      "not_planning_rule": "Pregnancy/parenthood accommodations: an absence of at least 21 days in the semester qualifies."
+    },
+    "pdf:b6a7c762f8db:1db101def279": {
+      "not_planning_rule": "section heading: לוח זמנים ללימודי התואר הראשון"
+    },
+    "pdf:b6a7c762f8db:1dfafe6cd192": {
+      "not_planning_rule": "Pregnancy/parenthood accommodations: summer courses taken to catch up are charged regular tuition."
+    },
+    "pdf:b6a7c762f8db:1e5473b7a0af": {
+      "not_planning_rule": "Exam accommodation: students over 60 may request 25% extra exam time."
+    },
+    "pdf:b6a7c762f8db:1e832a3205e0": {
+      "not_planning_rule": "Extra exam date for illness: at most twice per exam period (semester)."
+    },
+    "pdf:b6a7c762f8db:1ea559e9ebe8": {
+      "not_planning_rule": "section heading: לקראת מועד רישום לקורסים"
+    },
+    "pdf:b6a7c762f8db:1f4d5ad63256": {
+      "not_planning_rule": "Registration procedure: course registration is held before the year (or near each semester); timing of the registration process, not of course placement."
+    },
+    "pdf:b6a7c762f8db:1f6b3973ec7c": {
+      "not_planning_rule": "Exam eligibility: registered as a student and studying by the rules."
+    },
+    "pdf:b6a7c762f8db:1f7e061011cb": {
+      "not_planning_rule": "Exam scheduling advice: allow for close exam dates when planning; advisory, no constraint on which courses or when."
+    },
+    "pdf:b6a7c762f8db:1fe3238a8884": {
+      "not_planning_rule": "Track transfer: completed the full year-1 program of the current track."
+    },
+    "pdf:b6a7c762f8db:204a97a8ca0b": {
+      "not_planning_rule": "section heading: בחני ביניים"
+    },
+    "pdf:b6a7c762f8db:2494083bdc08": {
+      "not_planning_rule": "Return after dismissal: only in exceptional cases and after two years."
+    },
+    "pdf:b6a7c762f8db:24d3744dddd2": {
+      "not_planning_rule": "Pregnancy/parenthood accommodations: at least 25%, at most 30% extra exam time."
+    },
+    "pdf:b6a7c762f8db:24fc5e6ad8af": {
+      "not_planning_rule": "Extra exam date: the student must catch up on the material and exam format."
+    },
+    "pdf:b6a7c762f8db:25501ba6d27c": {
+      "mapped_to": "course_rules[duration-extension]"
+    },
+    "pdf:b6a7c762f8db:255066fca2a0": {
+      "not_planning_rule": "Preamble: the faculty may change these regulations without prior notice; no planning constraint."
+    },
+    "pdf:b6a7c762f8db:265805e47e93": {
+      "not_planning_rule": "Exam accommodation: apply for diagnosis early (long waiting list)."
+    },
+    "pdf:b6a7c762f8db:2850176772e9": {
+      "not_planning_rule": "Exam eligibility: met all the course's academic obligations."
+    },
+    "pdf:b6a7c762f8db:28755d61874e": {
+      "not_planning_rule": "section heading: חזרה על קורס"
+    },
+    "pdf:b6a7c762f8db:28a8c30af30f": {
+      "not_planning_rule": "Pregnancy/parenthood accommodations: inform the lab lecturer of pregnancy or nursing."
+    },
+    "pdf:b6a7c762f8db:295016ae1c33": {
+      "not_planning_rule": "Grade appeals: must be reasoned and specific."
+    },
+    "pdf:b6a7c762f8db:297dc287297c": {
+      "not_planning_rule": "Exam accommodation: 30 extra minutes in Hebrew exams (non-Hebrew matriculation within 7 years, Arab-society students)."
+    },
+    "pdf:b6a7c762f8db:2a637bf8c7b2": {
+      "not_planning_rule": "section heading: מועד או הסדר בחינות מיוחד / נוסף"
+    },
+    "pdf:b6a7c762f8db:2a86089e60fa": {
+      "not_planning_rule": "Exemptions eligibility: students moving between engineering tracks are exempt from courses passed with 60 or more; per student, not planned."
+    },
+    "pdf:b6a7c762f8db:2aa5af88a818": {
+      "not_planning_rule": "Academic status (grade-contingent): average 70 or more for ME-Earth Sciences students."
+    },
+    "pdf:b6a7c762f8db:2baabfb47a3f": {
+      "not_planning_rule": "Probation (grade-contingent): must clear all obligations and finish that year in good standing."
+    },
+    "pdf:b6a7c762f8db:2c55f8e62f65": {
+      "mapped_to": "course_rules[duration-extension]"
+    },
+    "pdf:b6a7c762f8db:2c98e358a4c7": {
+      "not_planning_rule": "Academic status (grade-contingent): probation below 70 for EE/physics and ME-Earth Sciences."
+    },
+    "pdf:b6a7c762f8db:2e759ea36ed1": {
+      "not_planning_rule": "section heading: הצטיינות בלימודים"
+    },
+    "pdf:b6a7c762f8db:2f614df6be32": {
+      "not_planning_rule": "Reserve duty: an extra exam date per missed date, under these conditions (introduces the list)."
+    },
+    "pdf:b6a7c762f8db:2f8a03e6d754": {
+      "not_planning_rule": "Registration procedure: bidding instructions are emailed and published on the faculty site."
+    },
+    "pdf:b6a7c762f8db:2fca8e7cd12e": {
+      "not_planning_rule": "Pregnancy/parenthood accommodations: completing interrupted course work with the lecturer."
+    },
+    "pdf:b6a7c762f8db:30895cfe35c6": {
+      "not_planning_rule": "Offering caveat: the faculty may cancel an elective; offerings come from the live timetable and IMS facts, so it adds no spec rule."
+    },
+    "pdf:b6a7c762f8db:30e7aece36d6": {
+      "not_planning_rule": "Return after dismissal: the program head decides which courses are recognised."
+    },
+    "pdf:b6a7c762f8db:322516cd1355": {
+      "not_planning_rule": "section heading: תלמידה בהריון"
+    },
+    "pdf:b6a7c762f8db:3292c24ca03a": {
+      "not_planning_rule": "Discipline: the faculty takes cheating seriously."
+    },
+    "pdf:b6a7c762f8db:329d71ddef42": {
+      "not_planning_rule": "section heading: התאמות לתלמידות הרות ויולדות"
+    },
+    "pdf:b6a7c762f8db:331fa1f6baed": {
+      "not_planning_rule": "Reserve duty: courses missed may be repeated free of charge."
+    },
+    "pdf:b6a7c762f8db:33c1cb32ab5e": {
+      "not_planning_rule": "Exam dates: special cases get a special or extra date (introduces the list)."
+    },
+    "pdf:b6a7c762f8db:34dc353be036": {
+      "not_planning_rule": "Absence from a special/extra date: a new request only for hospitalisation, birth or reserve duty."
+    },
+    "pdf:b6a7c762f8db:35abae027f00": {
+      "not_planning_rule": "Status table (grade-contingent): probation when the yearly average is below 65."
+    },
+    "pdf:b6a7c762f8db:35c7efa86140": {
+      "not_planning_rule": "Exemptions procedure: documents to attach (introduces the list)."
+    },
+    "pdf:b6a7c762f8db:3620fa4f2130": {
+      "not_planning_rule": "section heading: ציונים"
+    },
+    "pdf:b6a7c762f8db:368782fa9498": {
+      "not_planning_rule": "Special exam date (moed meyuhad): definition; held near the semester, at most four months after it ends."
+    },
+    "pdf:b6a7c762f8db:375ae3be5829": {
+      "not_planning_rule": "Grade improvement: moed B registration through the personal information site."
+    },
+    "pdf:b6a7c762f8db:37b66eb5d14d": {
+      "not_planning_rule": "Final exams: written and graded by the course staff."
+    },
+    "pdf:b6a7c762f8db:37d1bcdaee0f": {
+      "not_planning_rule": "Pregnancy/parenthood accommodations: hazardous labs may be postponed to a later date or semester (contingent; approved per case)."
+    },
+    "pdf:b6a7c762f8db:38ebc4de26c8": {
+      "not_planning_rule": "Status table (grade-contingent): on probation, a reduced program."
+    },
+    "pdf:b6a7c762f8db:3aa5ced77d7b": {
+      "not_planning_rule": "Exemptions eligibility: only for prior academic studies at a recognised institution, in the listed cases; per student, not planned."
+    },
+    "pdf:b6a7c762f8db:3ad8376c8130": {
+      "not_planning_rule": "Pregnancy/parenthood accommodations: assignment deadlines extended up to 7 weeks."
+    },
+    "pdf:b6a7c762f8db:3ae77baa215c": {
+      "not_planning_rule": "Grade appeals: an appeal not filed properly and on time is not handled."
+    },
+    "pdf:b6a7c762f8db:3bb26be7a9d2": {
+      "not_planning_rule": "Reserve duty: assignments may be submitted up to 8 weeks late."
+    },
+    "pdf:b6a7c762f8db:3c2214af742c": {
+      "not_planning_rule": "Special exam date eligibility: pregnancy that prevented sitting the exam."
+    },
+    "pdf:b6a7c762f8db:3c46e3e8425d": {
+      "not_planning_rule": "Assessment: each semester is a self-contained unit; every course ends with a final grade."
+    },
+    "pdf:b6a7c762f8db:3d9a1ea993b1": {
+      "not_planning_rule": "Grade improvement: no waiver from quizzes; grades from earlier years are not carried over."
+    },
+    "pdf:b6a7c762f8db:3de9ae1989c0": {
+      "not_planning_rule": "Final grade: the record notes a course not weighted."
+    },
+    "pdf:b6a7c762f8db:3e06df846001": {
+      "not_planning_rule": "Registration procedure: in special cases timetable changes until the end of week 4."
+    },
+    "pdf:b6a7c762f8db:3e7c3950bafc": {
+      "not_planning_rule": "section heading: השלמת חומר ומטלות בקורס"
+    },
+    "pdf:b6a7c762f8db:3e88b6b28c9b": {
+      "not_planning_rule": "Academic dismissal (grade-contingent): final failure twice in the same mandatory course."
+    },
+    "pdf:b6a7c762f8db:3e9ed5c0d5e9": {
+      "not_planning_rule": "Exam dates: undergraduates may sit each final exam on two university dates in the year the course was taken."
+    },
+    "pdf:b6a7c762f8db:3f72e0663ede": {
+      "not_planning_rule": "Track transfer: average 85 or more."
+    },
+    "pdf:b6a7c762f8db:3fb0b38675de": {
+      "not_planning_rule": "Pregnancy/parenthood accommodations: postponement approved by the faculty coordinator."
+    },
+    "pdf:b6a7c762f8db:3fce779bfac0": {
+      "not_planning_rule": "Exemptions procedure: list the exemption requests for the whole period of study."
+    },
+    "pdf:b6a7c762f8db:42971476285c": {
+      "not_planning_rule": "section heading: בוגר.ת הפקולטה (B.Sc) בהצטיינות ובהצטיינות יתרה"
+    },
+    "pdf:b6a7c762f8db:43e46677d733": {
+      "not_planning_rule": "Excellence: certificates awarded every year (introduces the list)."
+    },
+    "pdf:b6a7c762f8db:45f1ae29345a": {
+      "not_planning_rule": "Exam eligibility: registered to the course."
+    },
+    "pdf:b6a7c762f8db:465edf364e86": {
+      "not_planning_rule": "Registration procedure: late registration and timetable changes until the end of week 2 of the semester."
+    },
+    "pdf:b6a7c762f8db:483f0fa81eeb": {
+      "not_planning_rule": "Reserve-duty recognition: the forms that prove active service (3021, 3010, 510)."
+    },
+    "pdf:b6a7c762f8db:48e4d8c7acbe": {
+      "not_planning_rule": "Exemptions eligibility: practical engineers and vocational-school graduates are exempt per lists each track publishes; per student, not planned."
+    },
+    "pdf:b6a7c762f8db:4a7c83efacb7": {
+      "not_planning_rule": "Status table (grade-contingent): on probation, retake finally failed courses next semester."
+    },
+    "pdf:b6a7c762f8db:4b6570581159": {
+      "not_planning_rule": "section heading: מועד מיוחד"
+    },
+    "pdf:b6a7c762f8db:4bf197f380eb": {
+      "not_planning_rule": "Quizzes: the quiz grade counts toward the course grade up to the stated cap, per the syllabus."
+    },
+    "pdf:b6a7c762f8db:4c0e7bbf7f85": {
+      "mapped_to": "course_rules[duration-8-semesters]"
+    },
+    "pdf:b6a7c762f8db:4d489f238794": {
+      "not_planning_rule": "Final exams: a written final exam on all the semester's material."
+    },
+    "pdf:b6a7c762f8db:4dd5e3fd6589": {
+      "not_planning_rule": "Preamble: changes take effect immediately unless stated otherwise; no planning constraint."
+    },
+    "pdf:b6a7c762f8db:4de53c9ece1b": {
+      "not_planning_rule": "Definition: an academic hour is 50 minutes; not a planning rule."
+    },
+    "pdf:b6a7c762f8db:4ec440e96c88": {
+      "not_planning_rule": "Resuming studies (status-contingent catalog year): a resuming student follows the program in force at resumption; the spec plans the start-year program of a continuous student (catalog_year_policy start_year)."
+    },
+    "pdf:b6a7c762f8db:4f91181c5d1f": {
+      "not_planning_rule": "section heading: התיישנות לימודים"
+    },
+    "pdf:b6a7c762f8db:4faae8cefee4": {
+      "not_planning_rule": "Reserve duty: a submission extension extends library access."
+    },
+    "pdf:b6a7c762f8db:4fdf55c6d82c": {
+      "not_planning_rule": "Honours degree: cum laude summa (בהצטיינות יתרה) for a final grade of 95 or more."
+    },
+    "pdf:b6a7c762f8db:4fe4a12ef97d": {
+      "not_planning_rule": "section heading: מעבדות"
+    },
+    "pdf:b6a7c762f8db:52867f8d3255": {
+      "not_planning_rule": "Communications: an official announcement made in class counts as received by every student of that class; not a planning rule."
+    },
+    "pdf:b6a7c762f8db:54dda7a6a0ca": {
+      "not_planning_rule": "section heading: עבודות ותרגילים"
+    },
+    "pdf:b6a7c762f8db:5518ca9fcfbb": {
+      "not_planning_rule": "Grading: the lecturer sets the assessment method and weights, published at the start."
+    },
+    "pdf:b6a7c762f8db:555ebdb6ffcb": {
+      "not_planning_rule": "Exemptions procedure: course exemptions are granted by the undergraduate program heads; exemptions are decided per student, not planned."
+    },
+    "pdf:b6a7c762f8db:558521713b64": {
+      "not_planning_rule": "Eligibility (admission on prior studies): such students must study at least a third of the program and at least one year at the faculty; an admission-case eligibility rule the planner does not plan."
+    },
+    "pdf:b6a7c762f8db:559eb03249ee": {
+      "not_planning_rule": "Study records: report suspected errors to the secretariat promptly."
+    },
+    "pdf:b6a7c762f8db:57e13bd3eab6": {
+      "not_planning_rule": "Eligibility confirmation: library books returned."
+    },
+    "pdf:b6a7c762f8db:58eac64ff015": {
+      "not_planning_rule": "Special exam date eligibility: approved by the faculty student-affairs committee."
+    },
+    "pdf:b6a7c762f8db:5abf3663b159": {
+      "not_planning_rule": "Extra exam date for illness: medical certificates for at least 3 sick days incl. the exam."
+    },
+    "pdf:b6a7c762f8db:5ae1d62a780a": {
+      "mapped_to": "course_rules[graduate-courses-max-2-per-semester]"
+    },
+    "pdf:b6a7c762f8db:5bc5fdf9eea9": {
+      "not_planning_rule": "Grade-contingent retake: re-registering to improve a passing grade is allowed only in the following year; an optional improvement, not part of the degree plan."
+    },
+    "pdf:b6a7c762f8db:5bd8b1cc3f1b": {
+      "not_planning_rule": "Degree eligibility: no grade improvement after the eligibility confirmation."
+    },
+    "pdf:b6a7c762f8db:5c08d5e1fa28": {
+      "not_planning_rule": "Admission: students must meet the registrar's registration and admission requirements; admission, not course planning."
+    },
+    "pdf:b6a7c762f8db:5c3c4b6b373f": {
+      "not_planning_rule": "Registration procedure: a correctly recorded registration is the basis for exam rosters, the study record and tuition."
+    },
+    "pdf:b6a7c762f8db:5c4d4a88f663": {
+      "not_planning_rule": "Exemption accounting: an exempted course is left out of the final average but counts toward the accumulated credits; exemptions are granted per student, not planned."
+    },
+    "pdf:b6a7c762f8db:5dc2a9f73b8b": {
+      "not_planning_rule": "section heading: הודעות רשמיות"
+    },
+    "pdf:b6a7c762f8db:5deab68e2b89": {
+      "not_planning_rule": "Registration procedure: a lecturer adding a name to an attendance list is not a registration."
+    },
+    "pdf:b6a7c762f8db:61c8457a255f": {
+      "not_planning_rule": "Excellence: dean's certificates for commendable achievement."
+    },
+    "pdf:b6a7c762f8db:62c8fcbb8a03": {
+      "not_planning_rule": "section heading: מועד נוסף"
+    },
+    "pdf:b6a7c762f8db:630f0a423dee": {
+      "not_planning_rule": "Special exam date eligibility: exam on a non-Jewish holiday of the student's community."
+    },
+    "pdf:b6a7c762f8db:6361b65c58d4": {
+      "not_planning_rule": "section heading: בחינות ובחנים"
+    },
+    "pdf:b6a7c762f8db:639ca72b8bc5": {
+      "not_planning_rule": "Pregnancy/parenthood accommodations: the semester's registrations are then cancelled."
+    },
+    "pdf:b6a7c762f8db:63e5eb512808": {
+      "not_planning_rule": "Grade publication: students must check their grades promptly."
+    },
+    "pdf:b6a7c762f8db:6484a8d5980d": {
+      "not_planning_rule": "Academic dismissal (grade-contingent): yearly average below 60."
+    },
+    "pdf:b6a7c762f8db:67ceb9c45e27": {
+      "not_planning_rule": "section heading: רשאים להבחן"
+    },
+    "pdf:b6a7c762f8db:68bc0f639e90": {
+      "not_planning_rule": "Pointer on lapse of studies: the procedure is detailed in the university general regulations; it concerns students returning after a break of over five years, not course planning."
+    },
+    "pdf:b6a7c762f8db:68db8fb5fac7": {
+      "not_planning_rule": "Student responsibility: check one's own timetable in the personal information system."
+    },
+    "pdf:b6a7c762f8db:6985bcfb7600": {
+      "not_planning_rule": "Academic dismissal: studies end in the following cases (introduces the list)."
+    },
+    "pdf:b6a7c762f8db:69983f6a9334": {
+      "not_planning_rule": "Grade appeals: the lecturer may regrade the whole exam."
+    },
+    "pdf:b6a7c762f8db:6a7740e055e3": {
+      "not_planning_rule": "Final-grade footnote (1), first word ('all')."
+    },
+    "pdf:b6a7c762f8db:6b87a0d4544c": {
+      "not_planning_rule": "Status-table footnote: years 3-4 assessed at the end of the year."
+    },
+    "pdf:b6a7c762f8db:6bd6b2ded320": {
+      "not_planning_rule": "Reserve-duty recognition: service of three days or less counts only if reported on call-up."
+    },
+    "pdf:b6a7c762f8db:6ca97b0c0826": {
+      "not_planning_rule": "Tuition: tuition is calculated after the registration period closes."
+    },
+    "pdf:b6a7c762f8db:6d66c18dfbca": {
+      "not_planning_rule": "Grading: weighting and pass condition are published in the course guidelines."
+    },
+    "pdf:b6a7c762f8db:6dc224cf0688": {
+      "not_planning_rule": "Reserve duty (contingent): if requirements cannot be completed, re-register next semester; contingent on service, not part of the degree plan."
+    },
+    "pdf:b6a7c762f8db:6edd6cd939f7": {
+      "not_planning_rule": "section heading: פרסום ציונים"
+    },
+    "pdf:b6a7c762f8db:6f0ee4a2c32a": {
+      "not_planning_rule": "section heading: רישום לקורסים"
+    },
+    "pdf:b6a7c762f8db:6ff28fe51ac9": {
+      "not_planning_rule": "Pregnancy/parenthood accommodations: absence of up to 30% of a course's lessons."
+    },
+    "pdf:b6a7c762f8db:7170670095c8": {
+      "not_planning_rule": "Grade publication: grades are published in the personal information site."
+    },
+    "pdf:b6a7c762f8db:72736799efc8": {
+      "not_planning_rule": "Honours degree: cum laude per track for the תשפ\"ב ceremony."
+    },
+    "pdf:b6a7c762f8db:73996ab6a900": {
+      "not_planning_rule": "Quizzes: the quiz schedule is published at the start of the semester."
+    },
+    "pdf:b6a7c762f8db:74f72fee88a1": {
+      "not_planning_rule": "Grade improvement: the lecturer may waive exercises (then they are not weighted)."
+    },
+    "pdf:b6a7c762f8db:761206b5f378": {
+      "not_planning_rule": "Academic dismissal (grade-contingent): final failure in three or more courses in a year, years 3-4."
+    },
+    "pdf:b6a7c762f8db:7634a7906a00": {
+      "mapped_to": "course_rules[prereq-before-or-concurrent]"
+    },
+    "pdf:b6a7c762f8db:76d868eeaf4a": {
+      "not_planning_rule": "Resuming studies: submit one to two months before the semester."
+    },
+    "pdf:b6a7c762f8db:770160d775fd": {
+      "not_planning_rule": "section heading: התאמות לימודיות בבחינות לתלמידים עם לקויות למידה"
+    },
+    "pdf:b6a7c762f8db:77251359dfab": {
+      "not_planning_rule": "section heading: לימודים בסמסטר קיץ"
+    },
+    "pdf:b6a7c762f8db:775272e13180": {
+      "not_planning_rule": "Academic dismissal (grade-contingent): reaching probation a second time."
+    },
+    "pdf:b6a7c762f8db:77ba1ece62b9": {
+      "not_planning_rule": "Final exams: in project or lab courses the lecturer sets the form of assessment."
+    },
+    "pdf:b6a7c762f8db:77e4164f994b": {
+      "not_planning_rule": "Resuming studies: allowed after a break in good standing of at most five years."
+    },
+    "pdf:b6a7c762f8db:785c506ff720": {
+      "not_planning_rule": "section heading: זכאות לתואר אקדמי"
+    },
+    "pdf:b6a7c762f8db:79de4b136498": {
+      "not_planning_rule": "Status-table row label: probation."
+    },
+    "pdf:b6a7c762f8db:7adcf322b4ab": {
+      "not_planning_rule": "Grade appeals: filed through the personal information site."
+    },
+    "pdf:b6a7c762f8db:7b5a306e27d3": {
+      "not_planning_rule": "Reserve duty: no carry-over fees when such late work finishes the degree."
+    },
+    "pdf:b6a7c762f8db:7b9e703bca69": {
+      "not_planning_rule": "section heading: פטור מקורסים"
+    },
+    "pdf:b6a7c762f8db:7e0daa794207": {
+      "not_planning_rule": "Registration procedure: link to the bidding explanation (ims.tau.ac.il/bidding)."
+    },
+    "pdf:b6a7c762f8db:7ee9d5a7e980": {
+      "not_planning_rule": "Resuming studies: forms and payment voucher at the student secretariat."
+    },
+    "pdf:b6a7c762f8db:7f406f70f400": {
+      "not_planning_rule": "Track transfer: conditional acceptance is possible."
+    },
+    "pdf:b6a7c762f8db:8026588cd798": {
+      "not_planning_rule": "Document title heading: תקנון הלימודים לתואר ראשון (the faculty undergraduate regulations); the document is read sentence by sentence as the pdf:b6a7c762f8db:* items."
+    },
+    "pdf:b6a7c762f8db:8028a47a3a9c": {
+      "not_planning_rule": "Track transfer: average 87 or more for the EE-CS combined program."
+    },
+    "pdf:b6a7c762f8db:8089a1365354": {
+      "not_planning_rule": "Study records: notebooks are kept one semester, so later grade checks are impossible."
+    },
+    "pdf:b6a7c762f8db:821069c9a891": {
+      "not_planning_rule": "Status table (grade-contingent): dismissal after a repeated final failure in a course."
+    },
+    "pdf:b6a7c762f8db:8238b47339f4": {
+      "not_planning_rule": "Probation (grade-contingent): studies a reduced program; not modelled by the planner."
+    },
+    "pdf:b6a7c762f8db:82b0601bddee": {
+      "not_planning_rule": "Resuming studies: after more than 5 years, re-register and restart."
+    },
+    "pdf:b6a7c762f8db:82ca09a85191": {
+      "not_planning_rule": "Other professions: prerequisite courses in therapeutic professions need a preliminary check; not an engineering rule."
+    },
+    "pdf:b6a7c762f8db:83b1a53b94ee": {
+      "not_planning_rule": "section heading: סדרי בחינות"
+    },
+    "pdf:b6a7c762f8db:83ef551e90f2": {
+      "not_planning_rule": "Reserve duty exam date: 7-20 days of service and the exam within 7 days of release."
+    },
+    "pdf:b6a7c762f8db:84c5208db500": {
+      "not_planning_rule": "section heading: תלמידים המבקשים לתקן ציון"
+    },
+    "pdf:b6a7c762f8db:8571426880bf": {
+      "not_planning_rule": "Exam records: exam notebooks are kept for one following semester, then destroyed."
+    },
+    "pdf:b6a7c762f8db:864c5f96bd10": {
+      "not_planning_rule": "Cross-reference to the reserve-duty recognition section below."
+    },
+    "pdf:b6a7c762f8db:88701007681d": {
+      "not_planning_rule": "Special exam date eligibility: adoption or foster placement, within three weeks."
+    },
+    "pdf:b6a7c762f8db:88971bae3ca9": {
+      "not_planning_rule": "Extra exam date (moed nosaf): definition; taken in a repeat offering of the course in a later semester or year."
+    },
+    "pdf:b6a7c762f8db:89dce83899ae": {
+      "not_planning_rule": "Status table (grade-contingent): probation after final failure in 2 courses in a year."
+    },
+    "pdf:b6a7c762f8db:8a010693f348": {
+      "not_planning_rule": "Eligibility confirmation: tuition settled."
+    },
+    "pdf:b6a7c762f8db:8a413fb6f330": {
+      "not_planning_rule": "Eligibility confirmation: opened through the university website."
+    },
+    "pdf:b6a7c762f8db:8a868dd39a84": {
+      "not_planning_rule": "Exam accommodation: a diagnosed student is invited to the counselling centre for a report."
+    },
+    "pdf:b6a7c762f8db:8bd9bb016c18": {
+      "not_planning_rule": "Status table (grade-contingent): probation below 70 for ME-Earth Sciences students."
+    },
+    "pdf:b6a7c762f8db:8ca98f0bc674": {
+      "not_planning_rule": "Reserve duty: tuition exemption for such repeats (incl. summer)."
+    },
+    "pdf:b6a7c762f8db:8d4dd0ca6e70": {
+      "not_planning_rule": "Status-table footnote: average 70 for the listed students (start of the footnote)."
+    },
+    "pdf:b6a7c762f8db:8da235b66379": {
+      "not_planning_rule": "Reserve-duty recognition: the extra date is the first next sitting of the exam."
+    },
+    "pdf:b6a7c762f8db:8e4e25710589": {
+      "not_planning_rule": "Track transfer: conditions for moving to another engineering track (introduces the list)."
+    },
+    "pdf:b6a7c762f8db:8f2f27662fd8": {
+      "mapped_to": "course_rules[year-progression]"
+    },
+    "pdf:b6a7c762f8db:8f47d0df7539": {
+      "not_planning_rule": "Status table (grade-contingent): good standing = average 65 or more."
+    },
+    "pdf:b6a7c762f8db:8fb6d0933bea": {
+      "not_planning_rule": "Grade appeals: within 5 days of the grade or the notebook scan, whichever is later."
+    },
+    "pdf:b6a7c762f8db:8fe4e7b588e4": {
+      "not_planning_rule": "Discipline: penalties include cancelling the course and referral to the disciplinary committee."
+    },
+    "pdf:b6a7c762f8db:90452f7f5212": {
+      "not_planning_rule": "Exam scheduling: exam overlaps caused by not following the recommended program are the student's responsibility; a liability statement, no constraint on which courses or when."
+    },
+    "pdf:b6a7c762f8db:9112bb620960": {
+      "not_planning_rule": "Tuition: every course the student is registered to counts for tuition."
+    },
+    "pdf:b6a7c762f8db:91d58afd3877": {
+      "not_planning_rule": "Exam eligibility: on the lecturer-approved list of eligible examinees, no academic bar."
+    },
+    "pdf:b6a7c762f8db:91d8eb22f4cc": {
+      "not_planning_rule": "section heading: התאמה לימודית בגין גיל"
+    },
+    "pdf:b6a7c762f8db:93e9acecf4ee": {
+      "not_planning_rule": "Grading: a student who fails moed A may sit moed B."
+    },
+    "pdf:b6a7c762f8db:946c8dbb7ca7": {
+      "mapped_to": "catalog_year_policy"
+    },
+    "pdf:b6a7c762f8db:956d720aa1ab": {
+      "not_planning_rule": "Grading: if so, a failed exam grade is the final grade."
+    },
+    "pdf:b6a7c762f8db:95dce922b7cf": {
+      "not_planning_rule": "Grade appeals: exam notebooks are scanned and uploaded."
+    },
+    "pdf:b6a7c762f8db:96a4963ad386": {
+      "not_planning_rule": "section heading: ערעורים על ציונים"
+    },
+    "pdf:b6a7c762f8db:96b2638af609": {
+      "not_planning_rule": "Extra exam date for illness: certificates issued during the illness; none retroactive."
+    },
+    "pdf:b6a7c762f8db:96f4d4fcdab3": {
+      "not_planning_rule": "section heading: תוכניות לימודים"
+    },
+    "pdf:b6a7c762f8db:97579c914ed4": {
+      "not_planning_rule": "Special exam date: announced at least 10 days ahead."
+    },
+    "pdf:b6a7c762f8db:97acac8f5af2": {
+      "not_planning_rule": "Reserve duty exam date: absent on the exam day due to service."
+    },
+    "pdf:b6a7c762f8db:9819d046f731": {
+      "not_planning_rule": "Pregnancy/parenthood accommodations: extra time does not accumulate."
+    },
+    "pdf:b6a7c762f8db:982f435c222a": {
+      "not_planning_rule": "Academic status (grade-contingent): probation when the yearly average is below 65."
+    },
+    "pdf:b6a7c762f8db:98e7360952f2": {
+      "not_planning_rule": "Exemptions eligibility: the prior course grade is 75 or higher."
+    },
+    "pdf:b6a7c762f8db:995382ba9d58": {
+      "not_planning_rule": "section heading: אישורים לזכאות"
+    },
+    "pdf:b6a7c762f8db:996625d0d363": {
+      "not_planning_rule": "Status-table footnote: years 1-2 assessed at the end of every semester."
+    },
+    "pdf:b6a7c762f8db:998ed25ccb23": {
+      "not_planning_rule": "Exam accommodation (medical): the request goes to the university physician, whose advice is followed (second half)."
+    },
+    "pdf:b6a7c762f8db:9b6331160db8": {
+      "not_planning_rule": "Status table (grade-contingent): good standing = a pass in every course."
+    },
+    "pdf:b6a7c762f8db:9bf160b78a85": {
+      "not_planning_rule": "Extra exam date eligibility: two mandatory-course exams less than 24 hours apart; an exam rule, not course placement."
+    },
+    "pdf:b6a7c762f8db:9dadb4e3022c": {
+      "not_planning_rule": "section heading: חישוב ציון הגמר"
+    },
+    "pdf:b6a7c762f8db:9e804bec0268": {
+      "mapped_to": "course_rules[load-min-75pct-approval]"
+    },
+    "pdf:b6a7c762f8db:9ec76a7eef44": {
+      "not_planning_rule": "Exemptions eligibility: the prior courses were taken in the five years before registration."
+    },
+    "pdf:b6a7c762f8db:9edc5102cf4f": {
+      "not_planning_rule": "Quizzes: mid-semester quizzes per faculty decision."
+    },
+    "pdf:b6a7c762f8db:9f1d8dbd4d80": {
+      "not_planning_rule": "Status table (grade-contingent): on probation, finish the next semester in good standing."
+    },
+    "pdf:b6a7c762f8db:9fb07c93ad08": {
+      "not_planning_rule": "Track transfer: the candidate's grades."
+    },
+    "pdf:b6a7c762f8db:a41d6d17c84d": {
+      "not_planning_rule": "Pregnancy/parenthood accommodations: freeze notice in writing to the coordinator and secretariat."
+    },
+    "pdf:b6a7c762f8db:a4d4e4d013f1": {
+      "not_planning_rule": "Academic status: in years 1-2 achievement is assessed every semester."
+    },
+    "pdf:b6a7c762f8db:a5bc2ab56e30": {
+      "not_planning_rule": "Track transfer: written request by the end of August."
+    },
+    "pdf:b6a7c762f8db:a72cf4983f55": {
+      "not_planning_rule": "Return after dismissal: written request with transcript to the teaching committee."
+    },
+    "pdf:b6a7c762f8db:a76011dc1e0f": {
+      "not_planning_rule": "section heading: בחינות"
+    },
+    "pdf:b6a7c762f8db:a8bd3c334cd9": {
+      "not_planning_rule": "section heading: חידוש לימודים"
+    },
+    "pdf:b6a7c762f8db:a90ce8f4df34": {
+      "not_planning_rule": "Grading: the same weighting applies at every exam date."
+    },
+    "pdf:b6a7c762f8db:a9b1ca40990d": {
+      "not_planning_rule": "Preamble: masculine wording addresses all genders; not a rule."
+    },
+    "pdf:b6a7c762f8db:aa642be8574e": {
+      "not_planning_rule": "Grade improvement: a repeat registration requires all the course's assignments again."
+    },
+    "pdf:b6a7c762f8db:ab0f8838980f": {
+      "not_planning_rule": "Grading rule (extracted as a heading): in every case the last grade obtained counts; grading, not planning."
+    },
+    "pdf:b6a7c762f8db:ab2b7d88a779": {
+      "not_planning_rule": "Final-grade footnote (1): all the courses taken during the bachelor's degree."
+    },
+    "pdf:b6a7c762f8db:ab3bff1a1647": {
+      "not_planning_rule": "Academic status (grade-contingent): average 70 or more for EE and physics students."
+    },
+    "pdf:b6a7c762f8db:abf039c252b6": {
+      "not_planning_rule": "Reserve duty: completing labs/workshops is coordinated with the lecturer."
+    },
+    "pdf:b6a7c762f8db:ac8f30492678": {
+      "not_planning_rule": "Academic dismissal (grade-contingent): final failure in two or more courses in a semester, years 1-2."
+    },
+    "pdf:b6a7c762f8db:acefcb9a329e": {
+      "not_planning_rule": "Exam accommodation: the centre's recommendations go to the student-affairs committee for approval."
+    },
+    "pdf:b6a7c762f8db:adb98a383019": {
+      "not_planning_rule": "section heading: רשומות לימודים ואישורים"
+    },
+    "pdf:b6a7c762f8db:ae212a330829": {
+      "not_planning_rule": "Discipline: both the copier and the copied student are punished."
+    },
+    "pdf:b6a7c762f8db:af56b8038add": {
+      "not_planning_rule": "Return after dismissal: accept without recognising past courses (re-register, restart)."
+    },
+    "pdf:b6a7c762f8db:afe8608f8aac": {
+      "not_planning_rule": "Status table (grade-contingent): dismissal after final failure in 3+ courses a year, years 3-4."
+    },
+    "pdf:b6a7c762f8db:b0a865b99eb6": {
+      "not_planning_rule": "Quizzes: at most 90 minutes."
+    },
+    "pdf:b6a7c762f8db:b0b0179006c6": {
+      "not_planning_rule": "Return after dismissal: reject (no return to the faculty)."
+    },
+    "pdf:b6a7c762f8db:b16f58af31a7": {
+      "not_planning_rule": "Exam accommodation: pregnant students get at least 25% extra exam time."
+    },
+    "pdf:b6a7c762f8db:b1d5a953524f": {
+      "not_planning_rule": "section heading: הכרה בשירות מילואים"
+    },
+    "pdf:b6a7c762f8db:b1dd8d6c6d04": {
+      "not_planning_rule": "Exam scheduling: exams may therefore fall on consecutive days."
+    },
+    "pdf:b6a7c762f8db:b2281f6e7172": {
+      "not_planning_rule": "Other program: Digital Sciences for High-Tech lasts about 3 years; does not apply to this degree."
+    },
+    "pdf:b6a7c762f8db:b38812b0c4c7": {
+      "not_planning_rule": "section heading: תנאי מעבר משנה לשנה"
+    },
+    "pdf:b6a7c762f8db:b3b9c66480f2": {
+      "not_planning_rule": "Eligibility confirmation: lab/project equipment returned; the faculty then checks and sends the documents."
+    },
+    "pdf:b6a7c762f8db:b4763b531f0c": {
+      "not_planning_rule": "section heading: תקופה המקנה זכויות"
+    },
+    "pdf:b6a7c762f8db:b4a3448958d0": {
+      "not_planning_rule": "Grading scale: 0-100; 60 and up passes, 59 and below fails."
+    },
+    "pdf:b6a7c762f8db:b5b4e37314e6": {
+      "not_planning_rule": "Extra exam date eligibility: illness, hospitalisation or disaster, by request to the committee."
+    },
+    "pdf:b6a7c762f8db:b6b2d93e349c": {
+      "not_planning_rule": "section heading: מידע לתלמידים בשירות מילואים פעיל"
+    },
+    "pdf:b6a7c762f8db:b733c0860f49": {
+      "mapped_to": "course_rules[graduate-courses-max-2-per-semester]"
+    },
+    "pdf:b6a7c762f8db:bb66623d4974": {
+      "not_planning_rule": "Registration procedure: attending a course without registering gives no right to its exam."
+    },
+    "pdf:b6a7c762f8db:bc8c8d78885d": {
+      "not_planning_rule": "Academic status (grade-contingent): good standing needs an average of 65 or more."
+    },
+    "pdf:b6a7c762f8db:be218ee9e055": {
+      "not_planning_rule": "Exemptions procedure: requests are filed at the student secretariat on the proper forms."
+    },
+    "pdf:b6a7c762f8db:be4571b49ab4": {
+      "not_planning_rule": "Special exam date eligibility: '... from the day of birth' (end of the childbirth item)."
+    },
+    "pdf:b6a7c762f8db:be91231a460b": {
+      "not_planning_rule": "Grade appeals: a changed grade updates automatically."
+    },
+    "pdf:b6a7c762f8db:beae57f2eb91": {
+      "not_planning_rule": "Probation (grade-contingent): at most one academic year on probation."
+    },
+    "pdf:b6a7c762f8db:bf883e50ddfc": {
+      "not_planning_rule": "Extra exam date: the faculty may direct the student to a special date instead."
+    },
+    "pdf:b6a7c762f8db:c000f61d2dad": {
+      "not_planning_rule": "Academic status: in years 3-4 achievement is assessed every year."
+    },
+    "pdf:b6a7c762f8db:c003f6bd7ab6": {
+      "not_planning_rule": "Exemptions procedure: the student's whole prior record is considered."
+    },
+    "pdf:b6a7c762f8db:c0368658f240": {
+      "not_planning_rule": "Excellence: rector's certificates for outstanding achievement."
+    },
+    "pdf:b6a7c762f8db:c127c1a95bfc": {
+      "not_planning_rule": "Excellence: the dean sets the criteria every year."
+    },
+    "pdf:b6a7c762f8db:c180fe31bac9": {
+      "not_planning_rule": "Registration procedure: the secretariat may cancel a registration made against the rules."
+    },
+    "pdf:b6a7c762f8db:c1c88600e167": {
+      "not_planning_rule": "Study records: checking it every semester helps catch errors."
+    },
+    "pdf:b6a7c762f8db:c2e87c63658f": {
+      "not_planning_rule": "Exemptions procedure: attach the transcript and the course syllabi."
+    },
+    "pdf:b6a7c762f8db:c360b82bfc8a": {
+      "not_planning_rule": "Study records: link to the information site (ims.tau.ac.il/info)."
+    },
+    "pdf:b6a7c762f8db:c375a7651daa": {
+      "not_planning_rule": "Special exam date eligibility: childbirth, within 14 weeks (first half of the item)."
+    },
+    "pdf:b6a7c762f8db:c49582f0e9aa": {
+      "not_planning_rule": "section heading: רישום לקורסים מתואר שני"
+    },
+    "pdf:b6a7c762f8db:c4c07aa049a9": {
+      "not_planning_rule": "Exemptions eligibility: the prior course's content and level match the faculty course."
+    },
+    "pdf:b6a7c762f8db:c4fb556ea4d2": {
+      "not_planning_rule": "Academic status: probation if any of the following holds (introduces the list)."
+    },
+    "pdf:b6a7c762f8db:c578ac2bf188": {
+      "not_planning_rule": "Exam accommodation: students with learning disabilities get accommodations."
+    },
+    "pdf:b6a7c762f8db:c6aae2082dee": {
+      "not_planning_rule": "Pregnancy/parenthood accommodations: registration coordinated in advance around a birth."
+    },
+    "pdf:b6a7c762f8db:c6ef37f0a48b": {
+      "not_planning_rule": "section heading: זכאות למועד מיוחד"
+    },
+    "pdf:b6a7c762f8db:c76f5fea63fc": {
+      "not_planning_rule": "Degree eligibility (grade-contingent): weighted average of at least 70 over all faculty courses; an eligibility rule the planner does not plan."
+    },
+    "pdf:b6a7c762f8db:c780510d5806": {
+      "not_planning_rule": "Grading: the lecturer may require a passing exam grade to pass the course."
+    },
+    "pdf:b6a7c762f8db:c7b925a0876e": {
+      "not_planning_rule": "Student responsibility: checking that all degree requirements are met."
+    },
+    "pdf:b6a7c762f8db:c8330ce0ca0d": {
+      "not_planning_rule": "Contact: phone number for inquiries and interviews."
+    },
+    "pdf:b6a7c762f8db:c839dda674b9": {
+      "not_planning_rule": "Grade appeals: handled electronically."
+    },
+    "pdf:b6a7c762f8db:c8775e4c596d": {
+      "not_planning_rule": "Grading: grade 260 (did not sit) at both dates without cause is a final fail."
+    },
+    "pdf:b6a7c762f8db:c87be0e77dbf": {
+      "mapped_to": "course_rules[graduate-courses-max-2-per-semester]"
+    },
+    "pdf:b6a7c762f8db:c97f59f76269": {
+      "not_planning_rule": "Communications: announcements on the faculty site or by email count as delivered to each student; not a planning rule."
+    },
+    "pdf:b6a7c762f8db:c98cf96bbac2": {
+      "mapped_to": "course_rules[load-min-75pct-approval]"
+    },
+    "pdf:b6a7c762f8db:cb870c84df16": {
+      "not_planning_rule": "Probation (grade-contingent): submits a detailed study plan for the teaching committee's approval."
+    },
+    "pdf:b6a7c762f8db:cc40f6e0d173": {
+      "not_planning_rule": "Pregnancy/parenthood accommodations (contingent): may postpone and repeat a course at no extra cost; contingent on the event, not part of the degree plan."
+    },
+    "pdf:b6a7c762f8db:ccb0b05954cc": {
+      "not_planning_rule": "Pregnancy/parenthood accommodations: may freeze studies before the first exams."
+    },
+    "pdf:b6a7c762f8db:cd4530b20239": {
+      "not_planning_rule": "section heading: תקופה תקנית ללימודים"
+    },
+    "pdf:b6a7c762f8db:cd7fac20cd67": {
+      "not_planning_rule": "Grade improvement: a passing moed A grade can be improved by sitting moed B."
+    },
+    "pdf:b6a7c762f8db:cd95ef150f3f": {
+      "not_planning_rule": "Pregnancy/parenthood accommodations: no carry-over fees for a special date in the next year."
+    },
+    "pdf:b6a7c762f8db:cf8ecc518498": {
+      "not_planning_rule": "Resuming studies: resumption carries a fee."
+    },
+    "pdf:b6a7c762f8db:cf96b673698f": {
+      "not_planning_rule": "Teaching logistics: the lecturer and the secretariat set the make-up lesson dates."
+    },
+    "pdf:b6a7c762f8db:d012aec13139": {
+      "not_planning_rule": "Return after dismissal: the committee's options (introduces the list)."
+    },
+    "pdf:b6a7c762f8db:d039194ebce1": {
+      "not_planning_rule": "Special exam date eligibility: missed moed A/B because of active reserve duty."
+    },
+    "pdf:b6a7c762f8db:d0766b1de227": {
+      "not_planning_rule": "Exam eligibility: only students who met the course requirements and paid tuition sit finals."
+    },
+    "pdf:b6a7c762f8db:d2ab4ad7ad22": {
+      "mapped_to": "course_rules[load-min-75pct-approval]"
+    },
+    "pdf:b6a7c762f8db:d2b8ee2cc7d5": {
+      "not_planning_rule": "Pregnancy/parenthood accommodations (contingent): if not completable, retake the course in its next offering."
+    },
+    "pdf:b6a7c762f8db:d489cad48102": {
+      "not_planning_rule": "Teaching logistics: make-up lessons may be added (also on Fridays or holidays); no constraint on which courses or when."
+    },
+    "pdf:b6a7c762f8db:d6a457792692": {
+      "not_planning_rule": "Track transfer: the committee decides on the following (introduces the list)."
+    },
+    "pdf:b6a7c762f8db:d6b2b80d2f7c": {
+      "not_planning_rule": "section heading: דרישות קדם לקורסים"
+    },
+    "pdf:b6a7c762f8db:d6f9fc336a02": {
+      "not_planning_rule": "Status-table footnote: EE-physics and EE-CS students; failure is any grade below 60."
+    },
+    "pdf:b6a7c762f8db:d71d56c3b2f7": {
+      "not_planning_rule": "Grading: failing or missing moed B means a failing course grade."
+    },
+    "pdf:b6a7c762f8db:d7c2e2cb6478": {
+      "not_planning_rule": "Exam accommodation: learning disability may extend that eligibility period by up to two years."
+    },
+    "pdf:b6a7c762f8db:d90a0cd58779": {
+      "not_planning_rule": "Grade appeals: the lecturer's answer appears under 'appeals'."
+    },
+    "pdf:b6a7c762f8db:d94cf3deaf2c": {
+      "not_planning_rule": "Reserve duty exam date: '... during the semester' (end of the item)."
+    },
+    "pdf:b6a7c762f8db:d9bf2b628375": {
+      "not_planning_rule": "Special exam date eligibility: death of a first-degree relative on or within two weeks before the exam."
+    },
+    "pdf:b6a7c762f8db:dba44e9f390c": {
+      "not_planning_rule": "Status table (grade-contingent): on probation, a study plan approved by the teaching committee; then the 'dismissal' row label."
+    },
+    "pdf:b6a7c762f8db:dc6787223251": {
+      "not_planning_rule": "Reserve-duty recognition: not recognised if the student chose to serve on the exam date."
+    },
+    "pdf:b6a7c762f8db:dcdff07206c1": {
+      "not_planning_rule": "Exemptions procedure: file the request at the start of studies."
+    },
+    "pdf:b6a7c762f8db:ddd89d97f536": {
+      "not_planning_rule": "Reserve duty: another summer course is charged at the regular rate."
+    },
+    "pdf:b6a7c762f8db:de262cb576ca": {
+      "not_planning_rule": "Extra exam date for illness: conditions (introduces the list)."
+    },
+    "pdf:b6a7c762f8db:de707a4d86ad": {
+      "not_planning_rule": "Eligibility confirmation: requested only after all obligations and the last grade."
+    },
+    "pdf:b6a7c762f8db:de91a80fe651": {
+      "not_planning_rule": "Study records: the personal information site provides a record of courses and grades."
+    },
+    "pdf:b6a7c762f8db:df4019e1846d": {
+      "not_planning_rule": "Status table (grade-contingent): dismissal after final failure in 2+ courses a semester, years 1-2."
+    },
+    "pdf:b6a7c762f8db:e00151c860e5": {
+      "not_planning_rule": "Exemptions eligibility: prior studies were declared at university registration."
+    },
+    "pdf:b6a7c762f8db:e29edac69a1c": {
+      "not_planning_rule": "Study records: certificates can be printed under 'study confirmation'."
+    },
+    "pdf:b6a7c762f8db:e35c04fcae50": {
+      "not_planning_rule": "Extra exam date eligibility: afternoon exam on a fast day of the student's community."
+    },
+    "pdf:b6a7c762f8db:e39ef246d5de": {
+      "not_planning_rule": "Eligibility confirmation: given only on the student's request."
+    },
+    "pdf:b6a7c762f8db:e3b0fc364f96": {
+      "not_planning_rule": "Grade-contingent retake: a failed course must be re-registered at its first offering; the planner plans a nominal path without grades, so this adds no spec rule."
+    },
+    "pdf:b6a7c762f8db:e3b17e8013bd": {
+      "not_planning_rule": "section heading: מעבר ממגמה אחת למגמה אחרת"
+    },
+    "pdf:b6a7c762f8db:e5829bf1e47e": {
+      "not_planning_rule": "Reserve duty exam date: 4-6 consecutive days and the exam within 48 hours of release."
+    },
+    "pdf:b6a7c762f8db:e603457c9e68": {
+      "mapped_to": "course_rules[graduate-courses-max-2-per-semester]"
+    },
+    "pdf:b6a7c762f8db:e7e1aabcec58": {
+      "not_planning_rule": "Grade appeals: students view their exams in the personal information site."
+    },
+    "pdf:b6a7c762f8db:e8cc13bea111": {
+      "not_planning_rule": "Special exam date eligibility: moed A grade published less than a week before moed B."
+    },
+    "pdf:b6a7c762f8db:ea724922d75a": {
+      "not_planning_rule": "section heading: העתקות"
+    },
+    "pdf:b6a7c762f8db:ebcf4ddebc9b": {
+      "not_planning_rule": "section heading: השלמת לימודים"
+    },
+    "pdf:b6a7c762f8db:ecb07a19e0c0": {
+      "not_planning_rule": "Exemptions procedure: further approvals the admissions or student-affairs committee requires."
+    },
+    "pdf:b6a7c762f8db:ecc1103b80f1": {
+      "not_planning_rule": "Exam scheduling: moed A and most moed B exams fall within that period."
+    },
+    "pdf:b6a7c762f8db:ed29f5662fcf": {
+      "not_planning_rule": "Pregnancy/parenthood accommodations: after freezing, repeat at no cost or get a refund."
+    },
+    "pdf:b6a7c762f8db:edbdff08434b": {
+      "mapped_to": "course_rules[prereq-before-or-concurrent]"
+    },
+    "pdf:b6a7c762f8db:edcf80b45b68": {
+      "not_planning_rule": "Pregnancy/parenthood accommodations: one special date only."
+    },
+    "pdf:b6a7c762f8db:eeddd0f91a7b": {
+      "not_planning_rule": "Special exam date: may be converted to an extra date in a repeat offering of the course."
+    },
+    "pdf:b6a7c762f8db:f12d72061103": {
+      "not_planning_rule": "Exam advice: take every exam at moed A; advisory."
+    },
+    "pdf:b6a7c762f8db:f27bb23a2a05": {
+      "not_planning_rule": "Exam accommodation: based on the counselling centre's opinion, approved by the teaching committee."
+    },
+    "pdf:b6a7c762f8db:f30eb181f08c": {
+      "not_planning_rule": "Extra exam date eligibility: partner of a student after childbirth, within three weeks."
+    },
+    "pdf:b6a7c762f8db:f3132b7a076c": {
+      "not_planning_rule": "Eligibility confirmation: items to verify in the personal information site (introduces the list)."
+    },
+    "pdf:b6a7c762f8db:f339a6d00837": {
+      "not_planning_rule": "Reserve duty exam date: served over 21 days (first half of the item)."
+    },
+    "pdf:b6a7c762f8db:f665b874be18": {
+      "mapped_to": "course_rules[prereq-conditional-reserve-or-eligible-student]"
+    },
+    "pdf:b6a7c762f8db:f6f92bd06cbd": {
+      "not_planning_rule": "Reserve duty: student rights updated in 2012 per the Council for Higher Education rules."
+    },
+    "pdf:b6a7c762f8db:f7616208d904": {
+      "not_planning_rule": "Return after dismissal: decided on the data presented."
+    },
+    "pdf:b6a7c762f8db:f765e8ffdc57": {
+      "not_planning_rule": "Eligibility confirmation: valid from the last exam or submission."
+    },
+    "pdf:b6a7c762f8db:f7f28eedd1bb": {
+      "not_planning_rule": "Exam eligibility: conditions to sit an exam (introduces the list)."
+    },
+    "pdf:b6a7c762f8db:f8a905ca1a4e": {
+      "not_planning_rule": "Reserve duty: a student in service during registration coordinates registration in advance."
+    },
+    "pdf:b6a7c762f8db:fa2b944a2c94": {
+      "not_planning_rule": "Status-table header: academic status / reasons / obligations and rights."
+    },
+    "pdf:b6a7c762f8db:fa9621ee17ed": {
+      "mapped_to": "course_rules[duration-extension]"
+    },
+    "pdf:b6a7c762f8db:faf2ca915d64": {
+      "not_planning_rule": "section heading: מטלות"
+    },
+    "pdf:b6a7c762f8db:fb08e02746d5": {
+      "not_planning_rule": "section heading: היעדרות מן המועד המיוחד / הנוסף"
+    },
+    "pdf:b6a7c762f8db:fc950b131da5": {
+      "not_planning_rule": "Pregnancy/parenthood accommodations: repeats follow the rules above."
+    },
+    "pdf:b6a7c762f8db:fd326875a551": {
+      "mapped_to": "course_rules[prereq-conditional-reserve-or-eligible-student]"
+    },
+    "pdf:b6a7c762f8db:fe45acf97d02": {
+      "not_planning_rule": "Pregnancy/parenthood accommodations: a special exam date for that semester's courses."
+    },
+    "pdf:b6a7c762f8db:feb821fa7f28": {
+      "not_planning_rule": "Academic status: 'good standing' (introduces its conditions)."
+    },
+    "pdf:b6a7c762f8db:fefc74939dd1": {
+      "not_planning_rule": "section heading: דרישות רישום וקבלה"
+    },
+    "pdf:b6a7c762f8db:ff1a3a39aea7": {
+      "not_planning_rule": "Status table (grade-contingent): dismissal on a second probation."
+    }
+  },
+  "source_conflicts": [
+    {
+      "course_id": null,
+      "description": "The program text (hesbernosaf) names 11 specialization areas (מערכות מחשב, תקשורת, בקרה ומערכות אוטונומיות, עיבוד אותות, התקנים אלקטרוניים, אלקטרואופטיקה ופוטוניקה, אלקטרומגנטיות וקרינה, אנרגיה ומקורות מתחדשים, תקשורות ואינפורמציה קוונטית, ביו-אלקטרוניקה, חומרים); the program tree has 14 track sections (adds VLSI, machine learning/AI and multidisciplinary, and names some differently). The spec follows the tree's track sections.",
+      "sources": [
+        "tau:7622:2026:body:hesbernosaf:aa55c5c97c7b",
+        "tau:7622:2026:rama:18",
+        "tau:7622:2026:rama:19",
+        "tau:7622:2026:rama:20",
+        "tau:7622:2026:rama:21",
+        "tau:7622:2026:rama:22",
+        "tau:7622:2026:rama:23",
+        "tau:7622:2026:rama:24",
+        "tau:7622:2026:rama:25",
+        "tau:7622:2026:rama:26",
+        "tau:7622:2026:rama:27",
+        "tau:7622:2026:rama:40",
+        "tau:7622:2026:rama:41",
+        "tau:7622:2026:rama:43",
+        "tau:7622:2026:rama:44"
+      ]
+    },
+    {
+      "course_id": null,
+      "description": "Advanced-labs hours: the Year-4 section says 6-8 ש\"ס, the years 3-4 section says 5-8 ש\"ס (both 3-6.5 weighted). The spec states no lab hours (category advanced_labs: min_courses 2).",
+      "sources": [
+        "tau:7622:2026:rama:16",
+        "tau:7622:2026:rama:30"
+      ]
+    },
+    {
+      "course_id": "0512-4506",
+      "description": "The overlap note on 0512-4506 names \"מבוא לאלקטרניקת הספק 05124506\" - its own number; the course called מבוא לאלקטרוניקת הספק on the same page is 0512-4507. Not resolved; see course_rules[excl-0512-4506-as-printed].",
+      "sources": [
+        "tau:7622:2026:rama:22:kurs:0512-4506:hearakurs:22ef221619a4",
+        "tau:7622:2026:rama:22:kurs:0512-4507"
+      ]
+    },
+    {
+      "course_id": "0510-6404",
+      "description": "IMS 2026 lists 0510-6404 as offered (semester A) but the program timetable has no group for it. The spec keeps it (IMS).",
+      "sources": [
+        "tau:ims:2026:0510-6404",
+        "tau:7622:2026:rama:44:kurs:0510-6404"
+      ]
+    },
+    {
+      "course_id": null,
+      "description": "The program page lists these courses without the cancelled flag, but IMS 2026 says not offered and the program timetable has no group: 0510-7400, 0510-7438, 0510-7650, 0512-4262, 0512-4364, 0512-4493, 0512-4507, 0555-4000, 0581-4321, 0581-5312. The spec follows IMS + timetable and leaves them out of the elective pools (not plannable in תשפ\"ז); 0512-4262 is also marked core (see course_rules[core-four-distinct-tracks]).",
+      "sources": [
+        "tau:ims:2026:0510-7400",
+        "tau:ims:2026:0510-7438",
+        "tau:ims:2026:0510-7650",
+        "tau:ims:2026:0512-4262",
+        "tau:ims:2026:0512-4364",
+        "tau:ims:2026:0512-4493",
+        "tau:ims:2026:0512-4507",
+        "tau:ims:2026:0555-4000",
+        "tau:ims:2026:0581-4321",
+        "tau:ims:2026:0581-5312"
+      ]
+    }
+  ],
+  "course_rules": [
+    {
+      "rule_id": "core-four-distinct-tracks",
+      "kind": "distinct_categories",
+      "course_ids": [
+        "0321-3819",
+        "0510-6701",
+        "0512-1820",
+        "0512-3571",
+        "0512-4100",
+        "0512-4125",
+        "0512-4161",
+        "0512-4200",
+        "0512-4261",
+        "0512-4262",
+        "0512-4264",
+        "0512-4360",
+        "0512-4362",
+        "0512-4400",
+        "0512-4402",
+        "0512-4502",
+        "0512-4503",
+        "0512-4505",
+        "0512-4601",
+        "0512-4602",
+        "0512-4660",
+        "0512-4703",
+        "0512-4704",
+        "0512-4705",
+        "0512-4800",
+        "0555-3240",
+        "0555-4551",
+        "0581-1111",
+        "0581-3121"
+      ],
+      "params": {
+        "min_courses": 4,
+        "min_distinct_categories": 4,
+        "category_members": {
+          "communications": [
+            "0512-4100",
+            "0512-4161"
+          ],
+          "signal_processing": [
+            "0512-4200",
+            "0512-4261",
+            "0512-4262"
+          ],
+          "computer_systems": [
+            "0512-1820",
+            "0512-4400",
+            "0512-4402"
+          ],
+          "control_autonomous": [
+            "0512-4360",
+            "0512-4362"
+          ],
+          "energy_renewables": [
+            "0512-3571",
+            "0512-4502",
+            "0512-4503",
+            "0512-4505"
+          ],
+          "optics_photonics": [
+            "0512-4601",
+            "0512-4602",
+            "0512-4660"
+          ],
+          "devices_nanoelectronics": [
+            "0512-4704",
+            "0512-4705"
+          ],
+          "electromagnetics_radiation": [
+            "0512-4800"
+          ],
+          "bioelectronics": [
+            "0512-4601",
+            "0555-3240",
+            "0555-4551"
+          ],
+          "electronic_materials": [
+            "0510-6701",
+            "0581-1111",
+            "0581-3121"
+          ],
+          "quantum": [
+            "0321-3819",
+            "0512-4125"
+          ],
+          "vlsi": [
+            "0512-4703"
+          ],
+          "ml_ai": [
+            "0512-4264"
+          ]
+        },
+        "within_track_courses_min": 12,
+        "labs_excluded_from_track_count": true
+      },
+      "source_ids": [
+        "tau:7622:2026:rama:28:hesber:d44979c2696d",
+        "tau:7622:2026:rama:29:hesber:3775233ea2e7",
+        "tau:7622:2026:rama:5:hesber:d2b09fb26885",
+        "tau:7622:2026:rama:18:kurs:0512-4100:idkunkurs:6a055eada8b5",
+        "tau:7622:2026:rama:18:kurs:0512-4161:hearakurs:6a055eada8b5",
+        "tau:7622:2026:rama:18:kurs:0512-4264:hearakurs:3db092bb8e16",
+        "tau:7622:2026:rama:18:kurs:0512-4602:hearakurs:b0a1414e0864",
+        "tau:7622:2026:rama:19:kurs:0512-4200:hearakurs:691254672f82",
+        "tau:7622:2026:rama:19:kurs:0512-4261:hearakurs:d6e51e3491ec",
+        "tau:7622:2026:rama:19:kurs:0512-4262:hearakurs:d6e51e3491ec",
+        "tau:7622:2026:rama:19:kurs:0512-4264:hearakurs:3db092bb8e16",
+        "tau:7622:2026:rama:20:kurs:0512-1820:hearakurs:90e13af501e1",
+        "tau:7622:2026:rama:20:kurs:0512-4262:hearakurs:d6e51e3491ec",
+        "tau:7622:2026:rama:20:kurs:0512-4264:hearakurs:3db092bb8e16",
+        "tau:7622:2026:rama:20:kurs:0512-4400:hearakurs:e1a2dc85d93d",
+        "tau:7622:2026:rama:20:kurs:0512-4402:hearakurs:ec6606edd512",
+        "tau:7622:2026:rama:20:kurs:0512-4703:hearakurs:7c112c4fe348",
+        "tau:7622:2026:rama:21:kurs:0512-4264:hearakurs:3db092bb8e16",
+        "tau:7622:2026:rama:21:kurs:0512-4360:hearakurs:8801b1f56509",
+        "tau:7622:2026:rama:21:kurs:0512-4362:hearakurs:d8ba271fff9b",
+        "tau:7622:2026:rama:22:kurs:0512-3571:hearakurs:6d1ec413fe1f",
+        "tau:7622:2026:rama:22:kurs:0512-4362:hearakurs:d8ba271fff9b",
+        "tau:7622:2026:rama:22:kurs:0512-4502:hearakurs:6d1ec413fe1f",
+        "tau:7622:2026:rama:22:kurs:0512-4503:hearakurs:6d1ec413fe1f",
+        "tau:7622:2026:rama:22:kurs:0512-4505:hearakurs:6d1ec413fe1f",
+        "tau:7622:2026:rama:23:kurs:0512-4601:hearakurs:07ed077765e4",
+        "tau:7622:2026:rama:23:kurs:0512-4602:hearakurs:b0a1414e0864",
+        "tau:7622:2026:rama:23:kurs:0512-4660:hearakurs:aad28dac733f",
+        "tau:7622:2026:rama:23:kurs:0512-4704:hearakurs:8eb63fdf5fa5",
+        "tau:7622:2026:rama:24:kurs:0510-6701:hearakurs:307b5d64cd18",
+        "tau:7622:2026:rama:24:kurs:0512-4601:hearakurs:07ed077765e4",
+        "tau:7622:2026:rama:24:kurs:0512-4704:hearakurs:8eb63fdf5fa5",
+        "tau:7622:2026:rama:24:kurs:0512-4705:hearakurs:4e53c82aef40",
+        "tau:7622:2026:rama:25:kurs:0512-4800:hearakurs:30290894f4f1",
+        "tau:7622:2026:rama:26:kurs:0512-4262:hearakurs:d6e51e3491ec",
+        "tau:7622:2026:rama:26:kurs:0512-4601:hearakurs:07ed077765e4",
+        "tau:7622:2026:rama:26:kurs:0555-3240:hearakurs:8df369907fc1",
+        "tau:7622:2026:rama:26:kurs:0555-4551:hearakurs:ad6329e6dcde",
+        "tau:7622:2026:rama:27:kurs:0510-6701:hearakurs:307b5d64cd18",
+        "tau:7622:2026:rama:27:kurs:0581-1111:hearakurs:b9345617d971",
+        "tau:7622:2026:rama:27:kurs:0581-3121:hearakurs:6c28169925bf",
+        "tau:7622:2026:rama:40:kurs:0321-3819:hearakurs:4cd5dba1f3dc",
+        "tau:7622:2026:rama:40:kurs:0512-4125:hearakurs:4cd5dba1f3dc",
+        "tau:7622:2026:rama:41:kurs:0512-4125:hearakurs:4cd5dba1f3dc",
+        "tau:7622:2026:rama:43:kurs:0512-4400:hearakurs:e1a2dc85d93d",
+        "tau:7622:2026:rama:43:kurs:0512-4703:hearakurs:7c112c4fe348",
+        "tau:7622:2026:rama:44:kurs:0512-4262:hearakurs:d6e51e3491ec",
+        "tau:7622:2026:rama:44:kurs:0512-4264:hearakurs:3db092bb8e16",
+        "tau:7622:2026:rama:44:kurs:0512-4360:hearakurs:8801b1f56509"
+      ],
+      "enforced_by": "none",
+      "note": "TAU: 12 track courses over the degree (labs excluded), of which at least 4 are marked \"קורס ליבה\" and come from 4 different tracks. The core marking exists only in each listing's course note (\"קורס ליבה במסלול X\"; the listing data has no core field) and is attributed to the track the note names, not the section it is listed under (e.g. 0512-4264 is listed in 5 tracks, core of ml_ai only; 0512-4601 is core of optics_photonics and bioelectronics). Core courses not taught in תשפ\"ז (IMS not_offered): 0512-4262, 0555-4551. Nothing enforces this: the board has no core marking, and the 12-course minimum lives only in group_minimums.track (spec_to_program emits only the 'core' group to the board as core_courses_total_min), so the planner checks neither. Update: the generic track-course minimum is now carried in group_minimums.track and enforced by the builder and planner. The distinct-track core requirement in this rule remains unenforced."
+    },
+    {
+      "rule_id": "labs-two-distinct-tracks",
+      "kind": "distinct_categories",
+      "course_ids": [
+        "0512-3542",
+        "0512-4126",
+        "0512-4190",
+        "0512-4290",
+        "0512-4291",
+        "0512-4390",
+        "0512-4490",
+        "0512-4491",
+        "0512-4492",
+        "0512-4494",
+        "0512-4590",
+        "0512-4690",
+        "0512-4790",
+        "0512-4791",
+        "0512-4890",
+        "0555-4282"
+      ],
+      "params": {
+        "min_courses": 2,
+        "min_distinct_categories": 2,
+        "category_members": {
+          "communications": [
+            "0512-4190"
+          ],
+          "signal_processing": [
+            "0512-4290",
+            "0512-4291"
+          ],
+          "computer_systems": [
+            "0512-4490",
+            "0512-4491",
+            "0512-4492",
+            "0512-4494"
+          ],
+          "control_autonomous": [
+            "0512-3542",
+            "0512-4390"
+          ],
+          "energy_renewables": [
+            "0512-4590"
+          ],
+          "optics_photonics": [
+            "0512-4690"
+          ],
+          "devices_nanoelectronics": [
+            "0512-4790"
+          ],
+          "electromagnetics_radiation": [
+            "0512-4890"
+          ],
+          "bioelectronics": [
+            "0555-4282"
+          ],
+          "vlsi": [
+            "0512-4791"
+          ],
+          "ml_ai": [
+            "0512-4291"
+          ],
+          "quantum": [
+            "0512-4126"
+          ]
+        },
+        "same_track_requires_third_lab": true,
+        "third_lab_counts_toward_theory_credits": false
+      },
+      "source_ids": [
+        "tau:7622:2026:rama:16:hesber:0c5d71de7064",
+        "tau:7622:2026:rama:30:hesber:8440fe3988ad"
+      ],
+      "enforced_by": "none",
+      "note": "TAU: 2 advanced labs from 2 different tracks; a student who takes both in the same track must take a third lab in another track, whose credits do not count toward the theoretical-course credits. category_members keys are the track categories; the labs themselves sit in the advanced_labs category (min_courses 2). The board enforces only the count of 2 (category advanced_labs), not the distinct-track condition nor the third-lab rule."
+    },
+    {
+      "rule_id": "english-two-courses",
+      "kind": "language_requirement",
+      "course_ids": [],
+      "params": {
+        "language": "en",
+        "min_courses": 2,
+        "applies_to": "students who began higher education from תשפ\"ב"
+      },
+      "source_ids": [
+        "tau:7622:2026:body:hesbernosaf:aa55c5c97c7b"
+      ],
+      "enforced_by": "none",
+      "note": "TAU (hesbernosaf, per the Council for Higher Education): every student who began higher education in Israel from תשפ\"ב studies at least two courses in English during the bachelor's degree. The coverage item itself maps to total_required_credits (same text); the board has no language-of-instruction field."
+    },
+    {
+      "rule_id": "excl-0512-4264-0368-3235",
+      "kind": "mutually_exclusive",
+      "course_ids": [
+        "0512-4264",
+        "0368-3235"
+      ],
+      "params": {},
+      "source_ids": [
+        "tau:7622:2026:rama:18:kurs:0512-4264:idkunkurs:a81260ef19bb",
+        "tau:7622:2026:rama:19:kurs:0512-4264:idkunkurs:a81260ef19bb",
+        "tau:7622:2026:rama:20:kurs:0512-4264:idkunkurs:a81260ef19bb",
+        "tau:7622:2026:rama:21:kurs:0512-4264:idkunkurs:a81260ef19bb",
+        "tau:7622:2026:rama:44:kurs:0512-4264:idkunkurs:a81260ef19bb"
+      ],
+      "enforced_by": "none",
+      "note": "TAU: 0512-4264 overlaps 0368-3235 (מבוא ללמידה חישובית); both cannot be taken during the degree. The board has no exclusion data."
+    },
+    {
+      "rule_id": "excl-0512-1820-0368-2161",
+      "kind": "mutually_exclusive",
+      "course_ids": [
+        "0512-1820",
+        "0368-2161"
+      ],
+      "params": {},
+      "source_ids": [
+        "tau:7622:2026:rama:20:kurs:0512-1820:idkunkurs:07ad8f8baeb6"
+      ],
+      "enforced_by": "none",
+      "note": "TAU: 0512-1820 partly overlaps 0368-2161 (פרויקט תוכנה); both cannot be taken. The board has no exclusion data."
+    },
+    {
+      "rule_id": "excl-0512-4400-0512-4495",
+      "kind": "mutually_exclusive",
+      "course_ids": [
+        "0512-4400",
+        "0512-4495"
+      ],
+      "params": {},
+      "source_ids": [
+        "tau:7622:2026:rama:20:kurs:0512-4400:hearakurs:e1a2dc85d93d",
+        "tau:7622:2026:rama:43:kurs:0512-4400:hearakurs:e1a2dc85d93d"
+      ],
+      "enforced_by": "none",
+      "note": "TAU: 0512-4400 overlaps 0512-4495 (מבנה המחשב ומערכות הפעלה); both cannot be taken. The note items are mapped to core-four-distinct-tracks (the same note marks 0512-4400 core). The board has no exclusion data."
+    },
+    {
+      "rule_id": "excl-0512-4402-0368-2162",
+      "kind": "mutually_exclusive",
+      "course_ids": [
+        "0512-4402",
+        "0368-2162"
+      ],
+      "params": {},
+      "source_ids": [
+        "tau:7622:2026:rama:20:kurs:0512-4402:idkunkurs:7a918577edd7"
+      ],
+      "enforced_by": "none",
+      "note": "TAU: 0512-4402 overlaps 0368-2162 (מערכות הפעלה); both cannot be taken (the same note says it is not meant for computer-engineering students, which does not restrict this program). The board has no exclusion data."
+    },
+    {
+      "rule_id": "excl-0512-4861-0512-4860",
+      "kind": "mutually_exclusive",
+      "course_ids": [
+        "0512-4861",
+        "0512-4860"
+      ],
+      "params": {},
+      "source_ids": [
+        "tau:7622:2026:rama:25:kurs:0512-4861:hearakurs:558d7dc9476d"
+      ],
+      "enforced_by": "none",
+      "note": "TAU: 0512-4861 overlaps 0512-4860 (מעגלי RF); both cannot be taken. The board has no exclusion data."
+    },
+    {
+      "rule_id": "excl-0512-4506-as-printed",
+      "kind": "mutually_exclusive",
+      "course_ids": [
+        "0512-4506"
+      ],
+      "params": {
+        "other_course_as_printed": "05124506",
+        "other_name_as_printed": "מבוא לאלקטרניקת הספק"
+      },
+      "source_ids": [
+        "tau:7622:2026:rama:22:kurs:0512-4506:hearakurs:22ef221619a4"
+      ],
+      "enforced_by": "none",
+      "note": "TAU: 0512-4506 (אלקטרוניקת הספק) \"overlaps מבוא לאלקטרניקת הספק 05124506\" and both cannot be taken. The note names the course's own number; on the same page מבוא לאלקטרוניקת הספק is 0512-4507. Not resolved: recorded in source_conflicts, the second course is left out of course_ids. The board has no exclusion data."
+    },
+    {
+      "rule_id": "cohort-spring-0512-4162",
+      "kind": "cohort_restriction",
+      "course_ids": [
+        "0512-4162"
+      ],
+      "params": {
+        "cohort": "spring_intake",
+        "semesters": [
+          5
+        ]
+      },
+      "source_ids": [
+        "tau:7622:2026:rama:18:kurs:0512-4162:hearakurs:7cf7a94ba233",
+        "tau:7622:2026:rama:19:kurs:0512-4162:hearakurs:7cf7a94ba233"
+      ],
+      "enforced_by": "none",
+      "note": "TAU: spring-intake students (מחזור אביב) who want 0512-4162 must take it in semester 5. Neither the spec nor the board models intake cohorts."
+    },
+    {
+      "rule_id": "year-0509-4010",
+      "kind": "year_restriction",
+      "course_ids": [
+        "0509-4010"
+      ],
+      "params": {
+        "years": [
+          4
+        ],
+        "min_average": 85,
+        "admission_interview": true
+      },
+      "source_ids": [
+        "tau:7622:2026:rama:41:kurs:0509-4010:hearakurs:ede4eaeafe57"
+      ],
+      "enforced_by": "none",
+      "note": "TAU: 0509-4010 can be taken only in year 4, with an average of 85+, after an admission interview. The board's track placement does not restrict it to year 4."
+    },
+    {
+      "rule_id": "year-0512-3000",
+      "kind": "year_restriction",
+      "course_ids": [
+        "0512-3000"
+      ],
+      "params": {
+        "from_semester": 3
+      },
+      "source_ids": [
+        "tau:7622:2026:rama:41:kurs:0512-3000:hearakurs:9039898829ed"
+      ],
+      "enforced_by": "none",
+      "note": "TAU: 0512-3000 (פרויקט מיוחד) can be registered from semester 3 on, manually, on the project supervisor's recommendation. The board offers track courses in years 3-4 only, which is narrower than the rule; nothing encodes semester 3."
+    },
+    {
+      "rule_id": "window-0512-4013",
+      "kind": "offering_window",
+      "course_ids": [
+        "0512-4013"
+      ],
+      "params": {
+        "semesters": [
+          2,
+          3
+        ],
+        "max_courses": 1
+      },
+      "source_ids": [
+        "tau:7622:2026:rama:47:hesber:b50d6d836b1d",
+        "tau:7622:2026:rama:50:hesber:b50d6d836b1d"
+      ],
+      "enforced_by": "board",
+      "note": "TAU: 0512-4013 is an optional elective in study semester 2 or 3. The generated boards carry the verified placement intersection in program_repository_courses[].offering_window_semesters. Student eligibility is a separate rule."
+    },
+    {
+      "rule_id": "cohort-0512-4013",
+      "kind": "cohort_restriction",
+      "course_ids": [
+        "0512-4013"
+      ],
+      "params": {
+        "min_average": 85,
+        "completed_recommended_plan": true,
+        "program": "electrical_engineering",
+        "registration": "bidding"
+      },
+      "source_ids": [
+        "tau:7622:2026:rama:47:kurs:0512-4013:hearakurs:551ea090eac3",
+        "tau:7622:2026:rama:50:kurs:0512-4013:hearakurs:551ea090eac3"
+      ],
+      "enforced_by": "none",
+      "note": "TAU: 0512-4013 is for year-1 (semester B) and year-2 (semester A) EE students who met every recommended-plan requirement and hold an average of 85+ (registration by bidding). The board models neither averages nor plan completion."
+    },
+    {
+      "rule_id": "load-min-75pct-approval",
+      "kind": "load_limit",
+      "course_ids": [],
+      "params": {
+        "default_load": "full program",
+        "min_load_fraction_without_approval": 0.75,
+        "approval": "track head or the track's representative on the student-affairs committee"
+      },
+      "source_ids": [
+        "pdf:b6a7c762f8db:c98cf96bbac2",
+        "pdf:b6a7c762f8db:9e804bec0268",
+        "pdf:b6a7c762f8db:d2ab4ad7ad22"
+      ],
+      "enforced_by": "none",
+      "note": "TAU engineering regulations (Terms_BA.pdf p1): the normal format is a full program and the student may set their own pace, but studying less than 75% of a full load needs a request to the track head. The boards carry no load bounds (semester total_weekly_hours is informational only)."
+    },
+    {
+      "rule_id": "duration-8-semesters",
+      "kind": "study_duration",
+      "course_ids": [],
+      "params": {
+        "semesters": 8,
+        "years": 4,
+        "nine_semester_programs": [
+          "הנדסה מכנית וביו טכנולוגיה ימית",
+          "הנדסה מכנית ומדעי כדור הארץ בהדגש לימודי סביבה",
+          "מדע והנדסה של חומרים וכימיה"
+        ]
+      },
+      "source_ids": [
+        "pdf:b6a7c762f8db:4c0e7bbf7f85"
+      ],
+      "enforced_by": "board",
+      "note": "TAU engineering regulations (Terms_BA.pdf p1): the bachelor's degree lasts eight semesters (four years); the nine-semester (4.5-year) exception names the double programs ME+Marine Biotechnology, ME+Earth Sciences (environment) and Materials+Chemistry, not this single-major program (whose program page lists years א-ד). Enforced by the boards: data/boards/electrical_engineering_years_1_2_2027.json semesters[].semester_id = year_1_semester_a..year_2_semester_b and data/boards/electrical_engineering_2027.json semesters[].semester_id = year_3_semester_a..year_4_semester_b (8 semesters, no others)."
+    },
+    {
+      "rule_id": "duration-extension",
+      "kind": "study_duration",
+      "course_ids": [],
+      "params": {
+        "extension_years": 1,
+        "approval": "teaching committee",
+        "further_extension": "exceptional cases",
+        "eligible_student_extension_semesters": 2
+      },
+      "source_ids": [
+        "pdf:b6a7c762f8db:2c55f8e62f65",
+        "pdf:b6a7c762f8db:fa9621ee17ed",
+        "pdf:b6a7c762f8db:25501ba6d27c"
+      ],
+      "enforced_by": "none",
+      "note": "TAU engineering regulations (Terms_BA.pdf p1, p13): a student may extend the degree by one more year with the teaching committee's approval (further extension in exceptional cases); a pregnancy/parenthood-eligible student may extend by up to 2 semesters without extension fees. The boards have no semester beyond year 4."
+    },
+    {
+      "rule_id": "prereq-before-or-concurrent",
+      "kind": "prerequisite_policy",
+      "course_ids": [],
+      "params": {
+        "prerequisite_may_be_concurrent": true,
+        "satisfied_by": "attending the prerequisite course and being eligible for its exam"
+      },
+      "source_ids": [
+        "pdf:b6a7c762f8db:7634a7906a00",
+        "pdf:b6a7c762f8db:edbdff08434b"
+      ],
+      "enforced_by": "none",
+      "note": "TAU engineering regulations (Terms_BA.pdf p1): a prerequisite (קורס קדם) is taken before or in parallel with the course; meeting it means attending the prerequisite and being eligible for its exam (not passing it). The board records carry prerequisite data but no planner check applies this before-or-parallel semantics."
+    },
+    {
+      "rule_id": "year-progression",
+      "kind": "year_restriction",
+      "course_ids": [],
+      "params": {
+        "rule": "no course of a later program year before completing every course of the current year and meeting the prerequisites"
+      },
+      "source_ids": [
+        "pdf:b6a7c762f8db:8f2f27662fd8"
+      ],
+      "enforced_by": "none",
+      "note": "TAU engineering regulations (Terms_BA.pdf p2, registration item 6): a student cannot register for courses of an advanced year without finishing all the courses of the current year and meeting the prerequisites. The boards place courses by year but do not block a later-year course while current-year courses are open."
+    },
+    {
+      "rule_id": "graduate-courses-max-2-per-semester",
+      "kind": "load_limit",
+      "course_ids": [],
+      "params": {
+        "course_level": "graduate (תואר שני)",
+        "max_per_semester": 2,
+        "requires": [
+          "high grade average set by the teaching committee",
+          "track head approval"
+        ]
+      },
+      "source_ids": [
+        "pdf:b6a7c762f8db:5ae1d62a780a",
+        "pdf:b6a7c762f8db:c87be0e77dbf",
+        "pdf:b6a7c762f8db:b733c0860f49",
+        "pdf:b6a7c762f8db:e603457c9e68"
+      ],
+      "enforced_by": "none",
+      "note": "TAU engineering regulations (Terms_BA.pdf p2): an undergraduate may take graduate courses only with a high average and the track head's approval, and never more than two graduate courses per semester. The boards do not model graduate courses or this cap."
+    },
+    {
+      "rule_id": "prereq-conditional-reserve-or-eligible-student",
+      "kind": "prerequisite_policy",
+      "course_ids": [],
+      "params": {
+        "applies_to": [
+          "active reserve duty",
+          "pregnancy/parenthood-eligible student"
+        ],
+        "rule": "may take the advanced course (course and exam) conditionally until the prerequisite course obligations are completed"
+      },
+      "source_ids": [
+        "pdf:b6a7c762f8db:f665b874be18",
+        "pdf:b6a7c762f8db:fd326875a551"
+      ],
+      "enforced_by": "none",
+      "note": "TAU engineering regulations (Terms_BA.pdf p11, p13): a student kept by reserve duty, or a pregnancy/parenthood-eligible student, from completing a prerequisite course may take the advanced course conditionally until the prerequisite is completed. Neither the spec nor the board models these statuses."
+    }
+  ],
+  "known_gaps": []
+}

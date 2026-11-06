@@ -6,12 +6,16 @@
  * scripts/build_early_years_board.py generates from TAU's official program page
  * (the same run that publishes the Years 1–2 window board). No course id, name or
  * credit value lives in code: re-run the script after a yearly data refresh.
+ * Editable degree previews use the separately generated preview_early_year_courses.json
+ * only while the program's explicit preview flag is enabled.
  *
  * These are AUTHORITATIVE catalog facts. A student may report whether they completed
  * one — never edit its credits, prerequisites, or category.
  */
 
 import earlyYearIndex from '../../data/config/early_year_courses.json'
+import previewEarlyYearIndex from '../../data/config/preview_early_year_courses.json'
+import { isEditableDegreePreview, isPublicDraftPlanner } from '../programs'
 import { programIdOfBoard } from './window_board'
 
 export interface EarlyYearCourse {
@@ -36,6 +40,7 @@ export const EARLY_YEAR_SEMESTERS: EarlyYearSemester[] = [
 ]
 
 const EARLY_YEARS_BY_PROGRAM: Record<string, EarlyYearCourse[]> = earlyYearIndex
+const PREVIEW_EARLY_YEARS_BY_PROGRAM: Record<string, EarlyYearCourse[]> = previewEarlyYearIndex
 
 /** `mechanical_engineering_biomedical_track_2025` → `mechanical_engineering_biomedical_track`. */
 const baseOf = (programId: string) => programId.replace(/_\d{4}$/, '')
@@ -49,13 +54,15 @@ const baseOf = (programId: string) => programId.replace(/_\d{4}$/, '')
  */
 export function earlyYearCoursesFor(programId: string): EarlyYearCourse[] {
   const program = programIdOfBoard(programId)
-  const own = EARLY_YEARS_BY_PROGRAM[program]
+  if (isPublicDraftPlanner(program) || isEditableDegreePreview(program)) return PREVIEW_EARLY_YEARS_BY_PROGRAM[program] ?? []
+  const index = EARLY_YEARS_BY_PROGRAM
+  const own = index[program]
   if (own) return own
-  const family = Object.keys(EARLY_YEARS_BY_PROGRAM)
+  const family = Object.keys(index)
     .filter((id) => baseOf(program).startsWith(baseOf(id)))
     .sort()
     .pop()
-  return family ? EARLY_YEARS_BY_PROGRAM[family] : []
+  return family ? index[family] : []
 }
 
 /** Authoritative credit hours by course id for a program's early years. */
