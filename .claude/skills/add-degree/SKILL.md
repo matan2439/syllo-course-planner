@@ -327,7 +327,10 @@ facts snapshot and the mismatch report; show `git diff data/official/` and the m
   (including standing authorization in this chat), all release checks pass, and the
   target project is verified. Otherwise print the commands. Deploy a preview first,
   verify the degree and saved-copy workflow, then release the tested revision and
-  verify the live domain. A red degree stays draft even when deployment is authorized.
+  verify the live domain. Academic publication requires a passing live check. An owner
+  may explicitly authorize a public editable draft, as with the initial EE release.
+  In that case use the registry's `publicPlanner` flag, retain draft status and display
+  the validation notice. Never use this exception as the default for a new degree.
 - Record every disagreement between sources in `source_conflicts`; never resolve it silently.
 - Never delete a `known_gaps` or `course_rules` entry to make check pass, and never delete or
   weaken a requirement (a group minimum, a category, `min_credits`, `credits_required`) to pass
@@ -337,8 +340,8 @@ facts snapshot and the mismatch report; show `git diff data/official/` and the m
   regulations is a `source_conflicts` entry plus a report to the owner (the draft stays parked,
   `degree_length` red, until they rule), never a silent override or bent rule params. Never
   re-year courses to fit.
-- A red run is a parked draft: commit it on a separate branch (default) or not at all; never
-  merge a draft to `main` to "save" it.
+- A red run stays on a separate branch unless the owner explicitly authorizes the public
+  editable draft exception above.
 
 ## Verify the student experience before release
 
@@ -348,6 +351,13 @@ rules page, explorer or read-only semester layout does not satisfy this outcome.
 degree must open through the ordinary program picker into the same workspace used by
 Mechanical Engineering. Check both year windows, course names and hours, every track's
 course membership, core markings, requirements progress, and weekly group choices.
+Use the live TAU Electrical Engineering planner as the reference for this experience.
+Assign a distinct accent to each track and use it consistently in the repository, course
+cards, progress indicators, and legend. Derive legend labels and membership from the
+selected degree's catalog. Open the legend in both year windows and the whole-degree
+view. Verify it also updates when switching degrees, with no inherited ME track labels.
+Show the same `כללי התואר` panel for every degree, including ME, with the selected
+degree's hours, course minima, and any additional checks.
 Add, move and remove courses, mark completed studies, and verify AI proposals and their
 application use this degree's catalog and rules. Never substitute another degree's data.
 Save two different course copies, switch both ways, reload, and verify that each copy
@@ -362,6 +372,9 @@ and reopen both. Also open the Mechanical Engineering workspace in the same sess
 verify that neither degree's test copies appear under the other program. Inspect failed
 save or restore responses and check the preview database schema when a response reports
 a storage error. Local tests with an in-memory store cannot verify deployed persistence.
+Check that saved workspaces use the accounts database (`DATABASE_URL`, where the
+workspace tables reference `auth.users`). Planner board storage may use its separate
+override. Verify both routes in the isolated environment before testing saved plans.
 Treat any failed preview step as a release blocker.
 
 Use `python scripts/smoke_editable_degree.py --help` for the deployed API smoke test.
@@ -378,6 +391,15 @@ both the build and runtime environment. Use the same path for one degree or a ba
 Keep the release gate and unsupported-rule
 report intact. A read-only explorer can help inspect sources, but is not a delivered degree.
 Record the actual planner URL and the interactions tested.
+
+Before releasing without the validation notice, audit every rule in the current catalog
+against the generated boards and the planner's actual validator. Test one valid and one
+invalid case for each implemented rule, plus missing or conflicting evidence where it
+can affect the result. Check manual edits, generated candidates and application of those
+candidates. Ensure incomplete academic drafts can still be restored safely. A rule shown
+in the panel or encoded in a board field only counts if its applicable validation paths
+use it. Keep uncertain course identities, missing cohort or grade data, and university
+approvals explicit. Remove the notice through normal publication after the live checks pass.
 
 ## Report to the owner
 

@@ -167,3 +167,26 @@ The owner approved public access to the editable EE planner while academic valid
 is still in progress. The registry's `publicPlanner` flag exposes the committed boards
 and the standard workspace. The degree retains draft status for academic publication,
 and the planner tells students to verify outstanding requirements with TAU.
+
+## Audit of the remaining automatic checks
+
+The release check originally reported 19 unresolved rules. Five definite course-overlap
+pairs now count as enforced. Both board windows must carry the exact definitions, and the
+planner checks a pair across planned courses and named past or current studies, including
+a counterpart outside the current catalog. The self-referential 0512-4506 entry is excluded
+from that set.
+
+| Rules still open | What must be verified before clearing the notice |
+| --- | --- |
+| `core-four-distinct-tracks` | The evaluator now checks four distinct core tracks together with the 12-course track minimum. Verify credit for historical and off-board core courses and certify the board representation. |
+| `labs-two-distinct-tracks` | The ordinary two-lab route is checked. The same-track exception still needs a third-lab allocation and separate theoretical-hours accounting. |
+| `english-two-courses` | Verify language of instruction for each counted course and the student's applicable entry cohort. |
+| `excl-0512-4506-as-printed` | Confirm the intended second course with TAU. The published note repeats the number of the course it describes. |
+| `cohort-spring-0512-4162` | Use verified intake and study-semester data to apply the spring-cohort rule. |
+| `year-0509-4010`, `year-0512-3000`, `cohort-0512-4013` | Timing checks alone cannot verify grades, interview, supervisor recommendation, recommended-plan completion or bidding eligibility. |
+| `load-min-75pct-approval`, `duration-extension`, `graduate-courses-max-2-per-semester` | Supply authoritative load and course-level data and model the applicable approvals and exceptions. |
+| `prereq-before-or-concurrent`, `year-progression`, `prereq-conditional-reserve-or-eligible-student` | Distinguish registration eligibility from draft planning. Validate prerequisites and year progression against actual academic history, including authorized concurrent and conditional cases. |
+
+The other two rules are the standard eight-semester layout and the hardware lab offering
+window. The public editable planner continues to display the notice while the remaining
+rules are unresolved.

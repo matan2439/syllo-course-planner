@@ -491,7 +491,8 @@ def run_checks(entry: ProgramEntry, live: bool, offline: bool) -> CheckRun:
                              f"python scripts/degree.py build --program {entry.id} --offline")
     board = json.loads(board_file.read_text(encoding="utf-8"))
     rule_boards = {"board": board}
-    if any(rule.kind == "offering_window" and rule.enforced_by == "board" for rule in spec.course_rules):
+    if any(rule.kind in {"offering_window", "mutually_exclusive"} and rule.enforced_by == "board"
+           for rule in spec.course_rules):
         if paths["early_years"].exists():
             rule_boards["early_years"] = json.loads(paths["early_years"].read_text(encoding="utf-8"))
     items = collect(entry, live=live, offline=offline)
