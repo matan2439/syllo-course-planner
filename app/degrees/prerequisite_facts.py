@@ -66,6 +66,8 @@ def load_prerequisite_facts(path: Path, *, program_id: str, source_year: int, ro
             provenance.append({"source_url": source, "semester": semester, "group": record.get("group"),
                                "fetched_at": response.get("fetched_at"), "sha256": response.get("sha256"),
                                "identity_verified": parsed.get("identity_verified") is True})
+            if response.get("last_refresh_failed_at"):
+                provenance[-1]["last_refresh_failed_at"] = response["last_refresh_failed_at"]
         facts[cid] = {"provenance": provenance}
         for kind, values in expressions.items():
             facts[cid][kind] = values[0] if values and values[0] is not None and all(v == values[0] for v in values) else None

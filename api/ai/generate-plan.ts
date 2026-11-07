@@ -370,6 +370,14 @@ export function deriveInProgressCredit(
   const placed = new Set(placedCourseIds(initialState));
   const asHours = (value: unknown): number | undefined =>
     typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : undefined;
+  const catalogHours = (id: string): number | undefined => {
+    for (const value of [model.profiles.get(id)?.hours, model.degreeCourseHours?.[id]]) {
+      if (typeof value === 'number' && Number.isFinite(value) && value >= 0) return value;
+    }
+    return undefined;
+  };
+  const alreadyCredited = (id: string) => model.completedCourseIds.has(id) ||
+    !!model.externalDegreeCourseCredits && Object.prototype.hasOwnProperty.call(model.externalDegreeCourseCredits, id);
 
   const currentlyTaking = new Map<string, any>();
   for (const entry of ctx?.personal_status?.currently_taking ?? []) {
@@ -384,14 +392,14 @@ export function deriveInProgressCredit(
 
   let currentlyTakingHours = 0;
   for (const [id, entry] of currentlyTaking) {
-    if (placed.has(id)) continue;
-    currentlyTakingHours += asHours(model.profiles.get(id)?.hours) ?? asHours(entry?.hours) ?? 0;
+    if (placed.has(id) || alreadyCredited(id)) continue;
+    currentlyTakingHours += catalogHours(id) ?? asHours(entry?.hours) ?? 0;
   }
 
   let offBoardPlannedHours = 0;
   for (const [id, entry] of planned) {
-    if (placed.has(id) || model.profiles.has(id)) continue;
-    offBoardPlannedHours += asHours(entry?.hours) ?? 0;
+    if (placed.has(id) || model.profiles.has(id) || alreadyCredited(id)) continue;
+    offBoardPlannedHours += catalogHours(id) ?? asHours(entry?.hours) ?? 0;
   }
 
   const aggregate = asHours(ctx?.total_hours_progress?.currently_planned_hours) ?? 0;
@@ -399,8 +407,10 @@ export function deriveInProgressCredit(
   let hasOffBoardStatusEntry = false;
   for (const [id, entry] of [...currentlyTaking, ...planned]) {
     if (placed.has(id)) continue;
-    hasOffBoardStatusEntry = true;
-    knownAggregateHours += asHours(model.profiles.get(id)?.hours) ?? asHours(entry?.hours) ?? 0;
+    if (!alreadyCredited(id)) hasOffBoardStatusEntry = true;
+    knownAggregateHours += alreadyCredited(id)
+      ? Math.max(catalogHours(id) ?? model.externalDegreeCourseCredits?.[id] ?? 0, asHours(entry?.hours) ?? 0)
+      : catalogHours(id) ?? asHours(entry?.hours) ?? 0;
   }
   // The aggregate is contractually the total for off-board status entries.
   // With none present, a stale/fabricated non-zero value has no eligible

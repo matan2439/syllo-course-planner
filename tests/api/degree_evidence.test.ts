@@ -101,3 +101,11 @@ test('the later EE board recognizes exact early-year completions without making 
   expect(model.profiles.has(courses[0].courseId)).toBe(false);
   expect(model.degreeEvidence?.intake).toBe('spring');
 });
+
+test('early-year current enrollment keeps its identity and official hours in the later planner', () => {
+  const course = earlyYearCoursesFor('electrical_engineering_2027')[0];
+  const model = buildModel(ee, { personal_status: { currently_taking: [{ course_id: course.courseId, hours: 99 }] } }, {}, 'electrical_engineering_2027');
+  expect(model.currentlyPlannedCourseIds?.has(course.courseId)).toBe(true);
+  expect(model.inProgressHours).toBe(course.creditHours);
+  expect(model.profiles.has(course.courseId)).toBe(false);
+});

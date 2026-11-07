@@ -31,6 +31,8 @@ import { MAX_DEGREE_YEAR } from '../../shared/planner/window_board';
 import { readDegreeEvidence } from '../../shared/planner/degree-evidence';
 import { earlyYearCoursesFor } from '../../shared/planner/early_year_courses';
 import { degreeCatalogFacts } from '../../shared/planner/degree-catalog';
+import { recognizedExemptionIds } from '../../shared/planner/course-exemptions';
+import { recognizedAdditionalCourses } from '../../shared/planner/course-recognition';
 
 export interface BuildModelOptions {
   degreeEvidence?: unknown;
@@ -145,9 +147,17 @@ function extendOfferingToAdded(profile: any, added: readonly string[]): void {
 }
 
 export function buildConstraintModel(boardJson: any, opts: BuildModelOptions = {}): ConstraintModel {
+  const earlyCourses = opts.programId && opts.catalogYear
+    ? earlyYearCoursesFor(`${opts.programId}_${opts.catalogYear}`) : [];
+  const degreeCatalog = degreeCatalogFacts(boardJson, earlyCourses);
+  const degreeEvidence = readDegreeEvidence(opts.degreeEvidence);
+  const additionalRecognition = recognizedAdditionalCourses(boardJson?.metadata?.degree_rules ?? [],
+    degreeEvidence?.additionalCourseRecognition, degreeCatalog.courseHours);
   const reportedCompletedCourseIds = new Set<string>([
     ...(opts.completedCourseIds ?? []),
     ...((boardJson?.metadata?.completed_course_ids ?? []) as string[]),
+    ...recognizedExemptionIds(boardJson?.metadata?.degree_rules ?? [], degreeEvidence?.technicianExemptions, degreeCatalog.courseHours),
+    ...additionalRecognition.recognizedCourseIds,
   ]);
   const disallowedCourseIds = new Set<string>(opts.disallowedCourseIds ?? []);
   const wantedCourseIds = new Set<string>(opts.wantedCourseIds ?? []);
@@ -169,7 +179,7 @@ export function buildConstraintModel(boardJson: any, opts: BuildModelOptions = {
   // off-board hours may still contribute through deriveInProgressCredit, but
   // the unknown id cannot satisfy prerequisites or mandatory requirements.
   const currentlyPlannedCourseIds = new Set(
-    [...reportedCurrentlyPlannedCourseIds].filter((id) => profiles.has(id)),
+    [...reportedCurrentlyPlannedCourseIds].filter((id) => profiles.has(id) || earlyCourses.some(course => course.courseId === id)),
   );
 
   // Semester availability — the board's own canonical semester ids, in order, then any semesters
@@ -181,13 +191,10 @@ export function buildConstraintModel(boardJson: any, opts: BuildModelOptions = {
   // Program requirements — degree hours + category requirements, from metadata.
   const catMeta = boardJson?.metadata?.program_requirements_categories;
   const degreeRequiredHours = Number(catMeta?.total_required_hours) || DEGREE_REQUIRED_HOURS;
-  const earlyCourses = opts.programId && opts.catalogYear
-    ? earlyYearCoursesFor(`${opts.programId}_${opts.catalogYear}`) : [];
   const recognitionHours = new Map([...profiles].map(([id, p]) => [id, p.hours ?? null]));
   for (const course of earlyCourses) {
     if (!recognitionHours.has(course.courseId)) recognitionHours.set(course.courseId, course.creditHours);
   }
-  const degreeCatalog = degreeCatalogFacts(boardJson, earlyCourses);
   const degreeMandatorySemesters = degreeCatalog.mandatorySemesters;
 
   /**
@@ -275,14 +282,16 @@ export function buildConstraintModel(boardJson: any, opts: BuildModelOptions = {
   // Taking the maximum avoids double-counting (the aggregate normally already
   // includes identified courses) while preserving course identity as the
   // source of category/prerequisite/exclusion consequences.
-  const priorHours = Math.max(opts.priorHours ?? 0, academicProgress.recognizedHours);
+  const priorHours = Math.max(opts.priorHours ?? 0, academicProgress.recognizedHours + additionalRecognition.additionalDegreeHours);
 
   return {
     profiles,
     degreeRules: boardJson?.metadata?.degree_rules,
-    degreeEvidence: readDegreeEvidence(opts.degreeEvidence),
+    degreeEvidence,
     degreeMandatorySemesters,
     degreeCourseHours: degreeCatalog.courseHours,
+    degreeTrackCandidateIds: degreeCatalog.trackCandidateIds,
+    externalDegreeCourseCredits: additionalRecognition.externalCourseCredits,
     degreePrerequisiteExpressions: degreeCatalog.prerequisiteExpressions,
     allowConcurrentPrerequisites: (boardJson?.metadata?.degree_rules ?? []).some((rule: any) =>
       rule.kind === 'prerequisite_policy' && rule.params?.prerequisite_may_be_concurrent === true),

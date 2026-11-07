@@ -39,6 +39,8 @@ export interface ConstraintModel {
   degreeEvidence?: DegreeEvidence;
   degreeMandatorySemesters?: Record<string, string>;
   degreeCourseHours?: Record<string, number | null>;
+  degreeTrackCandidateIds?: string[];
+  externalDegreeCourseCredits?: Record<string, number>;
   degreePrerequisiteExpressions?: import('../../shared/planner/degree-catalog').DegreeCatalogFacts['prerequisiteExpressions'];
   allowConcurrentPrerequisites?: boolean;
   degreeRuleExclusionCourseIds?: Set<string>;

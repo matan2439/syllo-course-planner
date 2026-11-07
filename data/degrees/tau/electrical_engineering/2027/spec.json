@@ -4254,13 +4254,17 @@
             "0512-4000"
           ]
         },
-        "individual_university_award_required": true
+        "individual_university_award_required": true,
+        "credential_labels_he": {
+          "electronics_and_computers": "הנדסאי אלקטרוניקה ומחשבים",
+          "computers": "הנדסאי מחשבים"
+        }
       },
       "source_ids": [
         "tau:7622:2026:body:hesbernosaf:aa55c5c97c7b"
       ],
-      "enforced_by": "none",
-      "note": "TAU states that eligible technicians may receive these exemptions. The government-exam threshold excludes the project. Eligibility must not create automatic completion or credit; each exemption and its credit treatment need an individual university record."
+      "enforced_by": "board",
+      "note": "TAU publishes separate technician credential lists and a government-exam average threshold of 80 excluding the project. The shared evaluator checks those facts and requires an individual university exemption record and matching catalog degree-credit hours before recognizing completion. Eligibility alone grants nothing. Different or unknown credit treatment requires targeted review. The model and browser use the same recognition; duplicate completion/current enrollment does not duplicate hours."
     },
     {
       "rule_id": "additional-course-recognition",
@@ -4271,13 +4275,15 @@
         "syllabus_required": true,
         "instructor_consent_required": true,
         "out_of_catalog_minimum_average_for_consideration": 85,
-        "out_of_catalog_normally_max_courses_per_degree": 1
+        "out_of_catalog_normally_max_courses_per_degree": 1,
+        "requires_approval_after_track_minimum": 12,
+        "core_rule_id": "core-four-distinct-tracks"
       },
       "source_ids": [
         "tau:7622:2026:rama:5:hesber:d2b09fb26885"
       ],
-      "enforced_by": "none",
-      "note": "Supplementary recognition requires prior committee approval, syllabus and instructor consent. Out-of-catalog requests additionally require average 85 for consideration and normally one course per degree. Do not apply this approval requirement to every ordinary track elective. An exceptional recognition needs a specifically scoped university decision."
+      "enforced_by": "board",
+      "note": "TAU requires prior committee approval with syllabus and instructor consent for supplementary courses used after meeting the twelve-course track baseline. The shared evaluator requires enough approved fillers while retaining the distinct-track core requirement inside that baseline. Out-of-catalog consideration requires average 85 and normally at most one course, with separately scoped exceptions. Enrollment approval grants no earned hours. Completed courses need an individual credit award; external credit never creates a schedulable catalog course or prerequisite equivalence. Both windows preserve the rule and its track pool."
     },
     {
       "rule_id": "optional-high-current-pathway",

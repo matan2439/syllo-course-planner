@@ -146,6 +146,24 @@ def test_explicit_refresh_reads_changed_official_requirements_instead_of_reusing
         collect(root, refresh=True, cache=previous)
 
 
+def test_failed_refresh_keeps_last_evidence_and_original_date_without_clearing_failure_on_offline_replay(tmp_path):
+    root = setup_root(tmp_path)
+    previous = collect(root, live=True, get=Mock(return_value=response()))
+    old_response = previous['courses'][CID]['records'][0]['response']
+    failed = collect(root, live=True, refresh=True, cache=previous, retries=0,
+                     get=Mock(side_effect=requests.Timeout('official source unavailable')))
+    retained = failed['courses'][CID]['records'][0]
+    assert retained['retrieval_status'] == 'stale_cache'
+    assert retained['response']['html'] == old_response['html']
+    assert retained['response']['fetched_at'] == old_response['fetched_at']
+    assert failed['summary']['stale_records'] == 1
+    replay = collect(root, cache=failed, get=Mock(side_effect=AssertionError('offline')))
+    assert replay['summary']['stale_records'] == 1
+    repaired = collect(root, live=True, cache=replay, get=Mock(return_value=response()))
+    assert repaired['summary']['stale_records'] == 0
+    assert repaired['summary']['fetched_records'] == 1
+
+
 def test_duplicate_links_merge_discovery_provenance(tmp_path):
     root = setup_root(tmp_path, f'<a href="{URL}">1</a><a onclick="open_win(\'{URL}\')">2</a>')
     result = collect(root)

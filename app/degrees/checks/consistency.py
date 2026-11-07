@@ -264,7 +264,7 @@ def check_rules_enforced(
         # Personal facts can remain unknown for an individual student, but the
         # published definition must reach the shared evaluator unchanged in both
         # windows. A note claiming enforcement is not a substitute for that data.
-        runtime_definition = rule.kind in {"language_requirement", "cohort_restriction", "year_restriction", "load_limit", "optional_pathway"}
+        runtime_definition = rule.kind in {"language_requirement", "cohort_restriction", "year_restriction", "load_limit", "optional_pathway", "course_exemption", "course_recognition"}
         runtime_definition = runtime_definition or (rule.kind == "study_duration" and "extension_years" in rule.params)
         runtime_definition = runtime_definition or (rule.kind == "distinct_categories" and rule.params.get("same_track_requires_third_lab") is True)
         if runtime_definition:
@@ -273,6 +273,23 @@ def check_rules_enforced(
                 definitions = [r for r in metadata.get("degree_rules", []) if r.get("rule_id") == rule.rule_id]
                 if definitions != [rule.model_dump()]:
                     problems.append(f"{rule.rule_id}: {name} does not preserve the exact runtime rule definition")
+                if rule.kind == "course_recognition" and "requires_approval_after_track_minimum" in rule.params:
+                    expected = sorted({cid for category in spec.categories if category.group == "track" for cid in category.course_ids})
+                    actual = metadata.get("degree_rule_track_course_ids") if name == "early_years" else sorted({
+                        cid for category in metadata.get("program_requirements_categories", {}).get("categories", [])
+                        if category.get("group") == "track" for cid in category.get("course_ids", [])
+                    })
+                    if actual != expected:
+                        problems.append(f"{rule.rule_id}: {name} does not preserve the track pool used to authorize supplementary courses")
+                if name == "early_years" and rule.kind == "year_restriction" and rule.params.get("require_all_prior_year_courses") is True:
+                    homes = metadata.get("degree_rule_mandatory_semesters", {})
+                    expected_years = {course.course_id: course.year for course in spec.mandatory_courses}
+                    if (not isinstance(homes, dict) or set(homes) != set(expected_years) or any(
+                        not isinstance(home, str) or not re.fullmatch(r"year_[1-9]\d*_semester_[ab]", home)
+                        or int(home.split("_")[1]) != expected_years.get(cid)
+                        for cid, home in homes.items()
+                    )):
+                        problems.append(f"{rule.rule_id}: early_years does not preserve every published mandatory-course year")
             continue
         if rule.rule_id == "core-four-distinct-tracks":
             params = rule.params

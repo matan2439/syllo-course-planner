@@ -255,6 +255,11 @@ with an empty list. Unknown evidence warns during manual draft editing and preve
 AI certification; a known unsatisfied prerequisite still fails placement. Test saved
 plan restoration separately so catalog updates cannot lock students out of their work.
 
+A failed refresh preserves the last valid response and its original fetch date, records
+the failure, and exits nonzero. Offline replay retains that failure marker. A later live
+retry must clear it through an actual successful fetch. Never replace the old evidence
+with an empty successful snapshot or advance its timestamp after a failed request.
+
 Coverage counts measure source items, not every clause inside a paragraph. Audit long
 program narratives for multiple independent conditions. EE's main description also
 contains technician exemptions (government-exam average 80, excluding the project),
@@ -262,6 +267,26 @@ while the elective narrative includes supplementary and out-of-catalog recogniti
 approvals. Its energy-track description contains an optional licensing pathway. Keep
 these as separate sourced rules, without awarding exemptions, credit or a license from
 eligibility alone. Optional goals must not become requirements for all students.
+
+`course-exemptions.ts` recognizes a technician exemption only from the correct
+credential list, the reported qualifying government-exam average excluding the project,
+and an individually cited award whose degree-credit hours match the catalog. Eligibility
+alone does not complete a course. Unclear or different credit treatment remains targeted
+review. Recognize approved full-credit awards once across completed/current statuses.
+
+`course-recognition.ts` separates prior enrollment approval from an earned credit award.
+Supplementary fillers beyond the published track minimum require enough specifically
+approved courses while preserving a baseline with its distinct-track core requirement.
+Out-of-catalog requests use the reported average at approval and the normal course limit;
+extra requests require a scoped exceptional decision. External earned credit is
+deduplicated by exact identity and does not create a schedulable course or prerequisite
+equivalence. Conflicting awards must not silently add hours. Keep these facts and their
+references editable and persistent in the degree panel.
+
+Both window boards need the complete track pool and original mandatory-course years
+used by these checks. Browser facts merge the two published catalogs, retaining an
+unknown value for conflicting prerequisites, credit hours or mandatory-course years.
+Do not derive university facts from a student's edited placements.
 
 EE's optional high-current pathway is represented by `optional_pathway`, with fixed
 course ids, separate alternative groups and final-project-domain records. Keep the

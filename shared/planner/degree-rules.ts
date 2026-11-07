@@ -5,6 +5,8 @@ import type { DegreeEvidence } from './degree-evidence';
 import { evaluatePrerequisiteExpression, type PrerequisiteExpression } from './prerequisite-expression';
 import { evaluateDurationExtension, evaluateGraduateCourseEligibility } from './degree-conditional-evidence';
 import { evaluateAdditionalLabCredit } from './lab-credit-policy';
+import { evaluateCourseExemption, recognizedExemptionIds } from './course-exemptions';
+import { evaluateCourseRecognition, recognizedAdditionalCourses } from './course-recognition';
 
 export interface DegreeRule {
   readonly rule_id: string;
@@ -36,6 +38,7 @@ export interface DegreeRuleContext {
   readonly currentCourseIds?: Iterable<string>;
   /** Identified courses credited to the board's track pool, which excludes labs. */
   readonly trackCourseIds?: Iterable<string>;
+  readonly trackCandidateCourseIds?: Iterable<string>;
   readonly evidence?: DegreeEvidence;
   readonly courseHours?: Readonly<Record<string, number | null>>;
   readonly prerequisites?: Readonly<Record<string, readonly string[]>>;
@@ -95,9 +98,13 @@ export function evaluateDegreeRules(
 ): DegreeRuleResult[] {
   const placements = context.placements ?? [];
   const completed = new Set(context.completedCourseIds ?? []);
+  const additionalRecognition = recognizedAdditionalCourses(rules, context.evidence?.additionalCourseRecognition, context.courseHours);
+  additionalRecognition.recognizedCourseIds.forEach(id => completed.add(id));
+  for (const id of recognizedExemptionIds(rules, context.evidence?.technicianExemptions, context.courseHours)) completed.add(id);
   const current = new Set(context.currentCourseIds ?? []);
   const exclusionIds = new Set(context.exclusionCourseIds ?? []);
   const selected = new Set<string>();
+  Object.keys(additionalRecognition.externalCourseCredits).forEach(id => selected.add(id));
   for (const ids of [completed, current]) {
     for (const id of ids) if (courseId(id)) selected.add(id);
   }
@@ -155,6 +162,39 @@ export function evaluateDegreeRules(
     };
 
     switch (rule.kind) {
+      case 'course_recognition': {
+        if (additionalRecognition.conflictingCourseIds.length) return review('זיכויי שעות סותרים לאותו קורס מחייבים אימות לפני שימוש בהכרה.');
+        const evaluated = evaluateCourseRecognition(rule, context.evidence?.additionalCourseRecognition?.[rule.rule_id], context.courseHours);
+        if (evaluated.status !== 'pass') return result(evaluated.status, evaluated.explanation);
+        const minimum = params.requires_approval_after_track_minimum;
+        if (minimum !== undefined) {
+          if (!positiveInteger(minimum) || typeof params.core_rule_id !== 'string') return review('חסרה הגדרת קורסי המסלול הדרושה לבדיקת ההשלמות.');
+          const pool = context.trackCandidateCourseIds ?? context.trackCourseIds;
+          if (!pool) return review('חסר מאגר קורסי המסלול המוסמך לבדיקת קורסי ההשלמה.');
+          const track = [...new Set(pool)].filter(id => selected.has(id));
+          if (track.length > minimum) {
+            const approved = new Set(evaluated.approvedCourseIds);
+            const unapproved = track.filter(id => !approved.has(id));
+            if (unapproved.length > minimum) return review(`נדרש אישור מוקדם לקורסי מסלול נוספים מעבר ל־${minimum} קורסי החובה בבחירה.`);
+            const coreRule = rules.find(candidate => candidate.rule_id === params.core_rule_id && candidate.kind === 'distinct_categories');
+            const members = coreRule?.params?.category_members;
+            const coreMin = coreRule?.params?.min_courses, distinctMin = coreRule?.params?.min_distinct_categories;
+            if (!members || typeof members !== 'object' || Array.isArray(members) || !positiveInteger(coreMin) || !positiveInteger(distinctMin)) return review('חסרה הגדרת קורסי הליבה בתוך מכסת המסלול.');
+            const categories = Object.values(members).map(ids => new Set(Array.isArray(ids) ? ids.filter((id): id is string => typeof id === 'string') : []));
+            const coreIds = new Set(coreRule!.course_ids);
+            const existingCore = unapproved.filter(id => coreIds.has(id));
+            const additions = Math.max(0, coreMin - existingCore.length, distinctMin - matchedCategoryCount(existingCore, categories));
+            if (additions > minimum - unapproved.length || track.filter(id => coreIds.has(id)).length < coreMin || matchedCategoryCount(track.filter(id => coreIds.has(id)), categories) < distinctMin) {
+              return review('האישורים אינם מאפשרים לשמור במכסת המסלול את כל קורסי הליבה הנדרשים; יש לאמת את קורסי ההשלמה המאושרים.');
+            }
+          }
+        }
+        return result('pass', evaluated.explanation);
+      }
+      case 'course_exemption': {
+        const evaluated = evaluateCourseExemption(rule, context.evidence?.technicianExemptions?.[rule.rule_id], context.courseHours);
+        return result(evaluated.status, evaluated.explanation);
+      }
       case 'optional_pathway': {
         const goal = params.optional_goal;
         const required = params.required_course_ids;
@@ -216,7 +256,8 @@ export function evaluateDegreeRules(
         }
         const trackMinimum = params.within_track_courses_min;
         const hasTrackRequirement = trackMinimum !== undefined || params.labs_excluded_from_track_count !== undefined;
-        const trackIds = context.trackCourseIds === undefined ? undefined : new Set(context.trackCourseIds);
+        const trackIds = context.trackCandidateCourseIds !== undefined ? new Set([...context.trackCandidateCourseIds].filter(id => selected.has(id)))
+          : context.trackCourseIds === undefined ? undefined : new Set(context.trackCourseIds);
         const eligibleCore = hasTrackRequirement && trackIds ? active.filter(id => trackIds.has(id)) : active;
         const matched = matchedCategoryCount(eligibleCore, categories);
         const allMatched = eligibleCore.length === active.length ? matched : matchedCategoryCount(active, categories);
@@ -228,7 +269,7 @@ export function evaluateDegreeRules(
           if (active.length > 2 && matched >= 2) {
             if (params.third_lab_counts_toward_theory_credits !== false) return review('חסרה מדיניות זיכוי עיוני למעבדה הנוספת.');
             const evaluated = evaluateAdditionalLabCredit({ labIds: active, selectedIds: selected,
-              courseHours: context.courseHours, requiredDegreeHours: context.requiredDegreeHours,
+              courseHours: { ...context.courseHours, ...additionalRecognition.externalCourseCredits }, requiredDegreeHours: context.requiredDegreeHours,
               allocation: context.evidence?.labCreditAllocations?.[rule.rule_id] });
             return evaluated.status === 'pass' ? finish(evaluated.explanation,
               [...supported, 'third_lab_counts_toward_theory_credits']) : result(evaluated.status, evaluated.explanation);
@@ -263,7 +304,8 @@ export function evaluateDegreeRules(
             for (const [requiredId, home] of Object.entries(context.mandatorySemesters)) {
               if (completed.has(requiredId) || (current.has(requiredId) && !placementSemesters.has(requiredId))) continue;
               const expected = semesterOrdinal(home);
-              if (expected === undefined || expected >= firstSemester) continue;
+              if (expected === undefined) return review('קיימת סתירה או אי־ודאות בשנת הלימודים הרשמית של קורס חובה.');
+              if (expected >= firstSemester) continue;
               const actual = placementSemesters.get(requiredId);
               if (!actual?.some(s => s !== undefined && s < firstSemester)) {
                 return result('fail', `חסר קורס חובה משנה קודמת לפני ההתקדמות: ${requiredId}.`);

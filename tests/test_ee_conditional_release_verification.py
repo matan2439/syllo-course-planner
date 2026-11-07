@@ -11,7 +11,8 @@ from app.degrees.spec import load_spec
 ROOT = Path(__file__).resolve().parents[1]
 RULES = ['english-two-courses', 'cohort-spring-0512-4162', 'year-0509-4010', 'year-0512-3000',
          'cohort-0512-4013', 'load-min-75pct-approval', 'duration-extension', 'year-progression',
-         'graduate-courses-max-2-per-semester', 'optional-high-current-pathway', 'labs-two-distinct-tracks']
+         'graduate-courses-max-2-per-semester', 'optional-high-current-pathway', 'labs-two-distinct-tracks',
+         'technician-exemption-eligibility', 'additional-course-recognition']
 
 
 def scenario(rule_id):
@@ -42,4 +43,18 @@ def test_removed_or_widened_condition_fails_release(rule_id, window):
     assert not check_rules_enforced(spec, boards).passed
     rules[index] = original
     rules.pop(index)
+    assert not check_rules_enforced(spec, boards).passed
+
+
+def test_dropping_a_track_from_early_window_cannot_hide_supplementary_approval_requirement():
+    spec, boards = scenario('additional-course-recognition')
+    boards['early_years']['metadata']['degree_rule_track_course_ids'].pop()
+    assert not check_rules_enforced(spec, boards).passed
+
+
+def test_moving_a_mandatory_home_to_a_later_year_cannot_weaken_progression_in_early_window():
+    spec, boards = scenario('year-progression')
+    homes = boards['early_years']['metadata']['degree_rule_mandatory_semesters']
+    first = next(iter(homes))
+    homes[first] = 'year_6_semester_a'
     assert not check_rules_enforced(spec, boards).passed

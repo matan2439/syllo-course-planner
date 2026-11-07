@@ -26,7 +26,7 @@ export default function LabCreditFields({ rules, value, selectedCourseIds, cours
       <label className="block">אסמכתה לאופן זיכוי שעות המעבדות
         <input className={field} maxLength={500} value={report.reference} onChange={event => update({ reference: event.target.value })} />
       </label>
-      <label className="block">שעות תואר נוספות שהוכרו מעבר לקורסים המזוהים, ללא המעבדות הנוספות
+      <label className="block">שעות מוכרות מעבר לקורסים המזוהים ולדיווחי ההכרה הנוספת, ללא המעבדות הנוספות
         <input className={field} type="number" min={0} max={400} step={0.5} value={report.otherRecognizedDegreeHours ?? ''} onChange={event => {
           const hours = event.target.valueAsNumber
           update({ otherRecognizedDegreeHours: Number.isFinite(hours) && hours >= 0 && hours <= 400 ? hours : undefined })

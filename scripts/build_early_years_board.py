@@ -233,6 +233,16 @@ def build(program_id: str, start_year: int, tcid: str, shana: int,
         # A window changes the schedulable years, not the university's rules.
         # Preserve global and personal conditions for the shared evaluator.
         board["metadata"]["degree_rules"] = late_meta["degree_rules"]
+        board["metadata"]["degree_rule_track_course_ids"] = sorted({
+            cid for category in late_meta.get("program_requirements_categories", {}).get("categories", [])
+            if category.get("group") == "track" for cid in category.get("course_ids", [])
+        })
+        board["metadata"]["degree_rule_mandatory_semesters"] = {
+            course["course_id"]: semester["semester_id"]
+            for semester in [*late.get("semesters", []), *board.get("semesters", [])]
+            for course in semester.get("courses", [])
+            if course.get("is_mandatory") is True or course.get("course_type") == "mandatory"
+        }
     apply_offering_windows(board)
     board["metadata"]["board_data_version"] = compute_board_hash(board)
 

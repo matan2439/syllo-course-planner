@@ -171,7 +171,7 @@ def _fetch_response(record: dict, *, get, timeout: float, year: int) -> dict:
         reply.close()
 
 
-def _collect_record(record: dict, *, cache: dict, live: bool, get, timeout: float, retries: int, year: int) -> dict:
+def _collect_record(record: dict, *, cache: dict, live: bool, get, timeout: float, retries: int, year: int, refresh: bool = False) -> dict:
     record = {**record, "retrieval_status": "unavailable", "attempts": 0, "response": None, "issues": []}
     record["parsed"] = {
         "course_id": record["course_id"], "semester": record["semester"],
@@ -182,10 +182,12 @@ def _collect_record(record: dict, *, cache: dict, live: bool, get, timeout: floa
         record["retrieval_status"] = "invalid_url"
         record["issues"].append("Rejected source URL identity")
         return record
-    response = _cached_response(record, cache, year)
+    previous = _cached_response(record, cache, year)
+    needs_fetch = live and (refresh or previous is None or previous.get("last_refresh_failed_at"))
+    response = None if needs_fetch else previous
     if response is not None:
-        record["retrieval_status"] = "cache"
-    elif live:
+        record["retrieval_status"] = "stale_cache" if response.get("last_refresh_failed_at") else "cache"
+    if needs_fetch:
         for attempt in range(retries + 1):
             record["attempts"] = attempt + 1
             try:
@@ -194,6 +196,10 @@ def _collect_record(record: dict, *, cache: dict, live: bool, get, timeout: floa
                 break
             except (requests.RequestException, ValueError, LookupError) as exc:
                 record["issues"].append(f"Attempt {attempt + 1}: {type(exc).__name__}: {exc}")
+        if response is None and previous is not None:
+            response = {**previous, "last_refresh_failed_at": datetime.now(timezone.utc).isoformat(),
+                        "last_refresh_error": record["issues"][-1][:500]}
+            record["retrieval_status"] = "stale_cache"
     if response is None:
         record["issues"].append("No cached or fetched response")
         return record
@@ -211,8 +217,6 @@ def collect(
     """Discover cached links and collect every record, with at most four workers."""
     if refresh and not live:
         raise ValueError("Refreshing captured requirements requires --live")
-    if refresh:
-        cache = None
     if (type(workers) is not int or not 1 <= workers <= 4
             or type(retries) is not int or retries not in (0, 1)
             or type(timeout) not in (int, float) or not math.isfinite(timeout) or not 0 < timeout <= 30):
@@ -250,7 +254,7 @@ def collect(
                 discovered[key] = record
     def process(record):
         return _collect_record(record, cache=cache or {}, live=live, get=get or requests.get,
-                               timeout=timeout, retries=retries, year=year)
+                               timeout=timeout, retries=retries, year=year, refresh=refresh)
 
     with ThreadPoolExecutor(max_workers=workers) as executor:
         records = list(executor.map(process, sorted(discovered.values(), key=lambda r: (r["course_id"], r["source_url"]))))
@@ -270,6 +274,7 @@ def collect(
         "no_drishot_links": sum(c["details_status"] == "no_drishot_links" for c in courses.values()),
         "fetched_records": sum(r["retrieval_status"] == "fetched" for r in records),
         "cached_records": sum(r["retrieval_status"] == "cache" for r in records),
+        "stale_records": sum(bool((r["response"] or {}).get("last_refresh_failed_at")) for r in records),
         "invalid_url_records": sum(not r["url_identity_verified"] for r in records),
         "unavailable_records": sum(r["retrieval_status"] == "unavailable" for r in records),
         "verified_records": sum(r["parsed"]["status"] == "verified" for r in records),
@@ -330,7 +335,7 @@ def main(argv=None) -> int:
     print(json.dumps({"dry_run": not args.write, "mode": result["mode"], "report_id": result["report_id"],
                       "program_id": result["program_id"], "source_year": result["source_year"],
                       "output": str(output) if args.write else None, **result["summary"]}, indent=2))
-    return 0
+    return 1 if args.live and (result["summary"]["stale_records"] or result["summary"]["unavailable_records"]) else 0
 
 
 if __name__ == "__main__":

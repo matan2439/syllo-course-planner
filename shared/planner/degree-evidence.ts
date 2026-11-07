@@ -45,6 +45,21 @@ export const degreeEvidenceSchema = z.object({
     reference: z.string().trim().max(500),
   }).strict()).optional(),
   optionalGoals: z.array(z.string().min(1).max(128)).max(20).optional(),
+  technicianExemptions: z.record(z.string().min(1).max(128), z.object({
+    credential: z.string().min(1).max(128).optional(),
+    governmentExamAverage: z.number().finite().min(0).max(100).optional(),
+    excludesProject: z.boolean().optional(),
+    awards: z.record(courseId, z.object({ approved: z.boolean(), degreeCreditHours: z.number().finite().min(0).max(30).optional(),
+      reference: z.string().trim().max(500) }).strict()).optional(),
+  }).strict()).optional(),
+  additionalCourseRecognition: z.record(z.string().min(1).max(128), z.record(courseId, z.object({
+    nameHe: z.string().max(200).optional(),
+    useForDegreeCredit: z.boolean(), scope: z.enum(['supplementary', 'out_of_catalog']), completed: z.boolean(), priorApproval: z.boolean(),
+    approvalReference: z.string().trim().max(500), syllabusReference: z.string().trim().max(500),
+    instructorConsentReference: z.string().trim().max(500), officialCourseReference: z.string().trim().max(500),
+    recognizedDegreeHours: z.number().finite().min(0).max(30).optional(), creditAwardReference: z.string().trim().max(500).optional(),
+    averageAtApproval: z.number().finite().min(0).max(100).optional(), exceptionalLimitReference: z.string().trim().max(500).optional(),
+  }).strict()).refine(records => Object.keys(records).length <= 100)).optional(),
   labCreditAllocations: z.record(z.string().min(1).max(128), z.object({
     creditedLabCourseIds: z.array(courseId).max(20),
     nonTheoryLabCourseIds: z.array(courseId).max(20),
