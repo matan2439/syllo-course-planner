@@ -282,6 +282,7 @@ export function buildConstraintModel(boardJson: any, opts: BuildModelOptions = {
     degreeRules: boardJson?.metadata?.degree_rules,
     degreeEvidence: readDegreeEvidence(opts.degreeEvidence),
     degreeMandatorySemesters,
+    degreeCourseHours: degreeCatalog.courseHours,
     degreePrerequisiteExpressions: degreeCatalog.prerequisiteExpressions,
     allowConcurrentPrerequisites: (boardJson?.metadata?.degree_rules ?? []).some((rule: any) =>
       rule.kind === 'prerequisite_policy' && rule.params?.prerequisite_may_be_concurrent === true),

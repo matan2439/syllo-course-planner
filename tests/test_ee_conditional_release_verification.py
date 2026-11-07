@@ -11,7 +11,7 @@ from app.degrees.spec import load_spec
 ROOT = Path(__file__).resolve().parents[1]
 RULES = ['english-two-courses', 'cohort-spring-0512-4162', 'year-0509-4010', 'year-0512-3000',
          'cohort-0512-4013', 'load-min-75pct-approval', 'duration-extension', 'year-progression',
-         'graduate-courses-max-2-per-semester', 'optional-high-current-pathway']
+         'graduate-courses-max-2-per-semester', 'optional-high-current-pathway', 'labs-two-distinct-tracks']
 
 
 def scenario(rule_id):

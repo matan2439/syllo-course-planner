@@ -45,6 +45,13 @@ export const degreeEvidenceSchema = z.object({
     reference: z.string().trim().max(500),
   }).strict()).optional(),
   optionalGoals: z.array(z.string().min(1).max(128)).max(20).optional(),
+  labCreditAllocations: z.record(z.string().min(1).max(128), z.object({
+    creditedLabCourseIds: z.array(courseId).max(20),
+    nonTheoryLabCourseIds: z.array(courseId).max(20),
+    reference: z.string().trim().max(500),
+    otherRecognizedDegreeHours: z.number().finite().min(0).max(400).optional(),
+    otherCreditReference: z.string().trim().max(500).optional(),
+  }).strict()).optional(),
   projectDomains: z.record(courseId, z.object({
     domain: z.string().min(1).max(128), reference: z.string().trim().max(500),
   }).strict()).optional(),

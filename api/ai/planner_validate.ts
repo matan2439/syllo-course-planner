@@ -26,7 +26,8 @@ export function degreeRuleResults(state: PlanState, model: ConstraintModel) {
     exclusionCourseIds: model.degreeRuleExclusionCourseIds,
     trackCourseIds,
     evidence: model.degreeEvidence,
-    courseHours: Object.fromEntries([...model.profiles].map(([id, profile]) => [id, profile.hours])),
+    courseHours: model.degreeCourseHours ?? Object.fromEntries([...model.profiles].map(([id, profile]) => [id, profile.hours])),
+    requiredDegreeHours: model.degreeRequiredHours,
     mandatorySemesters: model.degreeMandatorySemesters,
     prerequisiteExpressions: model.degreePrerequisiteExpressions,
   });

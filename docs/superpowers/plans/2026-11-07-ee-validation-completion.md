@@ -17,32 +17,30 @@ with warnings. Never clear the public readiness banner by hiding an unsupported 
 - Core matching, personal-condition definitions and optional high-current pathway data
   have release checks. Both window boards preserve every definition.
 - Canonical skill references describe these contracts and the narrative-source audit.
+- The additional-lab branch checks a cited credit allocation and independently verifies
+  sufficient credit without the non-theory labs, while preserving actual workload.
 
 ## Remaining implementation and acceptance
 
-1. **Lab credit allocation.** Implement the two-same-track-plus-third-other-track
-   alternative. Keep actual semester workload separate from degree/theory credit;
-   the extra lab must not fill theoretical-course requirements. Verify selections,
-   completed labs, multi-track lab identities and persistence without double counting.
-2. **Conditional prerequisites.** Model the published reserve-duty and eligible-parent
+1. **Conditional prerequisites.** Model the published reserve-duty and eligible-parent
    conditions with explicit, scoped student evidence. Apply exceptions consistently
    to OR branches, timing, generation and validation. An arbitrary approval must not
    waive unrelated requirements. Complete release verification for the ordinary
    before-or-concurrent policy and attendance/exam-eligibility records.
-3. **Technician exemptions.** Keep credential and government-exam eligibility separate
+2. **Technician exemptions.** Keep credential and government-exam eligibility separate
    from an individual university award. Average 80 excludes the project. Preserve the
    two published course lists. Eligibility alone grants neither completion nor hours;
    awarded exemptions and credit treatment need individual records.
-4. **Additional-course recognition.** Distinguish ordinary catalog electives from
+3. **Additional-course recognition.** Distinguish ordinary catalog electives from
    supplementary/out-of-catalog recognition. The latter needs prior committee approval,
    syllabus and instructor consent; out-of-catalog consideration also needs average 85
    and normally one course. Record a specifically scoped exceptional decision rather
    than silently widening the default. Unknown course ids cannot create credit.
-5. **Window versus degree completion.** Retain all rules in both windows, but explicitly
+4. **Window versus degree completion.** Retain all rules in both windows, but explicitly
    distinguish completing a two-year window from graduating. Global core/lab/language
    minima must remain visible without falsely implying they must be completed by year 2.
    Placement legality, draft navigation and whole-degree certification are separate.
-6. **Release verification.** Run the live source/freshness check; investigate every
+5. **Release verification.** Run the live source/freshness check; investigate every
    remaining rule or source conflict. Test the deployed editable preview across both
    windows, evidence reload, manual edits, saved alternatives and ME regression. Only
    promote academic status and remove the broad banner when the release gate passes.
@@ -50,7 +48,7 @@ with warnings. Never clear the public readiness banner by hiding an unsupported 
 The owner accepted retaining TAU's literal self-reference for 0512-4506. Keep it and
 its targeted clarification; do not infer 0512-4507 as the intended counterpart.
 
-Current source audit has five `enforced_by: none` rules: labs, ordinary prerequisites,
+Current source audit has four `enforced_by: none` rules: ordinary prerequisites,
 conditional prerequisites, technician exemptions and additional-course recognition.
 Some IMS pages publish no requirement section; preserve that uncertainty separately
 from unsupported engine behavior. Offline checks cannot establish source freshness.

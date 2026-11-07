@@ -266,6 +266,7 @@ def check_rules_enforced(
         # windows. A note claiming enforcement is not a substitute for that data.
         runtime_definition = rule.kind in {"language_requirement", "cohort_restriction", "year_restriction", "load_limit", "optional_pathway"}
         runtime_definition = runtime_definition or (rule.kind == "study_duration" and "extension_years" in rule.params)
+        runtime_definition = runtime_definition or (rule.kind == "distinct_categories" and rule.params.get("same_track_requires_third_lab") is True)
         if runtime_definition:
             for name in ("board", "early_years"):
                 metadata = (boards or {}).get(name, {}).get("metadata", {})

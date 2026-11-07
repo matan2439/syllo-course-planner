@@ -310,8 +310,10 @@ labs. Metadata presence alone does not establish enforcement.
 
 EE's advanced-lab source permits two labs in one track only with a third lab in another
 track; the third lab's credit does not count toward theoretical-course credit. The
-third-lab allocation remains unresolved until the credit model and all completion paths
-enforce that distinction. Keep lab selection, theoretical credit, degree totals and
+shared `lab-credit-policy.ts` requires a cited allocation of two credited labs and the
+remaining non-theory labs. It independently recomputes the completion credit without
+the non-theory labs; reported other credit needs a separate reference and excludes all
+identified courses. Missing allocation stays review. Keep lab selection, theoretical credit, degree totals and
 semester workload consistent with their official units. Do not treat distinct-track
 matching alone as proof of credit correctness or subtract hours from a degree target
 without verified allocation semantics. Test completed and current labs as well as

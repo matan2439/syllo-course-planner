@@ -4,6 +4,7 @@
 import type { DegreeEvidence } from './degree-evidence';
 import { evaluatePrerequisiteExpression, type PrerequisiteExpression } from './prerequisite-expression';
 import { evaluateDurationExtension, evaluateGraduateCourseEligibility } from './degree-conditional-evidence';
+import { evaluateAdditionalLabCredit } from './lab-credit-policy';
 
 export interface DegreeRule {
   readonly rule_id: string;
@@ -40,6 +41,7 @@ export interface DegreeRuleContext {
   readonly prerequisites?: Readonly<Record<string, readonly string[]>>;
   readonly prerequisiteExpressions?: Readonly<Record<string, PrerequisiteExpression | null>>;
   readonly mandatorySemesters?: Readonly<Record<string, string>>;
+  readonly requiredDegreeHours?: number;
 }
 
 const positiveInteger = (value: unknown): value is number =>
@@ -224,7 +226,12 @@ export function evaluateDegreeRules(
         if (thirdLabRule) {
           if (minimum !== 2 || distinct !== 2) return review('הגדרת המעבדה השלישית אינה תקינה.');
           if (active.length > 2 && matched >= 2) {
-            return review('יש לאמת את שיוך המעבדה השלישית ואת אופן חישוב השעות שלה.');
+            if (params.third_lab_counts_toward_theory_credits !== false) return review('חסרה מדיניות זיכוי עיוני למעבדה הנוספת.');
+            const evaluated = evaluateAdditionalLabCredit({ labIds: active, selectedIds: selected,
+              courseHours: context.courseHours, requiredDegreeHours: context.requiredDegreeHours,
+              allocation: context.evidence?.labCreditAllocations?.[rule.rule_id] });
+            return evaluated.status === 'pass' ? finish(evaluated.explanation,
+              [...supported, 'third_lab_counts_toward_theory_credits']) : result(evaluated.status, evaluated.explanation);
           }
           if (params.third_lab_counts_toward_theory_credits === false) supported.push('third_lab_counts_toward_theory_credits');
         } else if (params.same_track_requires_third_lab !== undefined && params.same_track_requires_third_lab !== false) {

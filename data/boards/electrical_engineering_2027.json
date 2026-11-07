@@ -15752,8 +15752,8 @@
           "tau:7622:2026:rama:16:hesber:0c5d71de7064",
           "tau:7622:2026:rama:30:hesber:8440fe3988ad"
         ],
-        "enforced_by": "none",
-        "note": "TAU: 2 advanced labs from 2 different tracks; a student who takes both in the same track must take a third lab in another track, whose credits do not count toward the theoretical-course credits. category_members keys are the track categories; the labs themselves sit in the advanced_labs category (min_courses 2). The board enforces only the count of 2 (category advanced_labs), not the distinct-track condition nor the third-lab rule."
+        "enforced_by": "board",
+        "note": "TAU requires two advanced labs from different tracks. Two labs in the same track require an additional lab in another track, whose hours do not reduce the theoretical-course credit gap. The shared evaluator checks distinct-track matching and, with more than two labs, requires a cited allocation of the two credited labs and non-theory labs. It recomputes the credit total without the latter before certifying completion. Actual semester workload remains unchanged. Missing allocation or credit facts requires review. Both windows preserve the exact rule."
       },
       {
         "rule_id": "english-two-courses",
