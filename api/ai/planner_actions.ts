@@ -7,6 +7,8 @@
  */
 
 import { getLegalSemesters, type CourseLegalityInfo } from './completion_analysis';
+import { parsePrerequisiteExpression } from '../../shared/planner/prerequisite-expression';
+import type { CourseProfile } from './course_profile';
 import {
   degreeHours as computeDegreeHours,
   scorePlan,
@@ -39,14 +41,21 @@ function preferenceScore(model: ConstraintModel, id: string): number {
   return 0;
 }
 
+function hasUnknownExpression(p?: CourseProfile): boolean {
+  return (p?.prerequisite_expression !== undefined && !parsePrerequisiteExpression(p.prerequisite_expression)) ||
+    (p?.corequisite_expression !== undefined && !parsePrerequisiteExpression(p.corequisite_expression));
+}
+
 export function isExcluded(model: ConstraintModel, id: string): boolean {
-  return model.disallowedCourseIds.has(id) || model.profiles.get(id)?.excluded === true;
+  const p = model.profiles.get(id);
+  return model.disallowedCourseIds.has(id) || p?.excluded === true || hasUnknownExpression(p);
 }
 
 export function isMovable(model: ConstraintModel, id: string): boolean {
   if (model.pinnedCourseIds.has(id)) return false;
   const p = model.profiles.get(id);
   if (!p) return false;
+  if (hasUnknownExpression(p)) return false;
   // Annual (year-long) courses occupy every spanned semester together and are
   // never split — moving or replacing them out of one semester only would
   // break that pairing, contradicting the placement this same course's
@@ -152,6 +161,7 @@ export function enumerateActions(state: PlanState, model: ConstraintModel): Plan
     model.wantedCourseIds.has(id) ||
     model.categories.some(cat => cat.candidateIds.includes(id));
   for (const [id, p] of model.profiles) {
+    if (isExcluded(model, id)) continue;
     if (!p.is_annual || !placed.has(id) || isFullyPlaced(state, model, placed, id)) continue;
     if (classifiedElsewhere(id)) continue;
     actions.push(...addCourseActionsFor(model, id));
@@ -168,7 +178,10 @@ export function enumerateActions(state: PlanState, model: ConstraintModel): Plan
   const withinBoundary = (a: PlannerMutation, boundary: number | undefined): boolean => {
     if (boundary === undefined || a.type !== 'ADD_COURSE') return true;
     return [a.semesterId, ...(a.alsoSemesterIds ?? [])]
-      .every(sem => model.knownSemesterIds.indexOf(sem) < boundary);
+      .every(sem => {
+        const index = model.knownSemesterIds.indexOf(sem);
+        return index >= 0 && (model.allowConcurrentPrerequisites === true ? index <= boundary : index < boundary);
+      });
   };
 
   // 1. required mandatory still unplaced — every legal semester, filtered to

@@ -15,6 +15,7 @@
  * confidence fields, but never the deterministic facts the validators rely on.
  */
 import { boardSyllabusOf, type BoardSyllabus } from './course_insights/syllabus';
+import { parsePrerequisiteExpression, type PrerequisiteExpression } from '../../shared/planner/prerequisite-expression';
 
 export interface CourseProvenance {
   /** Where the course record came from ('program' | 'elective' | …). */
@@ -60,6 +61,9 @@ export interface CourseProfile {
   // ── prerequisites / co-requisites ─────────────────────────────────────────
   prerequisites: string[];
   corequisites: string[];
+  /** Absent uses legacy arrays; null records unknown/malformed source data. */
+  prerequisite_expression?: PrerequisiteExpression | null;
+  corequisite_expression?: PrerequisiteExpression | null;
 
   // ── syllabus ──────────────────────────────────────────────────────────────
   syllabus_url: string | null;
@@ -247,6 +251,10 @@ function toProfile(raw: any, opts: BuildProfilesOptions): CourseProfile {
 
     prerequisites: strArr(raw.prerequisites),
     corequisites: strArr(raw.corequisites),
+    ...(raw.prerequisite_expression !== undefined
+      ? { prerequisite_expression: parsePrerequisiteExpression(raw.prerequisite_expression) } : {}),
+    ...(raw.corequisite_expression !== undefined
+      ? { corequisite_expression: parsePrerequisiteExpression(raw.corequisite_expression) } : {}),
 
     syllabus_url: typeof raw.syllabus_url === 'string' ? raw.syllabus_url : null,
     syllabus_available: !!(raw.syllabus_text_available || raw.syllabus_summary_he),

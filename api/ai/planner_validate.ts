@@ -14,11 +14,23 @@ import { assessCompleteness, missingMustIncludeCourseIds } from './planner_goals
 import { evaluateDegreeRules } from '../../shared/planner/degree-rules';
 
 export function degreeRuleResults(state: PlanState, model: ConstraintModel) {
+  if (!model.degreeRules?.length) return [];
+  const track = model.categories.find(c => c.id === 'group:track');
+  const planned = new Set(placedCourseIds(state));
+  const trackCourseIds = track?.candidateIds.filter(id =>
+    planned.has(id) || model.completedCourseIds.has(id) || model.currentlyPlannedCourseIds?.has(id));
   return evaluateDegreeRules(model.degreeRules ?? [], {
     placements: Object.entries(state.semesters).flatMap(([semesterId, ids]) => ids.map(courseId => ({ semesterId, courseId }))),
     completedCourseIds: model.completedCourseIds,
     currentCourseIds: model.currentlyPlannedCourseIds,
     exclusionCourseIds: model.degreeRuleExclusionCourseIds,
+    trackCourseIds,
+    trackCandidateCourseIds: model.degreeTrackCandidateIds,
+    evidence: model.degreeEvidence,
+    courseHours: model.degreeCourseHours ?? Object.fromEntries([...model.profiles].map(([id, profile]) => [id, profile.hours])),
+    requiredDegreeHours: model.degreeRequiredHours,
+    mandatorySemesters: model.degreeMandatorySemesters,
+    prerequisiteExpressions: model.degreePrerequisiteExpressions,
   });
 }
 // Type-only — erased at compile time, so this does NOT create a runtime
@@ -40,6 +52,8 @@ export function buildValidationContext(
       effective_allowed_semesters: legal.confident ? legal.semesters : undefined,
       offering_window_semesters: p.offering_window_semesters,
       prerequisites: p.prerequisites,
+      prerequisite_expression: p.prerequisite_expression,
+      corequisite_expression: p.corequisite_expression,
       missing_prerequisites: [],
       is_mandatory: p.is_mandatory,
       is_annual: p.is_annual,
@@ -57,6 +71,7 @@ export function buildValidationContext(
     // validate() and isGoal/assessCompleteness never disagree.
     overloadAccepted: model.overloadAccepted,
     overloadConfirmedAt: model.overloadConfirmedAt,
+    allowConcurrentPrerequisites: model.allowConcurrentPrerequisites,
     // Phase 1b — same source of truth as assessCompleteness's load-cap
     // thresholds, so validate() and isGoal/assessCompleteness never disagree.
     hardCap: model.hardCap,
@@ -92,7 +107,8 @@ export function validatePlanState(
     const message = `${rule.rule_id}: ${rule.explanation}`;
     // Degree-wide selection minima describe completeness, not whether a draft
     // may be edited. Timing and exclusion violations are placement errors.
-    if (rule.status === 'fail' && definition?.kind !== 'distinct_categories') res.errors.push(message);
+    const completionRule = ['distinct_categories', 'language_requirement', 'optional_pathway'].includes(definition?.kind ?? '');
+    if (rule.status === 'fail' && !completionRule) res.errors.push(message);
     else if (rule.status !== 'pass') res.warnings.push(message);
   }
   return { valid: res.errors.length === 0, errors: res.errors, warnings: res.warnings };

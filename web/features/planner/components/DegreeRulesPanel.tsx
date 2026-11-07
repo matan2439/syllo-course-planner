@@ -2,12 +2,20 @@
 
 import { evaluateDegreeRules, type DegreeRule } from '../../../../shared/planner/degree-rules'
 import type { RequirementsVM } from '../../../lib/requirements'
+import type { DegreeEvidence } from '../../../../shared/planner/degree-evidence'
+import DegreeEvidenceFields from './DegreeEvidenceFields'
+import type { DegreeCatalogFacts } from '../../../../shared/planner/degree-catalog'
+import LabCreditFields from './LabCreditFields'
+import TechnicianExemptionFields from './TechnicianExemptionFields'
+import CourseRecognitionFields from './CourseRecognitionFields'
 
 const LABELS: Record<string, string> = {
   distinct_categories: 'בחירה ממסלולים שונים', mutually_exclusive: 'חפיפה בין קורסים',
   year_restriction: 'שנת לימוד ותנאי קבלה', offering_window: 'מועד לימוד הקורס',
   language_requirement: 'קורסים באנגלית', cohort_restriction: 'תנאים אישיים',
   load_limit: 'היקף הלימודים', study_duration: 'משך הלימודים', prerequisite_policy: 'דרישות קדם',
+  course_exemption: 'זכאות לפטור על סמך לימודים קודמים', course_recognition: 'הכרה בקורסים נוספים',
+  optional_pathway: 'מסלול מקצועי לבחירה',
 }
 
 export function currentCourseIdsFromStatus(status: unknown): string[] {
@@ -15,20 +23,43 @@ export function currentCourseIdsFromStatus(status: unknown): string[] {
   return Array.isArray(rows) ? rows.flatMap(row => typeof row?.course_id === 'string' ? [row.course_id] : []) : []
 }
 
-export default function DegreeRulesPanel({ rules, requirements, semesters, completedCourseIds = [], currentCourseIds = [] }: {
+export default function DegreeRulesPanel({ rules, requirements, trackCourseIds, evidence, catalogFacts, courseNames = {}, onEvidenceChange, semesters, completedCourseIds = [], currentCourseIds = [] }: {
   rules: readonly DegreeRule[]
   requirements?: RequirementsVM | null
+  trackCourseIds?: readonly string[]
+  evidence?: DegreeEvidence
+  catalogFacts?: DegreeCatalogFacts
+  courseNames?: Readonly<Record<string, string>>
+  onEvidenceChange?: (evidence: DegreeEvidence) => void
   semesters: readonly { semesterId: string; courseIds: readonly string[] }[]
   completedCourseIds?: readonly string[]
   currentCourseIds?: readonly string[]
 }) {
   if (!rules.length && !requirements) return null
+  const recognitionNames = Object.fromEntries(Object.values(evidence?.additionalCourseRecognition ?? {})
+    .flatMap(reports => Object.entries(reports).map(([id, report]) => [id, report.nameHe || id])))
+  const evidenceCourseNames = { ...recognitionNames, ...courseNames }
   const results = evaluateDegreeRules(rules, {
     placements: semesters.flatMap(s => s.courseIds.map(courseId => ({ courseId, semesterId: s.semesterId }))),
-    completedCourseIds, currentCourseIds,
+    completedCourseIds, currentCourseIds, trackCourseIds, evidence,
+    trackCandidateCourseIds: catalogFacts?.trackCandidateIds,
+    courseHours: catalogFacts?.courseHours, mandatorySemesters: catalogFacts?.mandatorySemesters,
+    prerequisiteExpressions: catalogFacts?.prerequisiteExpressions,
+    requiredDegreeHours: requirements?.totalRequiredHours,
   })
   return <details className="my-3 rounded-lg border border-[var(--border)] p-3" dir="rtl">
     <summary className="cursor-pointer font-semibold">כללי התואר</summary>
+    {onEvidenceChange && <DegreeEvidenceFields rules={rules} value={evidence} courseNames={evidenceCourseNames}
+      semesterIds={semesters.filter(s => s.courseIds.length > 0).map(s => s.semesterId)}
+      pastCourseIds={[...completedCourseIds, ...currentCourseIds]} currentlyTakenPrerequisiteIds={currentCourseIds}
+      onChange={onEvidenceChange} />}
+    {onEvidenceChange && <LabCreditFields rules={rules} value={evidence ?? {}} courseNames={courseNames}
+      selectedCourseIds={[...completedCourseIds, ...currentCourseIds, ...semesters.flatMap(s => [...s.courseIds])]}
+      onChange={onEvidenceChange} />}
+    {onEvidenceChange && <TechnicianExemptionFields rules={rules} value={evidence ?? {}} courseNames={courseNames}
+      onChange={onEvidenceChange} />}
+    {onEvidenceChange && <CourseRecognitionFields rules={rules} value={evidence ?? {}} courseNames={courseNames}
+      onChange={onEvidenceChange} />}
     {requirements && <ul className="my-2 list-inside list-disc space-y-1 text-sm">
       <li>סה״כ נדרש לתואר: {requirements.totalRequiredHours} ש״ס</li>
       {requirements.core.min > 0 && <li>לפחות {requirements.core.min} קורסי ליבה</li>}

@@ -96,6 +96,7 @@ export default function NativePlannerJourney({
   onBoardSnapshot,
   degreeRules = [],
   degreeRequirements,
+  degreeCatalog,
   onPrepareRestore,
   companion,
   degreeSemesterIds,
@@ -136,6 +137,7 @@ export default function NativePlannerJourney({
   onBoardSnapshot?: (snapshot: BoardSnapshot) => void
   degreeRules?: readonly DegreeRule[]
   degreeRequirements?: RequirementsVM | null
+  degreeCatalog?: import('../../../../shared/planner/degree-catalog').DegreeCatalogFacts
   onPrepareRestore?: (prepare: (() => Promise<void>) | null) => void
   /** Another window's read-only columns shown beside this board ("whole degree" view). */
   companion?: { placement: 'before' | 'after'; node: ReactNode }
@@ -436,6 +438,12 @@ export default function NativePlannerJourney({
           getStudentContext={courseChatContext}
         />
         <DegreeRulesPanel rules={degreeRules} requirements={degreeRequirements ?? (current ? adaptRequirementsFromModel(current) : null)} semesters={current?.semesters.map(s => ({ semesterId: s.semesterId, courseIds: s.courses.map(c => c.courseId) })) ?? []}
+          evidence={academicStatus.degreeEvidence}
+          catalogFacts={degreeCatalog}
+          onEvidenceChange={degreeEvidence => updateAcademicStatus({ ...academicStatus, degreeEvidence })}
+          courseNames={{ ...Object.fromEntries(earlyYearCoursesFor(programId).map(course => [course.courseId, course.nameHe])),
+            ...Object.fromEntries(Object.entries(current?.courseCatalog ?? {}).map(([id, course]) => [id, course.nameHe])) }}
+          trackCourseIds={current?.requirementsValidation?.categories.find(category => category.categoryId === 'group:track')?.selectedCourseIds}
           completedCourseIds={academicStatus.confirmed ? completedCourseIdsOf(academicStatus) : []}
           currentCourseIds={currentCourseIdsFromStatus(loadedAcademicContext?.personalStatus)} />
         {manualEditPhase === 'saving' && <p role="status" aria-live="polite" className="text-sm text-[var(--text-muted)]">{t('שומר ומאמת…', 'Saving and validating…')}</p>}

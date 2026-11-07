@@ -32,6 +32,11 @@ import {
 } from './planner_types';
 import { ABSOLUTE_MAX_REASONABLE } from './load_constants';
 import { getLegalSemesters, type CourseLegalityInfo } from './completion_analysis';
+import {
+  evaluatePrerequisiteExpression, requirementExpression, selectPrerequisiteCourses,
+  type PrerequisiteStatus,
+} from '../../shared/planner/prerequisite-expression';
+import type { CourseProfile } from './course_profile';
 
 export const GOAL_STACK = [
   'degree_completion',
@@ -185,9 +190,39 @@ function legalSemestersOnBoard(model: ConstraintModel, id: string): string[] {
   return (raw.length ? raw : model.knownSemesterIds).filter(sem => model.knownSemesterIds.includes(sem));
 }
 
+/** Boundaries are inclusive only under the board's explicit concurrency policy. */
+function prerequisiteIndexAllowed(model: ConstraintModel, index: number, boundary: number): boolean {
+  return model.allowConcurrentPrerequisites === true ? index <= boundary : index < boundary;
+}
+
+function hasRequirementExpression(p?: CourseProfile): boolean {
+  return p?.prerequisite_expression !== undefined || p?.corequisite_expression !== undefined;
+}
+
+function expressionRelocationLegal(
+  state: PlanState, model: ConstraintModel, p: CourseProfile,
+  targetIndex: number, movingId: string, movingIndex: number,
+): boolean {
+  const status = (id: string, concurrent: boolean): PrerequisiteStatus => {
+    if (model.completedCourseIds.has(id) || model.currentlyPlannedCourseIds?.has(id)) return 'satisfied';
+    const indices = id === movingId ? [movingIndex] : Object.entries(state.semesters)
+      .filter(([, ids]) => ids.includes(id)).map(([sem]) => model.knownSemesterIds.indexOf(sem)).filter(i => i >= 0);
+    // Unlike an absent legacy edge, an explicit expression leaf is a definite
+    // condition. A relocation cannot rely on an unplaced alternative.
+    if (!indices.length) return 'unsatisfied';
+    return (concurrent ? Math.max(...indices) <= targetIndex : Math.max(...indices) < targetIndex)
+      ? 'satisfied' : 'unsatisfied';
+  };
+  return evaluatePrerequisiteExpression(requirementExpression(p.prerequisite_expression, p.prerequisites),
+    id => status(id, model.allowConcurrentPrerequisites === true)) === 'satisfied' &&
+    evaluatePrerequisiteExpression(requirementExpression(p.corequisite_expression, p.corequisites),
+      id => status(id, true)) === 'satisfied';
+}
+
 /**
  * Whether relocating `id` (currently on the board, somewhere) to `sem` would
- * satisfy `validatePlanProposal`'s strict-timing rule — in BOTH directions:
+ * satisfy `validatePlanProposal`'s timing policy — in BOTH directions:
+ * The strict comparisons below include equality when concurrency is enabled.
  *
  *  - `id`'s OWN prerequisites (unless completed/currently-taking) must stay
  *    strictly before `sem` — mirrors `isMandatoryCourseReachable`'s own
@@ -211,22 +246,26 @@ function wouldRelocationBeOrderingLegal(state: PlanState, model: ConstraintModel
   if (semIdx < 0) return false;
 
   const p = model.profiles.get(id);
-  for (const prereqId of p?.prerequisites ?? []) {
+  if (p && hasRequirementExpression(p) && !expressionRelocationLegal(state, model, p, semIdx, id, semIdx)) return false;
+  for (const prereqId of hasRequirementExpression(p) ? [] : p?.prerequisites ?? []) {
     if (model.completedCourseIds.has(prereqId)) continue;
     if (model.currentlyPlannedCourseIds?.has(prereqId)) continue;
     const prereqIndices = Object.entries(state.semesters)
       .filter(([, ids]) => ids.includes(prereqId))
       .map(([s]) => model.knownSemesterIds.indexOf(s))
       .filter(i => i >= 0);
-    if (prereqIndices.length && Math.max(...prereqIndices) >= semIdx) return false;
+    if (prereqIndices.length && !prerequisiteIndexAllowed(model, Math.max(...prereqIndices), semIdx)) return false;
   }
 
   for (const [otherSem, ids] of Object.entries(state.semesters)) {
     const otherIdx = model.knownSemesterIds.indexOf(otherSem);
-    if (otherIdx < 0 || semIdx < otherIdx) continue;
+    if (otherIdx < 0 || prerequisiteIndexAllowed(model, semIdx, otherIdx)) continue;
     for (const otherId of ids) {
       if (otherId === id) continue;
-      if (model.profiles.get(otherId)?.prerequisites?.includes(id)) return false;
+      const other = model.profiles.get(otherId);
+      if (other && hasRequirementExpression(other)) {
+        if (!expressionRelocationLegal(state, model, other, otherIdx, id, semIdx)) return false;
+      } else if (other?.prerequisites?.includes(id)) return false;
     }
   }
   return true;
@@ -395,7 +434,7 @@ function boundaryFor(state: PlanState, model: ConstraintModel, id: string, annua
     return load + hours <= cap;
   };
   const fittingIndices = legalSemestersOnBoard(model, id)
-    .filter(sem => fitsSemester(sem) && (beforeIndex === undefined || model.knownSemesterIds.indexOf(sem) < beforeIndex))
+    .filter(sem => fitsSemester(sem) && (beforeIndex === undefined || prerequisiteIndexAllowed(model, model.knownSemesterIds.indexOf(sem), beforeIndex)))
     .map(sem => model.knownSemesterIds.indexOf(sem));
   return fittingIndices.length ? Math.max(...fittingIndices) : undefined;
 }
@@ -431,13 +470,19 @@ function isMandatoryCourseReachable(
       .reduce((s, cid) => s + (model.profiles.get(cid)?.hours ?? 0), 0);
     return load + hours <= cap;
   };
-  const beforeOk = (sem: string) => beforeIndex === undefined || model.knownSemesterIds.indexOf(sem) < beforeIndex;
+  const beforeOk = (sem: string) => beforeIndex === undefined || prerequisiteIndexAllowed(model, model.knownSemesterIds.indexOf(sem), beforeIndex);
 
   const annualSpans = p.is_annual ? effectiveAnnualSpans(model, p) : null;
   const fits = annualSpans && annualSpans.length
     ? annualSpans.every(sem => model.knownSemesterIds.includes(sem) && beforeOk(sem) && fitsSemester(sem))
     : legalSemestersOnBoard(model, id).filter(beforeOk).some(fitsSemester);
   if (!fits) return false;
+
+  if (hasRequirementExpression(p)) {
+    const boundary = boundaryFor(state, model, id, annualSpans, beforeIndex);
+    if (boundary === undefined) return false;
+    return selectedExpressionRequirements(state, model, p, boundary, new Set([...visiting, id])).status === 'satisfied';
+  }
 
   if (!p.prerequisites?.length) return true;
   // For a normal course, id could be placed at ANY of its legal semesters, so
@@ -478,7 +523,7 @@ function isMandatoryCourseReachable(
         .map(([sem]) => model.knownSemesterIds.indexOf(sem))
         .filter(i => i >= 0);
       if (!placedIndices.length) return true; // shouldn't happen; bias reachable
-      return Math.max(...placedIndices) < idBoundary;
+      return prerequisiteIndexAllowed(model, Math.max(...placedIndices), idBoundary);
     }
     // Codex finding on this PR (round 24): a prerequisite id with NO PROFILE
     // at all in model.profiles (a data-integrity gap — the prerequisite
@@ -499,7 +544,7 @@ function isMandatoryCourseReachable(
     if (!rawPrereq.length) return true; // profile exists, but declares no legality data — ambiguous, bias reachable
     const prereqIndices = rawPrereq.map(sem => model.knownSemesterIds.indexOf(sem)).filter(i => i >= 0);
     if (!prereqIndices.length) return false; // declared semester(s) exist, none are on this board
-    if (Math.min(...prereqIndices) >= idBoundary) return false;
+    if (!prerequisiteIndexAllowed(model, Math.min(...prereqIndices), idBoundary)) return false;
     // The prerequisite must be reachable specifically at a semester strictly
     // before idBoundary — an earlier version recursed unconstrained here, so
     // a prerequisite whose only real room was in a LATER legal semester
@@ -509,6 +554,34 @@ function isMandatoryCourseReachable(
     // call's own beforeIndex closes that gap.
     return isMandatoryCourseReachable(state, model, prereqId, nextVisiting, idBoundary);
   });
+}
+
+/** Choose one feasible OR branch; only that branch reserves hours or gets actions. */
+function selectedExpressionRequirements(
+  state: PlanState, model: ConstraintModel, p: CourseProfile, boundary: number, visiting: Set<string>,
+): { status: PrerequisiteStatus; requirements: Array<{ courseId: string; beforeIndex: number }> } {
+  const placed = new Set(placedCourseIds(state));
+  const status = (id: string, beforeIndex: number): PrerequisiteStatus => {
+    if (model.completedCourseIds.has(id) || model.currentlyPlannedCourseIds?.has(id)) return 'satisfied';
+    if (!model.profiles.has(id)) return 'unknown';
+    if (isCourseExcluded(model, id)) return 'unsatisfied';
+    if (isFullyPlaced(state, model, placed, id)) {
+      const indices = Object.entries(state.semesters).filter(([, ids]) => ids.includes(id))
+        .map(([sem]) => model.knownSemesterIds.indexOf(sem)).filter(i => i >= 0);
+      return indices.length && prerequisiteIndexAllowed(model, Math.max(...indices), beforeIndex) ? 'satisfied' : 'unsatisfied';
+    }
+    return isMandatoryCourseReachable(state, model, id, visiting, beforeIndex) ? 'satisfied' : 'unsatisfied';
+  };
+  const cost = (id: string) => model.completedCourseIds.has(id) || model.currentlyPlannedCourseIds?.has(id) || placed.has(id) ? 0 : 1;
+  const coBoundary = boundary + (model.allowConcurrentPrerequisites === true ? 0 : 1);
+  const pre = selectPrerequisiteCourses(requirementExpression(p.prerequisite_expression, p.prerequisites), id => status(id, boundary), cost);
+  const co = selectPrerequisiteCourses(requirementExpression(p.corequisite_expression, p.corequisites), id => status(id, coBoundary), cost);
+  const result = pre.status === 'unsatisfied' || co.status === 'unsatisfied' ? 'unsatisfied'
+    : pre.status === 'unknown' || co.status === 'unknown' ? 'unknown' : 'satisfied';
+  return { status: result, requirements: result !== 'satisfied' ? [] : [
+    ...pre.courseIds.map(courseId => ({ courseId, beforeIndex: boundary })),
+    ...co.courseIds.map(courseId => ({ courseId, beforeIndex: coBoundary })),
+  ] };
 }
 
 /**
@@ -543,13 +616,23 @@ export function requiredButUnplacedCourseIds(state: PlanState, model: Constraint
   const placed = new Set(placedCourseIds(state));
   const seen = new Set<string>();
 
-  const visit = (id: string): void => {
+  const visit = (id: string, beforeIndex?: number): void => {
     if (seen.has(id)) return;
     if (model.completedCourseIds.has(id)) return;
     if (isFullyPlaced(state, model, placed, id)) return;
     const p = model.profiles.get(id);
     if (!p) return;
     seen.add(id);
+    if (hasRequirementExpression(p)) {
+      const annualSpans = p.is_annual ? effectiveAnnualSpans(model, p) : null;
+      const boundary = boundaryFor(state, model, id, annualSpans, beforeIndex);
+      if (boundary === undefined) return;
+      for (const requirement of selectedExpressionRequirements(state, model, p, boundary, new Set([id])).requirements) {
+        if (model.completedCourseIds.has(requirement.courseId) || model.currentlyPlannedCourseIds?.has(requirement.courseId)) continue;
+        visit(requirement.courseId, requirement.beforeIndex);
+      }
+      return;
+    }
     for (const prereqId of p.prerequisites ?? []) {
       if (model.completedCourseIds.has(prereqId)) continue;
       if (model.currentlyPlannedCourseIds?.has(prereqId)) continue;
@@ -641,10 +724,17 @@ export function requiredCourseSemesterBoundaries(state: PlanState, model: Constr
       if (existing !== undefined && beforeIndex >= existing) return; // no tighter than what's already recorded — nothing new to propagate
       boundaries.set(id, beforeIndex);
     }
-    if (!p.prerequisites?.length) return;
+    if (!p.prerequisites?.length && !hasRequirementExpression(p)) return;
     const annualSpans = p.is_annual ? effectiveAnnualSpans(model, p) : null;
     const ownBoundary = boundaryFor(state, model, id, annualSpans, beforeIndex);
     if (ownBoundary === undefined) return;
+    if (hasRequirementExpression(p)) {
+      for (const requirement of selectedExpressionRequirements(state, model, p, ownBoundary, new Set([id])).requirements) {
+        if (model.completedCourseIds.has(requirement.courseId) || model.currentlyPlannedCourseIds?.has(requirement.courseId)) continue;
+        recordAndRecurse(requirement.courseId, requirement.beforeIndex);
+      }
+      return;
+    }
     for (const prereqId of p.prerequisites) {
       if (model.completedCourseIds.has(prereqId)) continue;
       if (model.currentlyPlannedCourseIds?.has(prereqId)) continue;

@@ -4,6 +4,7 @@ import { addCourseActionsFor } from '../../api/ai/planner_actions';
 import { boardResponseToModel } from '../../shared/planner/adapters';
 import eeMainBoard from '../../data/boards/electrical_engineering_2027.json';
 import eeEarlyBoard from '../../data/boards/electrical_engineering_years_1_2_2027.json';
+import { manualBoardValidationContext } from '../../api/ai/manual_board_validation';
 
 const A = 'year_3_semester_a';
 const model = (rules: unknown[]) => buildConstraintModel({ semesters: [{ semester_id: A, courses: [] }], metadata: {
@@ -65,7 +66,9 @@ test('generated EE boards restrict hardware lab placement before the degree rule
     expect(addCourseActionsFor(model, courseId)).toEqual(allowed.map(semesterId =>
       ({ type: 'ADD_COURSE', courseId, semesterId })));
     for (const semesterId of model.knownSemesterIds) {
-      const result = validatePlanState({ semesters: { [semesterId]: [courseId] } }, model);
+      // This assertion isolates offering legality in an editable draft. Unknown
+      // IMS evidence remains a warning here and a blocker for AI certification.
+      const result = validatePlanState({ semesters: { [semesterId]: [courseId] } }, model, {}, manualBoardValidationContext(model));
       expect(result.valid).toBe((allowed as readonly string[]).includes(semesterId));
     }
   }

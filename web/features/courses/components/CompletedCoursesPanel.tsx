@@ -35,10 +35,12 @@ import CourseNamePicker, { type PickerCourse } from './CourseNamePicker'
 import { Badge } from '../../../components/ui'
 import { useLocale } from '../../locale/LocaleProvider'
 import { semesterLabel } from '../../locale/semester-label'
+import { readDegreeEvidence, type DegreeEvidence } from '../../../../shared/planner/degree-evidence'
 
 export type CompletionAnswer = 'completed' | 'not_completed' | 'unknown'
 
 export interface AcademicStatusDraft {
+  degreeEvidence?: DegreeEvidence
   /** Per standard early-year course. A missing entry is UNKNOWN (not answered). */
   statuses: Record<string, CompletionAnswer>
   /** Completed ELECTIVES, by authoritative catalog id. */
@@ -67,6 +69,7 @@ export function academicStatusDraftFromPersonalStatus(
   const status = (personalStatus ?? {}) as {
     completed?: unknown
     completed_knowledge?: { status?: unknown }
+    degree_evidence?: unknown
   }
   const completed = Array.isArray(status.completed)
     ? [...new Set(status.completed.flatMap((entry) => {
@@ -79,6 +82,7 @@ export function academicStatusDraftFromPersonalStatus(
     statuses: Object.fromEntries(completed.filter((id) => standardIds.has(id)).map((id) => [id, 'completed'])),
     electiveIds: completed.filter((id) => !standardIds.has(id)),
     confirmed: status.completed_knowledge?.status === 'known',
+    ...(status.degree_evidence !== undefined ? { degreeEvidence: readDegreeEvidence(status.degree_evidence) } : {}),
   }
 }
 

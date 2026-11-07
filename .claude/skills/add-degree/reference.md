@@ -45,23 +45,27 @@ One argparse parser for all subcommands (`<cmd> --help` prints the same full hel
 - `board_carries_requirements`: every spec requirement must reach the board (what
   `spec_to_program` emits, read the way the builder reads categories). One problem per
   requirement that cannot:
-  - a `group_minimums` entry other than `core` (only `core` becomes `core_courses_total_min`;
-    EE's `{"track": 12}` fails);
+  - a group minimum that is dropped during conversion. Generic groups are supported as
+    `group_minimums`, including EE's `{"track": 12}`; the legacy `core` minimum becomes
+    `core_courses_total_min`. Verify each group's exact union of candidate identities;
   - a category that never reaches the board's category list: shadowed (keyed as
     `requirements.<key>` while `elective_categories` takes precedence), keyed under a key the
     reader does not read, or unkeyed in a non-core group with no plain category beside it;
   - any category `min_credits` (the board enforces `min_courses` only);
   - `general_requirement.credits_required` != `min_courses` x `institutions.json`
     `generalRequirement.creditsPerCourse` (or not verifiable).
-  It means "the board can't carry this yet". Report it to the owner like `rules_enforced`;
-  never delete or weaken the requirement to pass.
+  Implement missing support within the authorized scope and report unavailable evidence
+  or unresolved owner decisions. Never delete or weaken a requirement to pass.
 - `publish` refuses an already-`live` degree (`--update` = Plan 3, not built, exit 1), refuses
   `--offline`, and on any FAIL/SKIP exits 1 with the registry unchanged (built files stay in
   the working tree — review or discard them). On success it prints, never runs:
   `ENV_FILE=.env.local node scripts/update-board-json.mjs <base> <year> data/boards/<id>.json`
   and "commit, open a PR, deploy". For a never-seeded degree that sync updates 0 rows (no
   `program_versions` row yet); the committed board is what the API serves after the deploy.
-- Drafts are never served by the API; only `live` degrees are.
+- Ordinary drafts are excluded from public serving and the standard early-year index.
+  Explicitly enabled isolated editable previews and the owner's authorized
+  `publicPlanner` exception have their own gates and validation notice. They preserve
+  draft status and do not establish academic release readiness.
 
 ## Evidence id scheme (TAU)
 
@@ -187,12 +191,173 @@ is not among them (8 semesters, matching `degree_years` 4).
   `--level` accepts aliases `1` / `2`. A program with an empty `betsefer` matches on its `chug`.
   The index has no English title, so `init` requires `--name-en`.
 - **Timetable `semkvutza`**: last digit = `0` annual (A+B), `1` semester A, `2` semester B.
-- **Empty legal-semester list = unknown**, not "never offered" (a course IMS lists as not
-  offered gets `offered_in_year: false` instead).
+- **Empty legal-semester lists need their declared semantics.** Legacy empty offering
+  data may mean unknown. A verified `offering_window_semesters: []` means zero legal
+  placements in that board and must prevent fallback to A/B offerings. A course IMS
+  lists as unavailable has `offered_in_year: false`.
 - **`hearakurs` / `idkunkurs`** are lists of dicts (a note per entry), each its own rule_text item.
 - **Facts file** `data/official/tau_course_facts_<shana>.json` is per year; program-scoped parts
   (ydtochnit row, timetable, offering) live under `programs[<tcid>]`, IMS is course-wide.
 - A refresh that read both the program page and the timetable drops courses TAU removed.
+
+## Prerequisite graph and completion recognition
+
+Prerequisite readiness requires reading the actual official prerequisite pages. For TAU,
+discover the IMS `Drishot_L.aspx` links from course detail pages and enumerate the relevant
+course, teaching-group and term variants. Preserve the resolved URL, course/group/term
+identity, fetch or cache provenance, raw evidence and parsed expression. A program note,
+URL field, successful course search or guessed URL does not establish that graph.
+Record differences between group or term variants instead of choosing one silently.
+
+Keep the Boolean expression tree. For example, `(A OR B) AND (C OR (D AND E))` must retain
+both nesting and operator meanings through collection, storage, board generation and
+evaluation. Preserve concurrent conditions and substitutions separately where the source
+distinguishes them. Flattening this example to five ids changes which plans are legal.
+If the current schema or evaluator only supports a flat `prerequisites: string[]`,
+implement structured support within scope before certifying rules that depend on it.
+Treat missing structured support as a concrete readiness gap.
+
+Represent an unread, failed, incomplete or ambiguous prerequisite source as unknown.
+An explicit no-prerequisite result requires a successfully read official source that
+states it. An empty array produced by a missing parser result cannot prove there are no
+prerequisites. Preserve this distinction in the UI and backend, including after reload.
+Unknown data must lead to review where prerequisite knowledge affects certification.
+
+Recognize identified early-year completions when evaluating later-year courses. Resolve
+them against the authoritative degree catalog across both windows, even when the later
+board does not offer those courses. Preserve completed, current and planned identities
+through persistence and proposal application. Apply the official timing semantics to
+each prerequisite branch. Missing completion dates require review only where timing
+needs them. Unknown ids and anonymous category totals cannot manufacture prerequisite
+eligibility, equivalence or credit. Count recognized credit once.
+
+Test real courses with an AND condition, an OR alternative, a nested condition, an
+explicit no-prerequisite result and an unknown source. Include a later-window course
+whose prerequisite was completed in the early window. Check manual placement, AI
+candidates, applying proposals and restoring saved work against the same graph.
+
+## Conditional student facts and EE rule lessons
+
+For TAU, collect requirements with the reusable registry-scoped command:
+
+```bash
+python scripts/collect_tau_prerequisites.py --program <id> --live --refresh --write
+python scripts/degree.py build --program <id> --offline
+```
+
+The snapshot is `data/official/tau_prerequisites_<id>.json`. It retains raw requirement
+responses, the course-detail link inventory, hashes and original fetch timestamps.
+Offline replay does not refresh those timestamps. `--live` alone resumes missing
+captures; use `--refresh` for periodic source updates. The build re-parses source HTML
+and verifies every group/term is retained before emitting `prerequisite_expression`,
+`corequisite_expression` and `requirements_provenance`. Never replace unknown fields
+with an empty list. Unknown evidence warns during manual draft editing and prevents
+AI certification; a known unsatisfied prerequisite still fails placement. Test saved
+plan restoration separately so catalog updates cannot lock students out of their work.
+
+A failed refresh preserves the last valid response and its original fetch date, records
+the failure, and exits nonzero. Offline replay retains that failure marker. A later live
+retry must clear it through an actual successful fetch. Never replace the old evidence
+with an empty successful snapshot or advance its timestamp after a failed request.
+
+Coverage counts measure source items, not every clause inside a paragraph. Audit long
+program narratives for multiple independent conditions. EE's main description also
+contains technician exemptions (government-exam average 80, excluding the project),
+while the elective narrative includes supplementary and out-of-catalog recognition
+approvals. Its energy-track description contains an optional licensing pathway. Keep
+these as separate sourced rules, without awarding exemptions, credit or a license from
+eligibility alone. Optional goals must not become requirements for all students.
+
+`course-exemptions.ts` recognizes a technician exemption only from the correct
+credential list, the reported qualifying government-exam average excluding the project,
+and an individually cited award whose degree-credit hours match the catalog. Eligibility
+alone does not complete a course. Unclear or different credit treatment remains targeted
+review. Recognize approved full-credit awards once across completed/current statuses.
+
+`course-recognition.ts` separates prior enrollment approval from an earned credit award.
+Supplementary fillers beyond the published track minimum require enough specifically
+approved courses while preserving a baseline with its distinct-track core requirement.
+Out-of-catalog requests use the reported average at approval and the normal course limit;
+extra requests require a scoped exceptional decision. External earned credit is
+deduplicated by exact identity and does not create a schedulable course or prerequisite
+equivalence. Conflicting awards must not silently add hours. Keep these facts and their
+references editable and persistent in the degree panel.
+
+Both window boards need the complete track pool and original mandatory-course years
+used by these checks. Browser facts merge the two published catalogs, retaining an
+unknown value for conflicting prerequisites, credit hours or mandatory-course years.
+Do not derive university facts from a student's edited placements.
+
+EE's optional high-current pathway is represented by `optional_pathway`, with fixed
+course ids, separate alternative groups and final-project-domain records. Keep the
+student's choice explicit in `optionalGoals`; a curriculum match does not grant a
+professional license. Preserve every degree rule in both window boards. The early
+builder must not silently discard a kind it does not understand; missing implementation
+must remain visible rather than disappearing during generation.
+
+Approvals must cover their actual scope. An ordinary one-year extension cannot approve
+semester 20; require an approved-through semester and a separate exceptional decision.
+Graduate-course eligibility needs the committee's cited average threshold and a separate
+track-head decision; neither overrides the two-course semester cap. Enrollment alone
+does not establish attendance and exam eligibility where the published policy requires
+both. Use `degree-conditional-evidence.ts` and the strict evidence schema rather than
+accepting a generic approval checkbox for all conditions.
+
+Student facts are inputs to rule evaluation. Current examples include intake cohort,
+average, higher-education start year, course study semesters and recognized English or
+graduate-course identities. Check the current `shared/planner/degree-evidence.ts` schema
+and its callers before extending it. Missing evidence differs from a negative answer.
+
+An exception or eligibility decision must be reported for the applicable rule with the
+university decision's reference. Preserve whether the student reported approval or
+refusal and the citation across UI entry, backend validation, saved copies, AI generation
+and application. A reported average, interview checkbox or exception checkbox cannot
+itself grant faculty approval. Label student reports accurately; Syllo evaluates the
+reported decision and does not issue or independently authenticate that approval.
+Missing, uncited or conflicting decision evidence requires targeted review when
+applicable. Test both the reported approval and refusal.
+
+Course-window and student-eligibility conditions remain separate. EE's optional
+`0512-4013` window is study semesters 2 or 3, while its average and recommended-plan
+eligibility require their own evidence. Study-semester ordinals differ from recurring
+A/B offerings. Both board windows must preserve this distinction, including zero
+placements in the late window.
+
+EE's twelve track courses exclude advanced labs. Four core courses must match four
+distinct tracks using the note's core attribution, even when a course appears in several
+track sections. Preserve the full `category_members` definition, including historical
+core courses outside this year's candidate pool. The evaluator uses
+`context.trackCourseIds` for recognized selected identities and requires review for
+historical core credit outside that pool. Structural release verification must compare
+the exact spec rule with main-board `metadata.degree_rules`, validate its shape, preserve
+`group_minimums.track = 12` and the exact track candidate pool, and exclude advanced
+labs. Metadata presence alone does not establish enforcement.
+
+EE's advanced-lab source permits two labs in one track only with a third lab in another
+track; the third lab's credit does not count toward theoretical-course credit. The
+shared `lab-credit-policy.ts` requires a cited allocation of two credited labs and the
+remaining non-theory labs. It independently recomputes the completion credit without
+the non-theory labs; reported other credit needs a separate reference and excludes all
+identified courses. Missing allocation stays review. Keep lab selection, theoretical credit, degree totals and
+semester workload consistent with their official units. Do not treat distinct-track
+matching alone as proof of credit correctness or subtract hours from a degree target
+without verified allocation semantics. Test completed and current labs as well as
+planned labs, duplicate identities, and the case where surplus lab credit would
+otherwise conceal a theoretical-course deficit.
+
+The owner accepted retaining TAU's literal self-reference on `0512-4506`. Preserve
+`other_course_as_printed: "05124506"`, the literal name, the source conflict and
+`published_self_reference: true`. The supported schema has exactly one course id and
+the printed number's digits must equal that id's digits. Require clarification when
+selected; the rule passes when absent. Verify the exact definition in both board
+windows. This exception does not validate other malformed exclusions. Never infer that
+the intended counterpart is `0512-4507`.
+
+For every implemented rule, demonstrate UI/backend parity with valid, invalid and
+missing-evidence cases. Include a regression where removing or widening a generated
+field fails the release gate. A shared evaluator still needs the same authoritative
+inputs at every entry point. Academic drafts must remain editable and restorable while
+unresolved conditions prevent certification of a final candidate.
 
 ## curation.json (optional overlay)
 
@@ -216,10 +381,13 @@ the entry. A new degree normally has no curation.json (it builds from spec + fac
 allows exactly one default per family, so a new year of an existing family is refused
 ("the registry would be invalid: every family needs exactly one isFamilyDefault entry"). Promoting
 a new year needs an atomic flip of both entries' `isFamilyDefault` / `status` in
-`programs.json` — a code/registry change for the owner, not something to hack around with a new
-`--base`.
+`programs.json`. Implement that transition within the authorized scope and test the
+registry invariants. Preserve the family identity instead of inventing a new `--base`.
 
-## Worked example: Mechanical Engineering 2027
+## Historical worked example: Mechanical Engineering 2027
+
+The counts and enforcement status below describe the migration snapshot. Re-read the
+current spec, sources and checks for an active task.
 
 `mechanical_engineering_2027`, tcid 8715, shana 2026, `data/degrees/tau/mechanical_engineering/2027/`.
 
@@ -246,7 +414,7 @@ a new year needs an atomic flip of both entries' `isFamilyDefault` / `status` in
   `is_annual`, `spans_semesters`, `placement`). The ME boards are plannable only with it: a
   clone of the spec without it fails `plannable` (`annual_not_represented: 0542-3792`).
 - Current state (as of 2026-11-04): `check --live` red only on `rules_enforced` (the 12
-  rules) — the same red a new degree should expect. It is `live`
+  rules). It is `live`
   (pre-pipeline), so `publish` refuses it; `degree_length` passes (`degree_years` 4 by default; mandatory
   years 1-4; `duration-8-semesters` says 8 semesters / 4 years).
 - general_requirement: 88 שער רוח `course_ids`, migrated from the legacy program

@@ -13,6 +13,23 @@ COURSE = "0512-4013"
 RULE = "window-0512-4013"
 
 
+def test_audited_course_exclusions_must_reach_both_windows():
+    spec = load_spec(DATA / "degrees/tau/electrical_engineering/2027/spec.json")
+    verified = [rule for rule in spec.course_rules
+                if rule.kind == "mutually_exclusive" and rule.enforced_by == "board"
+                and len(rule.course_ids) == 2 and not rule.params]
+    assert len(verified) == 5
+    spec = spec.model_copy(update={"course_rules": verified})
+    boards = {
+        "board": json.loads((DATA / "boards/electrical_engineering_2027.json").read_text(encoding="utf-8")),
+        "early_years": json.loads((DATA / "boards/electrical_engineering_years_1_2_2027.json").read_text(encoding="utf-8")),
+    }
+    assert check_rules_enforced(spec, boards).passed
+    rules = boards["early_years"]["metadata"]["degree_rules"]
+    rules.remove(verified[0].model_dump())
+    assert not check_rules_enforced(spec, boards).passed
+
+
 def test_built_ee_offering_window_and_release_check():
     spec = load_spec(DATA / "degrees/tau/electrical_engineering/2027/spec.json")
     facts = load_program_facts(2026, "7622")

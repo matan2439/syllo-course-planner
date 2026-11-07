@@ -5,6 +5,7 @@
 ``course_id -> {"offering": {"offered_semesters": [...], "status": ...}, "program": {"credits",
 "weekly_hours"} | None, ...}``. Problems prefixed ``warn:`` never fail a check.
 """
+import re
 from typing import Any, Optional
 
 from app.analysis.board_audit import audit_board
@@ -258,7 +259,114 @@ def check_rules_enforced(
         f"unenforced rule {r.rule_id}: {r.note}" for r in spec.course_rules if r.enforced_by == "none"
     ]
     for rule in spec.course_rules:
-        if rule.kind != "offering_window" or rule.enforced_by != "board":
+        if rule.enforced_by != "board":
+            continue
+        # Personal facts can remain unknown for an individual student, but the
+        # published definition must reach the shared evaluator unchanged in both
+        # windows. A note claiming enforcement is not a substitute for that data.
+        runtime_definition = rule.kind in {"language_requirement", "cohort_restriction", "year_restriction", "load_limit", "optional_pathway", "course_exemption", "course_recognition"}
+        runtime_definition = runtime_definition or (rule.kind == "study_duration" and "extension_years" in rule.params)
+        runtime_definition = runtime_definition or (rule.kind == "distinct_categories" and rule.params.get("same_track_requires_third_lab") is True)
+        if runtime_definition:
+            for name in ("board", "early_years"):
+                metadata = (boards or {}).get(name, {}).get("metadata", {})
+                definitions = [r for r in metadata.get("degree_rules", []) if r.get("rule_id") == rule.rule_id]
+                if definitions != [rule.model_dump()]:
+                    problems.append(f"{rule.rule_id}: {name} does not preserve the exact runtime rule definition")
+                if rule.kind == "course_recognition" and "requires_approval_after_track_minimum" in rule.params:
+                    expected = sorted({cid for category in spec.categories if category.group == "track" for cid in category.course_ids})
+                    actual = metadata.get("degree_rule_track_course_ids") if name == "early_years" else sorted({
+                        cid for category in metadata.get("program_requirements_categories", {}).get("categories", [])
+                        if category.get("group") == "track" for cid in category.get("course_ids", [])
+                    })
+                    if actual != expected:
+                        problems.append(f"{rule.rule_id}: {name} does not preserve the track pool used to authorize supplementary courses")
+                if name == "early_years" and rule.kind == "year_restriction" and rule.params.get("require_all_prior_year_courses") is True:
+                    homes = metadata.get("degree_rule_mandatory_semesters", {})
+                    expected_years = {course.course_id: course.year for course in spec.mandatory_courses}
+                    if (not isinstance(homes, dict) or set(homes) != set(expected_years) or any(
+                        not isinstance(home, str) or not re.fullmatch(r"year_[1-9]\d*_semester_[ab]", home)
+                        or int(home.split("_")[1]) != expected_years.get(cid)
+                        for cid, home in homes.items()
+                    )):
+                        problems.append(f"{rule.rule_id}: early_years does not preserve every published mandatory-course year")
+            continue
+        if rule.rule_id == "core-four-distinct-tracks":
+            params = rule.params
+            members = params.get("category_members")
+            track_categories = {cat.category_id: cat.course_ids for cat in spec.categories if cat.group == "track"}
+            core_ids = rule.course_ids
+            valid_members = (
+                isinstance(members, dict) and len(members) >= 4
+                and all(
+                    category in track_categories and isinstance(ids, list) and ids
+                    and all(isinstance(cid, str) and cid.strip() for cid in ids)
+                    and len(set(ids)) == len(ids)
+                    for category, ids in members.items()
+                )
+            )
+            if (rule.kind != "distinct_categories"
+                    or set(params) != {"min_courses", "min_distinct_categories", "category_members",
+                                       "within_track_courses_min", "labs_excluded_from_track_count"}
+                    or any(type(params.get(key)) is not int or params[key] != value for key, value in (
+                        ("min_courses", 4), ("min_distinct_categories", 4), ("within_track_courses_min", 12)))
+                    or params.get("labs_excluded_from_track_count") is not True
+                    or len(core_ids) < 4 or not all(isinstance(cid, str) and cid.strip() for cid in core_ids)
+                    or len(set(core_ids)) != len(core_ids) or not valid_members
+                    or set(core_ids) != {cid for ids in members.values() for cid in ids}):
+                problems.append(f"{rule.rule_id}: unsupported board core definition")
+                continue
+            metadata = (boards or {}).get("board", {}).get("metadata", {})
+            definitions = [r for r in metadata.get("degree_rules", []) if r.get("rule_id") == rule.rule_id]
+            if definitions != [rule.model_dump()]:
+                problems.append(f"{rule.rule_id}: main board does not preserve the exact core definition")
+            requirements = metadata.get("program_requirements_categories", {})
+            minimum = requirements.get("group_minimums", {}).get("track")
+            if (type(minimum) is not int or minimum != 12
+                    or type(spec.group_minimums.get("track")) is not int or spec.group_minimums.get("track") != 12):
+                problems.append(f"{rule.rule_id}: main board must carry group_minimums.track = 12")
+            categories = [cat for cat in requirements.get("categories", []) if cat.get("group") == "track"]
+            if (len(categories) != len(track_categories)
+                    or {cat.get("category_id"): cat.get("course_ids") for cat in categories} != track_categories):
+                problems.append(f"{rule.rule_id}: main board does not preserve the exact track candidate pool")
+            track_pool = {cid for ids in track_categories.values() for cid in ids}
+            lab_ids = next((cat.course_ids for cat in spec.categories if cat.category_id == "advanced_labs"), [])
+            labs = set(lab_ids)
+            board_labs = [cat for cat in requirements.get("categories", []) if cat.get("category_id") == "advanced_labs"]
+            if len(board_labs) != 1 or board_labs[0].get("course_ids") != lab_ids:
+                problems.append(f"{rule.rule_id}: main board does not preserve the advanced lab pool")
+            if track_pool & labs or set(core_ids) & labs:
+                problems.append(f"{rule.rule_id}: advanced labs must be excluded from track and core pools")
+            catalog_ids = {c.get("course_id") for c in metadata.get("program_repository_courses", [])}
+            catalog_ids.update(c.get("course_id") for s in (boards or {}).get("board", {}).get("semesters", [])
+                               for c in s.get("courses", []))
+            if track_pool - catalog_ids:
+                problems.append(f"{rule.rule_id}: main board lacks catalog identities for track candidates "
+                                f"{', '.join(sorted(track_pool - catalog_ids))}")
+            continue
+        if rule.kind == "mutually_exclusive":
+            ids = rule.course_ids
+            params = rule.params
+            printed = params.get("other_course_as_printed")
+            valid_ids = all(isinstance(cid, str) and cid.strip() for cid in ids)
+            self_reference = (
+                valid_ids and len(ids) == 1 and params.get("published_self_reference") is True
+                and set(params) <= {"published_self_reference", "other_course_as_printed", "other_name_as_printed"}
+                and isinstance(printed, str) and bool(re.sub(r"[^0-9]", "", ids[0]))
+                and re.sub(r"[^0-9]", "", printed) == re.sub(r"[^0-9]", "", ids[0])
+                and ("other_name_as_printed" not in params
+                     or isinstance(params["other_name_as_printed"], str) and bool(params["other_name_as_printed"].strip()))
+            )
+            if not valid_ids or (not self_reference and (len(set(ids)) < 2 or len(set(ids)) != len(ids) or params)):
+                problems.append(f"{rule.rule_id}: unsupported board exclusion")
+                continue
+            for name in ("board", "early_years"):
+                metadata = (boards or {}).get(name, {}).get("metadata", {})
+                definitions = [r for r in metadata.get("degree_rules", []) if r.get("rule_id") == rule.rule_id]
+                if definitions != [rule.model_dump()]:
+                    problems.append(f"{rule.rule_id}: {name} does not encode the course exclusion")
+            continue
+        if rule.kind != "offering_window":
             continue
         definition = rule.model_dump()
         ordinals = offering_window_ordinals(definition)

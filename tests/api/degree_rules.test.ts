@@ -71,16 +71,29 @@ describe('generic degree rules', () => {
     }), { completedCourseIds: ['unknown'] }).status).toBe('needs_review');
   });
 
-  test('does not certify compound core or ambiguous third-lab rules', () => {
+  test('checks core coverage alongside the track pool and leaves third-lab credit unresolved', () => {
     expect(evaluate({ ...core, params: { ...core.params, within_track_courses_min: 12 } }, {
       completedCourseIds: ['shared', 'only-a', 'only-c'],
+    }).status).toBe('needs_review');
+    const combinedCore = { ...core, params: {
+      ...core.params, within_track_courses_min: 12, labs_excluded_from_track_count: true,
+    } };
+    const completedCourseIds = ['shared', 'only-a', 'only-c'];
+    const otherTrackCourses = Array.from({ length: 9 }, (_, i) => `track-${i}`);
+    const trackCourseIds = [...completedCourseIds, ...otherTrackCourses];
+    expect(evaluate(combinedCore, { completedCourseIds, trackCourseIds: trackCourseIds.slice(0, 11) }).status).toBe('fail');
+    expect(evaluate(combinedCore, { completedCourseIds, trackCourseIds }).status).toBe('pass');
+    expect(evaluate(combinedCore, {
+      completedCourseIds,
+      trackCourseIds: [...trackCourseIds.slice(1), 'additional-track'],
     }).status).toBe('needs_review');
     const labs = rule('distinct_categories', ['a', 'b', 'c'], {
       min_courses: 2, min_distinct_categories: 2,
       category_members: { x: ['a', 'b'], y: ['c'] }, same_track_requires_third_lab: true,
     });
-    expect(evaluate(labs, { completedCourseIds: ['a', 'b'] }).status).toBe('needs_review');
-    expect(evaluate(labs, { completedCourseIds: ['a', 'c'] }).status).toBe('needs_review');
+    expect(evaluate(labs, { completedCourseIds: ['a', 'b'] }).status).toBe('fail');
+    expect(evaluate(labs, { completedCourseIds: ['a', 'c'] }).status).toBe('pass');
+    expect(evaluate(labs, { completedCourseIds: ['a', 'b', 'c'] }).status).toBe('needs_review');
   });
 
   test('exclusions span completed, current, and planned courses, including external counterparts', () => {
@@ -162,9 +175,19 @@ describe('generic degree rules', () => {
     const byId = Object.fromEntries(results.map(r => [r.rule_id, r.status]));
     expect(results).toHaveLength(eeSpec.course_rules.length);
     expect(byId['core-four-distinct-tracks']).toBe('fail');
-    expect(byId['labs-two-distinct-tracks']).toBe('needs_review');
-    expect(byId['excl-0512-4506-as-printed']).toBe('needs_review');
+    expect(byId['labs-two-distinct-tracks']).toBe('fail');
+    expect(byId['excl-0512-4506-as-printed']).toBe('pass'); // Absent course; accepted published self-reference is contextual.
     expect(byId['year-0509-4010']).toBe('needs_review');
     expect(byId['english-two-courses']).toBe('needs_review');
+  });
+
+  test('checks the supervisor recommendation only when the EE special project is selected', () => {
+    const project = eeSpec.course_rules.find(r => r.rule_id === 'year-0512-3000')!;
+    expect(evaluate(project).status).toBe('pass');
+    expect(evaluate(project, { placements: [at('0512-3000', 2)] }).status).toBe('fail');
+    expect(evaluate(project, { placements: [at('0512-3000', 3)] }).status).toBe('needs_review');
+    const cohort = eeSpec.course_rules.find(r => r.rule_id === 'cohort-spring-0512-4162')!;
+    expect(evaluate(cohort).status).toBe('pass');
+    expect(evaluate(cohort, { currentCourseIds: ['0512-4162'] }).status).toBe('needs_review');
   });
 });

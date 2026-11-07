@@ -10,6 +10,8 @@ import UnifiedPlannerWorkspace from '../../features/planner/components/UnifiedPl
 import { isEditableDegreePreview, isPublicDraftPlanner } from '../../../shared/programs'
 import type { DegreeRule } from '../../../shared/planner/degree-rules'
 import { adaptRequirements } from '../../lib/requirements'
+import { degreeCatalogFacts, mergeDegreeCatalogFacts, type DegreeCatalogFacts } from '../../../shared/planner/degree-catalog'
+import { earlyYearCoursesFor } from '../../../shared/planner/early_year_courses'
 
 export const metadata = { title: 'מרחב התכנון — Syllo' }
 export const dynamic = 'force-dynamic'
@@ -32,9 +34,11 @@ export default async function PlannerPage({
     label: semesterTitleHe(semester.semester_id),
   }))
   // Each two-year window plans over its own published board; a window with no board is left out.
+  const windowCatalogs: Record<string, DegreeCatalogFacts> = {}
   const windowBoards = Object.fromEntries((await Promise.all(SEMESTER_WINDOWS.map(async (window) => {
     const boardId = windowBoardIdFor(program.id, window, raw.metadata?.start_year)
     const board = boardId === program.id ? raw : await readBoardForProgramId(boardId)
+    if (board) windowCatalogs[window] = degreeCatalogFacts(board)
     return board ? [[window, { boardId, repo: board === raw ? repo : await adaptRepositoryWithSummaries(board), semesterDestinations: destinationsOf(board) }]] : []
   }))).flat())
 
@@ -49,6 +53,10 @@ export default async function PlannerPage({
       </p>}
       <UnifiedPlannerWorkspace
         degreeRequirements={adaptRequirements(raw)}
+        degreeCatalog={mergeDegreeCatalogFacts([
+          ...SEMESTER_WINDOWS.flatMap(window => windowCatalogs[window] ? [windowCatalogs[window]] : []),
+          degreeCatalogFacts(raw, earlyYearCoursesFor(program.id)),
+        ])}
         degreeRules={(raw.metadata as { degree_rules?: DegreeRule[] })?.degree_rules}
         programId={program.id}
         repo={repo}

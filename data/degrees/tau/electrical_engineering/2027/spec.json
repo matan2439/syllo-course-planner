@@ -1854,7 +1854,7 @@
       "mapped_to": "categories[energy_renewables]"
     },
     "tau:7622:2026:rama:22:hesber:5c512c46be42": {
-      "not_planning_rule": "Descriptive text of the energy track plus an optional path for registration in the engineers' register (high-current licence): its course list and final-project condition are set by the Ministry of Labour, not by the degree, and are optional; no degree-requirement constraint."
+      "mapped_to": "course_rules[optional-high-current-pathway]"
     },
     "tau:7622:2026:rama:22:kurs:0512-3571:hearakurs:6d1ec413fe1f": {
       "mapped_to": "course_rules[core-four-distinct-tracks]"
@@ -3819,8 +3819,8 @@
         "tau:7622:2026:rama:44:kurs:0512-4264:hearakurs:3db092bb8e16",
         "tau:7622:2026:rama:44:kurs:0512-4360:hearakurs:8801b1f56509"
       ],
-      "enforced_by": "none",
-      "note": "TAU: 12 track courses over the degree (labs excluded), of which at least 4 are marked \"קורס ליבה\" and come from 4 different tracks. The core marking exists only in each listing's course note (\"קורס ליבה במסלול X\"; the listing data has no core field) and is attributed to the track the note names, not the section it is listed under (e.g. 0512-4264 is listed in 5 tracks, core of ml_ai only; 0512-4601 is core of optics_photonics and bioelectronics). Core courses not taught in תשפ\"ז (IMS not_offered): 0512-4262, 0555-4551. Nothing enforces this: the board has no core marking, and the 12-course minimum lives only in group_minimums.track (spec_to_program emits only the 'core' group to the board as core_courses_total_min), so the planner checks neither. Update: the generic track-course minimum is now carried in group_minimums.track and enforced by the builder and planner. The distinct-track core requirement in this rule remains unenforced."
+      "enforced_by": "board",
+      "note": "TAU requires 12 track courses excluding labs, including 4 core courses from 4 distinct tracks. category_members preserves the track named in each official core note. Exact bipartite matching and the track candidate pool are evaluated by the shared planner validator; consistency checks verify board metadata, track minimum 12, identities, and lab exclusion. Unoffered historical core identities remain recorded without inventing current eligibility."
     },
     {
       "rule_id": "labs-two-distinct-tracks",
@@ -3896,8 +3896,8 @@
         "tau:7622:2026:rama:16:hesber:0c5d71de7064",
         "tau:7622:2026:rama:30:hesber:8440fe3988ad"
       ],
-      "enforced_by": "none",
-      "note": "TAU: 2 advanced labs from 2 different tracks; a student who takes both in the same track must take a third lab in another track, whose credits do not count toward the theoretical-course credits. category_members keys are the track categories; the labs themselves sit in the advanced_labs category (min_courses 2). The board enforces only the count of 2 (category advanced_labs), not the distinct-track condition nor the third-lab rule."
+      "enforced_by": "board",
+      "note": "TAU requires two advanced labs from different tracks. Two labs in the same track require an additional lab in another track, whose hours do not reduce the theoretical-course credit gap. The shared evaluator checks distinct-track matching and, with more than two labs, requires a cited allocation of the two credited labs and non-theory labs. It recomputes the credit total without the latter before certifying completion. Actual semester workload remains unchanged. Missing allocation or credit facts requires review. Both windows preserve the exact rule."
     },
     {
       "rule_id": "english-two-courses",
@@ -3906,13 +3906,14 @@
       "params": {
         "language": "en",
         "min_courses": 2,
+        "applies_from_year": 2021,
         "applies_to": "students who began higher education from תשפ\"ב"
       },
       "source_ids": [
         "tau:7622:2026:body:hesbernosaf:aa55c5c97c7b"
       ],
-      "enforced_by": "none",
-      "note": "TAU (hesbernosaf, per the Council for Higher Education): every student who began higher education in Israel from תשפ\"ב studies at least two courses in English during the bachelor's degree. The coverage item itself maps to total_required_credits (same text); the board has no language-of-instruction field."
+      "enforced_by": "board",
+      "note": "TAU requires two English-taught courses for the specified higher-education cohort. The shared evaluator uses the reported start year and individually identified English-course recognition, deduplicated against selected courses. Missing recognition remains review; both windows preserve the exact rule."
     },
     {
       "rule_id": "excl-0512-4264-0368-3235",
@@ -3929,8 +3930,8 @@
         "tau:7622:2026:rama:21:kurs:0512-4264:idkunkurs:a81260ef19bb",
         "tau:7622:2026:rama:44:kurs:0512-4264:idkunkurs:a81260ef19bb"
       ],
-      "enforced_by": "none",
-      "note": "TAU: 0512-4264 overlaps 0368-3235 (מבוא ללמידה חישובית); both cannot be taken during the degree. The board has no exclusion data."
+      "enforced_by": "board",
+      "note": "TAU: 0512-4264 overlaps 0368-3235 (מבוא ללמידה חישובית); both cannot be taken during the degree. Both board windows encode the pair in metadata.degree_rules."
     },
     {
       "rule_id": "excl-0512-1820-0368-2161",
@@ -3943,8 +3944,8 @@
       "source_ids": [
         "tau:7622:2026:rama:20:kurs:0512-1820:idkunkurs:07ad8f8baeb6"
       ],
-      "enforced_by": "none",
-      "note": "TAU: 0512-1820 partly overlaps 0368-2161 (פרויקט תוכנה); both cannot be taken. The board has no exclusion data."
+      "enforced_by": "board",
+      "note": "TAU: 0512-1820 partly overlaps 0368-2161 (פרויקט תוכנה); both cannot be taken. Both board windows encode the pair in metadata.degree_rules."
     },
     {
       "rule_id": "excl-0512-4400-0512-4495",
@@ -3958,8 +3959,8 @@
         "tau:7622:2026:rama:20:kurs:0512-4400:hearakurs:e1a2dc85d93d",
         "tau:7622:2026:rama:43:kurs:0512-4400:hearakurs:e1a2dc85d93d"
       ],
-      "enforced_by": "none",
-      "note": "TAU: 0512-4400 overlaps 0512-4495 (מבנה המחשב ומערכות הפעלה); both cannot be taken. The note items are mapped to core-four-distinct-tracks (the same note marks 0512-4400 core). The board has no exclusion data."
+      "enforced_by": "board",
+      "note": "TAU: 0512-4400 overlaps 0512-4495 (מבנה המחשב ומערכות הפעלה); both cannot be taken. The note items are mapped to core-four-distinct-tracks (the same note marks 0512-4400 core). Both board windows encode the pair in metadata.degree_rules."
     },
     {
       "rule_id": "excl-0512-4402-0368-2162",
@@ -3972,8 +3973,8 @@
       "source_ids": [
         "tau:7622:2026:rama:20:kurs:0512-4402:idkunkurs:7a918577edd7"
       ],
-      "enforced_by": "none",
-      "note": "TAU: 0512-4402 overlaps 0368-2162 (מערכות הפעלה); both cannot be taken (the same note says it is not meant for computer-engineering students, which does not restrict this program). The board has no exclusion data."
+      "enforced_by": "board",
+      "note": "TAU: 0512-4402 overlaps 0368-2162 (מערכות הפעלה); both cannot be taken (the same note says it is not meant for computer-engineering students, which does not restrict this program). Both board windows encode the pair in metadata.degree_rules."
     },
     {
       "rule_id": "excl-0512-4861-0512-4860",
@@ -3986,8 +3987,8 @@
       "source_ids": [
         "tau:7622:2026:rama:25:kurs:0512-4861:hearakurs:558d7dc9476d"
       ],
-      "enforced_by": "none",
-      "note": "TAU: 0512-4861 overlaps 0512-4860 (מעגלי RF); both cannot be taken. The board has no exclusion data."
+      "enforced_by": "board",
+      "note": "TAU: 0512-4861 overlaps 0512-4860 (מעגלי RF); both cannot be taken. Both board windows encode the pair in metadata.degree_rules."
     },
     {
       "rule_id": "excl-0512-4506-as-printed",
@@ -3997,13 +3998,14 @@
       ],
       "params": {
         "other_course_as_printed": "05124506",
-        "other_name_as_printed": "מבוא לאלקטרניקת הספק"
+        "other_name_as_printed": "מבוא לאלקטרניקת הספק",
+        "published_self_reference": true
       },
       "source_ids": [
         "tau:7622:2026:rama:22:kurs:0512-4506:hearakurs:22ef221619a4"
       ],
-      "enforced_by": "none",
-      "note": "TAU: 0512-4506 (אלקטרוניקת הספק) \"overlaps מבוא לאלקטרניקת הספק 05124506\" and both cannot be taken. The note names the course's own number; on the same page מבוא לאלקטרוניקת הספק is 0512-4507. Not resolved: recorded in source_conflicts, the second course is left out of course_ids. The board has no exclusion data."
+      "enforced_by": "board",
+      "note": "TAU prints an overlap with the course's own number 05124506. The owner accepted retaining that literal note. Both windows preserve metadata.degree_rules with published_self_reference=true; the shared validator requires targeted clarification only when selected. No replacement counterpart is inferred."
     },
     {
       "rule_id": "cohort-spring-0512-4162",
@@ -4021,8 +4023,8 @@
         "tau:7622:2026:rama:18:kurs:0512-4162:hearakurs:7cf7a94ba233",
         "tau:7622:2026:rama:19:kurs:0512-4162:hearakurs:7cf7a94ba233"
       ],
-      "enforced_by": "none",
-      "note": "TAU: spring-intake students (מחזור אביב) who want 0512-4162 must take it in semester 5. Neither the spec nor the board models intake cohorts."
+      "enforced_by": "board",
+      "note": "TAU restricts spring-intake students taking this course to study semester 5. The shared evaluator uses explicit intake and exact study-semester ordinals, including reported historical dates. Unknown cohort or date remains review."
     },
     {
       "rule_id": "year-0509-4010",
@@ -4040,8 +4042,8 @@
       "source_ids": [
         "tau:7622:2026:rama:41:kurs:0509-4010:hearakurs:ede4eaeafe57"
       ],
-      "enforced_by": "none",
-      "note": "TAU: 0509-4010 can be taken only in year 4, with an average of 85+, after an admission interview. The board's track placement does not restrict it to year 4."
+      "enforced_by": "board",
+      "note": "TAU requires study year 4, average at least 85 and an admission interview. The shared evaluator checks timing and the reported average and requires a referenced interview decision. An approval cannot override an invalid year or low average."
     },
     {
       "rule_id": "year-0512-3000",
@@ -4050,13 +4052,15 @@
         "0512-3000"
       ],
       "params": {
-        "from_semester": 3
+        "from_semester": 3,
+        "requires_supervisor_recommendation": true,
+        "registration": "manual"
       },
       "source_ids": [
         "tau:7622:2026:rama:41:kurs:0512-3000:hearakurs:9039898829ed"
       ],
-      "enforced_by": "none",
-      "note": "TAU: 0512-3000 (פרויקט מיוחד) can be registered from semester 3 on, manually, on the project supervisor's recommendation. The board offers track courses in years 3-4 only, which is narrower than the rule; nothing encodes semester 3."
+      "enforced_by": "board",
+      "note": "TAU permits registration from study semester 3, manually and with a supervisor recommendation. The shared evaluator checks the exact semester and requires a referenced recommendation. The panel identifies the manual-registration requirement."
     },
     {
       "rule_id": "window-0512-4013",
@@ -4094,8 +4098,8 @@
         "tau:7622:2026:rama:47:kurs:0512-4013:hearakurs:551ea090eac3",
         "tau:7622:2026:rama:50:kurs:0512-4013:hearakurs:551ea090eac3"
       ],
-      "enforced_by": "none",
-      "note": "TAU: 0512-4013 is for year-1 (semester B) and year-2 (semester A) EE students who met every recommended-plan requirement and hold an average of 85+ (registration by bidding). The board models neither averages nor plan completion."
+      "enforced_by": "board",
+      "note": "TAU requires average at least 85 and completion of the recommended plan for this optional hardware lab, with bidding registration. The shared evaluator checks the reported average and requires a referenced university decision on recommended-plan eligibility. The separate offering-window rule enforces study semesters 2 or 3."
     },
     {
       "rule_id": "load-min-75pct-approval",
@@ -4111,8 +4115,8 @@
         "pdf:b6a7c762f8db:9e804bec0268",
         "pdf:b6a7c762f8db:d2ab4ad7ad22"
       ],
-      "enforced_by": "none",
-      "note": "TAU engineering regulations (Terms_BA.pdf p1): the normal format is a full program and the student may set their own pace, but studying less than 75% of a full load needs a request to the track head. The boards carry no load bounds (semester total_weekly_hours is informational only)."
+      "enforced_by": "board",
+      "note": "TAU requires approval below 75 percent of a full program load. The shared evaluator combines published course hours and a cited full-load baseline for each active semester, requiring a referenced decision for reduced load. Missing baseline or course hours remains review."
     },
     {
       "rule_id": "duration-8-semesters",
@@ -4141,15 +4145,16 @@
         "extension_years": 1,
         "approval": "teaching committee",
         "further_extension": "exceptional cases",
-        "eligible_student_extension_semesters": 2
+        "eligible_student_extension_semesters": 2,
+        "standard_semesters": 8
       },
       "source_ids": [
         "pdf:b6a7c762f8db:2c55f8e62f65",
         "pdf:b6a7c762f8db:fa9621ee17ed",
         "pdf:b6a7c762f8db:25501ba6d27c"
       ],
-      "enforced_by": "none",
-      "note": "TAU engineering regulations (Terms_BA.pdf p1, p13): a student may extend the degree by one more year with the teaching committee's approval (further extension in exceptional cases); a pregnancy/parenthood-eligible student may extend by up to 2 semesters without extension fees. The boards have no semester beyond year 4."
+      "enforced_by": "board",
+      "note": "TAU permits an ordinary one-year extension with committee approval and further extension exceptionally. The shared evaluator requires a referenced decision covering the actual last study semester, distinguishes ordinary and exceptional decisions, and separately records eligible-student status and its scoped decision."
     },
     {
       "rule_id": "prereq-before-or-concurrent",
@@ -4171,13 +4176,14 @@
       "kind": "year_restriction",
       "course_ids": [],
       "params": {
-        "rule": "no course of a later program year before completing every course of the current year and meeting the prerequisites"
+        "rule": "no course of a later program year before completing every course of the current year and meeting the prerequisites",
+        "require_all_prior_year_courses": true
       },
       "source_ids": [
         "pdf:b6a7c762f8db:8f2f27662fd8"
       ],
-      "enforced_by": "none",
-      "note": "TAU engineering regulations (Terms_BA.pdf p2, registration item 6): a student cannot register for courses of an advanced year without finishing all the courses of the current year and meeting the prerequisites. The boards place courses by year but do not block a later-year course while current-year courses are open."
+      "enforced_by": "board",
+      "note": "TAU requires prior-year courses and prerequisite conditions before advancing. The shared evaluator checks the published mandatory-course home semesters against identified completed/current/planned courses; the prerequisite policy separately evaluates the structured requirement graph. Missing published homes remain review."
     },
     {
       "rule_id": "graduate-courses-max-2-per-semester",
@@ -4197,8 +4203,8 @@
         "pdf:b6a7c762f8db:b733c0860f49",
         "pdf:b6a7c762f8db:e603457c9e68"
       ],
-      "enforced_by": "none",
-      "note": "TAU engineering regulations (Terms_BA.pdf p2): an undergraduate may take graduate courses only with a high average and the track head's approval, and never more than two graduate courses per semester. The boards do not model graduate courses or this cap."
+      "enforced_by": "board",
+      "note": "TAU requires a committee-set high-average threshold and track-head approval, with at most two graduate courses per semester. The shared evaluator requires separately cited threshold and approval records, compares the student average, and enforces the cap before any approval. Missing dates or records remain review."
     },
     {
       "rule_id": "prereq-conditional-reserve-or-eligible-student",
@@ -4209,7 +4215,8 @@
           "active reserve duty",
           "pregnancy/parenthood-eligible student"
         ],
-        "rule": "may take the advanced course (course and exam) conditionally until the prerequisite course obligations are completed"
+        "rule": "may take the advanced course (course and exam) conditionally until the prerequisite course obligations are completed",
+        "conditional_prerequisite_allowed": true
       },
       "source_ids": [
         "pdf:b6a7c762f8db:f665b874be18",
@@ -4217,6 +4224,121 @@
       ],
       "enforced_by": "none",
       "note": "TAU engineering regulations (Terms_BA.pdf p11, p13): a student kept by reserve duty, or a pregnancy/parenthood-eligible student, from completing a prerequisite course may take the advanced course conditionally until the prerequisite is completed. Neither the spec nor the board models these statuses."
+    },
+    {
+      "rule_id": "technician-exemption-eligibility",
+      "kind": "course_exemption",
+      "course_ids": [
+        "0512-3513",
+        "0512-3514",
+        "0512-3561",
+        "0512-3581",
+        "0512-4001",
+        "0512-4000"
+      ],
+      "params": {
+        "minimum_government_exam_average": 80,
+        "exclude_project_from_average": true,
+        "eligible_course_ids_by_credential": {
+          "electronics_and_computers": [
+            "0512-3513",
+            "0512-3514",
+            "0512-3561",
+            "0512-3581",
+            "0512-4001",
+            "0512-4000"
+          ],
+          "computers": [
+            "0512-3561",
+            "0512-4001",
+            "0512-4000"
+          ]
+        },
+        "individual_university_award_required": true,
+        "credential_labels_he": {
+          "electronics_and_computers": "הנדסאי אלקטרוניקה ומחשבים",
+          "computers": "הנדסאי מחשבים"
+        }
+      },
+      "source_ids": [
+        "tau:7622:2026:body:hesbernosaf:aa55c5c97c7b"
+      ],
+      "enforced_by": "board",
+      "note": "TAU publishes separate technician credential lists and a government-exam average threshold of 80 excluding the project. The shared evaluator checks those facts and requires an individual university exemption record and matching catalog degree-credit hours before recognizing completion. Eligibility alone grants nothing. Different or unknown credit treatment requires targeted review. The model and browser use the same recognition; duplicate completion/current enrollment does not duplicate hours."
+    },
+    {
+      "rule_id": "additional-course-recognition",
+      "kind": "course_recognition",
+      "course_ids": [],
+      "params": {
+        "prior_committee_approval_required": true,
+        "syllabus_required": true,
+        "instructor_consent_required": true,
+        "out_of_catalog_minimum_average_for_consideration": 85,
+        "out_of_catalog_normally_max_courses_per_degree": 1,
+        "requires_approval_after_track_minimum": 12,
+        "core_rule_id": "core-four-distinct-tracks"
+      },
+      "source_ids": [
+        "tau:7622:2026:rama:5:hesber:d2b09fb26885"
+      ],
+      "enforced_by": "board",
+      "note": "TAU requires prior committee approval with syllabus and instructor consent for supplementary courses used after meeting the twelve-course track baseline. The shared evaluator requires enough approved fillers while retaining the distinct-track core requirement inside that baseline. Out-of-catalog consideration requires average 85 and normally at most one course, with separately scoped exceptions. Enrollment approval grants no earned hours. Completed courses need an individual credit award; external credit never creates a schedulable catalog course or prerequisite equivalence. Both windows preserve the rule and its track pool."
+    },
+    {
+      "rule_id": "optional-high-current-pathway",
+      "kind": "optional_pathway",
+      "course_ids": [
+        "0512-2525",
+        "0512-3571",
+        "0512-3572",
+        "0512-4502",
+        "0512-4505",
+        "0512-4504",
+        "0512-4590",
+        "0510-7507",
+        "0510-7508",
+        "0512-4503",
+        "0512-4506",
+        "0512-4001",
+        "0512-4000"
+      ],
+      "params": {
+        "optional_goal": "high_current_registration",
+        "required_course_ids": [
+          "0512-2525",
+          "0512-3571",
+          "0512-3572",
+          "0512-4502",
+          "0512-4505",
+          "0512-4504",
+          "0512-4590"
+        ],
+        "alternative_groups": [
+          [
+            "0510-7507",
+            "0510-7508"
+          ],
+          [
+            "0512-4503",
+            "0512-4506"
+          ]
+        ],
+        "project_domain": "electrical_installation_design",
+        "licensing_authority": "Ministry; requirements may change",
+        "goal_label_he": "מסלול זרם חזק",
+        "project_domain_label_he": "תכנון מתקני חשמל",
+        "project_course_ids": [
+          "0512-4001",
+          "0512-4000"
+        ]
+      },
+      "source_ids": [
+        "tau:7622:2026:rama:22:hesber:5c512c46be42",
+        "tau:7622:2026:body:hesbernosaf:aa55c5c97c7b"
+      ],
+      "enforced_by": "board",
+      "note": "Optional university-published pathway, evaluated only when the student chooses it. The shared validator checks all fixed courses, one alternative from each published group, and cited final-project-domain reports. Both windows preserve the exact definition. This is a curriculum check, not a licensing guarantee; the source says the Ministry controls licensing requirements and may change them."
     }
   ],
   "known_gaps": []
