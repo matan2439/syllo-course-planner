@@ -101,6 +101,7 @@ export function useAcademicContext({
       currently_taking?: unknown; planned?: unknown
     }
     const status: Record<string, unknown> = {
+      ...(academicStatus.degreeEvidence ? { degree_evidence: academicStatus.degreeEvidence } : {}),
       completed: completedIds.map((course_id) => ({ course_id })),
       currently_taking: Array.isArray(stored.currently_taking) ? stored.currently_taking : [],
       ...(Array.isArray(stored.planned) ? { planned: stored.planned } : {}),

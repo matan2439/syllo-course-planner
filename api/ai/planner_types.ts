@@ -8,6 +8,7 @@
 import type { CourseProfile } from './course_profile';
 import type { AcademicProgress } from './academic_progress';
 import type { DegreeRule } from '../../shared/planner/degree-rules';
+import type { DegreeEvidence } from '../../shared/planner/degree-evidence';
 
 /** An elective/requirement category the plan must satisfy. */
 export interface CategoryReq {
@@ -35,6 +36,10 @@ export type DistributionPolicy = 'balanced' | 'compact' | 'neutral';
 
 export interface ConstraintModel {
   degreeRules?: readonly DegreeRule[];
+  degreeEvidence?: DegreeEvidence;
+  degreeMandatorySemesters?: Record<string, string>;
+  degreePrerequisiteExpressions?: import('../../shared/planner/degree-catalog').DegreeCatalogFacts['prerequisiteExpressions'];
+  allowConcurrentPrerequisites?: boolean;
   degreeRuleExclusionCourseIds?: Set<string>;
   /** CourseProfile for every course in the eligible universe. */
   profiles: Map<string, CourseProfile>;

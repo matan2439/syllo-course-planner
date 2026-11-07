@@ -11,6 +11,7 @@ export function manualBoardValidationContext(model: ConstraintModel, before?: Pl
   return {
     ...buildValidationContext(model, pinnedHome),
     allowInProgressPlacement: true,
+    allowUnknownRequirementEvidence: true,
     hardCap: Number.POSITIVE_INFINITY,
     absoluteMaxReasonable: Number.POSITIVE_INFINITY,
     courseNames: Object.fromEntries([...model.profiles].map(([id, p]) => [id, p.name_he || id])),

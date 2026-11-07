@@ -75,6 +75,7 @@ from app.analysis.board_audit import compute_board_hash  # noqa: E402
 from app.degrees.curation import apply_curation, curation_path, load_curation  # noqa: E402
 from app.degrees.facts import load_program_facts  # noqa: E402
 from app.degrees.offering_windows import apply_offering_windows  # noqa: E402
+from app.degrees.prerequisite_facts import load_prerequisite_facts, apply_prerequisite_facts  # noqa: E402
 from app.degrees.registry import ProgramEntry, get_program  # noqa: E402
 from app.degrees.spec import DegreeSpec, load_spec, spec_path, spec_to_program  # noqa: E402
 
@@ -368,6 +369,11 @@ def build(entry: ProgramEntry, out_dir: Path = DATA, offline: bool = False, live
     curation = load_curation(curation_path(spec_file))
     tcid, shana = entry.source_ids["tcid"], entry.source_year
     facts = load_program_facts(shana, tcid, facts_file)
+    prerequisite_file = out_dir / 'official' / f'tau_prerequisites_{entry.id}.json'
+    if not prerequisite_file.exists():
+        prerequisite_file = DATA / 'official' / f'tau_prerequisites_{entry.id}.json'
+    prerequisite_facts = load_prerequisite_facts(prerequisite_file, program_id=entry.id,
+                                                source_year=shana, root=DATA.parent)
     offerings = official_offerings(facts)
     paths = board_paths(entry, out_dir)
     # The files being replaced: unchanged content is written back byte-identical (key order,
@@ -406,6 +412,7 @@ def build(entry: ProgramEntry, out_dir: Path = DATA, offline: bool = False, live
             bidit = copy_bidit_schedule(board, shana) if "general_requirements" in variant["requirements"] else 0
             n = apply_curation(board, curation, key)
             apply_offering_windows(board)
+            apply_prerequisite_facts(board, prerequisite_facts)
             write_board(path, board, previous[key], keep_timestamps=not live)
             print(f"[build] {key}: facts patched {changed} records, {summaries} summaries, "
                   f"{bidit} BIDIT records, {n} curation entries")
@@ -427,6 +434,7 @@ def build(entry: ProgramEntry, out_dir: Path = DATA, offline: bool = False, live
     early_board = json.loads(early_out.read_text(encoding="utf-8"))
     apply_curation(early_board, curation, "early_years")
     apply_offering_windows(early_board)
+    apply_prerequisite_facts(early_board, prerequisite_facts)
     write_board(early_out, early_board, previous["early_years"], keep_timestamps=not live)
     index = early.write_early_year_index(boards_dir=paths["early_years"].parent, path=early_index_path(out_dir))
     early.write_early_year_index(boards_dir=paths["early_years"].parent,

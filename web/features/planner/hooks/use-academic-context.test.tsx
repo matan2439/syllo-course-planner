@@ -7,6 +7,20 @@ const PROGRAM = 'mechanical_engineering_2027'
 const taking = [{ course_id: '0542-4422', semester_id: 'year_3_semester_a', hours: 4 }]
 const planned = [{ course_id: '0542-4455', semester_id: 'year_3_semester_b', hours: 4 }]
 
+test('reported degree evidence survives loading, completion editing, and context requests', async () => {
+  const degreeEvidence = { average: 90, intake: 'spring' as const,
+    decisions: { interview: { approved: true, reference: 'Faculty approval' } } }
+  const planningContextFn = async () => ({
+    academicStatusDigest: 'as_evidence', preferenceDigest: 'pref_saved', preferences: {},
+    personalStatus: { completed: [], degree_evidence: degreeEvidence },
+  })
+  const { result } = renderHook(() => useAcademicContext({ programId: PROGRAM, planningContextFn, sendConversationFn: jest.fn() }))
+  await waitFor(() => expect(result.current.academicContextPhase).toBe('ready'))
+  expect(result.current.academicStatus.degreeEvidence).toEqual(degreeEvidence)
+  act(() => result.current.updateAcademicStatus({ ...result.current.academicStatus, confirmed: true }))
+  expect(result.current.applyAcademicStatus().degree_evidence).toEqual(degreeEvidence)
+})
+
 test('editing completed courses preserves saved enrollments for context sync and Apply', async () => {
   const planningContextFn = async () => ({
     academicStatusDigest: 'as_saved', preferenceDigest: 'pref_saved', preferences: {},

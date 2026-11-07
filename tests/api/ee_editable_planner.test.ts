@@ -7,6 +7,7 @@ import { getAcademicContextStore, getBoardRepository, resetApplyRuntime } from '
 import { MemoryStudentWorkspaceStore, installStudentWorkspaceStoreForTests } from '../../api/ai/student_workspace_store';
 import { prepareManualCourseAdd, prepareManualCourseMove, prepareManualCourseRemove } from '../../api/ai/manual_board_edit_service';
 import type { AcademicContextRecord } from '../../api/ai/academic_context_store';
+import { earlyYearCoursesFor } from '../../shared/planner/early_year_courses';
 
 const PROGRAM = 'electrical_engineering_2027', EARLY = 'electrical_engineering_years_1_2_2027';
 const OWNER = 'e'.repeat(43), OTHER = 'f'.repeat(43), A = 'year_3_semester_a';
@@ -70,12 +71,18 @@ test('two real EE course copies switch both ways with independent weekly choices
 test('the existing edit service adds, moves and removes a real EE elective', () => {
   process.env.NEXT_PUBLIC_ENABLE_EE_PLANNER = '1';
   const boardJson = loadLocalBoardJson(PROGRAM), B = 'year_3_semester_b';
+  const personalStatus = { completed: earlyYearCoursesFor(PROGRAM).map(course => ({ course_id: course.courseId })) };
   const context: AcademicContextRecord = { ownerId: OWNER, programId: PROGRAM, digest: 'ee_status', updatedAt: 1,
-    personalStatus: {}, planContext: { semesters: [], personal_status: {} }, preferences: {} };
+    personalStatus, planContext: { semesters: [], personal_status: personalStatus }, preferences: {} };
   const base = { program_id: PROGRAM, academic_status_digest: 'ee_status', operation_id: 'ee_manual_edit_12345',
     expected_board_version: null, course_id: '0512-4200', semester_id: A };
   const added = prepareManualCourseAdd({ boardJson, context, currentBoard: null,
     request: { ...base, operation: 'add_course' } });
+  const missingPrerequisite = prepareManualCourseAdd({ boardJson,
+    context: { ...context, personalStatus: {}, planContext: { semesters: [], personal_status: {} } }, currentBoard: null,
+    request: { ...base, operation: 'add_course' } });
+  expect(missingPrerequisite.ok).toBe(false);
+  if (!missingPrerequisite.ok) expect(missingPrerequisite.code).toBe('PLAN_INVALID');
   expect(added.ok).toBe(true);
   if (!added.ok) throw new Error(JSON.stringify(added));
   const current = { ownerId: OWNER, programId: PROGRAM, version: 'bv_1', updatedAt: 1, semesters: added.semesters };

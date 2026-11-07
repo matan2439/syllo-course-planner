@@ -16,7 +16,8 @@ RULE = "window-0512-4013"
 def test_audited_course_exclusions_must_reach_both_windows():
     spec = load_spec(DATA / "degrees/tau/electrical_engineering/2027/spec.json")
     verified = [rule for rule in spec.course_rules
-                if rule.kind == "mutually_exclusive" and rule.enforced_by == "board"]
+                if rule.kind == "mutually_exclusive" and rule.enforced_by == "board"
+                and len(rule.course_ids) == 2 and not rule.params]
     assert len(verified) == 5
     spec = spec.model_copy(update={"course_rules": verified})
     boards = {

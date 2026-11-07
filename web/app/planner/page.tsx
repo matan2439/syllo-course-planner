@@ -10,6 +10,8 @@ import UnifiedPlannerWorkspace from '../../features/planner/components/UnifiedPl
 import { isEditableDegreePreview, isPublicDraftPlanner } from '../../../shared/programs'
 import type { DegreeRule } from '../../../shared/planner/degree-rules'
 import { adaptRequirements } from '../../lib/requirements'
+import { degreeCatalogFacts } from '../../../shared/planner/degree-catalog'
+import { earlyYearCoursesFor } from '../../../shared/planner/early_year_courses'
 
 export const metadata = { title: 'מרחב התכנון — Syllo' }
 export const dynamic = 'force-dynamic'
@@ -49,6 +51,7 @@ export default async function PlannerPage({
       </p>}
       <UnifiedPlannerWorkspace
         degreeRequirements={adaptRequirements(raw)}
+        degreeCatalog={degreeCatalogFacts(raw, earlyYearCoursesFor(program.id))}
         degreeRules={(raw.metadata as { degree_rules?: DegreeRule[] })?.degree_rules}
         programId={program.id}
         repo={repo}

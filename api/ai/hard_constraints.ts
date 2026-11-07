@@ -26,6 +26,7 @@
 import { getLegalSemesters, type CourseLegalityInfo } from './completion_analysis';
 import { ABSOLUTE_MAX_REASONABLE } from './load_constants';
 import type { ConstraintModel } from './planner_types';
+import { evaluatePrerequisiteExpression, requirementExpression, type PrerequisiteStatus } from '../../shared/planner/prerequisite-expression';
 
 // ── feature switch ───────────────────────────────────────────────────────────
 
@@ -124,10 +125,11 @@ function isHardExcluded(model: ConstraintModel, id: string): boolean {
  * Whether `id`'s prerequisite chain can be satisfied at all within the planning
  * horizon, ignoring load (that is `wanted_exceeds_workload_cap`'s job). A
  * prerequisite is impossible when it isn't in the catalog, is hard-excluded, has
- * no period on this board, or has no period strictly before its dependent's
+ * no period on this board, or has no period before its dependent's
  * LATEST usable period (the most permissive comparison point, so this only
- * reports a chain it can affirmatively prove is unsatisfiable). Already-completed
- * and currently-taking prerequisites are satisfied outright. `visiting` guards a
+ * reports a chain it can affirmatively prove is unsatisfiable). The boundary
+ * includes the dependent's own period only when concurrency is explicitly enabled.
+ * Already-completed and currently-taking prerequisites are satisfied outright. `visiting` guards a
  * prerequisite cycle by biasing toward possible — a data problem this analysis
  * is not responsible for diagnosing.
  */
@@ -142,12 +144,39 @@ function prerequisiteChainImpossible(
   if (!p) return true;
   const idx = periodsOnBoard(model, id)
     .map(sem => model.knownSemesterIds.indexOf(sem))
-    .filter(i => i >= 0 && (beforeIndex === undefined || i < beforeIndex));
+    .filter(i => i >= 0 && (beforeIndex === undefined ||
+      (model.allowConcurrentPrerequisites === true ? i <= beforeIndex : i < beforeIndex)));
   if (!idx.length) return true;
   const latest = Math.max(...idx);
 
   const next = new Set(visiting);
   next.add(id);
+  if (p.prerequisite_expression !== undefined || p.corequisite_expression !== undefined) {
+    const spans = p.is_annual ? (p.spans_semesters?.length ? p.spans_semesters : periodsOnBoard(model, id)) : [];
+    const spanIndices = spans.map(sem => model.knownSemesterIds.indexOf(sem));
+    if (spanIndices.some(index => index < 0)) return true;
+    const requirementBoundary = spanIndices.length ? Math.min(...spanIndices) : latest;
+    const check = (prereqId: string, boundary: number): PrerequisiteStatus => {
+      if (model.completedCourseIds.has(prereqId) || model.currentlyPlannedCourseIds?.has(prereqId)) return 'satisfied';
+      if (!model.profiles.has(prereqId)) return 'unknown';
+      if (isHardExcluded(model, prereqId)) return 'unsatisfied';
+      const prerequisite = model.profiles.get(prereqId)!;
+      if (prerequisite.is_annual) {
+        const requiredSpans = prerequisite.spans_semesters?.length ? prerequisite.spans_semesters : periodsOnBoard(model, prereqId);
+        if (requiredSpans.some(sem => {
+          const index = model.knownSemesterIds.indexOf(sem);
+          return index < 0 || (model.allowConcurrentPrerequisites === true ? index > boundary : index >= boundary);
+        })) return 'unsatisfied';
+      }
+      return prerequisiteChainImpossible(model, prereqId, next, boundary) ? 'unsatisfied' : 'satisfied';
+    };
+    const pre = evaluatePrerequisiteExpression(requirementExpression(p.prerequisite_expression, p.prerequisites),
+      prereqId => check(prereqId, requirementBoundary));
+    const coBoundary = requirementBoundary + (model.allowConcurrentPrerequisites === true ? 0 : 1);
+    const co = evaluatePrerequisiteExpression(requirementExpression(p.corequisite_expression, p.corequisites),
+      prereqId => check(prereqId, coBoundary));
+    return pre !== 'satisfied' || co !== 'satisfied';
+  }
   return (p.prerequisites ?? []).some(prereqId => {
     if (model.completedCourseIds.has(prereqId)) return false;
     if (model.currentlyPlannedCourseIds?.has(prereqId)) return false;

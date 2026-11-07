@@ -304,6 +304,7 @@ export function buildModel(board: any, ctx: any, prefs: Preferences, program_id?
       .map((c: any) => c?.course_id)
       .filter((id: unknown): id is string => typeof id === 'string');
   const model = buildConstraintModel(board, {
+    degreeEvidence: ctx?.personal_status?.degree_evidence,
     completedCourseIds: (ctx?.personal_status?.completed ?? []).map((c: any) => c.course_id),
     completedCountByCategory: completedCategoryCountsFromContext(ctx),
     currentlyPlannedCourseIds: effectiveCurrentlyTakingIds,

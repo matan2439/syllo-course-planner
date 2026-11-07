@@ -9,6 +9,7 @@
  */
 
 import { z } from 'zod';
+import { evaluatePrerequisiteExpression, type PrerequisiteExpression, type PrerequisiteStatus } from '../../shared/planner/prerequisite-expression';
 import { getSemesterLoad } from './completion_analysis';
 import { HARD_LOAD_CAP, ABSOLUTE_MAX_REASONABLE, SOFT_LOAD_MAX } from './load_constants';
 
@@ -186,6 +187,9 @@ export interface PlanValidationCourseInfo {
   /** Hard prerequisite course_ids (resolved). Issue 4 — the validator enforces
    *  the UNION of prerequisites ∪ missing_prerequisites. */
   prerequisites?: string[];
+  prerequisite_expression?: PrerequisiteExpression | null;
+  corequisites?: string[];
+  corequisite_expression?: PrerequisiteExpression | null;
   /** True if this is a mandatory (חובה) course. */
   is_mandatory?: boolean;
   /** True for a year-long course that occupies every one of spans_semesters together (never a duplicate). */
@@ -207,6 +211,10 @@ export interface PlanValidationContext {
   currentlyPlannedCourseIds?: Set<string>;
   /** Manual boards may display current enrollment; AI proposals still omit it. */
   allowInProgressPlacement?: boolean;
+  /** Explicit degree policy: prerequisites may share a semester, never follow it. Defaults to false. */
+  allowConcurrentPrerequisites?: boolean;
+  /** Manual drafts may warn about unknown expression evidence; AI defaults to blocking. */
+  allowUnknownRequirementEvidence?: boolean;
   /** Per-course info used for hours/effective-semester/prerequisite checks. */
   courses: Record<string, PlanValidationCourseInfo>;
   /** Maximum total weekly hours allowed per semester (from user preferences). */
@@ -313,16 +321,18 @@ export function validatePlanProposal(
   const seenSemesters = new Map<string, string[]>(); // course_id -> semester_ids seen so far, in order
   const placedCourseIds = new Set<string>();
 
-  // Issue 4 — chronological order of semesters in the proposal + each course's
-  // index, so the prerequisite check can enforce the STRICT timing rule
-  // (prereq must be completed or scheduled in a STRICTLY EARLIER semester;
-  // same-semester does NOT satisfy).
+  // Board chronology, independent of proposal array order. Prerequisites must
+  // precede their dependent unless the degree explicitly allows concurrency.
   const semOrder = new Map<string, number>();
-  proposal.semesters.forEach((s, i) => semOrder.set(s.semester_id, i));
+  (opts?.knownSemesterIds ?? KNOWN_SEMESTER_IDS).forEach((id, i) => semOrder.set(id, i));
   const courseSemIdx = new Map<string, number>();
   for (const sem of proposal.semesters) {
-    const idx = semOrder.get(sem.semester_id)!;
-    for (const cid of sem.course_ids) courseSemIdx.set(cid, idx);
+    const idx = semOrder.get(sem.semester_id);
+    if (idx === undefined) continue; // An unknown period cannot satisfy prerequisite timing.
+    for (const cid of sem.course_ids) {
+      // Annual prerequisites finish at their latest occupied semester.
+      courseSemIdx.set(cid, Math.max(courseSemIdx.get(cid) ?? -1, idx));
+    }
   }
 
   for (const sem of proposal.semesters) {
@@ -397,20 +407,38 @@ export function validatePlanProposal(
           : `לקורס ${cName} אין סמסטר מותר בחלון התכנון.`);
       }
 
-      // 4. prerequisites — Issue 4: STRICT timing rule, enforced as an ERROR
-      // (mirrors validatePlanProposalLocal). A prereq is satisfied only if it is
-      // completed OR scheduled in a strictly EARLIER semester in this plan.
-      // Same-semester or later (or not scheduled at all) is a blocking error.
+      // 4. Prerequisites must be completed or placed earlier. Only an explicit
+      // degree policy also permits same-semester placement; later/missing block.
       // Enforces the UNION of prerequisites ∪ missing_prerequisites.
       const prereqUnion = new Set<string>([
         ...(info?.prerequisites || []),
         ...(info?.missing_prerequisites || []),
       ]);
       const targetIdx = semOrder.get(sem.semester_id)!;
-      for (const prereq of prereqUnion) {
+      const requirementStatus = (id: string, concurrent: boolean): PrerequisiteStatus => {
+        if (ctx.completedCourseIds.has(id) || (ctx.currentlyPlannedCourseIds?.has(id) &&
+          (!ctx.allowInProgressPlacement || !proposal.semesters.some(s => s.course_ids.includes(id))))) return 'satisfied';
+        const index = courseSemIdx.get(id);
+        // A well-formed leaf names a definite condition. Missing placement/history
+        // does not become an unknown-evidence warning, even outside the catalog.
+        if (index === undefined || targetIdx === undefined) return 'unsatisfied';
+        return (concurrent ? index <= targetIdx : index < targetIdx) ? 'satisfied' : 'unsatisfied';
+      };
+      const reportExpressionStatus = (status: PrerequisiteStatus, kind: string): void => {
+        if (status === 'satisfied') return;
+        if (status === 'unknown') {
+          const message = `דרישות ${kind} של ${cName} (ב${semName}) אינן ידועות — יש לאמת לפני אישור התוכנית.`;
+          (ctx.allowUnknownRequirementEvidence === true ? warnings : errors).push(message);
+        } else errors.push(`לא ניתן לשבץ את ${cName} (ב${semName}) — דרישות ${kind} אינן מתקיימות.`);
+      };
+      if (info?.prerequisite_expression !== undefined) {
+        const status = evaluatePrerequisiteExpression(info.prerequisite_expression,
+          id => requirementStatus(id, ctx.allowConcurrentPrerequisites === true));
+        reportExpressionStatus(status, 'הקדם');
+      } else for (const prereq of prereqUnion) {
         // AI proposals omit current enrollment and count it as prior progress.
         // A manual board may display it; when placed, its actual semester must
-        // strictly precede the dependent's semester, like any other prerequisite.
+        // obey the degree's timing policy, like any other prerequisite.
         if (ctx.completedCourseIds.has(prereq) ||
           (ctx.currentlyPlannedCourseIds?.has(prereq) &&
             (!ctx.allowInProgressPlacement || !courseSemIdx.has(prereq)))) continue;
@@ -419,11 +447,17 @@ export function validatePlanProposal(
           errors.push(`לא ניתן לשבץ את ${cName} (ב${semName}) — דרישת הקדם ${courseLabel(prereq, ctx.courseNames)} אינה משובצת בתוכנית ולא הושלמה.`);
         } else if (pIdx > targetIdx) {
           errors.push(`לא ניתן לשבץ את ${cName} לפני דרישת הקדם ${courseLabel(prereq, ctx.courseNames)}.`);
-        } else if (pIdx === targetIdx) {
+        } else if (pIdx === targetIdx && ctx.allowConcurrentPrerequisites !== true) {
           errors.push(`לא ניתן לשבץ את ${cName} ואת דרישת הקדם ${courseLabel(prereq, ctx.courseNames)} באותו סמסטר (${semName}).`);
         }
       }
 
+      // Absent metadata stays absent; explicit unknown corequisites are blocking.
+      if (info?.corequisite_expression !== undefined) {
+        reportExpressionStatus(evaluatePrerequisiteExpression(info.corequisite_expression, id => requirementStatus(id, true)), 'המקבילים');
+      } else for (const id of info?.corequisites ?? []) {
+        if (requirementStatus(id, true) !== 'satisfied') errors.push(`לא ניתן לשבץ את ${cName} ללא הקורס המקביל ${courseLabel(id, ctx.courseNames)}.`);
+      }
     }
 
     // 5. Phase 2C unified overload policy (single source of truth — must

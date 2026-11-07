@@ -1,6 +1,6 @@
 ---
 name: add-degree
-description: Adds and refreshes degrees in Syllo's editable student planner using official sources and the degree pipeline (scripts/degree.py). Use when the owner says "add <degree> at <university>", "add a degree", "add a university", "refresh <degree>", "update <degree> for the new year", or asks "is <degree> up to date".
+description: Adds and refreshes university degrees in Syllo's editable student planner using official sources and scripts/degree.py. Use when the owner asks to add a degree or university, refresh a degree, update a catalog year, or check whether a degree is up to date.
 ---
 
 # add-degree
@@ -20,28 +20,23 @@ it is the source of truth for flags.
 - "refresh <degree>" / "update <degree>" -> **Refresh a degree** below.
 - "is <degree> up to date" -> **Is it up to date** below.
 
-## Tell the owner up front: expect a parked draft
+## Carry the degree through to the requested outcome
 
-Before step 1, say plainly: an honest run will most likely end **red**, as a parked draft,
-not a published degree. The program page links the faculty regulations PDF; the `tau_pdf`
-adapter reads it, so its sentences become `pdf:*` evidence items you map one by one like any
-other item (hundreds of them: budget for it). A page or document that was not read (fetch
-failed, a scanned page with no text layer, a document the adapter does not follow) is still a
-known gap: a `known_gaps` entry, and `known_gaps` fails until it is read. Course rules the
-board cannot encode (`enforced_by: "none"`) fail `rules_enforced`, and spec requirements the
-board cannot carry yet (e.g. a minimum over a non-core group such as EE's 12 track courses)
-fail `board_carries_requirements`. None of these is fixed by editing entries away (Hard rules). A green check is the exception until the board enforces those rules.
+The goal is full editable planner parity and, when authorized, release after all checks
+pass. Continue through evidence collection, missing adapter or validator implementation,
+generated boards, and deployed preview verification within the owner's scope. A draft is
+an intermediate state while resolving gaps. If a gap requires unavailable evidence or an
+owner decision, report the concrete blocker and continue independent work.
 
-What to do with a parked draft — ask the owner, recommending the default:
+Read linked faculty regulations and map their evidence alongside the program text.
+Unread sources remain `known_gaps`; unsupported rules remain `enforced_by: "none"`.
+Resolve those gaps through source review and implementation. Preserve coverage,
+freshness, rule enforcement and other release gates throughout. Follow existing
+authorization for publication, commits and deployment without repeating permission
+prompts. Ask when a necessary action exceeds that authorization or an unresolved choice
+materially affects the degree. Preserve reviewable work when blocked.
 
-- **Default (recommended): commit it on a separate branch / draft PR, and do not merge it to
-  `main` until it is publishable.** The branch keeps the spec, coverage map, evidence and
-  built boards reviewable and resumable. Even if it reached `main`, a draft is never served:
-  its boards — the `<base>_years_1_2_<year>` window board included — return 404, and it is
-  kept out of `data/config/early_year_courses.json` (the frontend bundle).
-- Or don't commit it: leave the files untracked (or discard them) and rerun later.
-
-## Inputs to confirm with the owner first
+## Resolve the degree identity
 
 For a batch, keep an inventory of institution, official title, track, year and program id
 for each requested degree. Resolve unambiguous identities from official sources and use
@@ -51,16 +46,17 @@ documents once per run and reuse their evidence without claiming a second fresh 
 Review copied rule interpretations for applicability to each degree. Keep a per-degree
 result so one unresolved program does not hide successful or blocked siblings.
 
-Confirm exactly these four, then ask nothing else (everything else comes from the sources):
+Resolve these four from the request, session context and official sources. Ask only for
+information that remains ambiguous:
 
 1. the official degree title (Hebrew, as the institution publishes it),
 2. the institution,
 3. the track, if any,
 4. the academic year (e.g. 2026-2027 = תשפ"ז).
 
-In the same message, propose the two names the sources cannot give and let the owner correct
-them: `--name-en` (the program's official English name, or a plain translation you say you
-chose) and `--base` (a snake_case slug of the English name; it becomes the registry id
+State the two derived names so the owner can correct them: `--name-en` (the program's
+official English name, or a plain translation you say you chose) and `--base` (a snake_case
+slug of the English name; it becomes the registry id
 `<base>_<shana+1>` and every file path, so it is hard to change later).
 
 Derive the rest yourself and state it in the report: TAU year code `--shana` = the year the
@@ -80,8 +76,8 @@ Cross-check it with the regulations' duration sentence (e.g. "8 semesters"): map
 to a `study_duration` course rule whose `params.semesters` / `params.years` state the length —
 `check` fails `degree_length` when they disagree with `degree_years`. When the two official
 sources really differ, keep `degree_years` from the program page, record a `source_conflicts`
-entry naming both item ids (the rule's `source_ids` among them), and **stop and report it to the
-owner**: the degree is a parked draft with `degree_length` red until the owner rules which source
+entry naming both item ids (the rule's `source_ids` among them), and report the decision needed
+from the owner. The disputed requirement keeps `degree_length` red until the owner rules which source
 governs. The conflict entry does not turn the check green; the problem text names the rule and
 the conflict so the owner sees the decision. Never edit the rule's params (or `degree_years`) to
 make them agree. Example: the program page lists years א'-ד' but the regulations say 9 semesters
@@ -93,12 +89,15 @@ fails `degree_length` when a mandatory course's year is outside 1..N. A year wit
 course (e.g. an electives-only final year) is fine. Never move courses to another year to get
 past a refusal: fix the course's year or `degree_years` from the official page.
 
-## New university: stop
+## New university
 
-If the institution has no entry in `data/config/institutions.json` (today only `tau`), stop and
-tell the owner: an adapter is needed first — `app/degrees/adapters/<inst>.py` emitting
-`EvidenceItem`s (and a program index for `init`) plus an `institutions.json` entry. That is a
-code PR, not a skill run. `init --institution <other>` refuses with the same message.
+When adding a university requires pipeline support, implement its adapter within the
+authorized task. Provide `app/degrees/adapters/<inst>.py` emitting `EvidenceItem`s, the
+official program-index integration for `init`, and an `institutions.json` entry. Adapt
+institution-specific identities, academic years, prerequisites, offerings and general
+requirements from that university's sources. Verify the normal CLI and editable planner
+paths. If the owner limited the task to data or documentation, report the specific code
+work needed and complete the permitted work. A missing adapter is an implementation gap.
 
 ## Add a degree
 
@@ -112,12 +111,16 @@ code PR, not a skill run. `init --institution <other>` refuses with the same mes
    If you do not know `--school`, run it once with your best guess: on zero or several matches it
    writes nothing and prints the title-matching candidates (tcid, title, level, school, year);
    rerun with the right values. It appends a `draft` registry entry `<base>_<shana+1>`, writes an
-   empty `spec.json`, then collects evidence live. Stop and tell the owner (do not work around it)
-   when init refuses because:
+   empty `spec.json`, then collects evidence live. Resolve refusals through the supported
+   path or implement missing support within scope:
    - the year is not the current catalog year (the index serves only the current year),
    - the family already exists (a new year of an existing degree: init cannot add it yet; see
      reference.md "New year of an existing degree"),
    - the id or spec already exists.
+
+   Resume an existing matching degree instead of creating a duplicate. Preserve family
+   and year invariants when extending init. Report unsupported catalog access or a
+   required owner choice while continuing work that does not depend on it.
 
    Re-collect evidence later with `python scripts/degree.py evidence --program <id> --live`
    (`--offline` replays the cache).
@@ -223,6 +226,15 @@ code PR, not a skill run. `init --institution <other>` refuses with the same mes
    summary: `spec_courses_missing_facts` must be `[]` (else `courses_known`/`totals` fail);
    read the report for mismatch rows (0 before the first build: there are no boards yet).
 
+   **Collect the prerequisite graph before claiming validation readiness.** Follow the
+   actual IMS prerequisite links for every relevant course, group and term, including
+   the early-year courses that satisfy later prerequisites. Preserve nested AND/OR
+   expressions, concurrent requirements and source provenance. A flat list of ids or a
+   stored link alone cannot establish prerequisite semantics. Distinguish an explicit
+   official statement of no prerequisites from a source that has not been read. Verify
+   that identified early-year completions are recognized in the later window without
+   duplicate credit. See reference.md, "Prerequisite graph and completion recognition".
+
 6. **build** — the boards, generated (the only way boards are written):
 
    ```bash
@@ -253,15 +265,18 @@ code PR, not a skill run. `init --institution <other>` refuses with the same mes
    `annual_not_represented`, `hours_mismatch`): fix the spec, or add a durable `curation.json`
    entry (`retire: null`, a reason citing the source; format in reference.md), then rebuild —
    never edit the board. `rules_enforced`, `board_carries_requirements` and `known_gaps`
-   cannot be fixed by editing them away: report them to the owner (see Hard rules).
-   `board_carries_requirements` means "the board can't carry this yet": it fails for a group
-   minimum other than `core`, a category that never reaches the board's category list, a
-   category `min_credits`, and a `general_requirement.credits_required` that is not
+   cannot be fixed by editing them away. Implement missing support within scope and
+   report evidence or decision blockers (see Hard rules).
+   Generic group minima such as EE's `track: 12` are supported; verify the emitted minimum
+   and exact candidate identities. `board_carries_requirements` still fails for dropped
+   requirements, a category `min_credits` without enforcement, and a
+   `general_requirement.credits_required` that is not
    `min_courses` x the institution's `creditsPerCourse` (causes in reference.md).
 
 8. **Repeat 4-7 until check --live is green.**
 
-9. **publish** (only when check --live passed):
+9. **publish** (when check --live and the editable preview verification below passed,
+   and publication is authorized):
 
    ```bash
    python scripts/degree.py publish --program <id>
@@ -278,7 +293,9 @@ code PR, not a skill run. `init --institution <other>` refuses with the same mes
    On success it writes `RELEASE.md` beside `spec.json`, sets the registry status to `live`,
    rewrites the early-year index (now including the degree), and PRINTS the owner steps (DB
    board sync — 0 rows = not seeded yet; the board is served from the committed file after
-   deploy — and "commit, open a PR, deploy"). Do not run them; copy them into the report.
+   deploy — and "commit, open a PR, deploy"). Execute the authorized remaining release
+   steps after preview verification and passing checks. Report any steps outside the
+   owner's authorization.
 
 ## Refresh a degree
 
@@ -319,7 +336,9 @@ facts snapshot and the mismatch report; show `git diff data/official/` and the m
   document). Unread = a `known_gaps` entry.
 - Never set `enforced_by: "board"` unless the note cites the board field that encodes the rule
   (e.g. `is_annual=true, spans_semesters=[...]` in `data/boards/<id>.json`) and you checked that
-  field in THIS degree's built board; otherwise `"none"`. (ME's annual rule is encoded only via
+  field in THIS degree's built board and its applicable validator paths. Verify that a
+  release check catches loss or widening of required generated data; otherwise `"none"`.
+  (ME's annual rule is encoded only via
   its `curation.json`; a copy of its spec without that overlay is not.)
 - Never edit committed boards (`data/boards/`, `data/parsed_json/`,
   `data/config/early_year_courses.json`) by hand: change the spec / `curation.json` and rebuild.
@@ -334,16 +353,32 @@ facts snapshot and the mismatch report; show `git diff data/official/` and the m
 - Record every disagreement between sources in `source_conflicts`; never resolve it silently.
 - Never delete a `known_gaps` or `course_rules` entry to make check pass, and never delete or
   weaken a requirement (a group minimum, a category, `min_credits`, `credits_required`) to pass
-  `board_carries_requirements`: the requirement is official; the board's gap goes to the owner.
+  `board_carries_requirements`. Implement the missing enforcement within scope or report
+  the concrete blocker.
 - Entries copied by `--reuse-from` are unreviewed until you read each one against its text.
 - `degree_years` comes from the program page's year sections; a different length in the
-  regulations is a `source_conflicts` entry plus a report to the owner (the draft stays parked,
-  `degree_length` red, until they rule), never a silent override or bent rule params. Never
+  regulations is a `source_conflicts` entry plus a report to the owner (`degree_length`
+  stays red until they rule), never a silent override or bent rule params. Never
   re-year courses to fit.
 - A red run stays on a separate branch unless the owner explicitly authorizes the public
   editable draft exception above.
 
 ## Verify the student experience before release
+
+Use the same rule definitions, exact course identities and reported student facts in the
+UI, backend validator, AI candidate gate and proposal application. Test valid, invalid and
+missing-evidence cases through those entry points. Conditional facts include intake,
+grades, prior study and university decisions. Record decisions as student-reported,
+rule-specific approval or refusal with a cited reference; Syllo does not grant faculty
+approval. Missing or conflicting evidence requires targeted review when the rule applies.
+See reference.md, "Conditional student facts and EE rule lessons".
+
+Preserve the owner's accepted literal `05124506` self-reference. Require clarification
+when that course is selected and allow the rule to pass when absent. Preserve its source
+conflict and verify the exact definition in both board windows. Never infer `0512-4507`.
+For advanced labs, the conditional third lab's exclusion from theoretical-course credit
+still requires verified allocation across every credit and completion path. Keep that
+case unresolved until the accounting is implemented and tested.
 
 Adding a degree is complete only after a deployed preview has been checked with the
 degree's real data IN THE EXISTING EDITABLE STUDENT PLANNER. A standalone course catalog,
@@ -412,4 +447,5 @@ End every run with:
   -> count), course rules (id, kind, enforced_by), known gaps, source conflicts.
 - **Check results**: each check PASS/FAIL/SKIPPED with the failing problems.
 - **Values you derived** (shana, level, school, tcid, name_en, base).
-- **The commands for the owner to run** (publish's printed steps, or commit/PR/sync/deploy).
+- **Release steps completed and pending**, including the tested preview revision, any
+  concrete blockers and commands requiring further authorization.

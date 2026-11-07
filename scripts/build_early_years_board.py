@@ -230,8 +230,9 @@ def build(program_id: str, start_year: int, tcid: str, shana: int,
     board["metadata"]["program_repository_courses"] = [remap_repository_course(c, semester_ids) for c in repository]
     board["metadata"]["window_of_program_id"] = program_id
     if late_meta.get("degree_rules"):
-        board["metadata"]["degree_rules"] = [rule for rule in late_meta["degree_rules"]
-                                            if rule.get("kind") in ("mutually_exclusive", "year_restriction", "offering_window")]
+        # A window changes the schedulable years, not the university's rules.
+        # Preserve global and personal conditions for the shared evaluator.
+        board["metadata"]["degree_rules"] = late_meta["degree_rules"]
     apply_offering_windows(board)
     board["metadata"]["board_data_version"] = compute_board_hash(board)
 

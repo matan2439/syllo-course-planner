@@ -65,6 +65,7 @@ export default function UnifiedPlannerWorkspace({
   windowBoards = {},
   degreeRules = [],
   degreeRequirements,
+  degreeCatalog,
 }: {
   programId: string
   repo: RepositoryVM
@@ -76,6 +77,7 @@ export default function UnifiedPlannerWorkspace({
   windowBoards?: Partial<Record<SemesterWindow, WindowBoard>>
   degreeRules?: readonly DegreeRule[]
   degreeRequirements?: RequirementsVM | null
+  degreeCatalog?: import('../../../../shared/planner/degree-catalog').DegreeCatalogFacts
 }) {
   const { t, dir, locale } = useLocale()
   // Profile fact → derived window → the board it plans over and the weekly schedule's four tabs.
@@ -404,6 +406,7 @@ export default function UnifiedPlannerWorkspace({
           <NativePlannerJourney
             degreeRules={degreeRules}
             degreeRequirements={degreeRequirements}
+            degreeCatalog={degreeCatalog}
             key={`${boardId}:${owner.epoch}`}
             companion={companionBoardId
               ? { placement: companionPlacement, node: <CompanionWindowBoard key={`${companionBoardId}:${owner.epoch}`} boardId={companionBoardId} placement={companionPlacement} /> }

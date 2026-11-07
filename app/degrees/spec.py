@@ -78,6 +78,8 @@ RuleKind = Literal[
     "study_duration",
     # How prerequisites are interpreted degree-wide (e.g. a prerequisite may be taken in parallel).
     "prerequisite_policy",
+    # Eligibility is separate from an individually awarded credit/exemption.
+    "course_exemption", "course_recognition", "optional_pathway",
 ]
 
 
