@@ -9,7 +9,8 @@ import { buildCourseFitById, buildModel } from '../generate-plan';
 import { planContextToState } from '../planner_model';
 import { legalSemestersFor } from '../planner_actions';
 import { PlannerWorker } from '../planner_worker';
-import type { ConstraintModel } from '../planner_types';
+import { cloneState, type ConstraintModel } from '../planner_types';
+import { analyzeLockConflicts, type LockConflict } from '../placement_locks';
 import { storedDistributionPolicy } from '../planner_policy_context';
 import type { AcademicFocusArea } from '../academic_interest_profile';
 import type { ClarificationResult } from '../academic_decision_types';
@@ -85,6 +86,13 @@ export class PlanningSession {
    * A hard constraint: new courses go only into these years and placed courses outside them stay put.
    */
   scopeYears?: number[];
+  /**
+   * Committed courses the student explicitly released in this turn ("you may move X").
+   * Everything else on the committed board is locked: never moved, removed or replaced.
+   */
+  readonly unlockedCourseIds = new Set<string>();
+  /** Where the locked placements collide with a rule or a request — explained, never auto-fixed. */
+  lockConflicts: LockConflict[] = [];
 
   constructor(readonly input: PlanningSessionInput) {
     this.preferences = { ...input.preferences };
@@ -134,6 +142,58 @@ export class PlanningSession {
       }
     }
     return placed;
+  }
+
+  /** Locked placements: every committed course the student has not completed or released. */
+  lockedPlacements(): Map<string, string[]> {
+    const locked = new Map<string, string[]>();
+    for (const [id, homes] of this.committedPlacements()) {
+      if (this.unlockedCourseIds.has(id) || this.model.completedCourseIds.has(id) || !this.model.profiles.has(id)) continue;
+      locked.set(id, homes);
+    }
+    return locked;
+  }
+
+  isLocked(courseId: string): boolean {
+    return this.lockedPlacements().has(courseId);
+  }
+
+  /** Locked placements the draft no longer has exactly where the student put them. */
+  lockViolations(): Array<{ course_id: string; semester_id: string }> {
+    const plan = this.worker.getPlan().semesters;
+    return [...this.lockedPlacements()].flatMap(([course_id, homes]) => homes
+      .filter((semester_id) => !(plan[semester_id] ?? []).includes(course_id))
+      .map((semester_id) => ({ course_id, semester_id })));
+  }
+
+  /** The student released these courses: the planner may now change them. The draft is kept. */
+  unlock(courseIds: readonly string[]): void {
+    for (const id of courseIds) this.unlockedCourseIds.add(id);
+    const draft = cloneState(this.worker.getPlan());
+    this.rebuildModel();
+    this.worker = new PlannerWorker(this.model, draft, { topN: 6, rolloutSteps: 80 });
+  }
+
+  /**
+   * Make every locked placement a planner constraint: pinned to its semester and kept even
+   * when the student asked to avoid it or the catalog cannot schedule it — those collisions
+   * are reported in `lockConflicts` instead of failing the build or dropping the course.
+   */
+  private applyLocks(): void {
+    const avoided = new Set<string>();
+    const unavailable = new Map<string, string | null>();
+    const locked = this.lockedPlacements();
+    for (const id of locked.keys()) {
+      this.model.pinnedCourseIds.add(id);
+      const profile = this.model.profiles.get(id)!;
+      const wasAvoided = this.model.disallowedCourseIds.delete(id);
+      if (wasAvoided) avoided.add(id);
+      if (profile.excluded) {
+        if (!wasAvoided) unavailable.set(id, profile.exclusion_reason);
+        this.model.profiles.set(id, { ...profile, excluded: false, exclusion_reason: null });
+      }
+    }
+    this.lockConflicts = analyzeLockConflicts({ model: this.model, placements: locked, avoided, unavailable });
   }
 
   /** Limit this turn's planning to these degree years (null = the whole board). Resets the draft. */
@@ -228,6 +288,15 @@ export class PlanningSession {
 
   /** Rebuild model + draft from the current preferences. Resets the draft to the committed board. */
   rebuild(): void {
+    this.rebuildModel();
+    this.worker = new PlannerWorker(
+      this.model,
+      planContextToState(this.input.committedContext, this.model),
+      { topN: 6, rolloutSteps: 80 },
+    );
+  }
+
+  private rebuildModel(): void {
     this.candidateSet = undefined;
     const focus = (Array.isArray(this.preferences.focus_areas) ? this.preferences.focus_areas : [])
       .map((area) => ({ area: area as AcademicFocusArea, weight: 1 }));
@@ -244,12 +313,8 @@ export class PlanningSession {
       ((this.input.committedContext.semesters ?? []) as any[])
         .flatMap((s) => (s?.courses ?? []).map((c: any) => c?.course_id)),
     );
+    this.applyLocks();
     this.applyScope();
-    this.worker = new PlannerWorker(
-      this.model,
-      planContextToState(this.input.committedContext, this.model),
-      { topN: 6, rolloutSteps: 80 },
-    );
   }
 
   get insights(): CourseInsightsProvider {

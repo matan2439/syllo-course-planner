@@ -103,6 +103,7 @@ const TOOL_LABELS: Record<string, string> = {
   submit_proposal: 'אימות והגשת ההצעה',
   check_timetable: 'בדיקת מערכת שעות וימים פנויים',
   highlight_element: 'סימון על המסך',
+  unlock_courses: 'שחרור קורס נעול לפי בקשתך',
   record_completed_courses: 'רישום הקורסים שהשלמת',
   get_course_syllabus: 'קריאת הסילבוס',
   get_course_grades: 'בדיקת ציונים היסטוריים',
