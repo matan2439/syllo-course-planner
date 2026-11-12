@@ -747,6 +747,13 @@ export function buildAgentTools() {
             reason: `The student asked to plan only degree year(s) ${session.scopeYears!.join(', ')}, but the draft places courses in other years. Remove them or move them into the requested years; if a requirement cannot be met inside the scope, say so to the student instead of placing it elsewhere.`,
             out_of_scope_placements: outOfScope.map((item) => ({ ...item, name_he: nameOf(session, item.course_id) })) };
         }
+        // …and nothing the student placed in the other years may be taken out, even when asked to remove.
+        const outOfScopeRemoved = session.outOfScopeRemovals();
+        if (outOfScopeRemoved.length > 0) {
+          return { accepted: false,
+            reason: `The student asked to plan only degree year(s) ${session.scopeYears!.join(', ')}; courses already placed in other years must stay exactly where they are. Put these back (add_course with their semester_id).`,
+            out_of_scope_removals: outOfScopeRemoved.map((item) => ({ ...item, name_he: nameOf(session, item.course_id) })) };
+        }
         const validation = validationSummary(session);
         if (!validation.valid) {
           return { accepted: false, reason: 'The draft is not valid yet. Fix these issues (or explain to the student why they cannot be fixed).', validation };

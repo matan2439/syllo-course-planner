@@ -154,6 +154,20 @@ export class PlanningSession {
   }
 
   /**
+   * Placements outside the requested scope that the draft no longer has — a removal the scope
+   * forbids. A course that left the board because it is now completed or avoided is not one.
+   */
+  outOfScopeRemovals(): Array<{ course_id: string; semester_id: string }> {
+    if (!this.scopeYears) return [];
+    const plan = this.worker.getPlan().semesters;
+    return [...this.committedPlacements()].flatMap(([course_id, homes]) => homes
+      .filter((semester_id) => !this.scopeYears!.includes(degreeYearOf(semester_id))
+        && !(plan[semester_id] ?? []).includes(course_id)
+        && !this.model.completedCourseIds.has(course_id) && !this.model.disallowedCourseIds.has(course_id))
+      .map((semester_id) => ({ course_id, semester_id })));
+  }
+
+  /**
    * Make the scope a planner constraint: a course may be placed only in a scope semester it is
    * offered in; a course already placed outside the scope keeps exactly its place. Profiles are
    * copied, never edited in place (they are shared with the profile cache).

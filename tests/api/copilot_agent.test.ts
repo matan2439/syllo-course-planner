@@ -502,6 +502,16 @@ describe('a partial request plans only the years the student asked for', () => {
     expect(refused.out_of_scope_placements.length).toBeGreaterThan(0)
   })
 
+  test('a course the student placed in another year cannot be taken out, even when removal is allowed', async () => {
+    const session = await newSession(KNOWN_COURSE_PREFERENCES, withYear3)
+    await callTool(session, 'build_plan', { only_years: [4] })
+    expect(session.outOfScopeRemovals()).toEqual([])
+    await callTool(session, 'remove_course', { course_id: 'MAND' })
+    expect(session.outOfScopeRemovals()).toEqual([{ course_id: 'MAND', semester_id: 'year_3_semester_a' }])
+    const refused = await callTool(session, 'submit_proposal', { ...submit, removals_requested_by_student: true })
+    expect(refused).toMatchObject({ accepted: false, out_of_scope_removals: [expect.objectContaining({ course_id: 'MAND' })] })
+  })
+
   test('a year the board does not have is refused, and null plans the whole board again', async () => {
     const session = await newSession(KNOWN_COURSE_PREFERENCES)
     expect(await callTool(session, 'build_plan', { only_years: [7] })).toMatchObject({ accepted: false })
