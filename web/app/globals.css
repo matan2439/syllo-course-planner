@@ -298,7 +298,7 @@ body {
   font-size: .82rem;
   font-weight: 700;
 }
-.planner-toolbar .planner-drawer-toggle { margin-inline-start: auto; }
+.planner-toolbar .planner-drawer-toggle { flex: 0 0 auto; }
 .planner-drawer-toggle:focus-visible { outline: 2px solid var(--purple); outline-offset: 2px; }
 .planner-drawer-close {
   display: inline-flex;
@@ -701,10 +701,34 @@ body {
 }
 
 /* ── Dual-thumb range (grade-average filter): two native ranges on one track ── */
+/* The co-pilot (or any guide) points at an element: lib/highlight.ts sets data-highlighted briefly. */
+[data-highlighted="true"] {
+  position: relative; z-index: 5; border-radius: .75rem; scroll-margin: 6rem;
+  outline: 3px solid var(--purple-strong); outline-offset: 3px;
+  animation: syllo-highlight-pulse 1.3s ease-in-out 2;
+}
+@keyframes syllo-highlight-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--purple) 0%, transparent); }
+  50% { box-shadow: 0 0 0 10px color-mix(in srgb, var(--purple) 28%, transparent); }
+}
+/* Assistant prose: one measure, one rhythm, direction per paragraph (mixed Hebrew/English/numbers). */
+.chat-text { font-size: .875rem; line-height: 1.7; overflow-wrap: anywhere; }
+.chat-text > * + * { margin-top: .6rem; }
+.chat-text h3 { margin-top: .9rem; font-size: .8rem; font-weight: 800; color: var(--purple-strong); }
+.chat-text > h3:first-child { margin-top: 0; }
+.chat-text h3 + * { margin-top: .3rem; }
+.chat-text ul, .chat-text ol { padding-inline-start: 1.25rem; }
+.chat-text ul { list-style: disc; }
+.chat-text ol { list-style: decimal; }
+.chat-text li + li { margin-top: .2rem; }
+.chat-text strong { font-weight: 700; }
+.chat-text a { color: var(--purple-strong); text-decoration: underline; text-underline-offset: 2px; }
+.chat-text .chat-ltr { unicode-bidi: isolate; direction: ltr; }
+
 .dual-range { position: relative; height: 1.25rem; }
 .dual-range::before, .dual-range::after { content: ''; position: absolute; top: 50%; height: 4px; transform: translateY(-50%); border-radius: 999px; }
 .dual-range::before { inset-inline: 0; background: var(--border); }
-.dual-range::after { left: var(--range-min); right: calc(100% - var(--range-max)); background: var(--purple-strong); }
+.dual-range::after { inset-inline-start: var(--range-min); inset-inline-end: calc(100% - var(--range-max)); background: var(--purple-strong); }
 .dual-range input[type='range'] { position: absolute; inset: 0; z-index: 1; width: 100%; margin: 0; appearance: none; background: none; pointer-events: none; }
 .dual-range input[type='range']::-webkit-slider-thumb { appearance: none; pointer-events: auto; width: 1rem; height: 1rem; border-radius: 999px; border: 2px solid var(--surface-panel); background: var(--purple-strong); cursor: pointer; }
 .dual-range input[type='range']::-moz-range-thumb { pointer-events: auto; width: 1rem; height: 1rem; border-radius: 999px; border: 2px solid var(--surface-panel); background: var(--purple-strong); cursor: pointer; }

@@ -56,7 +56,8 @@ export type ApplyRejectionCode =
   | 'PROFILE_VERSION_MISMATCH'
   | 'ACADEMIC_STATUS_MISMATCH'
   | 'BOARD_VERSION_CONFLICT'
-  | 'IDEMPOTENCY_CONFLICT';
+  | 'IDEMPOTENCY_CONFLICT'
+  | 'REMOVAL_NOT_CONFIRMED';
 
 /** Concise, non-technical Hebrew. No internals, no stack traces, no ids. */
 const REASON_HE: Record<ApplyRejectionCode, string> = {
@@ -73,6 +74,7 @@ const REASON_HE: Record<ApplyRejectionCode, string> = {
   ACADEMIC_STATUS_MISMATCH: 'סטטוס הקורסים שהשלמת השתנה מאז הבנייה — יש לבנות מחדש לפני החלה.',
   BOARD_VERSION_CONFLICT: 'התוכנית הנוכחית התעדכנה בינתיים. יש לרענן ולנסות שוב.',
   IDEMPOTENCY_CONFLICT: 'הבקשה חוזרת על מזהה קיים עם תוכן אחר.',
+  REMOVAL_NOT_CONFIRMED: 'ההצעה מסירה קורסים ששיבצתם בלוח. נדרש אישור מפורש שלכם להסרה לפני ההחלה.',
 };
 
 /** HTTP status per code — 409 for "the world moved", 403/404 for access. */
@@ -90,7 +92,14 @@ const STATUS: Record<ApplyRejectionCode, number> = {
   ACADEMIC_STATUS_MISMATCH: 409,
   BOARD_VERSION_CONFLICT: 409,
   IDEMPOTENCY_CONFLICT: 409,
+  REMOVAL_NOT_CONFIRMED: 409,
 };
+
+/** Courses on the committed board that `next` no longer places anywhere. */
+export function removedByApply(current: CommittedBoard | null, next: CommittedBoard['semesters']): string[] {
+  const kept = new Set(next.flatMap((semester) => semester.courseIds));
+  return [...new Set((current?.semesters ?? []).flatMap((semester) => semester.courseIds))].filter((id) => !kept.has(id));
+}
 
 /**
  * The MINIMUM the client may send. Note what is absent: any plan, any course
@@ -109,6 +118,8 @@ export const applyPlanRequestSchema = z
     idempotency_key: z.string().min(8).max(200),
     /** Echoed back for staleness comparison; never used to build the plan. */
     academic_status: z.unknown().optional(),
+    /** The student's explicit approval to remove courses they placed. A consent flag, never plan content. */
+    confirm_removals: z.boolean().optional(),
   })
   .strict();
 
@@ -253,6 +264,20 @@ async function handle(req: VercelRequest, res: VercelResponse): Promise<void> {
   const request = parsed.data;
   const planContext = await storedPlanContext(owner.ownerId, request.program_id);
   const boardView = (board: CommittedBoard) => committedBoardView(board, planContext);
+
+  // No AI proposal removes a course the student placed unless they explicitly approved the removal.
+  // Checked on both storage paths, before anything is committed. An unknown proposal or candidate
+  // falls through to the ordinary checks below, which answer with their own codes.
+  if (!request.confirm_removals) {
+    const stored = await getProposalStore().get(request.proposal_id);
+    const candidate = stored?.ownerId === owner.ownerId && stored.programId === request.program_id
+      ? stored.candidates.find((item) => item.candidateId === request.candidate_id) : undefined;
+    if (candidate) {
+      const board = await loadBoardWithAddedSemesters(getBoardRepository(), owner.ownerId, request.program_id);
+      // A replay of an apply that already succeeded removes nothing from the board it produced.
+      if (removedByApply(board, candidate.semesters).length > 0) { reject(res, 'REMOVAL_NOT_CONFIRMED'); return; }
+    }
+  }
 
   const atomicStore = getAuthoritativeApplyStore();
   if (atomicStore) {

@@ -80,6 +80,46 @@ test('switching waits for both restored board and weekly state before enabling a
   expect((client.saveStudentWorkspace as jest.Mock).mock.calls.slice(-1)[0][2].plans[0]).toEqual(first);
 });
 
+// Regression: switching slots on a hand-built board stayed on "loading" forever. The live board comes
+// back with the semester column the student added (empty, not part of the older slot) and the timetable
+// with a default term for it, so the old exact-echo check never passed and every slot stayed disabled.
+test('a switch completes when the board returns an added empty semester and the timetable its default term', async () => {
+  const p = props();
+  const term = { year: 2026, semester: 1 as const };
+  const first = plan('plan_11111111', 'C1');
+  const second = { ...plan('plan_22222222', 'C2'), weeklySchedule: { ...EMPTY_WEEKLY_SCHEDULE, termMapping: { A: term }, selections: { 'C2:2026:1': ['02'] } } };
+  (client.loadStudentWorkspace as jest.Mock).mockResolvedValue({ revision: 2, data: { ...programWorkspaceSchema.parse({ plans: [first, second] }), activePlanId: first.id } });
+  (client.restoreStudentPlan as jest.Mock).mockResolvedValue({ board: { version: 'bv_2', semesters: second.semesters }, weeklySchedule: second.weeklySchedule });
+  const view = render(<StudentWorkspaceTools {...p} />);
+  const secondSlot = await screen.findByRole('button', { name: 'תוכנית 2: C2' });
+  await waitFor(() => expect(secondSlot).toBeEnabled());
+  fireEvent.click(secondSlot);
+  await waitFor(() => expect(p.onRestored).toHaveBeenCalledWith(second.weeklySchedule));
+  view.rerender(<StudentWorkspaceTools {...p}
+    snapshot={{ ...snapshot, version: 'bv_2', semesters: [...second.semesters, { semesterId: 'year_5_semester_a', courseIds: [] }] }}
+    weeklySchedule={{ ...second.weeklySchedule, termMapping: { A: term, year_5_semester_a: { year: 2028, semester: 1 } } }} />);
+  await waitFor(() => expect(screen.getByRole('button', { name: 'תוכנית 2: C2' })).toHaveAttribute('aria-pressed', 'true'));
+  await waitFor(() => expect(screen.getByRole('button', { name: 'תוכנית 1: C1' })).toBeEnabled());
+  expect(screen.queryByText('טוען תוכנית…')).not.toBeInTheDocument();
+  // The other slot is untouched, and the active one now records the live board.
+  const saved = (client.saveStudentWorkspace as jest.Mock).mock.calls.slice(-1)[0][2];
+  expect(saved.plans[0]).toEqual(first);
+  expect(saved.activePlanId).toBe(second.id);
+});
+
+test('a switch still waits while the board shows other courses than the target', async () => {
+  const p = props(), first = plan('plan_11111111', 'C1'), second = plan('plan_22222222', 'C2');
+  (client.loadStudentWorkspace as jest.Mock).mockResolvedValue({ revision: 2, data: { ...programWorkspaceSchema.parse({ plans: [first, second] }), activePlanId: first.id } });
+  (client.restoreStudentPlan as jest.Mock).mockResolvedValue({ board: { version: 'bv_2', semesters: second.semesters }, weeklySchedule: second.weeklySchedule });
+  render(<StudentWorkspaceTools {...p} />);
+  const secondSlot = await screen.findByRole('button', { name: 'תוכנית 2: C2' });
+  await waitFor(() => expect(secondSlot).toBeEnabled());
+  fireEvent.click(secondSlot);
+  await waitFor(() => expect(p.onRestored).toHaveBeenCalled());
+  await act(async () => { await new Promise((resolve) => setTimeout(resolve, 50)); });
+  expect(screen.getByRole('button', { name: 'תוכנית 1: C1' })).toBeDisabled(); // still the old board: not landed
+});
+
 test('initial hydration preserves the authoritative live board and restores only the slot timetable', async () => {
   const p = { ...props(), onWeeklyHydrated: jest.fn() }, saved = { ...plan('plan_22222222', 'C2'), weeklySchedule: { ...EMPTY_WEEKLY_SCHEDULE, freeDays: ['ו' as const] } };
   (client.loadStudentWorkspace as jest.Mock).mockResolvedValue({ revision: 2, data: { ...programWorkspaceSchema.parse({ plans: [saved] }), activePlanId: saved.id } });
@@ -94,12 +134,13 @@ test('initial hydration preserves the authoritative live board and restores only
 test('a rejected restore preserves the active slot and visible board', async () => {
   const p = props(), first = plan('plan_11111111', 'C1'), second = plan('plan_22222222', 'C2');
   (client.loadStudentWorkspace as jest.Mock).mockResolvedValue({ revision: 1, data: { ...programWorkspaceSchema.parse({ plans: [first, second] }), activePlanId: first.id } });
-  (client.restoreStudentPlan as jest.Mock).mockRejectedValue(new client.WorkspaceError('PLAN_INVALID'));
+  (client.restoreStudentPlan as jest.Mock).mockRejectedValue(new client.WorkspaceError('PLAN_INVALID', ['Missing mandatory: C3']));
   render(<StudentWorkspaceTools {...p} />);
   const secondSlot = await screen.findByRole('button', { name: 'תוכנית 2: C2' });
   await waitFor(() => expect(secondSlot).toBeEnabled());
   fireEvent.click(secondSlot);
   await screen.findByText(/החלופה אינה עומדת בכללים העדכניים/);
+  expect(screen.getByText(/Missing mandatory: C3/)).toBeInTheDocument();
   expect(p.onRestored).not.toHaveBeenCalled();
   expect(screen.getByRole('button', { name: 'תוכנית 1: C1' })).toHaveAttribute('aria-pressed', 'true');
   expect(client.saveStudentWorkspace).not.toHaveBeenCalled();

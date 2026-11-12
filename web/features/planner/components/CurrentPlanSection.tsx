@@ -13,7 +13,9 @@ import { useLocale } from '../../locale/LocaleProvider'
 
 type Highlight = { semesterId: string; key: number } | null
 
-function withDiffMarkers(board: ReturnType<typeof boardModelToVM>, markers?: Readonly<Record<string, 'new' | 'moved'>>) {
+type DiffMarker = NonNullable<CourseVM['diffMarker']>
+
+function withDiffMarkers(board: ReturnType<typeof boardModelToVM>, markers?: Readonly<Record<string, DiffMarker>>) {
   if (!markers) return board
   return {
     ...board,
@@ -43,7 +45,7 @@ export default function CurrentPlanSection({
   /** The proposal (or selected alternative) applied to the current board, or null when none is being previewed. */
   previewBoard: BoardModel | null
   /** `${semesterId}|${courseId}` → how that placement differs from the committed plan (preview only). */
-  diffMarkers?: Readonly<Record<string, 'new' | 'moved'>>
+  diffMarkers?: Readonly<Record<string, DiffMarker>>
   alternatives: GeneratedPlanModel['alternatives']
   selectedAlternativeId: string | null
   onSelectAlternative: (candidateId: string) => void
@@ -91,7 +93,7 @@ export default function CurrentPlanSection({
     const hours = [...ids].reduce((sum, id) => sum + hoursOf(id), 0)
     return [c.id, { hours: Math.round(hours * 10) / 10, count: ids.size + (completedCategoryCounts[c.id] ?? 0) }]
   }))
-  const badge = <ProgressBadge requirements={requirements} completedHours={completedHours} categoryProgress={categoryProgress} />
+  const badge = <span data-highlight-id="progress" className="inline-flex"><ProgressBadge requirements={requirements} completedHours={completedHours} categoryProgress={categoryProgress} /></span>
   return (
     <section aria-label={t('התוכנית הנוכחית', 'Current plan')}>
       <div className="mb-3 flex items-baseline justify-between gap-2">
@@ -99,7 +101,7 @@ export default function CurrentPlanSection({
           <h2 className="text-sm font-bold tracking-tight">{t('התוכנית הנוכחית', 'Current plan')}</h2>
           {progressSlot ? createPortal(badge, progressSlot) : badge}
         </div>
-        {previewBoard && <span className="text-xs text-[var(--text-muted)]">{t('תצוגה מקדימה של ההצעה — לא נשמר עד לאישור מפורש', 'Proposal preview — saved only after your explicit approval')}</span>}
+        {previewBoard && <span className="text-xs text-[var(--text-muted)]">{t('תצוגה מקדימה של ההצעה: הקורסים שלכם נשארים במקומם, וההצעה מסומנת עליהם — דבר לא משתנה עד לאישור מפורש', 'Preview: your courses stay where they are and the proposal is marked on top — nothing changes until you approve')}</span>}
       </div>
       {(alternatives?.length ?? 0) >= 2 && (
         <AlternativeBoardSwitcher

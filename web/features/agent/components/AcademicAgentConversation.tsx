@@ -24,6 +24,7 @@ import { Card } from '../../../components/ui'
 import CourseClarificationAnswer, { isCourseQuestion, type CourseQuestionId } from './CourseClarificationAnswer'
 import { DEGREE_YEAR_LABELS, DEGREE_YEARS, type DegreeYear } from '../../../lib/planner/semester-window'
 import CourseAnswerReview, { reviewCourseText, type CourseScope, type CourseTextReview } from './CourseAnswerReview'
+import { highlightElement } from '../../../lib/highlight'
 
 type SendConversation = (
   request: ConversationRequest,
@@ -101,6 +102,7 @@ const TOOL_LABELS: Record<string, string> = {
   ask_student: 'שאלת המשך',
   submit_proposal: 'אימות והגשת ההצעה',
   check_timetable: 'בדיקת מערכת שעות וימים פנויים',
+  highlight_element: 'סימון על המסך',
   record_completed_courses: 'רישום הקורסים שהשלמת',
   get_course_syllabus: 'קריאת הסילבוס',
   get_course_grades: 'בדיקת ציונים היסטוריים',
@@ -167,7 +169,7 @@ export default function AcademicAgentConversation({
   // What the co-pilot is doing right now (streamed), cleared when the turn ends.
   const [live, setLive] = useState<LiveTurn | null>(null)
   // Keyed by the assistant turn's index in the transcript.
-  const [turnMeta, setTurnMeta] = useState<Record<number, { steps: string[]; proposal?: ConversationProposal }>>({})
+  const [turnMeta, setTurnMeta] = useState<Record<number, { steps: string[]; proposal?: ConversationProposal; highlights?: Array<{ target: string; label_he: string }> }>>({})
   const logEndRef = useRef<HTMLDivElement | null>(null)
   const composerRef = useRef<HTMLTextAreaElement | null>(null)
   useEffect(() => {
@@ -265,9 +267,15 @@ export default function AcademicAgentConversation({
       if (response.outcome !== 'assistant_unavailable') {
         const steps = [...new Set(response.events.flatMap((event) =>
           event.type === 'tool_status' && event.status !== 'started' ? [TOOL_LABELS[event.tool] ?? 'בדיקה אקדמית'] : []))]
+        // Elements the co-pilot pointed at: a "show me" chip each; the first one that is reachable
+        // without leaving this chat (not in the catalog tab, not on a phone) is shown right away.
+        const highlights = response.events.flatMap((event) => event.type === 'ui_highlight' ? [{ target: event.target, label_he: event.label_he }] : [])
+          .filter((item, index, all) => all.findIndex((other) => other.target === item.target) === index).slice(0, 4)
+        const inPlace = highlights.find((item) => !/^(catalog-course:|filter:|panel:courses$)/.test(item.target))
+        if (inPlace && !window.matchMedia?.('(max-width: 1023px)').matches) void highlightElement(inPlace.target)
         setTurnMeta((current) => ({
           ...current,
-          [nextTranscript.length]: { steps, ...(response.proposal ? { proposal: response.proposal } : {}) },
+          [nextTranscript.length]: { steps, ...(response.proposal ? { proposal: response.proposal } : {}), ...(highlights.length ? { highlights } : {}) },
         }))
         setTranscript((current) => [...current, {
           role: 'assistant',
@@ -399,6 +407,16 @@ export default function AcademicAgentConversation({
                 </details>
               )}
               <div><span className="sr-only">העוזר: </span><ChatText text={turn.text} /></div>
+              {(turnMeta[index]?.highlights?.length ?? 0) > 0 && (
+                <div role="group" aria-label="הצגה על המסך" className="flex flex-wrap gap-1.5">
+                  {turnMeta[index].highlights!.map((item) => (
+                    <button key={item.target} type="button" onClick={() => void highlightElement(item.target)}
+                      className="max-w-full truncate rounded-full border border-[var(--purple)]/50 px-3 py-1 text-xs text-[var(--purple-strong)] transition-colors hover:bg-[var(--purple)]/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--purple)]">
+                      <span aria-hidden="true">◎ </span>הצג במסך: {item.label_he}
+                    </button>
+                  ))}
+                </div>
+              )}
               {turnMeta[index]?.proposal && (
                 <section aria-label="הצעה מוכנה" className="rounded-xl border border-emerald-500/40 bg-emerald-500/5 p-3 text-sm">
                   <p className="font-semibold text-emerald-800 dark:text-emerald-200">✓ ההצעה מוכנה — הלוח מציג תצוגה מקדימה</p>

@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { boardRequirementsValidationSchema } from './wire'
 import { MAX_DEGREE_YEAR } from './window_board'
+import { HIGHLIGHT_TARGET_PATTERN } from './ui-highlight'
 import type { PreferenceProfile } from '../../api/ai/preference_model'
 
 /** Wire limits shared by the server (which bounds its replies) and the client (which bounds its requests). */
@@ -108,8 +109,16 @@ const toolStatusEventSchema = z.object({
     'record_completed_courses',
     'get_course_syllabus',
     'get_course_grades',
+    'highlight_element',
   ]),
   status: z.enum(['started', 'completed', 'rejected']),
+}).strict()
+
+/** The co-pilot points at an element on the student's screen (see ui-highlight.ts). */
+const uiHighlightEventSchema = z.object({
+  type: z.literal('ui_highlight'),
+  target: z.string().trim().regex(HIGHLIGHT_TARGET_PATTERN).max(160),
+  label_he: z.string().trim().min(1).max(80),
 }).strict()
 
 const clarificationEventSchema = z.object({
@@ -225,6 +234,7 @@ export const conversationEventSchema = z.discriminatedUnion('type', [
   clarificationEventSchema,
   alternativesReadyEventSchema,
   assistantUnavailableEventSchema,
+  uiHighlightEventSchema,
 ])
 
 const availableResponseSchema = z.object({

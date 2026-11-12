@@ -6,7 +6,8 @@
  */
 import { tool, type RunContext } from '@openai/agents';
 import { z } from 'zod';
-import type { ClarificationQuestionId, PlanningSession } from './session';
+import { degreeYearOf, PREFERRED_ANSWERED_KEY, type ClarificationQuestionId, type PlanningSession } from './session';
+import { HIGHLIGHT_TARGET_PATTERN, UI_HIGHLIGHT_TARGETS } from '../../../shared/planner/ui-highlight';
 import {
   allowedSemesters,
   fact,
@@ -38,7 +39,7 @@ export const AGENT_TOOL_NAMES = [
   'get_student_context', 'record_completed_courses', 'get_requirements_gap', 'search_courses', 'get_course_details',
   'get_course_syllabus', 'get_course_grades', 'explain_constraint', 'update_preferences', 'build_plan', 'add_course', 'remove_course',
   'move_course', 'replace_course', 'simulate_changes', 'validate_plan', 'check_timetable',
-  'ask_student', 'submit_proposal',
+  'ask_student', 'submit_proposal', 'highlight_element',
 ] as const;
 export type AgentToolName = (typeof AGENT_TOOL_NAMES)[number];
 
@@ -81,9 +82,6 @@ export function offeringSourceHe(url: string | null): string | null {
 
 const SYLLABUS_SEMESTER_NOTE =
   'Not a source for semesters, days or hours. For which semester the course runs use get_course_details.allowed_semesters and cite its offering_source_he / offering_source_url.';
-
-/** `year_2_semester_a` → 2. */
-const degreeYearOf = (semesterId: string) => Number(/^year_(\d+)_/.exec(semesterId)?.[1] ?? 0);
 
 /** Which degree years the board plans, e.g. "years_1_2". */
 function planningWindow(semesterIds: readonly string[]): string | null {
@@ -212,6 +210,9 @@ export function buildAgentTools() {
           missing_critical_inputs: session.missingCriticalInputs()
             .map((input) => ({ field: input.field, message: input.message })),
           excluded_courses_asked_count: session.excludedCoursesAsked(),
+          // build_plan refuses until both are true.
+          preferred_courses_known: session.preferredCoursesKnown(),
+          avoided_courses_known: session.excludedCoursesKnown(),
         });
       }),
     }),
@@ -441,8 +442,11 @@ export function buildAgentTools() {
           .describe('Weekdays the student wants free of classes (א=Sunday … ו=Friday); checked with check_timetable'),
         excluded_courses_answered: z.boolean().nullable()
           .describe('true when the student answered the courses-to-leave-out question, including "none"'),
+        preferred_courses_answered: z.boolean().nullable()
+          .describe('true when the student answered which courses they would like included, including "none"'),
       }),
       execute: observed('update_preferences', (session, args: {
+        preferred_courses_answered?: boolean | null;
         max_weekly_hours: number | null;
         add_wanted_course_ids: string[] | null; remove_wanted_course_ids: string[] | null;
         add_avoided_course_ids: string[] | null; remove_avoided_course_ids: string[] | null;
@@ -464,7 +468,12 @@ export function buildAgentTools() {
         for (const id of args.remove_wanted_course_ids ?? []) wanted.delete(id);
         for (const id of args.remove_avoided_course_ids ?? []) avoided.delete(id);
         for (const id of args.add_wanted_course_ids ?? []) { wanted.add(id); avoided.delete(id); }
-        for (const id of args.add_avoided_course_ids ?? []) { avoided.add(id); wanted.delete(id); }
+        // A course the degree requires cannot be left out: it stays in the plan and the student is told so.
+        const requiredKept = (args.add_avoided_course_ids ?? []).filter((id) => session.model.profiles.get(id)?.is_mandatory);
+        for (const id of args.add_avoided_course_ids ?? []) {
+          if (requiredKept.includes(id)) continue;
+          avoided.add(id); wanted.delete(id);
+        }
 
         // Only changed lists are written (a move between lists changes both): an
         // untouched, unanswered leave-out list must stay unknown, not become "none".
@@ -475,6 +484,7 @@ export function buildAgentTools() {
         if (changed('disallowed_course_ids', avoided) || args.excluded_courses_answered) {
           patch.disallowed_course_ids = [...avoided];
         }
+        if (args.preferred_courses_answered) patch[PREFERRED_ANSWERED_KEY] = true;
         if (args.max_weekly_hours !== null) patch.max_weekly_hours = args.max_weekly_hours;
         if (args.focus_areas !== null) patch.focus_areas = args.focus_areas;
         if (args.free_days !== null) patch.free_days = args.free_days;
@@ -494,6 +504,10 @@ export function buildAgentTools() {
             free_days: session.preferences.free_days ?? [],
           },
           feasible: hard.outcome === 'feasible',
+          ...(requiredKept.length ? {
+            required_courses_kept: requiredKept.map((id) => ({ course_id: id, name_he: nameOf(session, id) })),
+            required_courses_note: 'These courses are required for the degree, so they were NOT marked as avoided and stay in the plan. Tell the student this explicitly, by course name.',
+          } : {}),
           conflicts: hard.reasons.map((reason) => ({ code: reason.code, course_ids: reason.courseIds, message_he: reason.messageHe })),
           note: 'Draft was reset to the committed board. Call build_plan next.',
         };
@@ -502,9 +516,28 @@ export function buildAgentTools() {
 
     tool({
       name: 'build_plan',
-      description: 'Run the deterministic degree planner with the current preferences, starting from the committed board, and make its best valid plan the working draft. Returns the plan, per-semester loads and validation.',
-      parameters: z.object({}),
-      execute: observed('build_plan', (session) => {
+      description: 'Run the deterministic degree planner with the current preferences, starting from the committed board, and make its best valid plan the working draft. Returns the plan, per-semester loads and validation. Refused until the student was asked which courses they prefer and which to avoid. only_years limits the plan to the degree years the student asked for.',
+      parameters: z.object({
+        only_years: z.array(z.number().int().min(1).max(8)).max(8).nullable()
+          .describe('Degree years the student asked to plan, e.g. [4] for "year 4 only" / "רק שנה ד". null = the whole board. New courses are placed ONLY in these years; courses already placed in other years are not touched.'),
+      }),
+      execute: observed('build_plan', (session, args: { only_years?: number[] | null }) => {
+        const missing = [
+          ...(session.preferredCoursesKnown() ? [] : ['preferred_courses']),
+          ...(session.excludedCoursesKnown() ? [] : ['avoided_courses']),
+        ];
+        if (missing.length) {
+          return {
+            accepted: false,
+            missing,
+            reason: 'Before building, ask the student ONE short question with ask_student covering what is missing: which courses they would like included (asks_preferred_courses true) and which to leave out (question_id excluded_courses). When they answer, record it with update_preferences (preferred_courses_answered / excluded_courses_answered true, also for "none"), then call build_plan.',
+          };
+        }
+        const unknownYears = (args.only_years ?? []).filter((year) => !session.model.knownSemesterIds.some((id) => degreeYearOf(id) === year));
+        if (unknownYears.length) {
+          return { accepted: false, reason: `This board has no semesters for degree year(s) ${unknownYears.join(', ')}. Known semesters: ${session.model.knownSemesterIds.join(', ')}.` };
+        }
+        session.setScope(args.only_years ?? null);
         const { model } = session;
         const initialState = planContextToState(session.input.committedContext, model);
         const set = generateCandidateSet({
@@ -520,8 +553,16 @@ export function buildAgentTools() {
         const selected = selectCandidate(set);
         session.candidateSet = set;
         session.worker = new PlannerWorker(model, cloneState(selected?.state ?? set.legacyState), { topN: 6, rolloutSteps: 80 });
+        const outOfScope = session.outOfScopePlacements();
         return {
           accepted: Boolean(selected),
+          ...(session.scopeYears ? {
+            scope_years: session.scopeYears,
+            scope_note: selected
+              ? 'Only these degree years were planned; every course already placed in other years is unchanged.'
+              : 'The degree requirements cannot all be met inside the requested years. Do NOT place courses in other years: tell the student which requirements remain (get_requirements_gap) and ask whether to widen the scope.',
+            ...(outOfScope.length ? { out_of_scope_placements: outOfScope } : {}),
+          } : {}),
           ...(selected ? {} : { reason: 'The planner found no plan satisfying every rule and constraint; the draft below is its best attempt.' }),
           planner_rationale_he: selected?.rationaleHe ?? null,
           plan: planSummary(session),
@@ -642,11 +683,18 @@ export function buildAgentTools() {
         question_he: z.string().trim().min(1).max(400),
         options_he: z.array(z.string().trim().min(1).max(160)).max(5).describe('2-5 suggested answers, or empty for free text'),
         question_id: z.enum(['completed_courses', 'current_courses', 'excluded_courses', 'max_weekly_hours', 'track_or_focus', 'degree_year']).nullable(),
+        asks_preferred_courses: z.boolean().nullable()
+          .describe('true when the question (also) asks which courses the student would like included in the plan'),
       }),
-      execute: observed('ask_student', (session, args: { question_he: string; options_he: string[]; question_id: ClarificationQuestionId | null }) => {
+      execute: observed('ask_student', (session, args: { question_he: string; options_he: string[]; question_id: ClarificationQuestionId | null; asks_preferred_courses?: boolean | null }) => {
+        const preferredKnown = session.preferredCoursesKnown();
         if (args.question_id === 'excluded_courses' && session.excludedCoursesKnown()) {
-          return { accepted: false, reason: 'Courses to leave out are already known (recorded, or taken as none after two unanswered asks). Do not ask again.' };
+          return { accepted: false, reason: `Courses to leave out are already known (recorded, or taken as none after two unanswered asks). Do not ask again.${preferredKnown ? '' : ' Ask only which courses to include (question_id null, asks_preferred_courses true).'}` };
         }
+        if (args.asks_preferred_courses && preferredKnown && args.question_id !== 'excluded_courses') {
+          return { accepted: false, reason: 'The student already answered which courses they would like included in this conversation. Do not ask again.' };
+        }
+        if (args.asks_preferred_courses && !preferredKnown) session.recordPreferredAsked();
         session.recordAsked(args.question_id ?? undefined);
         session.question = {
           questionHe: args.question_he,
@@ -654,6 +702,29 @@ export function buildAgentTools() {
           ...(args.question_id ? { questionId: args.question_id } : {}),
         };
         return { asked: true };
+      }),
+    }),
+
+    tool({
+      name: 'highlight_element',
+      description: `Point at something on the student's screen while you explain: the page scrolls to it and it glows for a few seconds. target is "course:<course_id>" (a course card on the board), "catalog-course:<course_id>" (the course in the catalog list), or one of: ${UI_HIGHLIGHT_TARGETS.join(', ')}. Use it for the one or two elements your explanation is about, not for everything you mention.`,
+      parameters: z.object({
+        target: z.string().trim().regex(HIGHLIGHT_TARGET_PATTERN).max(160),
+        label_he: z.string().trim().min(1).max(80).describe('Short Hebrew name of the element, shown on its "show me" chip'),
+      }),
+      execute: observed('highlight_element', (session, { target, label_he }: { target: string; label_he: string }) => {
+        const courseId = /^(?:catalog-)?course:(.+)$/.exec(target)?.[1];
+        if (courseId && !session.model.profiles.has(courseId)) {
+          return { accepted: false, reason: 'Unknown course id — resolve it with search_courses first.' };
+        }
+        if (!courseId && !(UI_HIGHLIGHT_TARGETS as readonly string[]).includes(target)) {
+          return { accepted: false, reason: `Unknown target. Use course:<course_id>, catalog-course:<course_id> or one of: ${UI_HIGHLIGHT_TARGETS.join(', ')}.` };
+        }
+        if (target.startsWith('course:') && !semesterOf(session.worker.getPlan(), courseId!) && !session.committedPlacements().has(courseId!)) {
+          return { accepted: false, reason: 'That course is not on the board. Use catalog-course:<course_id> to point at it in the catalog.' };
+        }
+        session.emit({ type: 'ui_highlight', target, label_he });
+        return { accepted: true, note: 'The element is highlighted when your reply arrives. Refer to it by its name in the text.' };
       }),
     }),
 
@@ -668,6 +739,21 @@ export function buildAgentTools() {
       }),
       execute: observed('submit_proposal', (session, { summary_he, tradeoffs_he, removals_requested_by_student, extra_hours_reason_he }: {
         summary_he: string; tradeoffs_he: string[]; removals_requested_by_student: boolean; extra_hours_reason_he: string | null }) => {
+        // A partial request ("year 4 only") is a hard limit: nothing new lands outside it. Checked on
+        // the final draft, whatever built it, before the student can see or apply it.
+        const outOfScope = session.outOfScopePlacements();
+        if (outOfScope.length > 0) {
+          return { accepted: false,
+            reason: `The student asked to plan only degree year(s) ${session.scopeYears!.join(', ')}, but the draft places courses in other years. Remove them or move them into the requested years; if a requirement cannot be met inside the scope, say so to the student instead of placing it elsewhere.`,
+            out_of_scope_placements: outOfScope.map((item) => ({ ...item, name_he: nameOf(session, item.course_id) })) };
+        }
+        // …and nothing the student placed in the other years may be taken out, even when asked to remove.
+        const outOfScopeRemoved = session.outOfScopeRemovals();
+        if (outOfScopeRemoved.length > 0) {
+          return { accepted: false,
+            reason: `The student asked to plan only degree year(s) ${session.scopeYears!.join(', ')}; courses already placed in other years must stay exactly where they are. Put these back (add_course with their semester_id).`,
+            out_of_scope_removals: outOfScopeRemoved.map((item) => ({ ...item, name_he: nameOf(session, item.course_id) })) };
+        }
         const validation = validationSummary(session);
         if (!validation.valid) {
           return { accepted: false, reason: 'The draft is not valid yet. Fix these issues (or explain to the student why they cannot be fixed).', validation };

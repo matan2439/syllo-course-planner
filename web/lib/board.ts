@@ -65,7 +65,7 @@ export type CourseVM = {
   /** A year-long course spanning both semester halves as one atomic placement — never independently movable. */
   isAnnual?: boolean
   /** Set only while a proposal is previewed on the board: how this placement differs from the committed plan. */
-  diffMarker?: 'new' | 'moved'
+  diffMarker?: 'new' | 'moved' | 'moving' | 'removed'
 }
 
 export type SemesterVM = {

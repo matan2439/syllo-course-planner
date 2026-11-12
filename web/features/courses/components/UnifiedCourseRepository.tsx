@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import { HIGHLIGHT_EVENT } from '../../../../shared/planner/ui-highlight'
 import type { RepoCourseVM, RepositoryVM } from '../../../lib/repository'
 import { buildCourseDetails, type CourseDetailsVM } from '../../../lib/course-details'
 import CourseDetailsPanel from './CourseDetailsPanel'
@@ -85,6 +86,18 @@ export default function UnifiedCourseRepository({
   const [draggingCourseId, setDraggingCourseId] = useState<string | null>(null)
   const selected = useMemo(() => new Set(selectedCourseIds), [selectedCourseIds])
   const filtered = useMemo(() => filterRepository(repo, query, { ...filters, favoriteIds: favorites }), [query, repo, filters, favorites])
+  // Someone points at a course (lib/highlight.ts) that the current search or filters hide: clear them,
+  // keeping only the sort, so the card exists when the highlight looks for it.
+  const hiddenByFilters = (courseId: string) => !filtered.some((category) => category.courses.some((course) => course.id === courseId))
+  useEffect(() => {
+    const reveal = (event: Event) => {
+      const target = String((event as CustomEvent).detail?.target ?? '')
+      const courseId = /^catalog-course:(.+)$/.exec(target)?.[1]
+      if (courseId && hiddenByFilters(courseId)) { setQuery(''); setFilters((old) => ({ sort: old.sort })) }
+    }
+    window.addEventListener(HIGHLIGHT_EVENT, reveal)
+    return () => window.removeEventListener(HIGHLIGHT_EVENT, reveal)
+  })
   const shown = filtered.reduce((sum, category) => sum + category.courses.length, 0)
   const status = t(`מוצגים ${shown} מתוך ${repo.totalCourses} קורסים`, `Showing ${shown} of ${repo.totalCourses} courses`)
   const compared = repo.categories.flatMap((category) => category.courses.map((course) => ({ ...course, category: category.title }))).filter((course) => compareIds.includes(course.id))
@@ -181,6 +194,7 @@ export default function UnifiedCourseRepository({
                 <div
                   key={course.id}
                   data-drag-card
+                  data-highlight-id={`catalog-course:${course.id}`}
                   draggable={draggable}
                   data-dragging={draggingCourseId === course.id ? 'true' : undefined}
                   className={draggable ? 'planner-drag-source' : undefined}

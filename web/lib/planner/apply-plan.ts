@@ -29,6 +29,38 @@ export function applyGeneratedToBoard(generated: GeneratedPlanModel, base: Board
   }
 }
 
+/** A committed placement the previewed proposal would change: moved elsewhere, or dropped. */
+export type LeavingMarker = 'moving' | 'removed'
+
+/**
+ * Preview a proposal ON the board without hiding anything the student placed. Every committed
+ * placement stays exactly where it is; the proposal's placements are added around them. Placements
+ * the proposal would change come back in `leaving` (`${semesterId}|${courseId}`), so the board can
+ * label them instead of dropping them. Nothing here changes the committed board.
+ */
+export function overlayProposalOnBoard(
+  generated: Pick<GeneratedPlanModel, 'semesters'>, base: BoardModel,
+): { board: BoardModel; leaving: Record<string, LeavingMarker> } {
+  const proposed = new Map(generated.semesters.map((s) => [s.semesterId, s.courseIds]))
+  const placedAnywhere = new Set(generated.semesters.flatMap((s) => s.courseIds.map(normalizeCourseId)))
+  const leaving: Record<string, LeavingMarker> = {}
+  const semesterIds = [...new Set([...base.semesters.map((s) => s.semesterId), ...generated.semesters.map((s) => s.semesterId)])]
+  const semesters = semesterIds.map((semesterId) => {
+    const here = proposed.get(semesterId) ?? []
+    const hereIds = new Set(here.map(normalizeCourseId))
+    const kept = (base.semesters.find((s) => s.semesterId === semesterId)?.courses ?? [])
+      .filter((course) => !hereIds.has(normalizeCourseId(course.courseId)))
+    for (const course of kept) {
+      leaving[`${semesterId}|${course.courseId}`] = placedAnywhere.has(normalizeCourseId(course.courseId)) ? 'moving' : 'removed'
+    }
+    return { semesterId, courses: [...here.map((id) => resolve(base, id)), ...kept] }
+  })
+  return {
+    board: { catalogRevision: base.catalogRevision, courseCatalog: base.courseCatalog, requirementsValidation: base.requirementsValidation, semesters },
+    leaving,
+  }
+}
+
 /** Courses placed in `base` but absent from every semester of `generated`. */
 export function removedCourseIds(
   base: BoardModel,

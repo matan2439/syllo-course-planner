@@ -1,6 +1,7 @@
 'use client'
 
-import { useId, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { useEffect, useId, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { HIGHLIGHT_EVENT } from '../../../../shared/planner/ui-highlight'
 import type { AssessmentKind, RepositoryVM } from '../../../lib/repository'
 import { filterRepository, type RepositoryFilters, type RepositorySort } from '../../../lib/repository-filters'
 import { useLocale } from '../../locale/LocaleProvider'
@@ -62,8 +63,8 @@ export function RepositoryAppliedFilters({ repo, filters, onChange }: ControlsPr
   </div>
 }
 
-function Facet({ title, count = 0, open = false, children }: { title: string; count?: number; open?: boolean; children: ReactNode }) {
-  return <details className="repository-facet border-t border-[var(--border)]" open={open}>
+function Facet({ title, count = 0, open = false, target, children }: { title: string; count?: number; open?: boolean; target: string; children: ReactNode }) {
+  return <details className="repository-facet border-t border-[var(--border)]" open={open} data-highlight-id={target}>
     <summary className={`flex cursor-pointer list-none items-center gap-2 py-3 text-xs font-semibold ${focusClass}`}>
       <span className="flex-1">{title}</span>{count > 0 && <span className="rounded bg-[var(--purple)]/10 px-1.5 py-0.5 text-[10px] text-[var(--purple)]" aria-hidden="true">{count}</span>}
       <span className="repository-facet-chevron text-[var(--text-muted)]" aria-hidden="true">⌄</span>
@@ -77,6 +78,12 @@ export default function RepositoryDiscoveryControls({ repo, filters, onChange, q
   const panelId = useId()
   const toggleRef = useRef<HTMLButtonElement>(null)
   const [expanded, setExpanded] = useState(false)
+  // A filter someone points at (lib/highlight.ts) must be on screen: open the collapsed panel.
+  useEffect(() => {
+    const reveal = (event: Event) => { if (String((event as CustomEvent).detail?.target).startsWith('filter:')) setExpanded(true) }
+    window.addEventListener(HIGHLIGHT_EVENT, reveal)
+    return () => window.removeEventListener(HIGHLIGHT_EVENT, reveal)
+  }, [])
   const update = (patch: Partial<RepositoryFilters>) => onChange({ ...filters, ...patch })
   const gradeActive = filters.minGrade != null || filters.maxGrade != null
   const activeCount = (filters.categoryIds?.length ?? 0) + (filters.semesters?.length ?? 0) + (filters.assessments?.length ?? 0) + Number(gradeActive) + Number(!!filters.favoritesOnly)
@@ -102,24 +109,27 @@ export default function RepositoryDiscoveryControls({ repo, filters, onChange, q
     <div id={panelId} className="repository-filter-body px-3.5 [@container_course-repository_(min-width:42rem)]:!block" data-expanded={expanded}>
       <div className="repository-filter-heading items-center justify-between gap-2 py-3 text-sm font-semibold [@container_course-repository_(min-width:42rem)]:!flex"><span>{t('סינון קורסים', 'Filter courses')}</span><span className="text-xs font-normal text-[var(--text-muted)]">{activeCount || ''}</span></div>
       {savedSearchControls}
-      <Facet title={t('קטגוריה', 'Category')} count={filters.categoryIds?.length} open>
+      <Facet target="filter:category" title={t('קטגוריה', 'Category')} count={filters.categoryIds?.length} open>
         <div className="max-h-60 overflow-y-auto">{repo.categories.map((category) => <div key={category.id}>{choice(category.title, filters.categoryIds?.includes(category.id) ?? false, () => update({ categoryIds: toggle(filters.categoryIds, category.id) }), categoryCounts.get(category.id) ?? 0)}</div>)}</div>
       </Facet>
-      <Facet title={t('סמסטר מוצע', 'Offered semester')} count={filters.semesters?.length} open>
+      <Facet target="filter:semester" title={t('סמסטר מוצע', 'Offered semester')} count={filters.semesters?.length} open>
         {SEMESTERS.map(([value, he, en]) => <div key={value}>{choice(t(he, en), filters.semesters?.includes(value) ?? false, () => update({ semesters: toggle(filters.semesters, value) }), count({ semesters: [value] }))}</div>)}
       </Facet>
-      <Facet title={t('הערכה מסכמת', 'Final assessment')} count={filters.assessments?.length}>
+      <Facet target="filter:assessment" title={t('הערכה מסכמת', 'Final assessment')} count={filters.assessments?.length}>
         {ASSESSMENTS.map(([value, he, en]) => <div key={value}>{choice(t(he, en), filters.assessments?.includes(value) ?? false, () => update({ assessments: toggle(filters.assessments, value) }), count({ assessments: [value] }))}</div>)}
       </Facet>
-      <Facet title={t('ממוצע ציונים היסטורי', 'Historical grade average')} count={Number(gradeActive)}>
+      <Facet target="filter:grade" title={t('ממוצע ציונים היסטורי', 'Historical grade average')} count={Number(gradeActive)}>
         <div className="grid grid-cols-2 gap-2">{(['minGrade', 'maxGrade'] as const).map((bound) => {
           const label = bound === 'minGrade' ? t('ממוצע מינימלי', 'Minimum average') : t('ממוצע מקסימלי', 'Maximum average')
           return <label key={bound} className="flex min-w-0 flex-col gap-1.5 text-[11px] text-[var(--text-muted)]">{label}<input type="number" min={0} max={100} step={1} className={`${inputClass} w-full text-[var(--text)]`} value={filters[bound] ?? ''} placeholder={bound === 'minGrade' ? '0' : '100'} onChange={(event) => setGrade(bound, event.target.value)} /></label>
         })}</div>
-        {/* One track, two thumbs: the thumbs never cross (setGrade keeps min ≤ max). */}
-        <div className="dual-range mt-3" dir="ltr" style={{ '--range-min': `${filters.minGrade ?? 0}%`, '--range-max': `${filters.maxGrade ?? 100}%` } as CSSProperties}>
+        {/* One track, two thumbs: the thumbs never cross (setGrade keeps min ≤ max). The track follows the
+            page direction, so each thumb sits under its own number field (in Hebrew the minimum is on the right). */}
+        <div className="dual-range mt-3" style={{ '--range-min': `${filters.minGrade ?? 0}%`, '--range-max': `${filters.maxGrade ?? 100}%` } as CSSProperties}>
           {(['minGrade', 'maxGrade'] as const).map((bound) => <input key={bound} type="range" min={0} max={100}
             aria-label={bound === 'minGrade' ? t('ממוצע מינימלי', 'Minimum average') : t('ממוצע מקסימלי', 'Maximum average')}
+            // When the thumbs meet in the upper half only the minimum can still move: keep it reachable.
+            style={{ zIndex: bound === 'minGrade' && (filters.minGrade ?? 0) > 50 ? 2 : 1 }}
             value={filters[bound] ?? (bound === 'minGrade' ? 0 : 100)}
             onChange={(event) => {
               const value = Number(event.target.value)
@@ -132,7 +142,7 @@ export default function RepositoryDiscoveryControls({ repo, filters, onChange, q
         {choice(t('כלול גם ממוצע לא ידוע בטווח', 'Include unknown averages in range'), filters.includeUnknownGrades ?? false, () => update({ includeUnknownGrades: !filters.includeUnknownGrades }))}
         <p className="mt-1 text-[10px] leading-4 text-[var(--text-muted)]">{t('הממוצע מבוסס על נתוני עבר ואינו תחזית לציון.', 'Averages reflect past results and do not predict your grade.')}</p>
       </Facet>
-      <div className="border-t border-[var(--border)] py-2">{choice(t('מועדפים בלבד', 'Favorites only'), filters.favoritesOnly ?? false, () => update({ favoritesOnly: !filters.favoritesOnly }))}</div>
+      <div data-highlight-id="filter:favorites" className="border-t border-[var(--border)] py-2">{choice(t('מועדפים בלבד', 'Favorites only'), filters.favoritesOnly ?? false, () => update({ favoritesOnly: !filters.favoritesOnly }))}</div>
       <button type="button" onClick={() => onChange({ sort: filters.sort })} className={`mb-3 w-full rounded-lg border border-[var(--border)] px-3 py-2 text-xs text-[var(--text-muted)] ${focusClass}`}>{t('ניקוי מסננים', 'Clear filters')}</button>
       <button type="button" onClick={() => { setExpanded(false); toggleRef.current?.focus() }} className={`repository-filter-done mb-3 w-full rounded-lg bg-[var(--purple-strong)] px-3 py-2 text-xs font-semibold text-white [@container_course-repository_(min-width:42rem)]:!hidden ${focusClass}`}>{t('הצגת תוצאות', 'Show results')}</button>
     </div>

@@ -216,6 +216,55 @@ describe('S2 — a valid Apply commits the SERVER’s stored candidate', () => {
   });
 });
 
+// ── an AI proposal never removes a placed course without explicit consent ──────
+
+describe('removing a course the student placed needs their explicit confirmation', () => {
+  /** A proposal on top of the committed board whose only candidate drops one placed course. */
+  async function proposalDroppingOneCourse() {
+    const gen = await generate(OWNER);
+    const first = altsOf(gen)[0];
+    const applied = await apply(OWNER, applyBody(receiptOf(gen), first.candidateId));
+    expect(applied._body.board.version).toBe('bv_1');
+    const record = (await getProposalStore().get(receiptOf(gen).proposalId))!;
+    const committed = applied._body.board.semesters as Array<{ semesterId: string; courseIds: string[] }>;
+    const dropped = committed.flatMap((s) => s.courseIds)[0];
+    const candidate = {
+      ...record.candidates[0], candidateId: 'p_removal_candidate_1',
+      semesters: committed.map((s) => ({ semesterId: s.semesterId, courseIds: s.courseIds.filter((id) => id !== dropped) })),
+    };
+    await getProposalStore().put({
+      ...record, proposalId: 'p_removal', baseBoardVersion: 'bv_1', candidates: [candidate], recommendedCandidateId: candidate.candidateId,
+    });
+    const body = { ...applyBody({ ...receiptOf(gen), proposalId: 'p_removal', baseBoardVersion: 'bv_1' }, candidate.candidateId) };
+    return { body, dropped, committed };
+  }
+
+  test('without the confirmation the Apply is refused and the board keeps every course', async () => {
+    const { body, dropped, committed } = await proposalDroppingOneCourse();
+    const res = await apply(OWNER, body);
+    expect(res.statusCode).toBe(409);
+    expect(res._body).toMatchObject({ ok: false, code: 'REMOVAL_NOT_CONFIRMED' });
+    const board = (await getBoardRepository().load(OWNER, PROGRAM))!;
+    expect(board.version).toBe('bv_1');
+    expect(board.semesters).toEqual(committed);
+    expect(board.semesters.flatMap((s) => s.courseIds)).toContain(dropped);
+  });
+
+  test('with the student’s confirmation the same Apply goes through', async () => {
+    const { body, dropped } = await proposalDroppingOneCourse();
+    const res = await apply(OWNER, { ...body, confirm_removals: true });
+    expect(res.statusCode).toBe(200);
+    expect(res._body.board.version).toBe('bv_2');
+    expect(res._body.board.semesters.flatMap((s: any) => s.courseIds)).not.toContain(dropped);
+  });
+
+  test('a proposal that only adds needs no confirmation', async () => {
+    const gen = await generate(OWNER);
+    const res = await apply(OWNER, applyBody(receiptOf(gen), altsOf(gen)[0].candidateId));
+    expect(res.statusCode).toBe(200);
+  });
+});
+
 // ── rejections ──────────────────────────────────────────────────────────────
 
 describe('S2 — every rejection is typed and changes nothing', () => {
@@ -382,7 +431,8 @@ describe('S2 — atomicity and idempotency', () => {
 
     const smuggled = await apply(OWNER, { ...body, candidate_id: alternatives[1].candidateId });
     expect(smuggled._body.ok).toBe(false);
-    expect(['IDEMPOTENCY_CONFLICT', 'BOARD_VERSION_CONFLICT']).toContain(smuggled._body.code);
+    // The other candidate may also drop a course the first one placed; that is refused even earlier.
+    expect(['IDEMPOTENCY_CONFLICT', 'BOARD_VERSION_CONFLICT', 'REMOVAL_NOT_CONFIRMED']).toContain(smuggled._body.code);
     // Whatever the code, the board still holds the FIRST candidate.
     const board = (await getBoardRepository().load(OWNER, PROGRAM))!;
     expect(board.version).toBe('bv_1');

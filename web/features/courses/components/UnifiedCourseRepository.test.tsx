@@ -1,4 +1,5 @@
-import { fireEvent, render, renderHook, screen, within } from '@testing-library/react'
+import { act, fireEvent, render, renderHook, screen, within } from '@testing-library/react'
+import { HIGHLIGHT_EVENT } from '../../../../shared/planner/ui-highlight'
 import type { RepositoryVM } from '../../../lib/repository'
 import UnifiedCourseRepository from './UnifiedCourseRepository'
 import { LocaleProvider } from '../../locale/LocaleProvider'
@@ -33,6 +34,24 @@ const semesterDestinations = [
 describe('UnifiedCourseRepository', () => {
   beforeEach(() => localStorage.clear())
   afterEach(() => jest.restoreAllMocks())
+
+  test('pointing at a course that the search hides clears the search so its card exists', () => {
+    const { container } = render(<UnifiedCourseRepository repo={repo} selectedCourseIds={[]} onRequestAdd={jest.fn()} />)
+    fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'תרמי' } })
+    const card = (id: string) => container.querySelector(`[data-highlight-id="catalog-course:${id}"]`)
+    expect(card('0542-4241')).toBeNull() // hidden by the search
+    expect(card('0542-4135')).not.toBeNull()
+    act(() => { window.dispatchEvent(new CustomEvent(HIGHLIGHT_EVENT, { detail: { target: 'catalog-course:0542-4241' } })) })
+    expect(card('0542-4241')).not.toBeNull()
+    expect(screen.getByRole('searchbox')).toHaveValue('')
+  })
+
+  test('pointing at a visible course leaves the search alone', () => {
+    render(<UnifiedCourseRepository repo={repo} selectedCourseIds={[]} onRequestAdd={jest.fn()} />)
+    fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'תרמי' } })
+    act(() => { window.dispatchEvent(new CustomEvent(HIGHLIGHT_EVENT, { detail: { target: 'catalog-course:0542-4135' } })) })
+    expect(screen.getByRole('searchbox')).toHaveValue('תרמי')
+  })
 
   test('combines discovery controls and keeps grade unknowns explicit', () => {
     const enriched: RepositoryVM = { ...repo, categories: repo.categories.map((category) => ({ ...category, courses: category.courses.map((course) => ({

@@ -164,8 +164,10 @@ export default function SemesterColumn({
       ) : (
         bodyCourses.map((c) => <CourseCard
           key={c.id} course={c}
-          onRemove={!editableCourseIds || editableCourseIds.has(c.id) ? onRemoveCourse : undefined}
-          onMove={!editableCourseIds || editableCourseIds.has(c.id) ? onMoveCourse : undefined}
+          // In a preview a moved course shows twice: where it really is (editable) and where the
+          // proposal would put it (display only, like any other preview-only card).
+          onRemove={(!editableCourseIds || editableCourseIds.has(c.id)) && c.diffMarker !== 'moved' ? onRemoveCourse : undefined}
+          onMove={(!editableCourseIds || editableCourseIds.has(c.id)) && c.diffMarker !== 'moved' ? onMoveCourse : undefined}
           onSelect={onSelectCourse}
           moveDestinations={moveDestinations} mutationPending={mutationPending}
           onDragStateChange={onDragStateChange}
