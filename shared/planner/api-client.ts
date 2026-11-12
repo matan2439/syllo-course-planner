@@ -100,6 +100,8 @@ export interface ApplyPlanRequest {
   expected_profile_version: number;
   idempotency_key: string;
   academic_status?: unknown;
+  /** The student explicitly approved removing courses they had placed. The server refuses a removal without it. */
+  confirm_removals?: boolean;
 }
 
 export interface CommittedBoardState {

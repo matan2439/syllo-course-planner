@@ -30,7 +30,8 @@ export default function ProposalView({
   applying?: boolean
   /** S5 — the server's typed refusal, in its own words. */
   applyError?: string | null
-  onApply: () => void
+  /** `confirmRemovals` is passed only from the explicit removal confirmation below. */
+  onApply: (opts?: { confirmRemovals?: boolean }) => void
   onReject: () => void
   alternatives?: Alternatives
   selectedAlternativeId?: string | null
@@ -47,7 +48,7 @@ export default function ProposalView({
   const explanation = intentOutcome && (intentOutcome.honored.length + intentOutcome.partiallyHonored.length + intentOutcome.unmet.length + intentOutcome.notesHe.length) > 0
 
   return (
-    <section id="plan-proposal" aria-label="טיוטת תוכנית" className="flex scroll-mt-24 flex-col gap-3 rounded-2xl border border-emerald-500/40 bg-emerald-500/5 p-3 text-sm">
+    <section id="plan-proposal" data-highlight-id="proposal" aria-label="טיוטת תוכנית" className="flex scroll-mt-24 flex-col gap-3 rounded-2xl border border-emerald-500/40 bg-emerald-500/5 p-3 text-sm">
       <header className="flex flex-col gap-1.5">
         <h2 className="text-sm font-bold tracking-tight">הצעת תוכנית</h2>
         <div aria-label="סיכום ההצעה" className="flex flex-wrap gap-1.5 text-xs">
@@ -144,7 +145,7 @@ export default function ProposalView({
         <div role="group" aria-label="אישור הסרת קורסים" className="flex flex-col gap-2 rounded-xl border border-red-500/40 p-3">
           <p>ההחלה תסיר {removed.length} קורסים מהלוח שלך. להמשיך?</p>
           <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={() => { setConfirmingRemoval(false); onApply() }} disabled={!canApply}
+            <button type="button" onClick={() => { setConfirmingRemoval(false); onApply({ confirmRemovals: true }) }} disabled={!canApply}
               className="rounded-full bg-red-600 px-4 py-2 font-semibold text-white disabled:opacity-50">כן, להסיר ולהחיל</button>
             <button type="button" onClick={() => setConfirmingRemoval(false)} className="rounded-full border border-[var(--border)] px-4 py-2">ביטול</button>
           </div>

@@ -17,6 +17,13 @@ const DIFFICULTY_LABELS: Record<string, string> = {
   hard: 'קשה',
   very_hard: 'קשה מאוד',
 }
+/** How a card differs from the committed plan while a proposal is previewed. "moving"/"removed" cards are the student's own placements, still in place. */
+const DIFF_LABELS: Record<NonNullable<CourseVM['diffMarker']>, [string, string]> = {
+  new: [MARKER_LABEL.new ?? 'חדש', 'New'],
+  moved: [MARKER_LABEL.moved ?? 'הוזז', 'Moved'],
+  moving: ['יעבור בהצעה', 'Moves in the proposal'],
+  removed: ['יוסר בהצעה — רק באישורכם', 'Removed in the proposal — only if you approve'],
+}
 const ENGLISH_LABELS: Record<string, string> = {
   mandatory: 'Required', elective: 'Elective', easy: 'Easy', medium: 'Moderate', hard: 'Hard', very_hard: 'Very hard',
 }
@@ -60,6 +67,7 @@ export default function CourseCard({ course, onRemove, onMove, onSelect, moveDes
       className={[movable ? 'planner-drag-source' : '', onSelect ? 'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--purple)] rounded-xl' : ''].filter(Boolean).join(' ') || undefined}
       data-dragging={dragging ? 'true' : undefined}
       data-category={course.categoryId ?? undefined}
+      data-highlight-id={`course:${course.id}`}
       onClick={(event) => {
         if (!onSelect) return
         if ((event.target as HTMLElement | null)?.closest('button,summary,a,input,textarea,select,[data-drag-handle]')) return
@@ -105,7 +113,7 @@ export default function CourseCard({ course, onRemove, onMove, onSelect, moveDes
           {t(TYPE_LABELS[course.type] ?? course.type, ENGLISH_LABELS[course.type] ?? course.type)}
         </Badge>
         {course.diffMarker && (
-          <Badge variant="warn">{t(MARKER_LABEL[course.diffMarker] ?? '', course.diffMarker === 'new' ? 'New' : 'Moved')}</Badge>
+          <Badge variant="warn">{t(...DIFF_LABELS[course.diffMarker])}</Badge>
         )}
         {course.isAnnual && (
           <Badge variant="purple">{t('שנתי (א׳+ב׳)', 'Annual (A+B)')}</Badge>

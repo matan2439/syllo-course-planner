@@ -18,7 +18,7 @@ const alternative = (candidateId: string, labelHe: string) => ({
   workload: { peakHours: 4, totalHours: 8, activePeriods: 2 },
 })
 
-test('renders alternatives as board modes with semester course previews', () => {
+test('each button shows only the alternative name; its courses live in the expandable details', () => {
   const onSelect = jest.fn()
   const alternatives = [
     { ...alternative('a', 'עומס מאוזן'), semesters: [{ semesterId: 'year_3_semester_a', courseIds: ['c-1'] }] },
@@ -26,13 +26,20 @@ test('renders alternatives as board modes with semester course previews', () => 
   ]
   render(<AlternativeBoardSwitcher alternatives={alternatives} selectedId="a" onSelect={onSelect} courseNameById={{ 'c-1': 'מבוא למערכות', 'c-2': 'תכנון מתקדם' }} />)
   expect(screen.getByTestId('alternative-board-switcher')).toHaveTextContent('בחרו חלופה להצגה על הלוח')
-  expect(screen.getByRole('radio', { name: /עומס מאוזן/ })).toHaveAttribute('aria-checked', 'true')
-  expect(screen.getByRole('radio', { name: /עומס מאוזן/ })).toHaveTextContent('מבוא למערכות')
-  expect(screen.getByRole('radio', { name: /עומס מאוזן/ })).toHaveTextContent('שנה ג׳ — סמסטר א׳')
-  const balancedPreview = screen.getByTestId('alternative-preview-a')
-  expect(balancedPreview).toHaveAttribute('aria-label', 'תצוגת לוח: עומס מאוזן')
-  expect(within(balancedPreview).getByText('מבוא למערכות')).toBeInTheDocument()
-  expect(screen.getByRole('radio', { name: /סיום מהיר/ })).toHaveTextContent('תכנון מתקדם')
-  fireEvent.click(screen.getByRole('radio', { name: /סיום מהיר/ }))
+  const first = screen.getByRole('radio', { name: /עומס מאוזן/ })
+  expect(first).toHaveAttribute('aria-checked', 'true')
+  expect(first).toHaveTextContent(/^✓ חלופה א׳ · עומס מאוזן$/)
+  expect(first).not.toHaveTextContent('מבוא למערכות')
+  expect(first).toHaveClass('truncate', 'max-w-full') // long names never overflow a phone
+  const second = screen.getByRole('radio', { name: /סיום מהיר/ })
+  expect(second).toHaveTextContent(/^חלופה ב׳ · סיום מהיר$/)
+  expect(second).not.toHaveTextContent('תכנון מתקדם')
+  // The shown alternative's courses are in the details section, not in a button.
+  const preview = screen.getByTestId('alternative-preview-a')
+  expect(preview).toHaveAttribute('aria-label', 'תצוגת לוח: חלופה א׳ · עומס מאוזן')
+  expect(preview.closest('details')).not.toBeNull()
+  expect(within(preview).getByText('מבוא למערכות')).toBeInTheDocument()
+  expect(within(preview).getByText('שנה ג׳ — סמסטר א׳')).toBeInTheDocument()
+  fireEvent.click(second)
   expect(onSelect).toHaveBeenCalledWith('b')
 })

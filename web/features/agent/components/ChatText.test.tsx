@@ -12,6 +12,16 @@ test('assistant text renders paragraphs, lists, bold and safe links only', () =>
   expect(screen.getAllByRole('link')).toHaveLength(1)
 })
 
+test('headings, numbered steps and per-block direction keep mixed Hebrew/English readable', () => {
+  const { container } = render(<ChatText text={'זו התשובה.\n\n## מה כדאי לעשות\n1. לפתוח את כלי תכנון\n2. לבחור את 0509-1234\n\nIntroduction to Control is taught in English.'} />)
+  expect(screen.getByRole('heading', { name: 'מה כדאי לעשות' })).toBeInTheDocument()
+  expect(container.querySelectorAll('ol > li')).toHaveLength(2)
+  // Every block resolves its own direction; a course number never flips inside Hebrew text.
+  expect([...container.querySelectorAll('.chat-text > *')].every((block) => block.getAttribute('dir') === 'auto')).toBe(true)
+  expect(screen.getByText('0509-1234').tagName).toBe('BDI')
+  expect(container.textContent).not.toContain('##')
+})
+
 test('a course question offers one-click scopes and select-all for a search', () => {
   const onConfirm = jest.fn()
   render(<CourseClarificationAnswer questionId="completed_courses" disabled={false} onConfirm={onConfirm}

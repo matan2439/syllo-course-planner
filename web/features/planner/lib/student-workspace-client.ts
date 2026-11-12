@@ -5,12 +5,15 @@ import { createEmptyBiddingDraft } from '../../../../shared/planner/bidding';
 import { biddingRoundSnapshotSchema } from '../../../../shared/planner/bidding-rounds';
 import type { CommittedBoardState } from '../../../../shared/planner/api-client';
 const URL = '/api/ai/student-workspace';
-export class WorkspaceError extends Error { constructor(readonly code: string) { super(code); } }
+export class WorkspaceError extends Error {
+  constructor(readonly code: string, readonly details: string[] = []) { super(code); }
+}
 async function request(url: string, body?: unknown) {
   const response = await fetch(url, { method: body ? 'POST' : 'GET', credentials: 'same-origin', cache: 'no-store',
     ...(body ? { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {}) });
   const result = await response.json();
-  if (!response.ok || result.ok !== true) throw new WorkspaceError(result.code ?? 'WORKSPACE_UNAVAILABLE');
+  if (!response.ok || result.ok !== true) throw new WorkspaceError(result.code ?? 'WORKSPACE_UNAVAILABLE',
+    Array.isArray(result.details) ? result.details.filter((detail: unknown): detail is string => typeof detail === 'string').slice(0, 5) : []);
   return result;
 }
 function workspace(result: any) {

@@ -24,6 +24,7 @@ import type { BoardSnapshot } from '../lib/saved-plans'
 import { EMPTY_WEEKLY_SCHEDULE, weeklyScheduleSchema, type SavedWeeklySchedule } from '../../../../shared/planner/student-workspace'
 import type { WeeklyScheduleState } from '../../../lib/planner/schedule-storage'
 import { semesterLabel } from '../../locale/semester-label'
+import { HIGHLIGHT_EVENT } from '../../../../shared/planner/ui-highlight'
 
 type RailTab = 'courses' | 'agent'
 type MainTab = 'board' | 'schedule' | 'bidding'
@@ -258,6 +259,24 @@ export default function UnifiedPlannerWorkspace({
     return () => { document.removeEventListener('keydown', onKeyDown); document.removeEventListener('pointerdown', onPointerDown) }
   }, [profileAnchor])
 
+  // Something on this workspace is being pointed at (lib/highlight.ts): bring its view on screen first.
+  useEffect(() => {
+    const reveal = (event: Event) => {
+      const target = String((event as CustomEvent<{ target?: string }>).detail?.target ?? '')
+      const phone = window.matchMedia?.('(max-width: 1023px)').matches
+      if (/^(catalog-course:|filter:)/.test(target) || target === 'panel:courses') setRailTab('courses')
+      else if (target === 'panel:assistant' || target === 'proposal') setRailTab('agent')
+      else if (/^course:/.test(target) || ['saved-plans', 'years-view', 'progress', 'view:board'].includes(target)) {
+        setMainTab('board')
+        if (phone) setRailTab(null) // on phones the tools sheet covers the board
+      } else if (target === 'view:schedule' || target === 'view:bidding') {
+        if (phone) setRailTab(null)
+      }
+    }
+    window.addEventListener(HIGHLIGHT_EVENT, reveal)
+    return () => window.removeEventListener(HIGHLIGHT_EVENT, reveal)
+  }, [])
+
   useEffect(() => {
     const close = () => { setRailTab(null); setProfileAnchor(null) }
     window.addEventListener(CLOSE_PANELS_EVENT, close)
@@ -313,6 +332,19 @@ export default function UnifiedPlannerWorkspace({
       <h1 className="sr-only">{t('מרחב התכנון', 'Planning workspace')}</h1>
       {/* One toolbar: view, plan slot, years and the courses/assistant rail. Everything else lives in its view. */}
       <div className="planner-toolbar">
+        {/* First in the bar = the side the tools rail opens on (right in Hebrew). */}
+        <button
+          ref={toggleRef}
+          type="button"
+          aria-controls="workspace-rail"
+          aria-expanded={railTab !== null}
+          aria-label={railTab ? t('סגור כלי תכנון', 'Close planning tools') : t('פתח כלי תכנון', 'Open planning tools')}
+          onClick={() => (railTab ? closeRail() : setRailTab(lastTab.current))}
+          className="planner-drawer-toggle" data-tour="tools-toggle" data-highlight-id="button:planning-tools"
+        >
+          <span aria-hidden="true">☰</span>
+          <span>{t('כלי תכנון', 'Planning tools')}</span>
+        </button>
         <div role="tablist" aria-label={t('תצוגת תכנון', 'Planning view')} className="planner-main-tabs" data-tour="main-tabs">
           {MAIN_TABS.map((tab) => (
             <button
@@ -323,7 +355,7 @@ export default function UnifiedPlannerWorkspace({
               aria-selected={mainTab === tab.id}
               aria-controls={MAIN_PANEL_ID[tab.id]}
               onClick={() => setMainTab(tab.id)}
-              className="planner-rail-tab"
+              className="planner-rail-tab" data-highlight-id={`view:${tab.id}`}
             >
               {t(tab.label, MAIN_TAB_EN[tab.id])}
             </button>
@@ -339,25 +371,13 @@ export default function UnifiedPlannerWorkspace({
           onRestored={onPlanRestored} onWeeklyHydrated={onWeeklyHydrated} onSearchLibrary={onSearchLibrary} onNotesLibrary={onNotesLibrary} onStudiesStore={onStudiesStore}
           biddingTarget={biddingSlot} />}
         {mainTab === 'board' && hasBothWindows && (
-          <label className="planner-years">
+          <label className="planner-years" data-highlight-id="years-view">
             <span className="sr-only">{t('שנים מוצגות', 'Years shown')}</span>
             <select value={yearsView === 'all' ? 'all' : semesterWindow} onChange={(e) => chooseYearsView(e.target.value as YearsView)}>
               {YEARS_VIEWS.map((view) => <option key={view.id} value={view.id}>{t(view.he, view.en)}</option>)}
             </select>
           </label>
         )}
-        <button
-          ref={toggleRef}
-          type="button"
-          aria-controls="workspace-rail"
-          aria-expanded={railTab !== null}
-          aria-label={railTab ? t('סגור כלי תכנון', 'Close planning tools') : t('פתח כלי תכנון', 'Open planning tools')}
-          onClick={() => (railTab ? closeRail() : setRailTab(lastTab.current))}
-          className="planner-drawer-toggle" data-tour="tools-toggle"
-        >
-          <span aria-hidden="true">☰</span>
-          <span>{t('כלי תכנון', 'Planning tools')}</span>
-        </button>
       </div>
 
       <div
@@ -465,7 +485,7 @@ export default function UnifiedPlannerWorkspace({
                   aria-selected={railTab === tab.id}
                   aria-controls={`workspace-panel-${tab.id}`}
                   onClick={() => setRailTab(tab.id)}
-                  className="planner-rail-tab"
+                  className="planner-rail-tab" data-highlight-id={tab.id === 'courses' ? 'panel:courses' : 'panel:assistant'}
                 >
                   {t(tab.label, tab.id === 'courses' ? 'Courses' : 'AI assistant')}
                 </button>
@@ -546,6 +566,7 @@ export default function UnifiedPlannerWorkspace({
             key={item.key}
             type="button"
             data-view={item.key}
+            data-highlight-id={item.key === 'courses' ? 'panel:courses' : item.key === 'agent' ? 'panel:assistant' : `view:${item.key}`}
             onClick={item.go}
             aria-current={item.active ? 'page' : undefined}
             className="planner-bottom-tab"

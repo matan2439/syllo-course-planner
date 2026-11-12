@@ -181,6 +181,7 @@ export default function UnifiedCourseRepository({
                 <div
                   key={course.id}
                   data-drag-card
+                  data-highlight-id={`catalog-course:${course.id}`}
                   draggable={draggable}
                   data-dragging={draggingCourseId === course.id ? 'true' : undefined}
                   className={draggable ? 'planner-drag-source' : undefined}

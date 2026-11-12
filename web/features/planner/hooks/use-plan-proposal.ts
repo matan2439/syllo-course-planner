@@ -110,7 +110,7 @@ export function usePlanProposal({
    * an optimistic update here would be the client asserting an outcome it does
    * not own.
    */
-  const apply = async () => {
+  const apply = async (opts?: { confirmRemovals?: boolean }) => {
     if (!current || !proposal || !canApply || applyPhase === 'applying') return
 
     const receipt = proposal.proposal
@@ -137,6 +137,8 @@ export function usePlanProposal({
         expected_profile_version: receipt.profileVersion,
         idempotency_key: key,
         academic_status: applyAcademicStatus(),
+        // Sent only after the student approved the removal dialog; the server refuses a removal without it.
+        ...(opts?.confirmRemovals ? { confirm_removals: true } : {}),
       })
     } catch {
       // The call never happened: the committed board is untouched and the draft

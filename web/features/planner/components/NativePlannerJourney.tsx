@@ -27,7 +27,7 @@ import type { CourseVM } from '../../../lib/board'
 import { buildCourseDetails, type CourseDetailsVM } from '../../../lib/course-details'
 import CourseDetailsPanel from '../../courses/components/CourseDetailsPanel'
 import { buildDraftVM } from '../../../lib/planner/draft-vm'
-import { applyGeneratedToBoard, removedCourseIds } from '../../../lib/planner/apply-plan'
+import { overlayProposalOnBoard, removedCourseIds } from '../../../lib/planner/apply-plan'
 import type { PreferenceProfile } from '../../../../api/ai/preference_model'
 import { earlyYearCoursesFor, earlyYearHoursById } from '../../../../shared/planner/early_year_courses'
 import { completedCourseIdsOf } from '../../courses/components/CompletedCoursesPanel'
@@ -320,17 +320,20 @@ export default function NativePlannerJourney({
   const draft = effectiveProposal ? buildDraftVM(effectiveProposal, current) : null
   // A manual edit always targets the committed board. Reveal that board while
   // saving or dragging from the repository, and after any edit stales a proposal.
-  const previewBoard = stale || manualEditPhase === 'saving' || activeDrag?.kind === 'repository' ? null : selectedAlternative
-    ? {
-        ...applyGeneratedToBoard({ semesters: selectedAlternative.semesters } as GeneratedPlanModel, current),
-        // Progress the student would have AFTER applying this alternative (server-recomputed).
-        ...(selectedAlternative.requirementsValidation ? { requirementsValidation: selectedAlternative.requirementsValidation } : {}),
-      }
+  // The preview is an OVERLAY: everything the student placed stays visible where it is, and the
+  // proposal's additions and moves are drawn around it. Only an explicit Apply changes the board.
+  const overlay = stale || manualEditPhase === 'saving' || activeDrag?.kind === 'repository' ? null : selectedAlternative
+    ? overlayProposalOnBoard({ semesters: selectedAlternative.semesters }, current)
     : effectiveProposal && draft && !stale && !draft.blocked
         && effectiveProposal.semesters.some((semester) => semester.courseIds.length > 0)
-      ? applyGeneratedToBoard(effectiveProposal, current)
+      ? overlayProposalOnBoard(effectiveProposal, current)
       : null
-  const diffMarkers: Record<string, 'new' | 'moved'> = {}
+  const previewBoard = overlay ? {
+    ...overlay.board,
+    // Progress the student would have AFTER applying this alternative (server-recomputed).
+    ...(selectedAlternative?.requirementsValidation ? { requirementsValidation: selectedAlternative.requirementsValidation } : {}),
+  } : null
+  const diffMarkers: Record<string, 'new' | 'moved' | 'moving' | 'removed'> = { ...overlay?.leaving }
   for (const semester of draft?.semesters ?? []) {
     for (const course of semester.courses) {
       if (course.marker !== 'unchanged') diffMarkers[`${semester.id}|${course.id}`] = course.marker

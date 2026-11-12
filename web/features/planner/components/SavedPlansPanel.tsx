@@ -28,7 +28,7 @@ export default function SavedPlansPanel({ plans, activePlanId, ready, busy, cour
   const diff = pair.length === 2 ? compareSavedPlans(pair[0], pair[1]) : null;
   const names = (ids: string[]) => ids.map((id) => courseNames[id] ?? id).join(', ') || t('ללא', 'None');
   const peakLoad = active ? Math.max(0, ...active.semesters.map((semester) => semester.courseIds.reduce((sum, id) => sum + (courseHours[id] ?? 0), 0))) : 0;
-  return <section data-tour="saved-plans" aria-label={t('התוכניות השמורות שלי', 'My saved plans')} className="min-w-0 space-y-2">
+  return <section data-tour="saved-plans" data-highlight-id="saved-plans" aria-label={t('התוכניות השמורות שלי', 'My saved plans')} className="min-w-0 space-y-2">
     <div className="flex flex-wrap items-center gap-2">
       <div role="group" aria-label={t('בחירת תוכנית', 'Choose a plan')} className="flex max-w-full flex-wrap gap-1.5">
         {plans.map((plan, index) => <button key={plan.id} type="button" aria-label={t(`תוכנית ${index + 1}: ${plan.name}`, `Plan ${index + 1}: ${plan.name}`)} title={plan.name}

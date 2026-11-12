@@ -29,6 +29,18 @@ const sameBoard = (plan: Pick<SavedPlan, 'semesters'>, snapshot: BoardSnapshot) 
 const matches = (plan: Pick<SavedPlan, 'semesters' | 'weeklySchedule'>, snapshot: BoardSnapshot, weekly: SavedWeeklySchedule) =>
   sameBoard(plan, snapshot) && stable(plan.weeklySchedule) === stable(weekly);
 
+// A switch has LANDED when the live surfaces carry the target's content. They are never required to
+// echo it byte for byte: the server re-attaches semester columns the student added (empty ones the
+// target never listed), and the timetable fills in default terms for columns the target did not
+// know. Waiting for an exact echo left the switch stuck on "loading" with every slot disabled.
+const placedOnly = (semesters: SavedPlan['semesters']) => placements(semesters).filter((semester) => semester.courseIds.length > 0);
+const boardLanded = (plan: Pick<SavedPlan, 'semesters'>, snapshot: BoardSnapshot) =>
+  stable(placedOnly(plan.semesters)) === stable(placedOnly(snapshot.semesters));
+const weeklyLanded = (target: SavedWeeklySchedule, live: SavedWeeklySchedule) => {
+  const { termMapping: wanted, ...rest } = target, { termMapping: shown, ...liveRest } = live;
+  return stable(rest) === stable(liveRest) && Object.entries(wanted).every(([id, term]) => stable(shown[id]) === stable(term));
+};
+
 /** Mounted per account + board window. It never caches a prior account's plans. */
 /** Saved profile facts for the journey's "my studies" fields; `save` autosaves (debounced). */
 export interface CompletedStudiesStore { value: CompletedStudies | null; ready: boolean; save: (value: CompletedStudies) => void }
@@ -73,7 +85,7 @@ export default function StudentWorkspaceTools({ programId, snapshot, weeklySched
       : err instanceof WorkspaceError && err.code === 'SIGN_IN_REQUIRED'
         ? t('יש להתחבר לחשבון כדי לשתף תוצאות.', 'Sign in to share results.')
         : err instanceof WorkspaceError && err.code === 'PLAN_INVALID'
-          ? t('החלופה אינה עומדת בכללים העדכניים. הלוח הפעיל נשמר; עדכנו את החלופה ונסו שוב.', 'This alternative fails current rules. Your active board was preserved; update the alternative and retry.')
+          ? [t('החלופה אינה עומדת בכללים העדכניים. הלוח הפעיל נשמר; עדכנו את החלופה ונסו שוב.', 'This alternative fails current rules. Your active board was preserved; update the alternative and retry.'), ...err.details].join(' ')
           : t('הפעולה לא הושלמה. בדקו את החיבור ונסו שוב; השינויים האחרונים עדיין מוצגים כאן.', 'The operation did not finish. Check your connection and retry; your latest changes remain visible here.'));
   }, [t]);
 
@@ -192,7 +204,7 @@ export default function StudentWorkspaceTools({ programId, snapshot, weeklySched
     if (!loaded || !snapshot || conflicted.current) return;
     const switching = pending.current;
     if (switching) {
-      if (switching.initial ? stable(switching.plan.weeklySchedule) !== stable(weeklySchedule) : !matches(switching.plan, snapshot, weeklySchedule)) return;
+      if (!weeklyLanded(switching.plan.weeklySchedule, weeklySchedule) || (!switching.initial && !boardLanded(switching.plan, snapshot))) return;
       pending.current = null; operating.current = false; hydrated.current = true; setHydrationReady(true); setBusy(false);
       const next = { ...ref.current.data, activePlanId: switching.plan.id,
         bidding: switching.plan.bidding ?? ref.current.data.bidding,
