@@ -48,9 +48,16 @@ export interface TimetableResult {
   conflictingCoursePairs: Array<[string, string]>
   /** When infeasible: courses that cannot avoid the free days on their own. */
   coursesBlockingFreeDays: string[]
+  /**
+   * Groups the student chose themselves that sit on a free day or inside a busy time. A chosen
+   * group is never replaced silently: it is kept, and the collision is reported here.
+   */
+  lockedConflicts: Array<{ courseId: string; groupId: string; reason: 'free_day' | 'busy_time' }>
+  /** When infeasible: pairs of the student's own chosen groups that overlap each other. */
+  lockedClashes: Array<[string, string]>
 }
 
-/** Choices the student already made: `${courseId}\0${choiceKey}` → groupId. Kept fixed when still possible. */
+/** Choices the student already made: `${courseId}\0${choiceKey}` → groupId. Fixed while the group still exists. */
 export type LockedChoices = Readonly<Record<string, string>>
 export const lockKey = (courseId: string, group: Pick<ScheduleGroup, 'kind' | 'teachingMode'>) =>
   `${courseId}\u0000${choiceKey(group)}`
@@ -84,15 +91,26 @@ function choicesOf(course: ScheduleCourse): Slot[] | null {
   return slots.length ? slots : null
 }
 
-function slotsFor(courses: readonly ScheduleCourse[], avoidDays: ReadonlySet<string>, locked: LockedChoices = {}, busyTimes: readonly TimeSlot[] = []): Slot[] {
+function slotsFor(
+  courses: readonly ScheduleCourse[], avoidDays: ReadonlySet<string>, locked: LockedChoices = {}, busyTimes: readonly TimeSlot[] = [],
+  lockedConflicts?: TimetableResult['lockedConflicts'],
+): Slot[] {
   const out: Slot[] = []
   for (const course of courses) {
     for (const slot of choicesOf(course) ?? []) {
-      const allowed = slot.options.filter((group) => !group.slots.some((meeting) =>
-        avoidDays.has(meeting.day) || busyTimes.some((busy) => hasOverlap(meeting, busy))))
+      const onFreeDay = (group: ScheduleGroup) => group.slots.some((meeting) => avoidDays.has(meeting.day))
+      const inBusyTime = (group: ScheduleGroup) => group.slots.some((meeting) => busyTimes.some((busy) => hasOverlap(meeting, busy)))
       const lockedId = locked[lockKey(slot.courseId, { kind: slot.kind, teachingMode: slot.mode })]
-      const pinned = allowed.filter((group) => group.groupId === lockedId)
-      out.push({ ...slot, options: pinned.length ? pinned : allowed })
+      // The student's own choice is a hard constraint: it stays even on a free day or in a busy
+      // time, and the collision is reported instead of the group being swapped behind their back.
+      const pinned = slot.options.find((group) => group.groupId === lockedId)
+      if (pinned) {
+        if (onFreeDay(pinned)) lockedConflicts?.push({ courseId: slot.courseId, groupId: pinned.groupId, reason: 'free_day' })
+        else if (inBusyTime(pinned)) lockedConflicts?.push({ courseId: slot.courseId, groupId: pinned.groupId, reason: 'busy_time' })
+        out.push({ ...slot, options: [pinned] })
+        continue
+      }
+      out.push({ ...slot, options: slot.options.filter((group) => !onFreeDay(group) && !inBusyTime(group)) })
     }
   }
   // Most constrained first keeps the search small.
@@ -165,9 +183,11 @@ export function checkTimetable(
   const usable = courses.filter((course) => course.found && choicesOf(course) !== null)
   const unknownCourseIds = courses.filter((course) => !usable.includes(course)).map((course) => course.courseId)
   const avoid = new Set(avoidDays)
-  const slots = slotsFor(usable, avoid, locked, busyTimes)
+  const lockedConflicts: TimetableResult['lockedConflicts'] = []
+  const slots = slotsFor(usable, avoid, locked, busyTimes, lockedConflicts)
   const solution = solve(slots)
-  const base = { unknownCourseIds, conflictingCoursePairs: [] as Array<[string, string]>, coursesBlockingFreeDays: [] as string[] }
+  const base = { unknownCourseIds, conflictingCoursePairs: [] as Array<[string, string]>, coursesBlockingFreeDays: [] as string[],
+    lockedConflicts, lockedClashes: [] as Array<[string, string]> }
 
   if (solution === 'budget') return { feasible: null, selection: [], daysUsed: [], ...base }
   if (solution) {
@@ -183,17 +203,23 @@ export function checkTimetable(
     return { feasible: true, selection, daysUsed: WEEK_DAYS.filter((day) => used.has(day)), ...base }
   }
 
-  // Explain the failure: which courses can't dodge the free days, which pairs clash.
+  // Explain the failure: which courses can't dodge the free days or busy times, which pairs clash
+  // (with the student's chosen groups kept), and which chosen groups overlap each other.
   const coursesBlockingFreeDays = usable
-    .filter((course) => slotsFor([course], avoid).some((slot) => slot.options.length === 0))
+    .filter((course) => slotsFor([course], avoid, locked, busyTimes).some((slot) => slot.options.length === 0))
     .map((course) => course.courseId)
   const conflictingCoursePairs: Array<[string, string]> = []
+  const lockedClashes: Array<[string, string]> = []
+  const lockedGroupsOf = (course: ScheduleCourse) => course.groups.filter((group) =>
+    group.slots.length > 0 && locked[lockKey(course.courseId, group)] === group.groupId)
   for (let i = 0; i < usable.length; i++) {
     for (let j = i + 1; j < usable.length; j++) {
-      if (solve(slotsFor([usable[i], usable[j]], new Set())) === null) {
+      if (lockedGroupsOf(usable[i]).some((a) => lockedGroupsOf(usable[j]).some((b) => clashes(a, b)))) {
+        lockedClashes.push([usable[i].courseId, usable[j].courseId])
+      } else if (solve(slotsFor([usable[i], usable[j]], new Set(), locked)) === null) {
         conflictingCoursePairs.push([usable[i].courseId, usable[j].courseId])
       }
     }
   }
-  return { feasible: false, selection: [], daysUsed: [], unknownCourseIds, conflictingCoursePairs, coursesBlockingFreeDays }
+  return { feasible: false, selection: [], daysUsed: [], unknownCourseIds, conflictingCoursePairs, coursesBlockingFreeDays, lockedConflicts, lockedClashes }
 }

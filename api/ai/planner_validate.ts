@@ -35,9 +35,10 @@ export function buildValidationContext(
     const legal = getLegalSemesters(p as CourseLegalityInfo, model.knownSemesterIds);
     courses[id] = {
       hours: p.hours,
-      // Only restrict to legal semesters when the offering is high-confidence;
-      // otherwise leave unrestricted (a warning, not a hard block).
-      effective_allowed_semesters: legal.confident ? legal.semesters : undefined,
+      // Availability is a hard rule whenever ANY offering data exists (this year's effective list,
+      // the program's list, or the catalog's term letters). Only a course with no offering data at
+      // all is left unrestricted.
+      effective_allowed_semesters: legal.confident || p.offered_semesters?.length ? legal.semesters : undefined,
       offering_window_semesters: p.offering_window_semesters,
       prerequisites: p.prerequisites,
       missing_prerequisites: [],

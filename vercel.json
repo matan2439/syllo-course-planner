@@ -13,6 +13,7 @@
         "includeFiles": [
           "data/config/**",
           "data/boards/**",
+          "data/prerequisites/**",
           "data/grades/snapshots/**"
         ]
       }
@@ -41,6 +42,7 @@
         "includeFiles": [
           "data/config/**",
           "data/boards/**",
+          "data/prerequisites/**",
           "data/grades/snapshots/**"
         ]
       }
@@ -56,6 +58,7 @@
         "includeFiles": [
           "data/config/**",
           "data/boards/**",
+          "data/prerequisites/**",
           "data/grades/snapshots/**"
         ]
       }

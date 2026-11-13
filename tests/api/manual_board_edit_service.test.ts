@@ -104,6 +104,30 @@ describe('R2 — authoritative manual add preparation', () => {
       .toEqual(expect.objectContaining({ ok: false, code: 'UNKNOWN_SEMESTER' }));
   });
 
+  test('availability is a hard rule on the real board: wrong term and not-offered courses are refused with a reason', () => {
+    const boardJson = JSON.parse(readFileSync('data/boards/mechanical_engineering_2027.json', 'utf8'));
+    const real = { ...context, programId: 'mechanical_engineering_2027', preferences: {},
+      planContext: { semesters: boardJson.semesters.map((s: any) => ({ id: s.semester_id, courses: s.courses })), personal_status: context.personalStatus } };
+    const add = (course_id: string, semester_id: string) => prepareManualCourseAdd({ boardJson, context: real, currentBoard: null,
+      request: { ...request(course_id, semester_id), program_id: 'mechanical_engineering_2027' } });
+    // Intro to finite elements is given in semester A only.
+    const wrongTerm = add('0542-4223', 'year_4_semester_b');
+    expect(wrongTerm).toEqual(expect.objectContaining({ ok: false, code: 'PLAN_INVALID' }));
+    expect((wrongTerm as { details?: string[] }).details?.join(' ')).toMatch(/מותר רק ב/);
+    expect(add('0542-4223', 'year_4_semester_a')).toEqual(expect.objectContaining({ ok: true }));
+    // Not offered at all this academic year.
+    expect(add('0542-4226', 'year_4_semester_a')).toEqual(expect.objectContaining({ ok: false, code: 'COURSE_HARD_EXCLUDED' }));
+  });
+
+  test('catalog term letters alone are enough to refuse a wrong-term placement', () => {
+    const board = { ...BOARD, metadata: { ...BOARD.metadata,
+      program_repository_courses: [...BOARD.metadata.program_repository_courses, course('TERM_B', { offered_semesters: ['B'] })] } };
+    expect(prepareManualCourseAdd({ boardJson: board, context, currentBoard: null, request: request('TERM_B', A) }))
+      .toEqual(expect.objectContaining({ ok: false, code: 'PLAN_INVALID' }));
+    expect(prepareManualCourseAdd({ boardJson: board, context, currentBoard: null, request: request('TERM_B', B) }))
+      .toEqual(expect.objectContaining({ ok: true }));
+  });
+
   test('uses the real legality validator for offering and prerequisite timing', () => {
     expect(prepareManualCourseAdd({ boardJson: BOARD, context, currentBoard: null, request: request('ONLY_B', A) }))
       .toEqual(expect.objectContaining({ ok: false, code: 'PLAN_INVALID' }));

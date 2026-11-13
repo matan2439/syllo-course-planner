@@ -34,19 +34,21 @@ import { fetchScheduleFromBidit } from './session';
 import { earlyYearCoursesFor } from '../../../shared/planner/early_year_courses';
 import { completedCreditHours } from '../conversation_clarification';
 import type { CourseProfile } from '../course_profile';
+import { coursePathway } from '../course_pathways';
+import { loadPrerequisiteCatalog } from '../prerequisites';
 
 export const AGENT_TOOL_NAMES = [
   'get_student_context', 'record_completed_courses', 'get_requirements_gap', 'search_courses', 'get_course_details',
   'get_course_syllabus', 'get_course_grades', 'explain_constraint', 'update_preferences', 'build_plan', 'add_course', 'remove_course',
   'move_course', 'replace_course', 'simulate_changes', 'validate_plan', 'check_timetable',
-  'ask_student', 'submit_proposal', 'highlight_element',
+  'ask_student', 'submit_proposal', 'highlight_element', 'unlock_courses', 'get_course_pathway',
 ] as const;
 export type AgentToolName = (typeof AGENT_TOOL_NAMES)[number];
 
 /** Tools that never change the student's data or the draft — the course-panel engine uses only these. */
 export const READ_ONLY_AGENT_TOOLS: readonly AgentToolName[] = [
   'get_student_context', 'get_requirements_gap', 'search_courses', 'get_course_details', 'get_course_syllabus',
-  'get_course_grades', 'explain_constraint', 'simulate_changes', 'validate_plan', 'check_timetable',
+  'get_course_grades', 'explain_constraint', 'simulate_changes', 'validate_plan', 'check_timetable', 'get_course_pathway',
 ];
 
 const courseId = z.string().trim().min(1).max(128);
@@ -110,12 +112,6 @@ function planSummary(session: PlanningSession) {
   }));
 }
 
-function committedCourseIds(session: PlanningSession): string[] {
-  return ((session.input.committedContext.semesters ?? []) as Array<{ courses?: Array<{ course_id?: string }> }>)
-    .flatMap((semester) => (semester?.courses ?? []).map((course) => course?.course_id))
-    .filter((id): id is string => typeof id === 'string');
-}
-
 function validationSummary(session: PlanningSession) {
   const report = session.worker.validateCandidate();
   return {
@@ -140,6 +136,27 @@ function courseStatus(session: PlanningSession, id: string) {
   if (model.disallowedCourseIds.has(id)) return 'avoided';
   const placed = semesterOf(session.worker.getPlan(), id);
   return placed ? `planned:${placed}` : 'available';
+}
+
+const lockConflictRows = (session: PlanningSession) => session.lockConflicts.map((conflict) => ({
+  code: conflict.code,
+  course_ids: conflict.courseIds,
+  ...(conflict.semesterId ? { semester_id: conflict.semesterId } : {}),
+  blocks_validity: conflict.blocksValidity,
+  message_he: conflict.messageHe,
+  resolutions_he: conflict.resolutionsHe,
+}));
+
+const LOCK_CONFLICT_NOTE = 'Locked courses collide with a rule or a request. Nothing was changed. Explain each conflict to the student (message_he), offer its resolutions_he, and ask which they choose with ask_student. Only after they answer, call unlock_courses for the courses they released.';
+
+/** A draft change to a locked course is refused until the student releases it. */
+function lockedRejection(session: PlanningSession, id: string, action: string) {
+  if (!session.isLocked(id)) return null;
+  return {
+    accepted: false,
+    locked: true,
+    reason: `"${nameOf(session, id) ?? id}" is on the student's committed board and is locked: you may not ${action} it. If a change seems needed, explain why and ask the student with ask_student; only after they explicitly agree, call unlock_courses and then retry.`,
+  };
 }
 
 const listOrNull = (schema: z.ZodTypeAny) => z.array(schema).max(40).nullable();
@@ -198,6 +215,9 @@ export function buildAgentTools() {
           completed_course_ids: [...model.completedCourseIds],
           currently_taking_course_ids: [...(model.currentlyPlannedCourseIds ?? [])],
           committed_plan: planSummary(session),
+          // Every committed course is locked: plan around it; never move, remove or replace it.
+          locked_course_ids: [...session.lockedPlacements().keys()],
+          ...(session.lockConflicts.length ? { lock_conflicts: lockConflictRows(session), lock_conflicts_note: LOCK_CONFLICT_NOTE } : {}),
           preferences: {
             max_weekly_hours: model.maxHoursPerSemester,
             hard_cap_hours: model.hardCap,
@@ -364,6 +384,23 @@ export function buildAgentTools() {
           difficulty_score: profile.difficulty_score,
           status: courseStatus(session, course_id),
         }, fact('planner_model', profile.data_confidence, profile.provenance.name_source));
+      }),
+    }),
+
+    tool({
+      name: 'get_course_pathway',
+      description: 'The academic path around one course, from the OFFICIAL prerequisite data: what it requires (AND/OR, and which parts the student has not met), and which courses it leads to (courses that officially require it), with whether each is offered this year. Use it to build a coherent specialization: after an anchor course, look at leads_to for the natural continuation, and say so plainly when a continuation exists but is not offered. Advisory in this version: the planner does not enforce these prerequisites yet, so check unmet_prerequisites yourself before recommending a course. Read-only.',
+      parameters: z.object({ course_id: courseId }),
+      execute: observed('get_course_pathway', (session, { course_id }: { course_id: string }) => {
+        if (!session.model.profiles.has(course_id)) return { course_id, known: false };
+        const catalog = loadPrerequisiteCatalog();
+        const placed = new Set(placedCourseIds(session.worker.getPlan()));
+        const completed = new Set(session.completedCourseIds());
+        return {
+          ...coursePathway({ courseId: course_id, model: session.model, catalog, satisfied: (id) => completed.has(id) || placed.has(id) }),
+          source: 'Official TAU syllabus pages (registrar prerequisite block). prerequisite_status says how sure the data is: verified / verified_none / assumed_none_no_syllabus / unknown.',
+          ...(catalog ? {} : { note: 'The prerequisite catalog is unavailable right now; treat every prerequisite as unknown.' }),
+        };
       }),
     }),
 
@@ -538,12 +575,16 @@ export function buildAgentTools() {
           return { accepted: false, reason: `This board has no semesters for degree year(s) ${unknownYears.join(', ')}. Known semesters: ${session.model.knownSemesterIds.join(', ')}.` };
         }
         session.setScope(args.only_years ?? null);
-        const { model } = session;
+        // Invalid locked placements are tolerated by the SEARCH only, so the rest of the board is still
+        // planned; the strict model validates the result, which stays invalid until the student decides.
+        const model = session.searchModel();
         const initialState = planContextToState(session.input.committedContext, model);
+        const pinnedHome = Object.fromEntries([...session.lockedPlacements()].map(([id, homes]) => [id, homes[0]]));
         const set = generateCandidateSet({
           buildModel: () => model,
           policy: model.distributionPolicy ?? 'neutral',
           initialState,
+          pinnedHome,
           profileVersion: 0,
           // ponytail: under half the default search budget (best plan + two alternatives):
           // a chat turn must stay responsive and inside Vercel's 300s limit even if the
@@ -552,10 +593,12 @@ export function buildAgentTools() {
         });
         const selected = selectCandidate(set);
         session.candidateSet = set;
-        session.worker = new PlannerWorker(model, cloneState(selected?.state ?? set.legacyState), { topN: 6, rolloutSteps: 80 });
+        session.worker = new PlannerWorker(session.model, cloneState(selected?.state ?? set.legacyState), { topN: 6, rolloutSteps: 80 });
         const outOfScope = session.outOfScopePlacements();
+        const invalidLock = session.hasInvalidLockedPlacement();
         return {
-          accepted: Boolean(selected),
+          accepted: Boolean(selected) && !invalidLock,
+          ...(invalidLock ? { reason: 'A committed course breaks an availability rule (lock_conflicts with blocks_validity). The rest of the board was planned around it, but this plan is NOT valid and cannot be submitted until the student decides. Explain the conflict and its valid alternatives, and ask.' } : {}),
           ...(session.scopeYears ? {
             scope_years: session.scopeYears,
             scope_note: selected
@@ -563,8 +606,9 @@ export function buildAgentTools() {
               : 'The degree requirements cannot all be met inside the requested years. Do NOT place courses in other years: tell the student which requirements remain (get_requirements_gap) and ask whether to widen the scope.',
             ...(outOfScope.length ? { out_of_scope_placements: outOfScope } : {}),
           } : {}),
-          ...(selected ? {} : { reason: 'The planner found no plan satisfying every rule and constraint; the draft below is its best attempt.' }),
+          ...(selected || invalidLock ? {} : { reason: 'The planner found no plan satisfying every rule and constraint; the draft below is its best attempt.' }),
           planner_rationale_he: selected?.rationaleHe ?? null,
+          ...(session.lockConflicts.length ? { lock_conflicts: lockConflictRows(session), lock_conflicts_note: LOCK_CONFLICT_NOTE } : {}),
           plan: planSummary(session),
           validation: validationSummary(session),
         };
@@ -583,21 +627,44 @@ export function buildAgentTools() {
       description: 'Remove a course from the draft.',
       parameters: z.object({ course_id: courseId }),
       execute: observed('remove_course', (session, { course_id }: { course_id: string }) =>
-        safeMutation(session.worker, () => session.worker.removeCourse(course_id, 'llm'))),
+        lockedRejection(session, course_id, 'remove')
+        ?? safeMutation(session.worker, () => session.worker.removeCourse(course_id, 'llm'))),
     }),
     tool({
       name: 'move_course',
       description: 'Move a placed course to another semester. Rejected with reasons if illegal.',
       parameters: z.object({ course_id: courseId, to_semester_id: z.string().max(128) }),
       execute: observed('move_course', (session, { course_id, to_semester_id }: { course_id: string; to_semester_id: string }) =>
-        safeMutation(session.worker, () => session.worker.moveCourse(course_id, to_semester_id, 'llm'))),
+        lockedRejection(session, course_id, 'move')
+        ?? safeMutation(session.worker, () => session.worker.moveCourse(course_id, to_semester_id, 'llm'))),
     }),
     tool({
       name: 'replace_course',
       description: 'Swap a placed course for another one (e.g. an elective the student prefers).',
       parameters: z.object({ out_course_id: courseId, in_course_id: courseId, semester_id: z.string().max(128).nullable() }),
       execute: observed('replace_course', (session, { out_course_id, in_course_id, semester_id }: { out_course_id: string; in_course_id: string; semester_id: string | null }) =>
-        safeMutation(session.worker, () => session.worker.replaceCourse(out_course_id, in_course_id, semester_id ?? undefined, 'llm'))),
+        lockedRejection(session, out_course_id, 'replace')
+        ?? safeMutation(session.worker, () => session.worker.replaceCourse(out_course_id, in_course_id, semester_id ?? undefined, 'llm'))),
+    }),
+
+    tool({
+      name: 'unlock_courses',
+      description: 'Release committed (locked) courses so the draft may move, remove or replace them. Call it ONLY after the student explicitly said, in this conversation, that these specific courses may be changed — quote their words. Never call it on your own judgment. The draft is kept; the committed board itself changes only when the student applies a proposal.',
+      parameters: z.object({
+        course_ids: z.array(courseId).min(1).max(20),
+        student_words_he: z.string().trim().min(1).max(300).describe("The student's own sentence that authorizes changing these courses"),
+      }),
+      execute: observed('unlock_courses', (session, { course_ids }: { course_ids: string[]; student_words_he: string }) => {
+        const notOnBoard = course_ids.filter((id) => !session.committedPlacements().has(id));
+        if (notOnBoard.length) return { accepted: false, reason: 'These courses are not on the committed board, so there is nothing to unlock.', course_ids: notOnBoard };
+        session.unlock(course_ids);
+        return {
+          accepted: true,
+          unlocked: course_ids.map((id) => ({ course_id: id, name_he: nameOf(session, id) })),
+          note: 'Only these courses may now be moved, removed or replaced in the draft. Every other committed course stays locked.',
+          ...(session.lockConflicts.length ? { lock_conflicts: lockConflictRows(session) } : {}),
+        };
+      }),
     }),
 
     tool({
@@ -734,11 +801,10 @@ export function buildAgentTools() {
       parameters: z.object({
         summary_he: z.string().trim().min(1).max(1500).describe('Short Hebrew explanation of the plan and how it answers the student'),
         tradeoffs_he: z.array(z.string().trim().min(1).max(300)).max(8).describe('Requests that could not be fully honored, and why'),
-        removals_requested_by_student: z.boolean().describe('true ONLY if the student explicitly asked to drop the board courses this draft removes'),
         extra_hours_reason_he: z.string().trim().max(300).nullable().describe('Why the plan needs more weekly hours than the degree requires (null when it does not exceed)'),
       }),
-      execute: observed('submit_proposal', (session, { summary_he, tradeoffs_he, removals_requested_by_student, extra_hours_reason_he }: {
-        summary_he: string; tradeoffs_he: string[]; removals_requested_by_student: boolean; extra_hours_reason_he: string | null }) => {
+      execute: observed('submit_proposal', (session, { summary_he, tradeoffs_he, extra_hours_reason_he }: {
+        summary_he: string; tradeoffs_he: string[]; extra_hours_reason_he: string | null }) => {
         // A partial request ("year 4 only") is a hard limit: nothing new lands outside it. Checked on
         // the final draft, whatever built it, before the student can see or apply it.
         const outOfScope = session.outOfScopePlacements();
@@ -758,15 +824,13 @@ export function buildAgentTools() {
         if (!validation.valid) {
           return { accepted: false, reason: 'The draft is not valid yet. Fix these issues (or explain to the student why they cannot be fixed).', validation };
         }
-        // The student's board is theirs: a proposal adds to it. Courses that leave it because they are now
-        // completed or avoided are fine; any other removal needs the student's own request.
-        const draftIds = new Set(Object.values(session.worker.getPlan().semesters).flat());
-        const dropped = committedCourseIds(session).filter((id) => !draftIds.has(id)
-          && !session.model.completedCourseIds.has(id) && !session.model.disallowedCourseIds.has(id));
-        if (dropped.length > 0 && !removals_requested_by_student) {
+        // Locked placements are immutable: every committed course the student has not released must be
+        // exactly where they put it. Checked on the final draft, whatever built it.
+        const violated = session.lockViolations();
+        if (violated.length > 0) {
           return { accepted: false,
-            reason: 'The draft removes courses the student placed on the board. Put them back (add_course), or ask the student with ask_student whether to drop them; only then submit with removals_requested_by_student true.',
-            removed_courses: dropped.map((id) => ({ course_id: id, name_he: nameOf(session, id) })) };
+            reason: 'The draft moves or drops courses that are locked on the student\'s committed board. Put each one back in its semester (add_course / move_course with semester_id). If a change is really needed, ask the student with ask_student and call unlock_courses only after they agree.',
+            locked_courses_changed: violated.map((item) => ({ ...item, name_he: nameOf(session, item.course_id) })) };
         }
         const required = session.model.degreeRequiredHours;
         if (typeof required === 'number' && validation.degree_hours > required && !extra_hours_reason_he) {
@@ -774,7 +838,8 @@ export function buildAgentTools() {
             reason: `The plan reaches ${validation.degree_hours} weekly hours but the degree needs ${required}. Remove or swap electives that are not needed for any requirement (simulate_changes shows the effect), or give extra_hours_reason_he if a requirement forces the excess.`,
             degree_hours: validation.degree_hours, degree_hours_required: required };
         }
-        session.submission = { summaryHe: summary_he, tradeoffsHe: tradeoffs_he };
+        // Open lock conflicts always reach the student, in the server's words.
+        session.submission = { summaryHe: summary_he, tradeoffsHe: [...tradeoffs_he, ...session.lockConflicts.map((conflict) => conflict.messageHe)].slice(0, 12) };
         return { accepted: true };
       }),
     }),

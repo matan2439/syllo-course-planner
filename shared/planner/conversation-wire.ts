@@ -110,6 +110,8 @@ const toolStatusEventSchema = z.object({
     'get_course_syllabus',
     'get_course_grades',
     'highlight_element',
+    'unlock_courses',
+    'get_course_pathway',
   ]),
   status: z.enum(['started', 'completed', 'rejected']),
 }).strict()
