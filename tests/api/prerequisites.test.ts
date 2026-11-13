@@ -47,9 +47,9 @@ describe('the committed catalog (official syllabus pages)', () => {
 
   test('every record has a known status and verified ones a real expression', () => {
     for (const record of Object.values(catalog ?? {})) {
-      expect(['verified', 'verified_none', 'assumed_none_no_syllabus', 'unknown']).toContain(record.status)
+      expect(['verified', 'verified_none', 'none_listed', 'assumed_none_no_syllabus', 'not_in_catalog', 'unknown']).toContain(record.status)
       if (record.status === 'verified') expect(record.expression).not.toBeNull()
-      if (record.status === 'assumed_none_no_syllabus') expect(record.source_url).toBeUndefined()
+      if (record.status === 'verified_none' && record.catalog) expect(record.catalog.found).toBe(true)
     }
   })
 })
@@ -83,6 +83,14 @@ describe('shadow audit: what strict enforcement would block', () => {
   test('unknown and assumed-none courses are listed separately, not blocked', () => {
     const result = audit([['NOSYL', 'MYSTERY']])
     expect(result).toMatchObject({ wouldBlock: [], unknown: ['MYSTERY'], assumedNone: ['NOSYL'] })
+  })
+
+  test('a course listed as both prerequisite and corequisite may be taken in the same semester', () => {
+    const both: PrerequisiteCatalog = { X: { status: 'verified_none', expression: null, corequisites: null },
+      Y: { status: 'verified', expression: c('X'), corequisites: c('X') } }
+    const run = (semesters: string[][]) => shadowPrerequisiteAudit({ semesters: semesters.map((courseIds, i) => ({ semesterId: `s${i}`, courseIds })), completedCourseIds: [], catalog: both })
+    expect(run([['X', 'Y']]).wouldBlock).toEqual([])
+    expect(run([['Y'], ['X']]).wouldBlock).toHaveLength(1)
   })
 })
 

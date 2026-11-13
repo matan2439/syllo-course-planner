@@ -18,14 +18,21 @@ export type PrerequisiteExpression =
   | { any: PrerequisiteExpression[] };
 
 export type PrerequisiteStatus =
-  /** The official page lists prerequisites. */
+  /** An official page lists prerequisites. */
   | 'verified'
-  /** The official page exists and lists none. */
+  /** In the official catalog, and the registrar holds no prerequisites for it. */
   | 'verified_none'
-  /** No official syllabus page for the course: assumed none (product rule), revisit when one appears. */
+  /** Only the syllabus page was available and it lists none: absence in ONE source, not verified. */
+  | 'none_listed'
+  /** No official page at all: assumed none (product rule), revisit when one appears. */
   | 'assumed_none_no_syllabus'
+  /** The course number is not in this year's official catalog. */
+  | 'not_in_catalog'
   /** No usable record. */
   | 'unknown';
+
+/** Statuses that are an official answer; everything else is an assumption or a gap. */
+export const VERIFIED_STATUSES: readonly PrerequisiteStatus[] = ['verified', 'verified_none'];
 
 export interface PrerequisiteRecord {
   status: PrerequisiteStatus;
@@ -35,6 +42,12 @@ export interface PrerequisiteRecord {
   fetched_at?: string;
   content_hash?: string;
   needs_review?: boolean;
+  /** Two official pages say different things; a person must settle it before it is enforced. */
+  sources_disagree?: boolean;
+  /** Which official pages the record was built from. */
+  sources?: string[];
+  /** This academic year's official catalog listing. */
+  catalog?: { year: number; found: boolean; name_he: string | null; semesters: string[] };
 }
 
 export type PrerequisiteCatalog = Readonly<Record<string, PrerequisiteRecord>>;
@@ -94,10 +107,12 @@ export interface PlacementCheck {
 export interface ShadowAudit {
   /** Placements strict enforcement would reject. */
   wouldBlock: PlacementCheck[];
-  /** Placed courses whose prerequisites are unknown (strict mode would not auto-place them). */
+  /** Placed courses with no usable official record (unknown, or not in this year's catalog). */
   unknown: string[];
-  /** Placed courses relying on the no-syllabus assumption. */
+  /** Placed courses whose "no prerequisites" is an assumption or a single-source absence. */
   assumedNone: string[];
+  /** Placed courses whose official sources disagree. */
+  needsReview: string[];
 }
 
 /**
@@ -116,15 +131,18 @@ export function shadowPrerequisiteAudit(input: {
   input.semesters.forEach((semester, index) => {
     for (const id of semester.courseIds) if (!firstIndex.has(id)) firstIndex.set(id, index);
   });
-  const audit: ShadowAudit = { wouldBlock: [], unknown: [], assumedNone: [] };
+  const audit: ShadowAudit = { wouldBlock: [], unknown: [], assumedNone: [], needsReview: [] };
   input.semesters.forEach((semester, index) => {
     for (const courseId of semester.courseIds) {
       if (firstIndex.get(courseId) !== index) continue; // an annual course is checked at its first semester
       const record = prerequisiteRecord(catalog, courseId);
-      if (record.status === 'unknown') { audit.unknown.push(courseId); continue; }
-      if (record.status === 'assumed_none_no_syllabus') { audit.assumedNone.push(courseId); continue; }
-      const before = (id: string) => completed.has(id) || (firstIndex.get(id) ?? Infinity) < index;
+      if (record.status === 'unknown' || record.status === 'not_in_catalog') { audit.unknown.push(courseId); continue; }
+      if (record.status === 'assumed_none_no_syllabus' || record.status === 'none_listed') { audit.assumedNone.push(courseId); continue; }
+      if (record.needs_review) audit.needsReview.push(courseId);
       const byNow = (id: string) => completed.has(id) || (firstIndex.get(id) ?? Infinity) <= index;
+      // The registrar lists some courses as both prerequisite and corequisite: taking them together is allowed.
+      const concurrentOk = new Set(referencedCourseIds(record.corequisites));
+      const before = (id: string) => completed.has(id) || (firstIndex.get(id) ?? Infinity) < index || (concurrentOk.has(id) && byNow(id));
       const unmetPrerequisites = unmetRequirements(record.expression, before);
       const unmetCorequisites = unmetRequirements(record.corequisites, byNow);
       if (unmetPrerequisites.length || unmetCorequisites.length) {

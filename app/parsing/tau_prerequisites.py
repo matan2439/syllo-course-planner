@@ -23,7 +23,7 @@ import html as _html
 import re
 from typing import Any, Optional
 
-PARSER_VERSION = "1"
+PARSER_VERSION = "2"
 
 PREREQ_LABEL = "קורסי קדם נדרשים"
 COREQ_LABEL = "קורסים מקבילים"
@@ -157,3 +157,116 @@ def parse_syllabus_prerequisites(page_html: str) -> dict[str, Any]:
     else:
         result["status"] = "verified" if expression is not None else "verified_none"
     return result
+
+
+# ── The registrar's dedicated prerequisites page (Drishot_L.aspx) ────────────────────────────
+# Grouping is explicit there: each inner table is one group whose courses are joined by "או" or
+# "וגם"; groups are joined by the operator row between them. A separate header introduces the
+# corequisites ("קורסים מקבילים נדרשים").
+
+_PAGE_COREQ = "קורסים מקבילים"
+_GROUP = re.compile(r"<table class='listtds'[^>]*>(.*?)</table>", re.S)
+_ROW_ID = re.compile(r"<td[^>]*>\s*(\d{4}-\d{4})\s*</td>\s*<td>(.*?)</td>", re.S)
+_OPERATOR = re.compile(r"<b>\s*(או|וגם)\s*</b>")
+
+
+def _parse_page_section(section: str) -> tuple[Optional[dict[str, Any]], dict[str, str], bool]:
+    names: dict[str, str] = {}
+    needs_review = False
+    groups: list[dict[str, Any]] = []
+    between: list[str] = []
+    position = 0
+    for match in _GROUP.finditer(section):
+        if groups:
+            operators = _OPERATOR.findall(section[position:match.start()])
+            between.append(operators[-1] if operators else "וגם")
+        body = match.group(1)
+        courses = [{"course": course_id} for course_id, _ in _ROW_ID.findall(body)]
+        for course_id, name in _ROW_ID.findall(body):
+            names[course_id] = _text(name)
+        inner = set(_OPERATOR.findall(body))
+        if len(inner) > 1:
+            needs_review = True
+        if courses:
+            groups.append(_any(courses) if inner == {"או"} else _all(courses))  # type: ignore[arg-type]
+        position = match.end()
+    if not groups:
+        return None, names, needs_review
+    if len(set(between)) > 1:
+        needs_review = True
+    # Groups joined by "או" are alternatives; otherwise every group is required.
+    conjuncts: list[list[dict[str, Any]]] = [[groups[0]]]
+    for operator, group in zip(between, groups[1:]):
+        if operator == "או":
+            conjuncts[-1].append(group)
+        else:
+            conjuncts.append([group])
+    return _all([_any(part) for part in conjuncts]), names, needs_review
+
+
+def parse_prerequisites_page(page_html: str) -> dict[str, Any]:
+    """
+    The dedicated prerequisites page → {status, expression, corequisites, course_names, needs_review}.
+    status: 'verified' (lists requirements) | 'verified_none' (a real page listing none) | 'unknown'.
+    """
+    result: dict[str, Any] = {"status": "unknown", "expression": None, "corequisites": None,
+                              "course_names": {}, "needs_review": False}
+    if "tableblds" not in page_html and "קורס:" not in page_html:
+        return result
+    start = page_html.find("tableblds")
+    body = page_html[start:] if start >= 0 else ""
+    coreq_at = body.find(_PAGE_COREQ)
+    expression, names, review = _parse_page_section(body[:coreq_at] if coreq_at >= 0 else body)
+    corequisites, coreq_names, coreq_review = _parse_page_section(body[coreq_at:] if coreq_at >= 0 else "")
+    result.update({"expression": expression, "corequisites": corequisites,
+                   "course_names": {**names, **coreq_names}, "needs_review": review or coreq_review,
+                   "status": "verified" if expression is not None else "verified_none"})
+    return result
+
+
+def normalize_expression(expression: Optional[dict[str, Any]]) -> Any:
+    """Order-independent, flattened form, so two sources can be compared for meaning."""
+    if expression is None:
+        return None
+    if "course" in expression:
+        return expression["course"]
+    kind = "all" if "all" in expression else "any"
+    parts: list[Any] = []
+    for child in expression[kind]:
+        normal = normalize_expression(child)
+        if isinstance(normal, tuple) and normal[0] == kind:
+            parts.extend(normal[1])
+        else:
+            parts.append(normal)
+    unique = sorted({repr(part): part for part in parts}.values(), key=repr)
+    return unique[0] if len(unique) == 1 else (kind, tuple(unique))
+
+
+# ── The official catalog listing (search_l.aspx) ────────────────────────────────────────────
+
+_NO_RESULTS = "אין נתונים מתאימים"
+
+
+def parse_catalog_listing(page_html: str) -> dict[str, Any]:
+    """Is the course in this academic year's official catalog, under which name, in which semesters."""
+    if _NO_RESULTS in page_html:
+        return {"found": False, "name_he": None, "semesters": [], "academic_year_label": _year_label(page_html)}
+    lines = [line.strip() for line in _html.unescape(_TAG.sub("\n", page_html)).split("\n") if line.strip()]
+    name = None
+    semesters: set[str] = set()
+    for index, line in enumerate(lines):
+        if name is None and re.fullmatch(r"\d{4}-\d{4}", line):
+            # course number, "קב':", group, name
+            for candidate in lines[index + 1: index + 5]:
+                if candidate not in ("קב':",) and not re.fullmatch(r"\d{1,2}", candidate):
+                    name = candidate
+                    break
+        if line in ("א'", "ב'", "קיץ", "שנתי"):
+            semesters.add({"א'": "A", "ב'": "B", "קיץ": "SUMMER", "שנתי": "ANNUAL"}[line])
+    return {"found": name is not None, "name_he": name, "semesters": sorted(semesters),
+            "academic_year_label": _year_label(page_html)}
+
+
+def _year_label(page_html: str) -> Optional[str]:
+    match = re.search(r'שנה"ל\s*([^<(]+\(\d{4}/\d{4}\))', page_html)
+    return match.group(1).strip() if match else None
