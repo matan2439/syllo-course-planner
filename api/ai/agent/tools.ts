@@ -34,19 +34,21 @@ import { fetchScheduleFromBidit } from './session';
 import { earlyYearCoursesFor } from '../../../shared/planner/early_year_courses';
 import { completedCreditHours } from '../conversation_clarification';
 import type { CourseProfile } from '../course_profile';
+import { coursePathway } from '../course_pathways';
+import { loadPrerequisiteCatalog } from '../prerequisites';
 
 export const AGENT_TOOL_NAMES = [
   'get_student_context', 'record_completed_courses', 'get_requirements_gap', 'search_courses', 'get_course_details',
   'get_course_syllabus', 'get_course_grades', 'explain_constraint', 'update_preferences', 'build_plan', 'add_course', 'remove_course',
   'move_course', 'replace_course', 'simulate_changes', 'validate_plan', 'check_timetable',
-  'ask_student', 'submit_proposal', 'highlight_element', 'unlock_courses',
+  'ask_student', 'submit_proposal', 'highlight_element', 'unlock_courses', 'get_course_pathway',
 ] as const;
 export type AgentToolName = (typeof AGENT_TOOL_NAMES)[number];
 
 /** Tools that never change the student's data or the draft — the course-panel engine uses only these. */
 export const READ_ONLY_AGENT_TOOLS: readonly AgentToolName[] = [
   'get_student_context', 'get_requirements_gap', 'search_courses', 'get_course_details', 'get_course_syllabus',
-  'get_course_grades', 'explain_constraint', 'simulate_changes', 'validate_plan', 'check_timetable',
+  'get_course_grades', 'explain_constraint', 'simulate_changes', 'validate_plan', 'check_timetable', 'get_course_pathway',
 ];
 
 const courseId = z.string().trim().min(1).max(128);
@@ -382,6 +384,23 @@ export function buildAgentTools() {
           difficulty_score: profile.difficulty_score,
           status: courseStatus(session, course_id),
         }, fact('planner_model', profile.data_confidence, profile.provenance.name_source));
+      }),
+    }),
+
+    tool({
+      name: 'get_course_pathway',
+      description: 'The academic path around one course, from the OFFICIAL prerequisite data: what it requires (AND/OR, and which parts the student has not met), and which courses it leads to (courses that officially require it), with whether each is offered this year. Use it to build a coherent specialization: after an anchor course, look at leads_to for the natural continuation, and say so plainly when a continuation exists but is not offered. Advisory in this version: the planner does not enforce these prerequisites yet, so check unmet_prerequisites yourself before recommending a course. Read-only.',
+      parameters: z.object({ course_id: courseId }),
+      execute: observed('get_course_pathway', (session, { course_id }: { course_id: string }) => {
+        if (!session.model.profiles.has(course_id)) return { course_id, known: false };
+        const catalog = loadPrerequisiteCatalog();
+        const placed = new Set(placedCourseIds(session.worker.getPlan()));
+        const completed = new Set(session.completedCourseIds());
+        return {
+          ...coursePathway({ courseId: course_id, model: session.model, catalog, satisfied: (id) => completed.has(id) || placed.has(id) }),
+          source: 'Official TAU syllabus pages (registrar prerequisite block). prerequisite_status says how sure the data is: verified / verified_none / assumed_none_no_syllabus / unknown.',
+          ...(catalog ? {} : { note: 'The prerequisite catalog is unavailable right now; treat every prerequisite as unknown.' }),
+        };
       }),
     }),
 

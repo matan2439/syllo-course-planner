@@ -85,3 +85,38 @@ describe('shadow audit: what strict enforcement would block', () => {
     expect(result).toMatchObject({ wouldBlock: [], unknown: ['MYSTERY'], assumedNone: ['NOSYL'] })
   })
 })
+
+describe('course pathways from official prerequisites', () => {
+  // Imported lazily so the suites above stay independent of the planner model.
+  const { coursePathway, buildSuccessorIndex } = require('../../api/ai/course_pathways')
+  const { buildConstraintModel } = require('../../api/ai/planner_model')
+  const { loadLocalBoardJson } = require('../../api/ai/board_loader')
+  const model = buildConstraintModel(loadLocalBoardJson('mechanical_engineering_2027'), {})
+  const catalog = loadPrerequisiteCatalog()!
+
+  test('intro to finite elements leads to the industry-applications course, which is reported as not offered', () => {
+    const pathway = coursePathway({ courseId: '0542-4223', model, catalog, satisfied: () => false })
+    expect(pathway.prerequisite_status).toBe('verified')
+    expect(pathway.unmet_prerequisites.map((group: Array<{ course_id: string }>) => group.map((item) => item.course_id)))
+      .toEqual([['0542-2200', '0542-4224']])
+    const followUp = pathway.leads_to.find((item: { course_id: string }) => item.course_id === '0542-4226')
+    expect(followUp).toMatchObject({ in_program: true, offered: false })
+    expect(followUp.not_offered_reason_he).toBeTruthy()
+    expect(followUp.also_requires.map((item: { course_id: string }) => item.course_id)).toEqual(expect.arrayContaining(['0542-3620']))
+  })
+
+  test('met prerequisites are not listed as unmet', () => {
+    const pathway = coursePathway({ courseId: '0542-4223', model, catalog, satisfied: (id: string) => id === '0542-2200' })
+    expect(pathway.unmet_prerequisites).toEqual([])
+  })
+
+  test('the successor index only follows official prerequisite edges', () => {
+    const index = buildSuccessorIndex({
+      A: { status: 'verified_none', expression: null, corequisites: null },
+      B: { status: 'verified', expression: { any: [{ course: 'A' }, { course: 'X' }] }, corequisites: { course: 'C' } },
+      C: { status: 'verified_none', expression: null, corequisites: null },
+    })
+    expect(index.get('A')).toEqual(['B'])
+    expect(index.get('C')).toBeUndefined()
+  })
+})

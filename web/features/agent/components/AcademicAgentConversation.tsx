@@ -104,6 +104,7 @@ const TOOL_LABELS: Record<string, string> = {
   check_timetable: 'בדיקת מערכת שעות וימים פנויים',
   highlight_element: 'סימון על המסך',
   unlock_courses: 'שחרור קורס נעול לפי בקשתך',
+  get_course_pathway: 'בדיקת רצף הקורסים והקדמים',
   record_completed_courses: 'רישום הקורסים שהשלמת',
   get_course_syllabus: 'קריאת הסילבוס',
   get_course_grades: 'בדיקת ציונים היסטוריים',
