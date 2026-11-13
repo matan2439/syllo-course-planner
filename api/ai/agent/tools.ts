@@ -140,6 +140,7 @@ const lockConflictRows = (session: PlanningSession) => session.lockConflicts.map
   code: conflict.code,
   course_ids: conflict.courseIds,
   ...(conflict.semesterId ? { semester_id: conflict.semesterId } : {}),
+  blocks_validity: conflict.blocksValidity,
   message_he: conflict.messageHe,
   resolutions_he: conflict.resolutionsHe,
 }));
@@ -555,7 +556,9 @@ export function buildAgentTools() {
           return { accepted: false, reason: `This board has no semesters for degree year(s) ${unknownYears.join(', ')}. Known semesters: ${session.model.knownSemesterIds.join(', ')}.` };
         }
         session.setScope(args.only_years ?? null);
-        const { model } = session;
+        // Invalid locked placements are tolerated by the SEARCH only, so the rest of the board is still
+        // planned; the strict model validates the result, which stays invalid until the student decides.
+        const model = session.searchModel();
         const initialState = planContextToState(session.input.committedContext, model);
         const pinnedHome = Object.fromEntries([...session.lockedPlacements()].map(([id, homes]) => [id, homes[0]]));
         const set = generateCandidateSet({
@@ -571,10 +574,12 @@ export function buildAgentTools() {
         });
         const selected = selectCandidate(set);
         session.candidateSet = set;
-        session.worker = new PlannerWorker(model, cloneState(selected?.state ?? set.legacyState), { topN: 6, rolloutSteps: 80 });
+        session.worker = new PlannerWorker(session.model, cloneState(selected?.state ?? set.legacyState), { topN: 6, rolloutSteps: 80 });
         const outOfScope = session.outOfScopePlacements();
+        const invalidLock = session.hasInvalidLockedPlacement();
         return {
-          accepted: Boolean(selected),
+          accepted: Boolean(selected) && !invalidLock,
+          ...(invalidLock ? { reason: 'A committed course breaks an availability rule (lock_conflicts with blocks_validity). The rest of the board was planned around it, but this plan is NOT valid and cannot be submitted until the student decides. Explain the conflict and its valid alternatives, and ask.' } : {}),
           ...(session.scopeYears ? {
             scope_years: session.scopeYears,
             scope_note: selected
@@ -582,7 +587,7 @@ export function buildAgentTools() {
               : 'The degree requirements cannot all be met inside the requested years. Do NOT place courses in other years: tell the student which requirements remain (get_requirements_gap) and ask whether to widen the scope.',
             ...(outOfScope.length ? { out_of_scope_placements: outOfScope } : {}),
           } : {}),
-          ...(selected ? {} : { reason: 'The planner found no plan satisfying every rule and constraint; the draft below is its best attempt.' }),
+          ...(selected || invalidLock ? {} : { reason: 'The planner found no plan satisfying every rule and constraint; the draft below is its best attempt.' }),
           planner_rationale_he: selected?.rationaleHe ?? null,
           ...(session.lockConflicts.length ? { lock_conflicts: lockConflictRows(session), lock_conflicts_note: LOCK_CONFLICT_NOTE } : {}),
           plan: planSummary(session),

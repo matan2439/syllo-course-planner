@@ -25,6 +25,11 @@ export interface LockConflict {
   code: LockConflictCode;
   courseIds: string[];
   semesterId?: string;
+  /**
+   * True when the placement breaks an academic rule (availability). The course stays where the
+   * student put it, but no plan containing it is valid until they decide.
+   */
+  blocksValidity: boolean;
   /** What collides, in plain Hebrew. */
   messageHe: string;
   /** What the student can do about it. Each one is THEIR decision; none is applied automatically. */
@@ -57,16 +62,16 @@ export function analyzeLockConflicts(input: LockAnalysisInput): LockConflict[] {
 
   for (const id of [...input.avoided].sort()) {
     conflicts.push({
-      code: 'locked_course_avoided', courseIds: [id],
+      code: 'locked_course_avoided', courseIds: [id], blocksValidity: false,
       messageHe: `ביקשת להימנע מהקורס "${name(id)}", אבל הוא כבר משובץ בלוח שלך. הוא נשאר במקומו עד שתחליטו אחרת.`,
       resolutionsHe: ['להשאיר את הקורס בלוח', 'לאשר במפורש את הסרת הקורס מהלוח'],
     });
   }
   for (const [id, reason] of [...input.unavailable].sort(([a], [b]) => (a < b ? -1 : 1))) {
     conflicts.push({
-      code: 'locked_course_unavailable', courseIds: [id],
-      messageHe: `הקורס "${name(id)}" משובץ בלוח שלך, אבל לפי הנתונים הרשמיים לא ניתן לשבץ אותו כעת${reason ? ` (${reason})` : ''}. הוא נשאר במקומו.`,
-      resolutionsHe: ['להשאיר את הקורס ולבדוק מול המזכירות', 'לאשר במפורש את הסרת הקורס', 'לאשר החלפה בקורס אחר'],
+      code: 'locked_course_unavailable', courseIds: [id], blocksValidity: true,
+      messageHe: `הקורס "${name(id)}" משובץ בלוח שלך, אבל לפי הנתונים הרשמיים לא ניתן לשבץ אותו כעת${reason ? ` (${reason})` : ''}. הוא נשאר במקומו, אבל התוכנית אינה תקינה עד שתחליטו מה לעשות בו.`,
+      resolutionsHe: ['לאשר במפורש את הסרת הקורס', 'לאשר החלפה בקורס אחר'],
     });
   }
 
@@ -85,8 +90,8 @@ export function analyzeLockConflicts(input: LockAnalysisInput): LockConflict[] {
     const wrong = semesters.filter((semesterId) => legal.length > 0 && !legal.includes(semesterId));
     if (wrong.length) {
       conflicts.push({
-        code: 'locked_course_wrong_semester', courseIds: [id], semesterId: wrong[0],
-        messageHe: `הקורס "${name(id)}" משובץ ב־${label(wrong[0])}, אבל ניתן רק ב: ${legal.map(label).join(', ')}. הוא נשאר במקומו עד שתחליטו אחרת.`,
+        code: 'locked_course_wrong_semester', courseIds: [id], semesterId: wrong[0], blocksValidity: true,
+        messageHe: `הקורס "${name(id)}" משובץ ב־${label(wrong[0])}, אבל ניתן רק ב: ${legal.map(label).join(', ')}. הוא נשאר במקומו, אבל התוכנית אינה תקינה עד שתחליטו.`,
         resolutionsHe: [...legal.map((semesterId) => `לאשר העברה ל־${label(semesterId)}`), 'לאשר במפורש את הסרת הקורס'],
       });
     }
@@ -95,7 +100,7 @@ export function analyzeLockConflicts(input: LockAnalysisInput): LockConflict[] {
   for (const [semesterId, entry] of [...hoursBySemester].sort(([a], [b]) => (a < b ? -1 : 1))) {
     if (entry.hours <= model.hardCap) continue;
     conflicts.push({
-      code: 'locked_semester_over_cap', courseIds: entry.ids, semesterId,
+      code: 'locked_semester_over_cap', courseIds: entry.ids, semesterId, blocksValidity: false,
       messageHe: `הקורסים שכבר שיבצת ב־${label(semesterId)} מגיעים ל-${entry.hours} ש"ש — מעל התקרה המוחלטת (${model.hardCap}).`,
       resolutionsHe: ['לאשר העברה של אחד הקורסים לסמסטר אחר', 'לאשר הסרה של אחד הקורסים'],
     });

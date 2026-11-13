@@ -403,14 +403,25 @@ describe('committed courses are locked', () => {
   const legal = { ...planContext, semesters: [{ id: 'year_3_semester_a', courses: [{ course_id: 'MAND' }] }, { id: 'year_4_semester_a', courses: [{ course_id: 'ALPHA' }] }] }
   const submit = { summary_he: 'החלפה', tradeoffs_he: [], extra_hours_reason_he: null }
 
-  test('a locked course in a semester it is not offered in stays put and the conflict names the legal semesters', async () => {
+  test('a locked course in a semester it is not offered in stays put, the rest is planned, and the plan is never valid', async () => {
     const session = await newSession(KNOWN_COURSE_PREFERENCES, placed)
     expect(session.lockConflicts).toEqual([expect.objectContaining({
-      code: 'locked_course_wrong_semester', courseIds: ['ALPHA'], semesterId: 'year_3_semester_a',
+      code: 'locked_course_wrong_semester', courseIds: ['ALPHA'], semesterId: 'year_3_semester_a', blocksValidity: true,
       resolutionsHe: expect.arrayContaining(['לאשר העברה ל־שנה ד׳ סמסטר א׳']),
     })])
-    await callTool(session, 'build_plan', { only_years: null })
-    expect(session.worker.getPlan().semesters.year_3_semester_a).toEqual(expect.arrayContaining(['ALPHA']))
+    const built = await callTool(session, 'build_plan', { only_years: null })
+    expect(built).toMatchObject({ accepted: false, lock_conflicts: [expect.objectContaining({ blocks_validity: true })] })
+    expect(built.validation.valid).toBe(false)
+    expect(session.worker.getPlan().semesters.year_3_semester_a).toEqual(expect.arrayContaining(['MAND', 'ALPHA']))
+    expect(await callTool(session, 'submit_proposal', submit)).toMatchObject({ accepted: false })
+  })
+
+  test('once the student releases it, the course can move to a semester it is offered in and the plan validates', async () => {
+    const session = await newSession(KNOWN_COURSE_PREFERENCES, placed)
+    await callTool(session, 'unlock_courses', { course_ids: ['ALPHA'], student_words_he: 'תעביר את אלפא לשנה ד' })
+    expect(await callTool(session, 'move_course', { course_id: 'ALPHA', to_semester_id: 'year_4_semester_a' })).toMatchObject({ accepted: true })
+    expect(session.hasInvalidLockedPlacement()).toBe(false)
+    expect(await callTool(session, 'submit_proposal', submit)).toMatchObject({ accepted: true })
   })
 
   test('the agent cannot remove, move or replace a committed course on its own', async () => {

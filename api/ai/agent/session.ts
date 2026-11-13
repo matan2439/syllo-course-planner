@@ -175,9 +175,11 @@ export class PlanningSession {
   }
 
   /**
-   * Make every locked placement a planner constraint: pinned to its semester and kept even
-   * when the student asked to avoid it or the catalog cannot schedule it — those collisions
-   * are reported in `lockConflicts` instead of failing the build or dropping the course.
+   * Make every locked placement a planner constraint: pinned to its semester. A locked course the
+   * student asked to avoid is kept (a preference never removes a commitment). A locked course that
+   * breaks an academic rule — not offered, or in a semester it is not given in — also stays where
+   * the student put it, but the rule is NOT relaxed: the plan is invalid until the student decides,
+   * and `lockConflicts` explains it with the valid alternatives.
    */
   private applyLocks(): void {
     const avoided = new Set<string>();
@@ -187,13 +189,46 @@ export class PlanningSession {
       this.model.pinnedCourseIds.add(id);
       const profile = this.model.profiles.get(id)!;
       const wasAvoided = this.model.disallowedCourseIds.delete(id);
-      if (wasAvoided) avoided.add(id);
-      if (profile.excluded) {
-        if (!wasAvoided) unavailable.set(id, profile.exclusion_reason);
-        this.model.profiles.set(id, { ...profile, excluded: false, exclusion_reason: null });
+      if (wasAvoided) {
+        avoided.add(id);
+        // `excluded` came from the student's own avoid request; catalog exclusions stay in force.
+        const catalogExcluded = profile.offered_in_year === false || profile.hours == null || !profile.name_he;
+        if (profile.excluded && !catalogExcluded) this.model.profiles.set(id, { ...profile, excluded: false, exclusion_reason: null });
+        else if (profile.excluded) unavailable.set(id, 'הקורס אינו נלמד בשנת הלימודים הנוכחית או שחסרים לו נתוני קטלוג.');
+      } else if (profile.excluded) {
+        unavailable.set(id, profile.exclusion_reason);
       }
     }
     this.lockConflicts = analyzeLockConflicts({ model: this.model, placements: locked, avoided, unavailable });
+  }
+
+  /** True while a locked placement breaks an academic rule: no plan containing it may be presented as valid. */
+  hasInvalidLockedPlacement(): boolean {
+    return this.lockConflicts.some((conflict) => conflict.blocksValidity);
+  }
+
+  /**
+   * The model the planner SEARCHES with: identical, except that invalid locked placements are
+   * tolerated where they stand, so the rest of the board can still be planned around them.
+   * Validation always uses the strict `model`, so such a plan is never reported as valid.
+   */
+  searchModel(): ConstraintModel {
+    if (!this.hasInvalidLockedPlacement()) return this.model;
+    const profiles = new Map(this.model.profiles);
+    const locked = this.lockedPlacements();
+    for (const conflict of this.lockConflicts) {
+      if (!conflict.blocksValidity) continue;
+      for (const id of conflict.courseIds) {
+        const profile = profiles.get(id);
+        const homes = locked.get(id);
+        if (!profile || !homes) continue;
+        profiles.set(id, {
+          ...profile, excluded: false, exclusion_reason: null,
+          offering_window_semesters: [...new Set([...legalSemestersFor(this.model, id), ...homes])],
+        });
+      }
+    }
+    return { ...this.model, profiles };
   }
 
   /** Limit this turn's planning to these degree years (null = the whole board). Resets the draft. */
