@@ -149,8 +149,9 @@ def course_record(course_id: str, entry: dict, cache: Path) -> dict:
     if chosen:
         status = "verified"
         other = syllabus if chosen is page else page
-        # A second official copy that says something else is a conflict a person must settle.
-        if other is not None and not same(chosen, other):
+        # A second official copy that LISTS something else is a conflict a person must settle. A copy
+        # that is merely silent is not: the syllabus page often omits what the registrar page holds.
+        if lists(other) and not same(chosen, other):
             review = True
             record["sources_disagree"] = True
     elif listing and listing["found"]:

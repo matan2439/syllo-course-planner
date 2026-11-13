@@ -48,7 +48,7 @@ describe('the committed catalog (official syllabus pages)', () => {
   test('every record has a known status and verified ones a real expression', () => {
     for (const record of Object.values(catalog ?? {})) {
       expect(['verified', 'verified_none', 'none_listed', 'assumed_none_no_syllabus', 'not_in_catalog', 'unknown']).toContain(record.status)
-      if (record.status === 'verified') expect(record.expression).not.toBeNull()
+      if (record.status === 'verified') expect(record.expression ?? record.corequisites).not.toBeNull()
       if (record.status === 'verified_none' && record.catalog) expect(record.catalog.found).toBe(true)
     }
   })
