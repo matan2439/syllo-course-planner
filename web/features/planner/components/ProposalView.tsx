@@ -16,8 +16,10 @@ type Alternatives = NonNullable<GeneratedPlanModel['alternatives']>
  */
 export default function ProposalView({
   draft, intentOutcome, semesterLoads, removed, stale, staleReason, canApply, applying, applyError, onApply, onReject,
-  alternatives, selectedAlternativeId, onSelectAlternative, courseNameById,
+  alternatives, selectedAlternativeId, onSelectAlternative, courseNameById, unresolvedConflictsHe = [],
 }: {
+  /** A partial plan: what stays unresolved on the student's board. Always visible, never collapsed. */
+  unresolvedConflictsHe?: readonly string[]
   draft: ReturnType<typeof buildDraftVM>
   intentOutcome?: GeneratedPlanModel['intentOutcome']
   /** Weekly hours per semester with the server's cap verdicts (agent proposals). */
@@ -63,6 +65,15 @@ export default function ProposalView({
           onSelect={onSelectAlternative} courseNameById={courseNameById} disabled={stale} />
       )}
 
+      {unresolvedConflictsHe.length > 0 && (
+        <div role="alert" aria-label="התנגשות שלא נפתרה" className="rounded-xl border border-amber-500/60 bg-amber-500/10 px-3 py-2">
+          <p className="font-bold text-amber-800 dark:text-amber-200">תוכנית חלקית — לא תקינה במלואה</p>
+          <p className="mt-0.5 text-xs text-[var(--text-muted)]">שאר הקורסים תוכננו סביב הקורס הבעייתי. הוא נשאר במקומו עד שתחליטו.</p>
+          <ul className="mt-1.5 flex flex-col gap-1 text-xs">
+            {unresolvedConflictsHe.map((line) => <li key={line}>{line}</li>)}
+          </ul>
+        </div>
+      )}
       {draft.blocked && <div><Badge variant="warn">הצעה חסומה — לא ניתן להחיל</Badge></div>}
       {draft.agentOutcome && draft.agentOutcome !== 'proposal' && !draft.blocked && (
         <div><Badge variant="warn">{AGENT_OUTCOME_LABEL_HE[draft.agentOutcome]}</Badge></div>

@@ -9,23 +9,23 @@ Nothing in this report is applied automatically. A candidate renumbering is a sa
 | Course | Name (ours / registrar) | Role in our data | Last official listing | Candidate in this year's catalog | Verdict |
 |---|---|---|---|---|---|
 | 0509-1510 | גרפיקה הנדסית | prerequisite of 3 course(s): 0542-2400, 0542-3780, 0542-4425 | 2025/2026: גרפיקה הנדסית | 0542-1510 | Candidate renumbering — confirm |
-| 0509-1824 | אלגברה לינארית | prerequisite of 8 course(s): 0509-1645, 0509-1647, 0509-1745, 0509-1747 | not in 2025 or 2024 either | — | Unresolved: required by current courses but not in the catalog |
-| 0509-1843 | חשבון דיפרנציאלי ואינטגרלי | prerequisite of 4 course(s): 0509-2801, 0509-2805, 0509-2843, 0509-2844 | not in 2025 or 2024 either | — | Unresolved: required by current courses but not in the catalog |
-| 0509-1845 | משוואות דיפרנציאליות רגילות | prerequisite of 6 course(s): 0509-2843, 0509-2846, 0512-1205, 0512-2832 | not in 2025 or 2024 either | — | Unresolved: required by current courses but not in the catalog |
-| 0509-1846 | חשבון דיפרנציאלי ואינטגרלי 1ב | prerequisite of 4 course(s): 0509-1645, 0509-1647, 0509-1745, 0509-1747 | not in 2025 or 2024 either | — | Unresolved: required by current courses but not in the catalog |
-| 0512-2507 | מבוא לפיזיקה של מוליכים למחצה | prerequisite of 1 course(s): 0512-4702 | not in 2025 or 2024 either | — | Unresolved: required by current courses but not in the catalog |
-| 0512-2509 | מבוא להתקנים אלקטרוניים | prerequisite of 1 course(s): 0512-3513 | not in 2025 or 2024 either | — | Unresolved: required by current courses but not in the catalog |
-| 0512-2526 | שדות וגלים אלקטרו מגנטיים | prerequisite of 2 course(s): 0512-4660, 0512-4800 | not in 2025 or 2024 either | — | Unresolved: required by current courses but not in the catalog |
-| 0512-2531 | מבוא למערכות לינאריות | prerequisite of 2 course(s): 0512-3513, 0512-3543 | not in 2025 or 2024 either | — | Unresolved: required by current courses but not in the catalog |
-| 0512-3632 | אותות אקראיים ורעש | prerequisite of 7 course(s): 0510-6101, 0510-6202, 0512-4100, 0512-4161 | not in 2025 or 2024 either | 0512-2532 | Candidate renumbering — confirm |
+| 0509-1824 | אלגברה לינארית | prerequisite of 8 course(s): 0509-1645, 0509-1647, 0509-1745, 0509-1747 | not listed 2020–2025 | — | Unresolved: required by current courses but not in the catalog |
+| 0509-1843 | חשבון דיפרנציאלי ואינטגרלי | prerequisite of 4 course(s): 0509-2801, 0509-2805, 0509-2843, 0509-2844 | not listed 2020–2025 | — | Unresolved: required by current courses but not in the catalog |
+| 0509-1845 | משוואות דיפרנציאליות רגילות | prerequisite of 6 course(s): 0509-2843, 0509-2846, 0512-1205, 0512-2832 | not listed 2020–2025 | — | Unresolved: required by current courses but not in the catalog |
+| 0509-1846 | חשבון דיפרנציאלי ואינטגרלי 1ב | prerequisite of 4 course(s): 0509-1645, 0509-1647, 0509-1745, 0509-1747 | not listed 2020–2025 | — | Unresolved: required by current courses but not in the catalog |
+| 0512-2507 | מבוא לפיזיקה של מוליכים למחצה | prerequisite of 1 course(s): 0512-4702 | not listed 2020–2025 | — | Unresolved: required by current courses but not in the catalog |
+| 0512-2509 | מבוא להתקנים אלקטרוניים | prerequisite of 1 course(s): 0512-3513 | 2023/2024: מבוא להתקנים אלקטרוניים | — | Unresolved: required by current courses but not in the catalog |
+| 0512-2526 | שדות וגלים אלקטרו מגנטיים | prerequisite of 2 course(s): 0512-4660, 0512-4800 | 2023/2024: שדות וגלים אלקטרו מגנטיים | — | Unresolved: required by current courses but not in the catalog |
+| 0512-2531 | מבוא למערכות לינאריות | prerequisite of 2 course(s): 0512-3513, 0512-3543 | not listed 2020–2025 | — | Unresolved: required by current courses but not in the catalog |
+| 0512-3632 | אותות אקראיים ורעש | prerequisite of 7 course(s): 0510-6101, 0510-6202, 0512-4100, 0512-4161 | 2021/2022: אותות אקראיים ורעש | 0512-2532 | Candidate renumbering — confirm |
 | 0512-4262 | עיבוד תמונות | prerequisite of 1 course(s): 0512-4263 | 2025/2026: עיבוד תמונות | — | Unresolved: required by current courses but not in the catalog |
-| 0542-1830 | מבוא למדע והנדסת חומרים | prerequisite of 3 course(s): 0542-2400, 0542-3780, 0542-4091 | not in 2025 or 2024 either | — | Unresolved: required by current courses but not in the catalog |
-| 0542-4093 | מעבדה במערכות אנרגיה | catalog course on a board | not in 2025 or 2024 either | — | Not offered this year (no action unless planned) |
-| 0542-4226 | יישומי אלמנטים סופיים בתעשייה | catalog course on a board | not in 2025 or 2024 either | — | Not offered this year (no action unless planned) |
-| 0555-2250 | מערכות פיזיולוגיות בגוף האדם (2) | prerequisite of 1 course(s): 0555-3240 | not in 2025 or 2024 either | — | Unresolved: required by current courses but not in the catalog |
+| 0542-1830 | מבוא למדע והנדסת חומרים | prerequisite of 3 course(s): 0542-2400, 0542-3780, 0542-4091 | not listed 2020–2025 | — | Unresolved: required by current courses but not in the catalog |
+| 0542-4093 | מעבדה במערכות אנרגיה | catalog course on a board | not listed 2020–2025 | — | Not offered this year (no action unless planned) |
+| 0542-4226 | יישומי אלמנטים סופיים בתעשייה | catalog course on a board | not listed 2020–2025 | — | Not offered this year (no action unless planned) |
+| 0555-2250 | מערכות פיזיולוגיות בגוף האדם (2) | prerequisite of 1 course(s): 0555-3240 | not listed 2020–2025 | — | Unresolved: required by current courses but not in the catalog |
 | 0555-4000 | אתיקה מעשית לתלמידי  תואר ראשון  בהנדסה ומדעים | catalog course on a board | 2025/2026: אתיקה מעשית לתלמידי  תואר ראשון  בהנדסה ומדעים | — | Not offered this year (no action unless planned) |
 | 0555-4432 | תכנון מערכות ביו-רפואיות | catalog course on a board | 2025/2026: תכנון מערכות ביו-רפואיות | — | Not offered this year (no action unless planned) |
-| 0608-1153 | על רקע רומנטי? סוגיות מגדריות בספרות מתח | catalog course on a board | not in 2025 or 2024 either | — | Not offered this year (no action unless planned) |
+| 0608-1153 | על רקע רומנטי? סוגיות מגדריות בספרות מתח | catalog course on a board | not listed 2020–2025 | — | Not offered this year (no action unless planned) |
 | 0609-1018 | קשב ולמידה | catalog course on a board | 2025/2026: קשב ולמידה | — | Not offered this year (no action unless planned) |
 | 0609-1201 | מיתולוגיות בתרבות העכשווית | catalog course on a board | 2025/2026: מיתולוגיות בתרבות העכשווית | — | Not offered this year (no action unless planned) |
 | 0609-1209 | מדעי העבר : פענוח תרבות ואירועים מהעבר האנושי בעזרת המדעים המדוייקים | catalog course on a board | 2025/2026: מדעי העבר : פענוח תרבות ואירועים מהעבר האנושי בעזרת המדעים המדוייקים | — | Not offered this year (no action unless planned) |
@@ -90,4 +90,63 @@ Our boards against the semesters the official listing shows groups in this year.
 |---|---|---|---|
 
 0 difference(s).
+
+## 4. Proposed equivalences for retired prerequisite numbers — FOR APPROVAL, not applied
+
+A retired number needs a mapping only where the registrar requires it with no current alternative. Evidence levels:
+
+- **Registrar-listed alternative**: in other official requirements the registrar lists the retired number and the current course as alternatives ("או"). Official, but stated per requirement, not as a general equivalence.
+- **Same official name**: the current catalog has a course with the identical official name. Inferred.
+- **Similar name**: names differ; listed only as a lead. Uncertain.
+
+| Retired number | Registrar's name | Required without an alternative by | Proposed current course | Evidence | Status |
+|---|---|---|---|---|---|
+| 0509-1510 | גרפיקה הנדסית | 0542-2400, 0542-3780, 0542-4425 | 0542-1510 גרפיקה הנדסית (mechanical_engineering_years_1_2) | same official name; last listed 2025/2026 | Inferred (same official name) |
+| 0509-1824 | אלגברה לינארית | 0509-2805, 0542-4422 | 0509-1724 אלגברה ליניארית להנדסת חשמל ואלקטרוניקה (electrical_engineering_years_1_2) | registrar-listed alternative in 4 requirement(s), e.g. 0509-1745; not listed 2020–2025 | Registrar-listed alternative — one of several candidates |
+|  |  |  | 0509-1624 אלגברה ליניארית להנדסה מכנית (mechanical_engineering_years_1_2) | registrar-listed alternative in 2 requirement(s), e.g. 0509-1645; not listed 2020–2025 | Registrar-listed alternative — one of several candidates |
+| 0509-1843 | חשבון דיפרנציאלי ואינטגרלי | 0509-2805 | 0509-1747 חשבון דיפרנציאלי ואינטגרלי 2ב' להנדסת חשמל ואלקטרוניקה (electrical_engineering_years_1_2) | registrar-listed alternative in 3 requirement(s), e.g. 0509-2801; not listed 2020–2025 | Registrar-listed alternative — one of several candidates |
+|  |  |  | 0509-1647 חשבון  דיפרנציאלי ואינטגרלי 2ב' למכנית (mechanical_engineering_years_1_2) | registrar-listed alternative in 2 requirement(s), e.g. 0509-2843; not listed 2020–2025 | Registrar-listed alternative — one of several candidates |
+|  |  |  | 0509-1547 חשבון דיפרנציאלי ואינטגרלי  2ב' לביו-רפואית (outside our programs) | registrar-listed alternative in 2 requirement(s), e.g. 0509-2843; not listed 2020–2025 | Registrar-listed alternative — one of several candidates |
+|  |  |  | 0509-1447 חשבון דיפרנציאלי ואינטגרלי  2ב להנדסת תעשייה וניהול (outside our programs) | registrar-listed alternative in 2 requirement(s), e.g. 0509-2843; not listed 2020–2025 | Registrar-listed alternative — one of several candidates |
+|  |  |  | 0509-1746 חשבון דיפרנציאלי ואינטגרלי 1ב'  להנדסת חשמל (electrical_engineering_years_1_2) | similar name: חשבון דיפרנציאלי ואינטגרלי 1ב'  להנדסת חשמל; not listed 2020–2025 | Uncertain (similar name only) — one of several candidates |
+| 0509-1845 | משוואות דיפרנציאליות רגילות | 0512-1205 | 0509-1645 משוואות דיפרנציאליות רגילות להנדסה מכנית (mechanical_engineering_years_1_2) | registrar-listed alternative in 4 requirement(s), e.g. 0509-2843; not listed 2020–2025 | Registrar-listed alternative — one of several candidates |
+|  |  |  | 0509-1745 משוואות דיפרנציאליות רגילות להנדסת חשמל ואלקטרוניקה (electrical_engineering_years_1_2) | registrar-listed alternative in 3 requirement(s), e.g. 0509-2843; not listed 2020–2025 | Registrar-listed alternative — one of several candidates |
+|  |  |  | 0509-1545 משוואות דפרנציאליות רגילות להנדסה ביו-רפואית (outside our programs) | registrar-listed alternative in 2 requirement(s), e.g. 0509-2843; not listed 2020–2025 | Registrar-listed alternative — one of several candidates |
+|  |  |  | 0509-1445 משוואות דיפרנציאליות רגילות לתעשייה וניהול (outside our programs) | registrar-listed alternative in 2 requirement(s), e.g. 0509-2843; not listed 2020–2025 | Registrar-listed alternative — one of several candidates |
+|  |  |  | 0509-2846 משוואות דיפרנציאליות חלקיות (electrical_engineering_years_1_2, mechanical_engineering_years_1_2) | similar name: משוואות דיפרנציאליות חלקיות; not listed 2020–2025 | Uncertain (similar name only) — one of several candidates |
+| 0509-1846 | חשבון דיפרנציאלי ואינטגרלי 1ב | — (always listed with a current alternative: 0509-1646, 0509-1746) | none needed | not listed 2020–2025 | No mapping needed |
+| 0512-2507 | מבוא לפיזיקה של מוליכים למחצה | — (always listed with a current alternative: 0512-2830) | none needed | not listed 2020–2025 | No mapping needed |
+| 0512-2509 | מבוא להתקנים אלקטרוניים | — (always listed with a current alternative: 0512-2508) | none needed | last listed 2023/2024 | No mapping needed |
+| 0512-2526 | שדות וגלים אלקטרו מגנטיים | — (always listed with a current alternative: 0512-3526) | none needed | last listed 2023/2024 | No mapping needed |
+| 0512-2531 | מבוא למערכות לינאריות | — (always listed with a current alternative: 0512-2832) | none needed | not listed 2020–2025 | No mapping needed |
+| 0512-3632 | אותות אקראיים ורעש | 0510-6101, 0512-4360, 0512-4602 | 0512-2532 אותות אקראיים ורעש (electrical_engineering_years_1_2) | registrar-listed alternative in 4 requirement(s), e.g. 0510-6202; same official name; last listed 2021/2022 | Registrar-listed alternative |
+| 0512-4262 | עיבוד תמונות | 0512-4263 | — | last listed 2025/2026; no current course found | **Unresolved** |
+| 0542-1830 | מבוא למדע והנדסת חומרים | 0542-2400, 0542-3780, 0542-4091 | 0581-1111 מבוא למדע והנדסה של חומרים (electrical_engineering, electrical_engineering_years_1_2, mechanical_engineering_years_1_2) | similar name: מבוא למדע והנדסה של חומרים; not listed 2020–2025 | Uncertain (similar name only) — one of several candidates |
+|  |  |  | 0581-1132 מבוא למדע והנדסה של חומרים - מעבדה (mechanical_engineering_years_1_2) | similar name: מבוא למדע והנדסה של חומרים - מעבדה; not listed 2020–2025 | Uncertain (similar name only) — one of several candidates |
+|  |  |  | 0581-2111 מבוא למדע והנדסה של חומרים (outside our programs) | similar name: מבוא למדע והנדסה של חומרים; not listed 2020–2025 | Uncertain (similar name only) — one of several candidates |
+| 0555-2250 | מערכות פיזיולוגיות בגוף האדם (2) | 0555-3240 | 0555-2106 מערכות פיסיולוגיות בגוף האדם (electrical_engineering, electrical_engineering_years_1_2) | similar name: מערכות פיסיולוגיות בגוף האדם; not listed 2020–2025 | Uncertain (similar name only) |
+| 0671-1035 | מבוא לארכיאולוגיה של תקופות הברונזה והברזל בדרום הלבנט | — (always listed with a current alternative: 0671-1045) | none needed | last listed 2025/2026 | No mapping needed |
+
+Where several candidates are listed they are faculty variants of the same subject (for example calculus for mechanical vs. electrical engineering); the mapping would accept any of them, as the registrar's own alternative lists do.
+
+## 5. Real prerequisites outside our programs
+
+Courses in this year's catalog that a board course requires with no alternative, but that no supported board carries. Not an equivalence problem: the student must have completed them.
+
+| Outside course | Official name | Required by |
+|---|---|---|
+| 0321-1119 | פיזיקה קלאסית 2 | 0512-2525 |
+| 0321-2103 | קוונטים 1 | 0321-3818, 0321-3819 |
+| 0321-2130 | שיטות בפיזיקה עיונית 1 | 0512-2525 |
+| 0509-1424 | אלגברה ליניארית לתלמידי הנדסת תעשייה וניהול | 0571-3802 |
+| 0509-1545 | משוואות דפרנציאליות רגילות להנדסה ביו-רפואית | 0555-4555 |
+| 0512-1201 | מבוא למערכות ומעגלים חשמליים | 0512-1202, 0512-1203, 0542-4559 |
+| 0555-1101 | ביולוגיה של התא | 0555-2106, 0555-3160, 0555-4550 |
+| 0555-1121 | כימיה להנדסה ביו-רפואית | 0555-3160 |
+| 0555-3120 | עיבוד תמונות רפואיות (1) | 0555-4520 |
+| 0555-3150 | ביו-חומרים | 0555-4630 |
+| 0555-4530 | אופטיקה ולייזרים ברפואה | 0555-3240 |
+| 0581-2111 | מבוא למדע והנדסה של חומרים | 0581-3122 |
+
+12 outside prerequisite(s).
 

@@ -29,7 +29,7 @@ import { normalizeHebrew } from '../planning_intent';
 import { ACADEMIC_FOCUS_AREAS } from '../academic_interest_profile';
 import { INTERNAL_DISTRIBUTION_POLICY } from '../planner_policy_context';
 import { currentSemesterId, defaultTermMapping } from '../../../shared/planner/schedule';
-import { checkTimetable, WEEK_DAYS } from '../../../shared/planner/timetable';
+import { checkTimetable, timetableStatus, WEEK_DAYS } from '../../../shared/planner/timetable';
 import { fetchScheduleFromBidit } from './session';
 import { earlyYearCoursesFor } from '../../../shared/planner/early_year_courses';
 import { completedCreditHours } from '../conversation_clarification';
@@ -598,7 +598,7 @@ export function buildAgentTools() {
         const invalidLock = session.hasInvalidLockedPlacement();
         return {
           accepted: Boolean(selected) && !invalidLock,
-          ...(invalidLock ? { reason: 'A committed course breaks an availability rule (lock_conflicts with blocks_validity). The rest of the board was planned around it, but this plan is NOT valid and cannot be submitted until the student decides. Explain the conflict and its valid alternatives, and ask.' } : {}),
+          ...(invalidLock ? { reason: 'A committed course breaks an availability rule (lock_conflicts with blocks_validity). The rest of the board was planned around it, so this is a PARTIAL plan: it is not fully valid. You may submit it — it will be labelled as unresolved — but you must explain the conflict and its valid alternatives and let the student decide; never describe it as a valid plan.' } : {}),
           ...(session.scopeYears ? {
             scope_years: session.scopeYears,
             scope_note: selected
@@ -730,6 +730,8 @@ export function buildAgentTools() {
           source: 'bid-it (unofficial; currently published timetables only)',
           free_days_requested: freeDays,
           feasible: result.feasible,
+          // valid | partial (built around a chosen group that still collides) | infeasible | unknown
+          status: timetableStatus(result),
           days_used: result.daysUsed,
           free_days_kept: result.feasible ? WEEK_DAYS.filter((day) => !result.daysUsed.includes(day)) : [],
           selection: result.selection.map((item) => ({
@@ -821,7 +823,13 @@ export function buildAgentTools() {
             out_of_scope_removals: outOfScopeRemoved.map((item) => ({ ...item, name_he: nameOf(session, item.course_id) })) };
         }
         const validation = validationSummary(session);
-        if (!validation.valid) {
+        // A committed course that breaks an availability rule stays where the student put it. The
+        // proposal may still go out as PARTIAL when everything else is valid: judged with the same
+        // tolerant model the search used, and always labelled as unresolved.
+        const partial = !validation.valid && session.hasInvalidLockedPlacement()
+          && validateCandidate(session.worker.getPlan(), session.searchModel(),
+            Object.fromEntries([...session.lockedPlacements()].map(([id, homes]) => [id, homes[0]]))).valid;
+        if (!validation.valid && !partial) {
           return { accepted: false, reason: 'The draft is not valid yet. Fix these issues (or explain to the student why they cannot be fixed).', validation };
         }
         // Locked placements are immutable: every committed course the student has not released must be
@@ -839,8 +847,15 @@ export function buildAgentTools() {
             degree_hours: validation.degree_hours, degree_hours_required: required };
         }
         // Open lock conflicts always reach the student, in the server's words.
-        session.submission = { summaryHe: summary_he, tradeoffsHe: [...tradeoffs_he, ...session.lockConflicts.map((conflict) => conflict.messageHe)].slice(0, 12) };
-        return { accepted: true };
+        const blocking = session.lockConflicts.filter((conflict) => conflict.blocksValidity);
+        session.submission = {
+          summaryHe: summary_he,
+          tradeoffsHe: [...tradeoffs_he, ...session.lockConflicts.filter((conflict) => !conflict.blocksValidity).map((conflict) => conflict.messageHe)].slice(0, 12),
+          ...(partial ? { unresolvedConflictsHe: blocking.map((conflict) => `${conflict.messageHe} אפשרויות: ${conflict.resolutionsHe.join(' / ')}.`) } : {}),
+        };
+        return partial
+          ? { accepted: true, partial: true, note: 'Submitted as a PARTIAL plan: the student sees the unresolved conflict with the proposal. Say clearly in your reply that the plan is not fully valid, which course is the problem, and what they can decide.' }
+          : { accepted: true };
       }),
     }),
   ];

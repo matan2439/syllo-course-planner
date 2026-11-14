@@ -1,4 +1,4 @@
-import { checkTimetable, lockKey } from '../../shared/planner/timetable'
+import { checkTimetable, lockKey, timetableStatus } from '../../shared/planner/timetable'
 import type { ScheduleCourse, ScheduleGroup } from '../../shared/planner/schedule'
 
 const group = (groupId: string, day: string, start: string, end: string): ScheduleGroup => ({
@@ -59,5 +59,13 @@ describe('a group the student chose is a hard constraint', () => {
     const result = checkTimetable([A], [], lock(A, '99'))
     expect(result.feasible).toBe(true)
     expect(result.lockedConflicts).toEqual([])
+  })
+})
+
+describe('one verdict for the week', () => {
+  test('built around a colliding choice = partial; clean = valid; impossible = infeasible', () => {
+    expect(timetableStatus(checkTimetable([A, B], [], lock(A, '01')))).toBe('valid')
+    expect(timetableStatus(checkTimetable([A, B], ['א'], lock(A, '01')))).toBe('partial')
+    expect(timetableStatus(checkTimetable([A, B], [], { ...lock(A, '01'), ...lock(B, '01') }))).toBe('infeasible')
   })
 })

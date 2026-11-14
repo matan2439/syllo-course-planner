@@ -191,6 +191,11 @@ const conversationProposalSchema = z.object({
   expires_at: z.number().int().nonnegative(),
   /** Read-only server materialization for the draft UI; Apply still names ids. */
   alternatives: z.array(conversationAlternativeSchema).min(1).max(12),
+  /**
+   * Present on a PARTIAL plan: a committed course still breaks an availability rule. The plan
+   * is not fully valid and the UI must say so wherever the proposal is shown.
+   */
+  unresolved_conflicts_he: z.array(boundedText).min(1).max(12).optional(),
 }).strict()
 
 const academicDecisionSummarySchema = z.object({

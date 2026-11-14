@@ -45,6 +45,11 @@ export interface AgentQuestion {
 export interface AgentSubmission {
   summaryHe: string;
   tradeoffsHe: string[];
+  /**
+   * Set when the proposal is PARTIAL: everything the planner added is valid, but a committed
+   * course still breaks an availability rule. Shown with the proposal; never presented as valid.
+   */
+  unresolvedConflictsHe?: string[];
 }
 
 export interface PlanningSessionInput {

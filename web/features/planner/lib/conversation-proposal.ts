@@ -60,5 +60,6 @@ export function conversationProposalToModel(input: ConversationProposal): Genera
       expiresAt: input.expires_at,
     },
     alternatives,
+    ...(input.unresolved_conflicts_he?.length ? { unresolvedConflictsHe: [...input.unresolved_conflicts_he] } : {}),
   }
 }

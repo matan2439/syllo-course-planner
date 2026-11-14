@@ -1,0 +1,200 @@
+{
+ "status": "PROPOSED — not consumed by any code until approved",
+ "catalog_year": 2026,
+ "proposals": [
+  {
+   "retired": "0509-1510",
+   "name_he": "גרפיקה הנדסית",
+   "required_by": [
+    "0542-2400",
+    "0542-3780",
+    "0542-4425"
+   ],
+   "candidates": [
+    {
+     "course_id": "0542-1510",
+     "name_he": "גרפיקה הנדסית",
+     "evidence": "same official name",
+     "status": "Inferred (same official name)"
+    }
+   ],
+   "status": "proposed"
+  },
+  {
+   "retired": "0509-1824",
+   "name_he": "אלגברה לינארית",
+   "required_by": [
+    "0509-2805",
+    "0542-4422"
+   ],
+   "candidates": [
+    {
+     "course_id": "0509-1724",
+     "name_he": "אלגברה ליניארית להנדסת חשמל ואלקטרוניקה",
+     "evidence": "registrar-listed alternative in 4 requirement(s), e.g. 0509-1745",
+     "status": "Registrar-listed alternative"
+    },
+    {
+     "course_id": "0509-1624",
+     "name_he": "אלגברה ליניארית להנדסה מכנית",
+     "evidence": "registrar-listed alternative in 2 requirement(s), e.g. 0509-1645",
+     "status": "Registrar-listed alternative"
+    }
+   ],
+   "status": "proposed"
+  },
+  {
+   "retired": "0509-1843",
+   "name_he": "חשבון דיפרנציאלי ואינטגרלי",
+   "required_by": [
+    "0509-2805"
+   ],
+   "candidates": [
+    {
+     "course_id": "0509-1747",
+     "name_he": "חשבון דיפרנציאלי ואינטגרלי 2ב' להנדסת חשמל ואלקטרוניקה",
+     "evidence": "registrar-listed alternative in 3 requirement(s), e.g. 0509-2801",
+     "status": "Registrar-listed alternative"
+    },
+    {
+     "course_id": "0509-1647",
+     "name_he": "חשבון  דיפרנציאלי ואינטגרלי 2ב' למכנית",
+     "evidence": "registrar-listed alternative in 2 requirement(s), e.g. 0509-2843",
+     "status": "Registrar-listed alternative"
+    },
+    {
+     "course_id": "0509-1547",
+     "name_he": "חשבון דיפרנציאלי ואינטגרלי  2ב' לביו-רפואית",
+     "evidence": "registrar-listed alternative in 2 requirement(s), e.g. 0509-2843",
+     "status": "Registrar-listed alternative"
+    },
+    {
+     "course_id": "0509-1447",
+     "name_he": "חשבון דיפרנציאלי ואינטגרלי  2ב להנדסת תעשייה וניהול",
+     "evidence": "registrar-listed alternative in 2 requirement(s), e.g. 0509-2843",
+     "status": "Registrar-listed alternative"
+    },
+    {
+     "course_id": "0509-1746",
+     "name_he": "חשבון דיפרנציאלי ואינטגרלי 1ב'  להנדסת חשמל",
+     "evidence": "similar name: חשבון דיפרנציאלי ואינטגרלי 1ב'  להנדסת חשמל",
+     "status": "Uncertain (similar name only)"
+    }
+   ],
+   "status": "proposed"
+  },
+  {
+   "retired": "0509-1845",
+   "name_he": "משוואות דיפרנציאליות רגילות",
+   "required_by": [
+    "0512-1205"
+   ],
+   "candidates": [
+    {
+     "course_id": "0509-1645",
+     "name_he": "משוואות דיפרנציאליות רגילות להנדסה מכנית",
+     "evidence": "registrar-listed alternative in 4 requirement(s), e.g. 0509-2843",
+     "status": "Registrar-listed alternative"
+    },
+    {
+     "course_id": "0509-1745",
+     "name_he": "משוואות דיפרנציאליות רגילות להנדסת חשמל ואלקטרוניקה",
+     "evidence": "registrar-listed alternative in 3 requirement(s), e.g. 0509-2843",
+     "status": "Registrar-listed alternative"
+    },
+    {
+     "course_id": "0509-1545",
+     "name_he": "משוואות דפרנציאליות רגילות להנדסה ביו-רפואית",
+     "evidence": "registrar-listed alternative in 2 requirement(s), e.g. 0509-2843",
+     "status": "Registrar-listed alternative"
+    },
+    {
+     "course_id": "0509-1445",
+     "name_he": "משוואות דיפרנציאליות רגילות לתעשייה וניהול",
+     "evidence": "registrar-listed alternative in 2 requirement(s), e.g. 0509-2843",
+     "status": "Registrar-listed alternative"
+    },
+    {
+     "course_id": "0509-2846",
+     "name_he": "משוואות דיפרנציאליות חלקיות",
+     "evidence": "similar name: משוואות דיפרנציאליות חלקיות",
+     "status": "Uncertain (similar name only)"
+    }
+   ],
+   "status": "proposed"
+  },
+  {
+   "retired": "0512-3632",
+   "name_he": "אותות אקראיים ורעש",
+   "required_by": [
+    "0510-6101",
+    "0512-4360",
+    "0512-4602"
+   ],
+   "candidates": [
+    {
+     "course_id": "0512-2532",
+     "name_he": "אותות אקראיים ורעש",
+     "evidence": "registrar-listed alternative in 4 requirement(s), e.g. 0510-6202; same official name",
+     "status": "Registrar-listed alternative"
+    }
+   ],
+   "status": "proposed"
+  },
+  {
+   "retired": "0512-4262",
+   "name_he": "עיבוד תמונות",
+   "required_by": [
+    "0512-4263"
+   ],
+   "candidates": [],
+   "status": "unresolved"
+  },
+  {
+   "retired": "0542-1830",
+   "name_he": "מבוא למדע והנדסת חומרים",
+   "required_by": [
+    "0542-2400",
+    "0542-3780",
+    "0542-4091"
+   ],
+   "candidates": [
+    {
+     "course_id": "0581-1111",
+     "name_he": "מבוא למדע והנדסה של חומרים",
+     "evidence": "similar name: מבוא למדע והנדסה של חומרים",
+     "status": "Uncertain (similar name only)"
+    },
+    {
+     "course_id": "0581-1132",
+     "name_he": "מבוא למדע והנדסה של חומרים - מעבדה",
+     "evidence": "similar name: מבוא למדע והנדסה של חומרים - מעבדה",
+     "status": "Uncertain (similar name only)"
+    },
+    {
+     "course_id": "0581-2111",
+     "name_he": "מבוא למדע והנדסה של חומרים",
+     "evidence": "similar name: מבוא למדע והנדסה של חומרים",
+     "status": "Uncertain (similar name only)"
+    }
+   ],
+   "status": "proposed"
+  },
+  {
+   "retired": "0555-2250",
+   "name_he": "מערכות פיזיולוגיות בגוף האדם (2)",
+   "required_by": [
+    "0555-3240"
+   ],
+   "candidates": [
+    {
+     "course_id": "0555-2106",
+     "name_he": "מערכות פיסיולוגיות בגוף האדם",
+     "evidence": "similar name: מערכות פיסיולוגיות בגוף האדם",
+     "status": "Uncertain (similar name only)"
+    }
+   ],
+   "status": "proposed"
+  }
+ ]
+}

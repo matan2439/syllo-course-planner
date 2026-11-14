@@ -223,3 +223,15 @@ export function checkTimetable(
   }
   return { feasible: false, selection: [], daysUsed: [], unknownCourseIds, conflictingCoursePairs, coursesBlockingFreeDays, lockedConflicts, lockedClashes }
 }
+
+/**
+ * One verdict for a week, the same vocabulary the degree planner uses: `partial` means a week
+ * was built around the student's own choices but one of them still collides with a free day or
+ * a busy time — usable, never to be presented as fully valid.
+ */
+export type TimetableStatus = 'valid' | 'partial' | 'infeasible' | 'unknown'
+export function timetableStatus(result: Pick<TimetableResult, 'feasible' | 'lockedConflicts'>): TimetableStatus {
+  if (result.feasible === null) return 'unknown'
+  if (!result.feasible) return 'infeasible'
+  return result.lockedConflicts.length ? 'partial' : 'valid'
+}

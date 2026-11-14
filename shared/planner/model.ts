@@ -163,6 +163,8 @@ export interface GeneratedPlanModel {
   semesters: PlanSemesterModel[];
   moves: PlanMoveModel[];
   warningsHe: string[];
+  /** A partial plan: committed courses that still break an availability rule. Never shown as valid. */
+  unresolvedConflictsHe?: string[];
   errors: string[];
   blocked: boolean;
   /** Present only when the server interpreted a free-text request (opt-in). */

@@ -29,3 +29,16 @@ test('removing a board course needs an explicit second confirmation', () => {
   fireEvent.click(screen.getByRole('button', { name: 'כן, להסיר ולהחיל' }))
   expect(onApply).toHaveBeenCalledTimes(1)
 })
+
+test('a partial plan always shows that it is not fully valid, with the unresolved conflict', () => {
+  render(<ProposalView {...base} removed={[]} onApply={jest.fn()}
+    unresolvedConflictsHe={['הקורס "אלפא" משובץ בסמסטר שבו אינו ניתן. אפשרויות: לאשר העברה / לאשר הסרה.']} />)
+  const banner = screen.getByRole('alert', { name: 'התנגשות שלא נפתרה' })
+  expect(banner).toHaveTextContent('תוכנית חלקית — לא תקינה במלואה')
+  expect(banner).toHaveTextContent('אלפא')
+})
+
+test('a fully valid proposal shows no unresolved-conflict banner', () => {
+  render(<ProposalView {...base} removed={[]} onApply={jest.fn()} />)
+  expect(screen.queryByRole('alert', { name: 'התנגשות שלא נפתרה' })).toBeNull()
+})

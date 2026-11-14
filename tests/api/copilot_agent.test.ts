@@ -413,7 +413,37 @@ describe('committed courses are locked', () => {
     expect(built).toMatchObject({ accepted: false, lock_conflicts: [expect.objectContaining({ blocks_validity: true })] })
     expect(built.validation.valid).toBe(false)
     expect(session.worker.getPlan().semesters.year_3_semester_a).toEqual(expect.arrayContaining(['MAND', 'ALPHA']))
+    // Everything else is valid, so it may go out — as a PARTIAL plan that names the conflict.
+    expect(await callTool(session, 'submit_proposal', submit)).toMatchObject({ accepted: true, partial: true })
+    expect(session.submission?.unresolvedConflictsHe?.join(' ')).toMatch(/אלפא.*אינה תקינה/)
+    expect(session.lockViolations()).toEqual([])
+  })
+
+  test('a partial plan reaches the student labelled as not fully valid, in the server\'s own words', async () => {
+    const model = new FakeAgentModel([
+      [{ tool: 'build_plan', args: { only_years: null } }],
+      [{ tool: 'submit_proposal', args: { summary_he: 'תכננתי את השאר', tradeoffs_he: [], extra_hours_reason_he: null } }],
+    ])
+    const result = await runPlannerAgent({ transcript, session: await newSession(KNOWN_COURSE_PREFERENCES, placed) }, { model })
+    expect(result.outcome).toBe('proposal')
+    if (result.outcome !== 'proposal') throw new Error('expected proposal')
+    expect(result.validation.valid).toBe(false)
+    expect(result.unresolvedConflictsHe).toHaveLength(1)
+    expect(result.messageHe).toContain('התוכנית חלקית ואינה תקינה במלואה')
+    expect(result.draftPlan.semesters.year_3_semester_a).toEqual(expect.arrayContaining(['ALPHA']))
+  })
+
+  test('a draft with a problem of its own is still refused, partial or not', async () => {
+    // Only the wrongly placed ALPHA is on the board; the mandatory course is still missing, so the
+    // unbuilt draft is not "valid apart from the lock".
+    const onlyAlpha = { ...planContext, semesters: [{ id: 'year_3_semester_a', courses: [{ course_id: 'ALPHA' }] }] }
+    const session = await newSession(KNOWN_COURSE_PREFERENCES, onlyAlpha)
+    expect(session.hasInvalidLockedPlacement()).toBe(true)
     expect(await callTool(session, 'submit_proposal', submit)).toMatchObject({ accepted: false })
+    expect(session.submission).toBeUndefined()
+    // After the planner fills in the rest, the same board goes out as a partial plan.
+    await callTool(session, 'build_plan', { only_years: null })
+    expect(await callTool(session, 'submit_proposal', submit)).toMatchObject({ accepted: true, partial: true })
   })
 
   test('once the student releases it, the course can move to a semester it is offered in and the plan validates', async () => {

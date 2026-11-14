@@ -12,6 +12,7 @@ as a CANDIDATE renumbering for a person to confirm, never applied.
 from __future__ import annotations
 
 import argparse
+import difflib
 import json
 import re
 import sys
@@ -69,7 +70,7 @@ def main() -> None:
             required_by.setdefault(ref, []).append(course_id)
 
     def history(course_id: str) -> tuple[int | None, str | None]:
-        for past in (year - 1, year - 2):
+        for past in range(year - 1, year - 7, -1):
             path = args.cache / "history" / f"{course_id}_{past}.html"
             if path.exists():
                 listing = parse_catalog_listing(path.read_text(encoding="utf-8", errors="replace"))
@@ -107,7 +108,7 @@ def main() -> None:
         else:
             verdict = "Not offered this year (no action unless planned)"
             counts["retired"] += 1
-        listing = f"{last_year}/{last_year + 1}: {last_name}" if last_year else f"not in {year - 1} or {year - 2} either"
+        listing = f"{last_year}/{last_year + 1}: {last_name}" if last_year else f"not listed {year - 6}–{year - 1}"
         lines.append(f"| {course_id} | {name or '—'} | {'; '.join(role) or '—'} | {listing} | {', '.join(candidates) or '—'} | {verdict} |")
     lines += ["", f"Totals: {len(missing)} missing · {counts['candidate']} candidate renumberings · {counts['unresolved']} unresolved prerequisites · {counts['retired']} simply not offered this year.", ""]
 
@@ -141,6 +142,95 @@ def main() -> None:
             lines.append(f"| {course_id} | {ours['name_he']} | marked not offered | {', '.join(sorted(official))} |")
             offered += 1
     lines += ["", f"{offered} difference(s).", ""]
+
+    # ── 4. Proposed equivalences ────────────────────────────────────────────────────────────
+    def contexts(expression, target, parent=None, found=None):
+        found = [] if found is None else found
+        if not expression:
+            return found
+        if "course" in expression:
+            if expression["course"] == target:
+                found.append(parent)
+            return found
+        kind = "all" if "all" in expression else "any"
+        for child in expression[kind]:
+            contexts(child, target, (kind, [item.get("course") for item in expression[kind] if "course" in item]), found)
+        return found
+
+    in_catalog = lambda course_id: ({**external, **courses}.get(course_id, {}).get("catalog") or {}).get("found") is True  # noqa: E731
+    official_name = lambda course_id: ({**external, **courses}.get(course_id, {}).get("catalog") or {}).get("name_he")  # noqa: E731
+    registrar_name = lambda course_id: next((record["course_names"][course_id] for record in courses.values()  # noqa: E731
+                                             if course_id in record.get("course_names", {})), None)
+    program_of = lambda course_id: ", ".join(b.replace("_2027", "") for b in courses.get(course_id, {}).get("boards", [])) or "outside our programs"  # noqa: E731
+
+    proposals = []
+    lines += ["## 4. Proposed equivalences for retired prerequisite numbers — FOR APPROVAL, not applied", "",
+              "A retired number needs a mapping only where the registrar requires it with no current alternative. Evidence levels:", "",
+              "- **Registrar-listed alternative**: in other official requirements the registrar lists the retired number and the current course as alternatives (\"או\"). Official, but stated per requirement, not as a general equivalence.",
+              "- **Same official name**: the current catalog has a course with the identical official name. Inferred.",
+              "- **Similar name**: names differ; listed only as a lead. Uncertain.", "",
+              "| Retired number | Registrar's name | Required without an alternative by | Proposed current course | Evidence | Status |", "|---|---|---|---|---|---|"]
+    for course_id in missing:
+        if course_id in courses:  # a board course that is simply not offered this year
+            continue
+        alone_in, siblings = [], {}
+        for dependent, record in courses.items():
+            for kind in ("expression", "corequisites"):
+                for parent in contexts(record.get(kind), course_id):
+                    if parent and parent[0] == "any":
+                        for sibling in parent[1]:
+                            if sibling != course_id and in_catalog(sibling):
+                                siblings.setdefault(sibling, set()).add(dependent)
+                    else:
+                        alone_in.append(dependent)
+        name = registrar_name(course_id)
+        same = [c for c in by_name.get(norm(name), []) if c != course_id]
+        similar = sorted((c for names_ in by_name.items() for c in names_[1]
+                          if c not in same and c != course_id and name
+                          and difflib.SequenceMatcher(None, norm(name), names_[0]).ratio() >= 0.8), key=str)
+        last_year, _ = history(course_id)
+        seen = f"last listed {last_year}/{last_year + 1}" if last_year else f"not listed {year - 6}–{year - 1}"
+        if not alone_in:
+            lines.append(f"| {course_id} | {name} | — (always listed with a current alternative: {', '.join(sorted(siblings)) or '—'}) | none needed | {seen} | No mapping needed |")
+            continue
+        candidates = []
+        for sibling in sorted(siblings, key=lambda c: -len(siblings[c])):
+            candidates.append((sibling, f"registrar-listed alternative in {len(siblings[sibling])} requirement(s), e.g. {sorted(siblings[sibling])[0]}"
+                               + ("; same official name" if sibling in same else ""), "Registrar-listed alternative"))
+        for candidate in same:
+            if candidate not in siblings:
+                candidates.append((candidate, "same official name", "Inferred (same official name)"))
+        for candidate in similar:
+            if candidate not in siblings:
+                candidates.append((candidate, f"similar name: {official_name(candidate)}", "Uncertain (similar name only)"))
+        dependents = ", ".join(sorted(set(alone_in)))
+        if not candidates:
+            lines.append(f"| {course_id} | {name} | {dependents} | — | {seen}; no current course found | **Unresolved** |")
+            proposals.append({"retired": course_id, "name_he": name, "required_by": sorted(set(alone_in)), "candidates": [], "status": "unresolved"})
+            continue
+        for index, (candidate, evidence, status) in enumerate(candidates):
+            lines.append(f"| {course_id if index == 0 else ''} | {name if index == 0 else ''} | {dependents if index == 0 else ''} | {candidate} {official_name(candidate)} ({program_of(candidate)}) | {evidence}; {seen} | {status}{' — one of several candidates' if len(candidates) > 1 else ''} |")
+        proposals.append({"retired": course_id, "name_he": name, "required_by": sorted(set(alone_in)),
+                          "candidates": [{"course_id": c, "name_he": official_name(c), "evidence": e, "status": st} for c, e, st in candidates],
+                          "status": "proposed"})
+    lines += ["", "Where several candidates are listed they are faculty variants of the same subject (for example calculus for mechanical vs. electrical engineering); the mapping would accept any of them, as the registrar's own alternative lists do.", ""]
+
+    lines += ["## 5. Real prerequisites outside our programs", "",
+              "Courses in this year's catalog that a board course requires with no alternative, but that no supported board carries. Not an equivalence problem: the student must have completed them.", "",
+              "| Outside course | Official name | Required by |", "|---|---|---|"]
+    outside = 0
+    for course_id, record in sorted(external.items()):
+        if not in_catalog(course_id):
+            continue
+        alone = sorted({dependent for dependent, row in courses.items() for kind in ("expression", "corequisites")
+                        for parent in contexts(row.get(kind), course_id) if not (parent and parent[0] == "any")})
+        if alone:
+            lines.append(f"| {course_id} | {official_name(course_id)} | {', '.join(alone)} |")
+            outside += 1
+    lines += ["", f"{outside} outside prerequisite(s).", ""]
+    (ROOT / "data" / "prerequisites" / "equivalences.proposed.json").write_text(
+        json.dumps({"status": "PROPOSED — not consumed by any code until approved", "catalog_year": year, "proposals": proposals},
+                   ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
 
     out = ROOT / "docs" / "data-audit" / "catalog-audit.md"
     out.parent.mkdir(parents=True, exist_ok=True)

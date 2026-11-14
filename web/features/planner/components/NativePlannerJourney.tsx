@@ -526,6 +526,7 @@ export default function NativePlannerJourney({
             onApply={apply}
             onReject={clearProposal}
             alternatives={proposal.alternatives}
+            unresolvedConflictsHe={proposal.unresolvedConflictsHe}
             selectedAlternativeId={selectedAlternativeId}
             onSelectAlternative={setSelectedAlternativeId}
             courseNameById={Object.fromEntries(Object.entries(current.courseCatalog).map(([id, course]) => [id, course.nameHe || null]))}

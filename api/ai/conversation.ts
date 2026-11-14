@@ -441,7 +441,8 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
         academicDecision = await runAcademicDecisionAgent({
           programId: parsed.data.program_id,
           board: programBoard as Record<string, unknown>,
-          model,
+          // A partial plan is judged apart from the committed course it could not touch.
+          model: agent.unresolvedConflictsHe?.length ? session.searchModel() : model,
           finalState: agent.draftPlan,
           clarification,
           buildModelOptions,
@@ -474,7 +475,8 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
       }
 
       const messageHe = agent.messageHe.trim().slice(0, 4_000);
-      if (agent.outcome !== 'proposal' || !agent.validation.valid) {
+      const partialPlan = agent.outcome === 'proposal' && Boolean(agent.unresolvedConflictsHe?.length);
+      if (agent.outcome !== 'proposal' || (!agent.validation.valid && !partialPlan)) {
         await reply({
           outcome: 'conversation',
           message_he: messageHe,
@@ -687,6 +689,7 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
           academic_status_digest: receipt.academicStatusDigest,
           expires_at: receipt.expiresAt,
           alternatives: wireAlternatives,
+          ...(partialPlan ? { unresolved_conflicts_he: agent.unresolvedConflictsHe!.map((line) => line.slice(0, 4_000)).slice(0, 12) } : {}),
         },
       });
     } catch (error) {
