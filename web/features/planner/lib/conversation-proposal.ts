@@ -61,5 +61,6 @@ export function conversationProposalToModel(input: ConversationProposal): Genera
     },
     alternatives,
     ...(input.unresolved_conflicts_he?.length ? { unresolvedConflictsHe: [...input.unresolved_conflicts_he] } : {}),
+    ...(input.projected_placements?.length ? { projectedPlacements: input.projected_placements.map((item) => ({ courseId: item.course_id, semesterId: item.semester_id, status: item.status })) } : {}),
   }
 }

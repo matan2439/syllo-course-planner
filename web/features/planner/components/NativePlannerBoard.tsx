@@ -23,7 +23,9 @@ import { semesterLabel } from '../../locale/semester-label'
  * as everything else, instead of a separately-styled block elsewhere on the
  * page. A year-pair with no annual course simply has no row 2.
  */
-export default function NativePlannerBoard({ board, legendCategories = [], onRemoveCourse, onAddCourse, onMoveCourse, onSelectCourse, mutationPending = false, activeDrag, rejectedSemesterId, rejectedDropKey, justPlacedSemesterId, justPlacedKey, onDragStateChange, readOnly = false, editableCourseIds, onAddSemester, removableSemesterIds, onRemoveSemester, chrome = true, companion }: {
+export default function NativePlannerBoard({ board, legendCategories = [], onRemoveCourse, onAddCourse, onMoveCourse, onSelectCourse, mutationPending = false, activeDrag, rejectedSemesterId, rejectedDropKey, justPlacedSemesterId, justPlacedKey, onDragStateChange, readOnly = false, editableCourseIds, onAddSemester, removableSemesterIds, onRemoveSemester, chrome = true, companion, projectedSemesterIds }: {
+  /** Semesters of an academic year whose official timetable is not published: labelled as estimates. */
+  projectedSemesterIds?: ReadonlySet<string>
   board: BoardVM
   legendCategories?: readonly LegendCategory[]
   onRemoveCourse?: (courseId: string) => void
@@ -89,6 +91,7 @@ export default function NativePlannerBoard({ board, legendCategories = [], onRem
                     semester={s}
                     onRemove={!readOnly && onRemoveSemester && removableSemesterIds?.has(s.id) && !mutationPending
                       ? () => onRemoveSemester(s.id) : undefined}
+                    projected={projectedSemesterIds?.has(s.id) ?? false}
                   />
                 </div>
               )

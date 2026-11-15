@@ -108,9 +108,16 @@ function planSummary(session: PlanningSession) {
   const plan = session.worker.getPlan();
   return Object.entries(plan.semesters).map(([semester_id, ids]) => ({
     semester_id,
-    courses: ids.map((id) => ({ course_id: id, name_he: nameOf(session, id), hours: session.model.profiles.get(id)?.hours ?? null })),
+    courses: ids.map((id) => {
+      const offering = session.offeringStatusOf(id, semester_id);
+      return { course_id: id, name_he: nameOf(session, id), hours: session.model.profiles.get(id)?.hours ?? null,
+        // Only the exceptions are spelled out: anything not "confirmed" is an estimate or a gap.
+        ...(offering === 'confirmed' ? {} : { offering }) };
+    }),
   }));
 }
+
+const OFFERING_NOTE = 'offering "projected" = an ESTIMATE from this year\'s pattern (that year\'s timetable is not published); "unknown" = not enough information. Say "expected", never "offered/confirmed", and tell the student the availability may change.';
 
 function validationSummary(session: PlanningSession) {
   const report = session.worker.validateCandidate();
@@ -369,6 +376,9 @@ export function buildAgentTools() {
           is_mandatory: profile.is_mandatory,
           course_type: profile.course_type,
           allowed_semesters: allowedSemesters(profile),
+          // Per semester: confirmed | projected (estimate) | unavailable | unknown — see offering_note.
+          offering_by_semester: Object.fromEntries(session.model.knownSemesterIds.map((id) => [id, session.offeringStatusOf(course_id, id)])),
+          offering_note: OFFERING_NOTE,
           offering_source_url: profile.provenance.offering_source_url,
           offering_source_he: offeringSourceHe(profile.provenance.offering_source_url),
           recommended_semester: profile.recommended_semester,
@@ -610,6 +620,7 @@ export function buildAgentTools() {
           planner_rationale_he: selected?.rationaleHe ?? null,
           ...(session.lockConflicts.length ? { lock_conflicts: lockConflictRows(session), lock_conflicts_note: LOCK_CONFLICT_NOTE } : {}),
           plan: planSummary(session),
+          ...(session.projectedPlacements().length ? { projected_placements: session.projectedPlacements(), offering_note: OFFERING_NOTE } : {}),
           validation: validationSummary(session),
         };
       }),
@@ -848,8 +859,10 @@ export function buildAgentTools() {
         }
         // Open lock conflicts always reach the student, in the server's words.
         const blocking = session.lockConflicts.filter((conflict) => conflict.blocksValidity);
+        const projected = session.projectedPlacements();
         session.submission = {
           summaryHe: summary_he,
+          ...(projected.length ? { projectedPlacements: projected } : {}),
           tradeoffsHe: [...tradeoffs_he, ...session.lockConflicts.filter((conflict) => !conflict.blocksValidity).map((conflict) => conflict.messageHe)].slice(0, 12),
           ...(partial ? { unresolvedConflictsHe: blocking.map((conflict) => `${conflict.messageHe} אפשרויות: ${conflict.resolutionsHe.join(' / ')}.`) } : {}),
         };

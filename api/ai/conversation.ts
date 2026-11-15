@@ -689,6 +689,7 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
           academic_status_digest: receipt.academicStatusDigest,
           expires_at: receipt.expiresAt,
           alternatives: wireAlternatives,
+          ...(agent.outcome === 'proposal' && agent.projectedPlacements?.length ? { projected_placements: agent.projectedPlacements.slice(0, 80) } : {}),
           ...(partialPlan ? { unresolved_conflicts_he: agent.unresolvedConflictsHe!.map((line) => line.slice(0, 4_000)).slice(0, 12) } : {}),
         },
       });

@@ -2,13 +2,16 @@ import type { SemesterVM } from '../../../lib/board'
 import { Badge } from '../../../components/ui'
 import { useLocale } from '../../locale/LocaleProvider'
 import { semesterLabel } from '../../locale/semester-label'
+import { PROJECTED_NOTE_HE } from '../../../../shared/planner/offering-status'
 
 /** The title/count/hours/warnings row for one semester — rendered once per
  *  year-pair above both that pair's SemesterColumn bodies, so an annual
  *  course's spanning card can sit between the headers and the rest of each
  *  semester's own course list. */
-export default function SemesterColumnHeader({ semester, onRemove }: {
+export default function SemesterColumnHeader({ semester, onRemove, projected = false }: {
   semester: SemesterVM
+  /** The official timetable for this semester's year is not published: its course availability is an estimate. */
+  projected?: boolean
   /** Set only for an empty semester the student added; the server re-checks both. */
   onRemove?: () => void
 }) {
@@ -25,6 +28,11 @@ export default function SemesterColumnHeader({ semester, onRemove }: {
         )}
         {semester.totalWeeklyHours != null && (
           <Badge>{semester.totalWeeklyHours} {t('ש״ש', 'weekly hours')}</Badge>
+        )}
+        {projected && (
+          <span title={t(PROJECTED_NOTE_HE, 'Course availability for this year is an estimate: the official timetable is not published yet and may change.')} className="cursor-help">
+            <Badge>{t('צפי', 'Projected')}</Badge>
+          </span>
         )}
         {semester.warnings.length > 0 && (
           <span title={semester.warnings.join(' · ')} className="cursor-help">

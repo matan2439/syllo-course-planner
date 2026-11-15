@@ -11,6 +11,8 @@ import { legalSemestersFor } from '../planner_actions';
 import { PlannerWorker } from '../planner_worker';
 import { cloneState, type ConstraintModel } from '../planner_types';
 import { analyzeLockConflicts, type LockConflict } from '../placement_locks';
+import { catalogYearFromUrl, offeringStatus, PLANNING_CATALOG_YEAR, type OfferingStatus } from '../../../shared/planner/offering-status';
+import { defaultTermMapping } from '../../../shared/planner/schedule';
 import { storedDistributionPolicy } from '../planner_policy_context';
 import type { AcademicFocusArea } from '../academic_interest_profile';
 import type { ClarificationResult } from '../academic_decision_types';
@@ -42,9 +44,13 @@ export interface AgentQuestion {
   questionId?: ClarificationQuestionId;
 }
 
+export interface ProjectedPlacement { course_id: string; semester_id: string; status: 'projected' | 'unknown' }
+
 export interface AgentSubmission {
   summaryHe: string;
   tradeoffsHe: string[];
+  /** Placements whose offering is an estimate or unknown. Always disclosed with the proposal. */
+  projectedPlacements?: ProjectedPlacement[];
   /**
    * Set when the proposal is PARTIAL: everything the planner added is valid, but a committed
    * course still breaks an availability rule. Shown with the proposal; never presented as valid.
@@ -147,6 +153,26 @@ export class PlanningSession {
       }
     }
     return placed;
+  }
+
+  /** How sure we are that the course runs in that semester: confirmed, projected, unavailable or unknown. */
+  offeringStatusOf(courseId: string, semesterId: string): OfferingStatus {
+    const profile = this.model.profiles.get(courseId);
+    if (!profile) return 'unknown';
+    const mapping = defaultTermMapping(this.model.knownSemesterIds, new Date(), this.input.currentDegreeYear);
+    return offeringStatus(semesterId, mapping[semesterId], {
+      allowedSemesterIds: legalSemestersFor(this.model, courseId),
+      offeredInCatalogYear: profile.offered_in_year,
+      catalogYear: catalogYearFromUrl(profile.provenance.offering_source_url) ?? PLANNING_CATALOG_YEAR,
+    });
+  }
+
+  /** Every placement in the draft that rests on an estimate (or on nothing): never to be stated as fact. */
+  projectedPlacements(): ProjectedPlacement[] {
+    return Object.entries(this.worker.getPlan().semesters).flatMap(([semester_id, ids]) => [...new Set(ids)].flatMap((course_id) => {
+      const status = this.offeringStatusOf(course_id, semester_id);
+      return status === 'projected' || status === 'unknown' ? [{ course_id, semester_id, status }] : [];
+    }));
   }
 
   /** Locked placements: every committed course the student has not completed or released. */

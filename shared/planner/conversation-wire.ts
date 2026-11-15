@@ -196,6 +196,12 @@ const conversationProposalSchema = z.object({
    * is not fully valid and the UI must say so wherever the proposal is shown.
    */
   unresolved_conflicts_he: z.array(boundedText).min(1).max(12).optional(),
+  /** Placements that rest on a projected or unknown offering; the UI labels them as estimates. */
+  projected_placements: z.array(z.object({
+    course_id: z.string().trim().min(1).max(128),
+    semester_id: z.string().trim().min(1).max(128),
+    status: z.enum(['projected', 'unknown']),
+  }).strict()).min(1).max(80).optional(),
 }).strict()
 
 const academicDecisionSummarySchema = z.object({

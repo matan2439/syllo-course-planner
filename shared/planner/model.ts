@@ -165,6 +165,8 @@ export interface GeneratedPlanModel {
   warningsHe: string[];
   /** A partial plan: committed courses that still break an availability rule. Never shown as valid. */
   unresolvedConflictsHe?: string[];
+  /** Placements resting on a projected or unknown offering: shown as estimates, never as facts. */
+  projectedPlacements?: Array<{ courseId: string; semesterId: string; status: 'projected' | 'unknown' }>;
   errors: string[];
   blocked: boolean;
   /** Present only when the server interpreted a free-text request (opt-in). */

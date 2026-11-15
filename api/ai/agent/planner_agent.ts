@@ -21,6 +21,7 @@ import type { PlanningSession } from './session';
 import type { PlannerWorker } from '../planner_worker';
 import { buildAgentTools, READ_ONLY_AGENT_TOOLS, type AgentToolName } from './tools';
 import { COURSE_FOCUS_INSTRUCTIONS, PLANNER_AGENT_INSTRUCTIONS } from './instructions';
+import { PROJECTED_NOTE_HE } from '../../../shared/planner/offering-status';
 
 // GPT-6 Sol: OpenAI's model for agentic, multi-step tool workflows ($2/$10 per MTok).
 // Astra is 5x the price; Luna is tuned for simple high-volume work, not planning.
@@ -41,6 +42,8 @@ export type PlannerAgentResult =
       validation: ReturnType<PlannerWorker['validateCandidate']>;
       /** A partial plan: valid apart from committed courses that break an availability rule. */
       unresolvedConflictsHe?: string[];
+      /** Placements that rest on a projected or unknown offering; always disclosed. */
+      projectedPlacements?: Array<{ course_id: string; semester_id: string; status: 'projected' | 'unknown' }>;
       /** Provider token usage of the run (metering evidence). */
       usage?: OperationUsage;
     }
@@ -189,14 +192,16 @@ export async function runPlannerAgent(input: PlannerAgentInput, deps: PlannerAge
     }
 
     if (session.submission) {
-      const { summaryHe, tradeoffsHe, unresolvedConflictsHe } = session.submission;
+      const { summaryHe, tradeoffsHe, unresolvedConflictsHe, projectedPlacements } = session.submission;
       const withTradeoffs = tradeoffsHe.length
         ? `${summaryHe}\n\nמה לא הצלחתי לכבד במלואו:\n${tradeoffsHe.map((line) => `• ${line}`).join('\n')}`
         : summaryHe;
       // The server, not the model, states that a partial plan is not valid.
-      const messageHe = unresolvedConflictsHe?.length
+      const withConflicts = unresolvedConflictsHe?.length
         ? `${withTradeoffs}\n\n**התוכנית חלקית ואינה תקינה במלואה** — נשארה התנגשות שרק אתם יכולים להכריע בה:\n${unresolvedConflictsHe.map((line) => `• ${line}`).join('\n')}`
         : withTradeoffs;
+      // The server, not the model, says that part of the plan rests on an estimate.
+      const messageHe = projectedPlacements?.length ? `${withConflicts}\n\n${PROJECTED_NOTE_HE}` : withConflicts;
       events.push({ type: 'assistant_message', text_he: messageHe.slice(0, 4_000) });
       return {
         outcome: 'proposal',
@@ -205,6 +210,7 @@ export async function runPlannerAgent(input: PlannerAgentInput, deps: PlannerAge
         draftPlan: session.worker.getPlan(),
         validation: session.worker.validateCandidate(),
         ...(unresolvedConflictsHe?.length ? { unresolvedConflictsHe } : {}),
+        ...(projectedPlacements?.length ? { projectedPlacements } : {}),
         usage: usageFromAgentRun(result.state.usage),
       };
     }

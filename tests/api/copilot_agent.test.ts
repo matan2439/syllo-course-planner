@@ -646,3 +646,70 @@ test('highlight_element points at known elements only and reaches the client as 
     { type: 'ui_highlight', target: 'catalog-course:BETA', label_he: 'בטא' },
   ])
 })
+
+
+describe('future years are projected, never confirmed', () => {
+  // A third-year student in November 2026: year 3 is the published academic year, year 4 is not published yet.
+  const withDate = async <T,>(run: () => Promise<T>) => {
+    jest.useFakeTimers({ now: new Date('2026-11-15T10:00:00Z'), doNotFake: ['setImmediate', 'setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'nextTick', 'queueMicrotask', 'performance'] })
+    try { return await run() } finally { jest.useRealTimers() }
+  }
+  const thirdYear = async (preferences: Record<string, unknown> = KNOWN_COURSE_PREFERENCES) => {
+    const session = await newSession(preferences)
+    ;(session.input as { currentDegreeYear?: number }).currentDegreeYear = 3
+    return session
+  }
+
+  test('the same course is confirmed in the published year and projected in the next', () => withDate(async () => {
+    const session = await thirdYear()
+    expect(session.offeringStatusOf('MAND', 'year_3_semester_a')).toBe('confirmed')
+    expect(session.offeringStatusOf('ALPHA', 'year_4_semester_a')).toBe('projected')
+    expect(session.offeringStatusOf('ALPHA', 'year_3_semester_a')).toBe('unavailable')
+  }))
+
+  test('the tools label every non-confirmed placement and say what that means', () => withDate(async () => {
+    const session = await thirdYear()
+    const built = await callTool(session, 'build_plan', { only_years: null })
+    const labelled = built.plan.flatMap((semester: any) => semester.courses.map((course: any) => [semester.semester_id, course.course_id, course.offering]))
+    expect(labelled).toEqual(expect.arrayContaining([['year_3_semester_a', 'MAND', undefined]]))
+    expect(labelled.some(([semester, , offering]: string[]) => semester.startsWith('year_4') && offering === 'projected')).toBe(true)
+    expect(built.projected_placements.length).toBeGreaterThan(0)
+    expect(built.offering_note).toMatch(/ESTIMATE/)
+    expect((await callTool(session, 'get_course_details', { course_id: 'ALPHA', target_semester: null })).data.offering_by_semester)
+      .toMatchObject({ year_4_semester_a: 'projected', year_3_semester_a: 'unavailable' })
+  }))
+
+  test('a proposal built on a projection says so in the server\'s own words and in the wire data', () => withDate(async () => {
+    const session = await thirdYear()
+    const model = new FakeAgentModel([
+      [{ tool: 'build_plan', args: { only_years: null } }],
+      [{ tool: 'submit_proposal', args: { summary_he: 'תוכנית מלאה', tradeoffs_he: [], extra_hours_reason_he: null } }],
+    ])
+    const result = await runPlannerAgent({ transcript, session }, { model })
+    expect(result.outcome).toBe('proposal')
+    if (result.outcome !== 'proposal') throw new Error('expected proposal')
+    expect(result.messageHe).toContain('צפויה בלבד')
+    expect(result.projectedPlacements?.every((item) => item.status === 'projected' || item.status === 'unknown')).toBe(true)
+    expect(result.projectedPlacements?.some((item) => item.semester_id.startsWith('year_4'))).toBe(true)
+    expect(result.projectedPlacements?.some((item) => item.semester_id === 'year_3_semester_a')).toBe(false)
+  }))
+
+  test('a fourth-year student has nothing projected: all of it is the published year', () => withDate(async () => {
+    const session = await newSession(KNOWN_COURSE_PREFERENCES)
+    ;(session.input as { currentDegreeYear?: number }).currentDegreeYear = 4
+    expect(session.offeringStatusOf('ALPHA', 'year_4_semester_a')).toBe('confirmed')
+  }))
+
+  test('when official data arrives, a locked course in a now-unavailable semester is reported and stays put', () => withDate(async () => {
+    // Year 4 is published and ALPHA turns out not to run in 4A: the lock conflict names it; nothing moves.
+    const board = loadLocalBoardJson(PROGRAM_ID) as any
+    const updated = JSON.parse(JSON.stringify(board))
+    for (const course of updated.metadata.program_repository_courses) if (course.course_id === 'ALPHA') course.effective_allowed_semesters = ['year_4_semester_b']
+    const ctx = { ...planContext, semesters: [{ id: 'year_3_semester_a', courses: [{ course_id: 'MAND' }] }, { id: 'year_4_semester_a', courses: [{ course_id: 'ALPHA' }] }] }
+    const session = new PlanningSession({ programId: PROGRAM_ID, programBoard: updated, planContext: ctx, committedContext: ctx,
+      preferences: KNOWN_COURSE_PREFERENCES, clarification: await clarifyForAcademicDecision(extractClarificationContext(ctx, KNOWN_COURSE_PREFERENCES, undefined)) })
+    expect(session.lockConflicts).toEqual([expect.objectContaining({ code: 'locked_course_wrong_semester', courseIds: ['ALPHA'], blocksValidity: true })])
+    expect(session.lockViolations()).toEqual([])
+    expect(session.worker.getPlan().semesters.year_4_semester_a).toContain('ALPHA')
+  }))
+})
