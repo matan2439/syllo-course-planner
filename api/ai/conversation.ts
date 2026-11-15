@@ -35,6 +35,7 @@ import { PROPOSAL_TTL_MS, newProposalId, toReceipt, type ProposalRecord, type Pr
 import {
   getAcademicContextStore,
   getBoardRepository,
+  getPlannerSessionStore,
   getProposalStore,
   plannerStorageErrorCode,
   preferenceDigest,
@@ -51,6 +52,8 @@ import { applyConversationClarificationAnswers, withCompletedCredit } from './co
 import { DeterministicProposalExplanationCapability } from './proposal_explanation';
 import { DeterministicCandidateDecisionCapability } from './candidate_decision';
 import { loadBoardWithAddedSemesters } from './student_semesters';
+import { agentTranscript, finishSessionTurn, plannerSessionsEnabled, sessionView, startSessionTurn, type TurnStart } from './planning_session_service';
+import type { PlannerSessionStore } from './planner_session_store';
 
 type AgentModelConfig = { model: string | Model; name: string };
 
@@ -73,6 +76,10 @@ type ConversationEndpointDeps = {
   ) => Promise<AcademicDecisionAgentRun>;
   putProposal?: ProposalStore['put'];
   putAcademicContext?: AcademicContextStore['put'];
+  /** Persistent planning sessions; defaults to the configured store when AI_PLANNER_SESSIONS=true. */
+  sessionStore?: PlannerSessionStore | null;
+  /** Who is asking (tests inject an account owner). */
+  resolveOwner?: typeof resolveRequestOwner;
 };
 
 const unavailable = () => ({
@@ -162,8 +169,39 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
   const runAcademicDecisionAgent = deps.runAcademicDecisionAgent ?? runAcademicDecisionAgentDefault;
   const putProposal = deps.putProposal ?? ((record: ProposalRecord) => getProposalStore().put(record));
   const putAcademicContext = deps.putAcademicContext ?? ((input: Parameters<AcademicContextStore['put']>[0]) => getAcademicContextStore().put(input));
+  const resolveOwner = deps.resolveOwner ?? resolveRequestOwner;
+  const sessionStoreFor = (): PlannerSessionStore | null => {
+    if (deps.sessionStore !== undefined) return deps.sessionStore;
+    if (!plannerSessionsEnabled()) return null;
+    try { return getPlannerSessionStore(); } catch { return null; }
+  };
   return async function conversationHandler(req: VercelRequest, res: VercelResponse): Promise<void> {
     res.setHeader('Cache-Control', 'no-store');
+    // Continuing a conversation: the page asks for its session on load, and clears it on "new conversation".
+    // Neither runs a model, so neither costs credits.
+    if (req.method === 'GET' || req.method === 'DELETE') {
+      const programId = String(((req.query as Record<string, unknown> | undefined)?.program_id) ?? '').trim();
+      if (!programId || programId.length > 128) {
+        res.status(400).json({ ok: false, code: 'INVALID_REQUEST', message_he: 'בקשת השיחה אינה תקינה.' });
+        return;
+      }
+      const store = sessionStoreFor();
+      try {
+        const owner = await resolveOwner(req as unknown as { headers?: Record<string, string | string[] | undefined> }, res);
+        if (req.method === 'DELETE') {
+          if (store) await store.delete(owner.ownerId, programId);
+          res.status(200).json({ ok: true });
+          return;
+        }
+        const stored = store ? await store.load(owner.ownerId, programId) : null;
+        res.status(200).json({ ok: true, enabled: store !== null, session: stored ? sessionView(stored.state) : null });
+      } catch (error) {
+        console.error('[ai/conversation] session view failed:', error instanceof Error ? error.message : String(error));
+        // Memory is a convenience: an unavailable store reads as "no session", never as an error.
+        res.status(200).json({ ok: true, enabled: false, session: null });
+      }
+      return;
+    }
     if (req.method !== 'POST') {
       res.status(405).json({ ok: false, code: 'METHOD_NOT_ALLOWED', message_he: 'שיטה לא נתמכת.' });
       return;
@@ -212,7 +250,7 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
       out.status(200).json(body);
     };
     try {
-      const owner = await resolveRequestOwner(req as unknown as { headers?: Record<string, string | string[] | undefined> }, res);
+      const owner = await resolveOwner(req as unknown as { headers?: Record<string, string | string[] | undefined> }, res);
       // The co-pilot always reads the LIVE committed board: board edits mid-conversation are
       // context, not a conflict. Safety lives at apply time — every proposal records the
       // version it was built on (baseBoardVersion) and apply-plan rejects it if the board moved.
@@ -319,7 +357,14 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
             })),
           }
         : context;
+      const sessionStore = sessionStoreFor();
+      const boardSnapshot = {
+        version: board?.version ?? null,
+        semesters: (board?.semesters ?? []).map((semester) => ({ semesterId: semester.semesterId, courseIds: semester.courseIds })),
+      };
+      const sessionStart: TurnStart = await startSessionTurn({ store: sessionStore, ownerId: owner.ownerId, programId: parsed.data.program_id, board: boardSnapshot });
       const session = new PlanningSession({
+        ...(sessionStart.state ? { restoredSession: sessionStart.state, droppedDraftChanges: sessionStart.dropped } : {}),
         programId: parsed.data.program_id,
         programBoard,
         currentDegreeYear: parsed.data.current_degree_year ?? null,
@@ -330,6 +375,13 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
         preferences,
         clarification,
       });
+      const latestUserText = [...parsed.data.transcript].reverse().find((turn) => turn.role === 'user')?.text ?? '';
+      /** Keep the conversation's memory before the reply goes out; never fails the reply. */
+      const remember = (assistantText: string) => finishSessionTurn({
+        store: sessionStore, ownerId: owner.ownerId, programId: parsed.data.program_id, start: sessionStart,
+        session, userText: latestUserText, assistantText, board: boardSnapshot,
+      });
+
       if (streaming) {
         res.setHeader('Content-Type', 'application/x-ndjson; charset=utf-8');
         res.status(200);
@@ -341,7 +393,7 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
       }
       const agent = await runAgent(
         {
-          transcript: parsed.data.transcript,
+          transcript: agentTranscript(sessionStart.state, parsed.data.transcript),
           session,
           // The HTTP schema has already validated this exact shape. Keep the
           // domain boundary explicit because the remote Zod version infers
@@ -420,6 +472,7 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
         const events = boundEvents(question
           ? [...agent.events, clarificationEvent(question)]
           : agent.events);
+        await remember(agent.messageHe);
         await reply({
           outcome: 'clarification_required',
           message_he: 'לפני בניית חלופות אני צריך להשלים כמה פרטים אקדמיים חשובים.',
@@ -457,6 +510,7 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
           const events = boundEvents(question
             ? [...agent.events, clarificationEvent(question)]
             : agent.events);
+          await remember(agent.messageHe);
           await reply({
             outcome: 'clarification_required',
             message_he: 'הטיוטה מוכנה לבדיקה, אבל חסר עדיין מידע שמונע הצעה סופית.',
@@ -477,6 +531,7 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
       const messageHe = agent.messageHe.trim().slice(0, 4_000);
       const partialPlan = agent.outcome === 'proposal' && Boolean(agent.unresolvedConflictsHe?.length);
       if (agent.outcome !== 'proposal' || (!agent.validation.valid && !partialPlan)) {
+        await remember(messageHe);
         await reply({
           outcome: 'conversation',
           message_he: messageHe,
@@ -646,6 +701,7 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
         applyEligible: true,
       };
       await putProposal(record);
+      await remember(messageHe);
       const receipt = toReceipt(record);
       const events = boundEvents([
         ...agent.events,

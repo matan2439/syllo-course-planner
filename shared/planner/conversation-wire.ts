@@ -112,6 +112,8 @@ const toolStatusEventSchema = z.object({
     'highlight_element',
     'unlock_courses',
     'get_course_pathway',
+    'decide_on_suggestions',
+    'update_planning_profile',
   ]),
   status: z.enum(['started', 'completed', 'rejected']),
 }).strict()
@@ -290,6 +292,20 @@ export const conversationContextConflictResponseSchema = z.object({
   message_he: boundedText,
   currentBoardVersion: z.string().trim().min(1).max(256).nullable().optional(),
 }).strict()
+
+/** What the page restores after a reload or on another device (GET /api/ai/conversation?program_id=…). */
+export const planningSessionViewResponseSchema = z.object({
+  ok: z.literal(true),
+  /** false = persistent sessions are off: the page keeps its own transcript as before. */
+  enabled: z.boolean(),
+  session: z.object({
+    turns: z.array(z.object({ role: z.enum(['user', 'assistant']), text: z.string().max(MAX_TEXT) }).strict()).max(MAX_TRANSCRIPT_TURNS),
+    pending_question_he: z.string().max(400).nullable(),
+    directions_he: z.array(z.string().max(80)).max(5),
+    decisions_he: z.array(z.string().max(300)).max(8),
+  }).strict().nullable(),
+}).strict()
+export type PlanningSessionViewResponse = z.infer<typeof planningSessionViewResponseSchema>
 
 export type ConversationTurn = z.infer<typeof conversationTurnSchema>
 export type ConversationRequest = z.infer<typeof conversationRequestSchema>

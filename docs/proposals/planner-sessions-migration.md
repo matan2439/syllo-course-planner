@@ -1,6 +1,8 @@
 # Proposal: persistent AI planning sessions
 
-**Status: PROPOSED — not applied to Preview or Production. Nothing in this document has been executed.**
+**Status: APPROVED for Preview only (2026-11-14). NOT YET APPLIED: the Preview database refused the connection (password authentication failed for `postgres`), so nothing has been executed anywhere. Production is not authorized.**
+
+The migration is now at `scripts/migrations/planner/003_planner_sessions.sql` (rollback: `003_planner_sessions.down.sql`) and is tested against PGlite. The feature is behind `AI_PLANNER_SESSIONS=true` (off by default) and degrades to the old transcript behaviour if the table is missing.
 
 The SQL below is deliberately kept out of `scripts/migrations/` so it cannot be applied by accident. It moves there only after approval.
 

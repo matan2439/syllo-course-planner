@@ -35,13 +35,14 @@ import { earlyYearCoursesFor } from '../../../shared/planner/early_year_courses'
 import { completedCreditHours } from '../conversation_clarification';
 import type { CourseProfile } from '../course_profile';
 import { coursePathway } from '../course_pathways';
+import { OBJECTIVE_IDS, setObjective, objectiveOrder } from '../../../shared/planner/planning-session';
 import { loadPrerequisiteCatalog, withEquivalences } from '../prerequisites';
 
 export const AGENT_TOOL_NAMES = [
   'get_student_context', 'record_completed_courses', 'get_requirements_gap', 'search_courses', 'get_course_details',
   'get_course_syllabus', 'get_course_grades', 'explain_constraint', 'update_preferences', 'build_plan', 'add_course', 'remove_course',
   'move_course', 'replace_course', 'simulate_changes', 'validate_plan', 'check_timetable',
-  'ask_student', 'submit_proposal', 'highlight_element', 'unlock_courses', 'get_course_pathway',
+  'ask_student', 'submit_proposal', 'highlight_element', 'unlock_courses', 'get_course_pathway', 'decide_on_suggestions', 'update_planning_profile',
 ] as const;
 export type AgentToolName = (typeof AGENT_TOOL_NAMES)[number];
 
@@ -222,6 +223,20 @@ export function buildAgentTools() {
           completed_course_ids: [...model.completedCourseIds],
           currently_taking_course_ids: [...(model.currentlyPlannedCourseIds ?? [])],
           committed_plan: planSummary(session),
+          // What this conversation already settled — never ask for it again.
+          planning_session: {
+            summary_he: session.planning.summary_he || null,
+            recent_decisions_he: session.planning.decisions.slice(-8).map((decision) => decision.summary_he),
+            profile: {
+              priorities_in_order: objectiveOrder(session.planning.profile),
+              unconfirmed_priorities: session.planning.profile.objectives.filter((o) => !o.confirmed).map((o) => o.id),
+              directions: session.planning.profile.directions.map((d) => ({ label_he: d.label_he, anchor_course_ids: d.anchor_course_ids, confirmed: d.confirmed })),
+              specialization_may_exceed_preferred_load: session.planning.profile.specialization_may_exceed_preferred_load,
+            },
+            draft: { changes: session.draftChanges().length, accepted_course_ids: [...session.acceptedCourseIds] },
+            ...(session.planning.pending_question ? { open_question_he: session.planning.pending_question.question_he } : {}),
+            ...(session.notReapplied.length || session.input.droppedDraftChanges?.length ? { draft_changes_no_longer_applicable: [...session.notReapplied, ...(session.input.droppedDraftChanges ?? [])].map((c) => ({ kind: c.kind, course_id: c.course_id, name_he: nameOf(session, c.course_id) })) } : {}),
+          },
           // Every committed course is locked: plan around it; never move, remove or replace it.
           locked_course_ids: [...session.lockedPlacements().keys()],
           ...(session.lockConflicts.length ? { lock_conflicts: lockConflictRows(session), lock_conflicts_note: LOCK_CONFLICT_NOTE } : {}),
@@ -275,7 +290,7 @@ export function buildAgentTools() {
           degree_hours_counted: session.worker.getState().degreeHours,
           removed: (args.remove_course_ids ?? []).map(nameOfAny),
           added: (args.add_course_ids ?? []).map(nameOfAny),
-          note: 'Draft was reset to the committed board. Call build_plan to plan with this.',
+          note: 'Your draft changes were kept where they are still legal. Call build_plan to plan with this.',
         };
       }),
     }),
@@ -556,19 +571,21 @@ export function buildAgentTools() {
             required_courses_note: 'These courses are required for the degree, so they were NOT marked as avoided and stay in the plan. Tell the student this explicitly, by course name.',
           } : {}),
           conflicts: hard.reasons.map((reason) => ({ code: reason.code, course_ids: reason.courseIds, message_he: reason.messageHe })),
-          note: 'Draft was reset to the committed board. Call build_plan next.',
+          note: 'Your draft changes were kept where they are still legal (draft_changes_dropped lists the rest). Call build_plan next.',
+          ...(session.notReapplied.length ? { draft_changes_dropped: session.notReapplied.map((c) => ({ kind: c.kind, course_id: c.course_id, name_he: nameOf(session, c.course_id) })) } : {}),
         };
       }),
     }),
 
     tool({
       name: 'build_plan',
-      description: 'Run the deterministic degree planner with the current preferences, starting from the committed board, and make its best valid plan the working draft. Returns the plan, per-semester loads and validation. Refused until the student was asked which courses they prefer and which to avoid. only_years limits the plan to the degree years the student asked for.',
+      description: 'Run the deterministic degree planner with the current preferences, starting from the CURRENT DRAFT (the committed board plus what you and the student already worked out), and make its best valid plan the working draft. Refinements keep earlier accepted choices; pass start_over true only when the student wants to begin again from the committed board. Returns the plan, per-semester loads and validation. Refused until the student was asked which courses they prefer and which to avoid. only_years limits the plan to the degree years the student asked for.',
       parameters: z.object({
         only_years: z.array(z.number().int().min(1).max(8)).max(8).nullable()
           .describe('Degree years the student asked to plan, e.g. [4] for "year 4 only" / "רק שנה ד". null = the whole board. New courses are placed ONLY in these years; courses already placed in other years are not touched.'),
+        start_over: z.boolean().nullable().describe('true = discard the draft and plan again from the committed board; null/false = refine the current draft'),
       }),
-      execute: observed('build_plan', (session, args: { only_years?: number[] | null }) => {
+      execute: observed('build_plan', (session, args: { only_years?: number[] | null; start_over?: boolean | null }) => {
         const missing = [
           ...(session.preferredCoursesKnown() ? [] : ['preferred_courses']),
           ...(session.excludedCoursesKnown() ? [] : ['avoided_courses']),
@@ -584,11 +601,13 @@ export function buildAgentTools() {
         if (unknownYears.length) {
           return { accepted: false, reason: `This board has no semesters for degree year(s) ${unknownYears.join(', ')}. Known semesters: ${session.model.knownSemesterIds.join(', ')}.` };
         }
+        if (args.start_over) { session.acceptedCourseIds.clear(); session.rebuild(); }
         session.setScope(args.only_years ?? null);
         // Invalid locked placements are tolerated by the SEARCH only, so the rest of the board is still
         // planned; the strict model validates the result, which stays invalid until the student decides.
         const model = session.searchModel();
-        const initialState = planContextToState(session.input.committedContext, model);
+        // Refine the CURRENT draft, not the committed board: earlier work and accepted choices carry over.
+        const initialState = cloneState(session.worker.getPlan());
         const pinnedHome = Object.fromEntries([...session.lockedPlacements()].map(([id, homes]) => [id, homes[0]]));
         const set = generateCandidateSet({
           buildModel: () => model,
@@ -656,6 +675,86 @@ export function buildAgentTools() {
       execute: observed('replace_course', (session, { out_course_id, in_course_id, semester_id }: { out_course_id: string; in_course_id: string; semester_id: string | null }) =>
         lockedRejection(session, out_course_id, 'replace')
         ?? safeMutation(session.worker, () => session.worker.replaceCourse(out_course_id, in_course_id, semester_id ?? undefined, 'llm'))),
+    }),
+
+    tool({
+      name: 'decide_on_suggestions',
+      description: 'Record the student\'s verdict on courses YOU suggested in the draft. accept = the student said yes: the course stays exactly where the draft put it, and is not re-planned. reject = the student said no: it leaves the draft and is never suggested again (a committed course cannot be rejected here — that is unlock_courses). Call it as soon as the student reacts to a suggestion, for each course separately; do not wait for the end.',
+      parameters: z.object({
+        accept_course_ids: listOrNull(courseId),
+        reject_course_ids: listOrNull(courseId),
+        student_words_he: z.string().trim().min(1).max(300).describe("The student's own words that decided it"),
+      }),
+      execute: observed('decide_on_suggestions', (session, args: { accept_course_ids: string[] | null; reject_course_ids: string[] | null; student_words_he: string }) => {
+        const committed = session.committedPlacements();
+        const reject = (args.reject_course_ids ?? []).filter((id) => session.model.profiles.has(id));
+        const onBoard = reject.filter((id) => committed.has(id));
+        if (onBoard.length) return { accepted: false, reason: 'These courses are on the committed board and locked. If the student wants them gone, ask and use unlock_courses.', course_ids: onBoard };
+        const acceptResult = session.acceptDraftCourses(args.accept_course_ids ?? []);
+        if (reject.length) {
+          const avoided = new Set(Array.isArray(session.preferences.disallowed_course_ids) ? session.preferences.disallowed_course_ids as string[] : []);
+          for (const id of reject) { avoided.add(id); session.acceptedCourseIds.delete(id); }
+          session.updatePreferences({ disallowed_course_ids: [...avoided] });
+        }
+        const names = (ids: string[]) => ids.map((id) => nameOf(session, id) ?? id).join(', ');
+        if (acceptResult.accepted.length) session.recordDecision(`אושרו: ${names(acceptResult.accepted)}`);
+        if (reject.length) session.recordDecision(`נדחו: ${names(reject)}`);
+        return {
+          accepted: true,
+          accepted_courses: acceptResult.accepted.map((id) => ({ course_id: id, name_he: nameOf(session, id) })),
+          rejected_courses: reject.map((id) => ({ course_id: id, name_he: nameOf(session, id) })),
+          ...(acceptResult.notInDraft.length ? { not_in_draft: acceptResult.notInDraft, note: 'These were not suggested additions in the draft, so there was nothing to accept.' } : {}),
+          plan: planSummary(session),
+        };
+      }),
+    }),
+
+    tool({
+      name: 'update_planning_profile',
+      description: 'Remember what the student wants, as it develops through the conversation: priorities (specialization, degree_progress, load_balance, campus_days, free_days), specialization directions under discussion, free days, a preferred weekly load, and whether they accept a heavier semester for specialization. Priorities the student STATES count at once; ones you only INFER count only after they confirm — ask. Never put hard academic rules here. Call it whenever the student says something that changes what the plan should optimize, then continue the conversation: the change updates the existing draft, it does not restart it.',
+      parameters: z.object({
+        priorities: z.array(z.object({
+          id: z.enum(OBJECTIVE_IDS), weight: z.number().min(0).max(1),
+          basis: z.enum(['stated', 'inferred']).describe('stated = the student said it; inferred = your reading, which they must confirm'),
+        })).max(5).nullable(),
+        directions: z.array(z.object({
+          label_he: z.string().trim().min(1).max(80),
+          anchor_course_ids: z.array(courseId).max(8),
+          basis: z.enum(['stated', 'inferred']),
+        })).max(5).nullable().describe('Replaces the list of specialization directions'),
+        free_days: z.array(z.enum(WEEK_DAYS)).max(5).nullable(),
+        max_weekly_hours: z.number().min(6).max(30).nullable(),
+        specialization_may_exceed_preferred_load: z.boolean().nullable().describe('true only when the student explicitly prioritized specialization over a lighter semester'),
+        decision_he: z.string().trim().max(300).nullable().describe('One line for the decision log, in Hebrew'),
+      }),
+      execute: observed('update_planning_profile', (session, args: {
+        priorities: Array<{ id: (typeof OBJECTIVE_IDS)[number]; weight: number; basis: 'stated' | 'inferred' }> | null;
+        directions: Array<{ label_he: string; anchor_course_ids: string[]; basis: 'stated' | 'inferred' }> | null;
+        free_days: string[] | null; max_weekly_hours: number | null; specialization_may_exceed_preferred_load: boolean | null; decision_he: string | null;
+      }) => {
+        const unknown = (args.directions ?? []).flatMap((d) => d.anchor_course_ids).filter((id) => !session.model.profiles.has(id));
+        if (unknown.length) return { accepted: false, reason: 'Unknown course ids — resolve them with search_courses first.', unknown_course_ids: unknown };
+        let profile = session.planning.profile;
+        for (const priority of args.priorities ?? []) profile = setObjective(profile, priority.id, priority.weight, priority.basis);
+        if (args.directions) profile = { ...profile, directions: args.directions.map((d) => ({ label_he: d.label_he, anchor_course_ids: d.anchor_course_ids, source: d.basis, confirmed: d.basis === 'stated' })) };
+        if (args.free_days) profile = { ...profile, free_days: args.free_days as typeof profile.free_days };
+        if (args.max_weekly_hours !== null) profile = { ...profile, max_weekly_hours: args.max_weekly_hours };
+        if (args.specialization_may_exceed_preferred_load !== null) profile = { ...profile, specialization_may_exceed_preferred_load: args.specialization_may_exceed_preferred_load };
+        session.planning = { ...session.planning, profile };
+        if (args.decision_he) session.recordDecision(args.decision_he);
+        // The planner reads these two from the stored preferences, so they are written there too.
+        const patch: Record<string, unknown> = {};
+        if (args.free_days) patch.free_days = args.free_days;
+        if (args.max_weekly_hours !== null) patch.max_weekly_hours = args.max_weekly_hours;
+        if (Object.keys(patch).length) session.updatePreferences(patch);
+        return {
+          accepted: true,
+          priorities_in_order: objectiveOrder(profile),
+          awaiting_confirmation: profile.objectives.filter((o) => !o.confirmed).map((o) => o.id),
+          directions: profile.directions.map((d) => ({ label_he: d.label_he, confirmed: d.confirmed })),
+          note: 'Saved. The draft is unchanged — call build_plan to refine it around this when it is time.',
+        };
+      }),
     }),
 
     tool({

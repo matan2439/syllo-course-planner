@@ -7,7 +7,7 @@ import { AiAccessNotice, AiPaywall, useAiAccess } from '../../billing/ai_access'
 import {
   ConversationContextConflictError,
   ConversationRefusedError,
-  sendConversation,
+  sendConversation, getPlanningSessionView, resetPlanningSession,
   type ClientDeps,
   type ConversationProgress,
 } from '../../../../shared/planner/api-client'
@@ -18,6 +18,7 @@ import {
   type ConversationRequest,
   type ConversationResponse,
   type ConversationTurn,
+  type PlanningSessionViewResponse,
 } from '../../../../shared/planner/conversation-wire'
 import type { PreferenceProfile } from '../../../../api/ai/preference_model'
 import { Card } from '../../../components/ui'
@@ -76,6 +77,9 @@ const defaultSendConversation: SendConversation = (request, onProgress) => sendC
   onProgress,
 )
 
+const defaultLoadSession = (programId: string) => getPlanningSessionView({ fetchImpl: browserFetch, baseUrl: '' }, programId)
+const defaultResetSession = (programId: string) => resetPlanningSession({ fetchImpl: browserFetch, baseUrl: '' }, programId)
+
 const TOOL_LABELS: Record<string, string> = {
   get_state: 'בדיקת מצב הלוח',
   rank_candidates: 'דירוג חלופות',
@@ -105,6 +109,8 @@ const TOOL_LABELS: Record<string, string> = {
   highlight_element: 'סימון על המסך',
   unlock_courses: 'שחרור קורס נעול לפי בקשתך',
   get_course_pathway: 'בדיקת רצף הקורסים והקדמים',
+  decide_on_suggestions: 'רישום החלטתך על ההצעות',
+  update_planning_profile: 'עדכון סדרי העדיפויות שלך',
   record_completed_courses: 'רישום הקורסים שהשלמת',
   get_course_syllabus: 'קריאת הסילבוס',
   get_course_grades: 'בדיקת ציונים היסטוריים',
@@ -119,6 +125,8 @@ export default function AcademicAgentConversation({
   preferenceProfile,
   conversationReady = true,
   sendConversationFn = defaultSendConversation,
+  loadSessionFn = defaultLoadSession,
+  resetSessionFn = defaultResetSession,
   onProposalReady,
   onAcademicContextUpdated,
   preferenceContent,
@@ -139,6 +147,9 @@ export default function AcademicAgentConversation({
   /** The durable academic context must be loaded before sending to the agent. */
   conversationReady?: boolean
   sendConversationFn?: SendConversation
+  /** Restores the saved conversation after a reload or on another device (null = nothing saved). */
+  loadSessionFn?: (programId: string) => Promise<PlanningSessionViewResponse | null>
+  resetSessionFn?: (programId: string) => Promise<void>
   /** The server-owned, read-only materialization used to show the draft. */
   onProposalReady?: (proposal: ConversationProposal) => void
   /** Refreshes the parent's academic-context digests after a stored answer. */
@@ -191,6 +202,21 @@ export default function AcademicAgentConversation({
   const contextVersionRef = useRef(localContextVersion)
   contextVersionRef.current = localContextVersion
   const [courseReview, setCourseReview] = useState<CourseTextReview | null>(null)
+  // The conversation continues where it was left, on this device or another.
+  const [resumed, setResumed] = useState<{ decisions: string[]; directions: string[] } | null>(null)
+  const restoredFor = useRef<string | null>(null)
+  useEffect(() => {
+    if (!conversationReady || restoredFor.current === programId) return
+    restoredFor.current = programId
+    let live = true
+    void loadSessionFn(programId).then((view) => {
+      if (!live || !view?.enabled || !view.session?.turns.length) return
+      // Never overwrite what the student already typed in this tab.
+      setTranscript((current) => current.length ? current : view.session!.turns.map((turn) => ({ role: turn.role, text: turn.text })))
+      setResumed({ decisions: view.session.decisions_he, directions: view.session.directions_he })
+    }).catch(() => undefined)
+    return () => { live = false }
+  }, [conversationReady, programId, loadSessionFn])
 
   const clarificationAnswerFromText = (text: string): ClarificationAnswer | undefined => {
     if (!activeClarification || responseContextVersion !== localContextVersion) return undefined
@@ -303,6 +329,8 @@ export default function AcademicAgentConversation({
   }
 
   const restartConversation = () => {
+    void resetSessionFn(programId)
+    setResumed(null)
     setTranscript([])
     setTurnMeta({})
     setDraft('')
@@ -369,6 +397,16 @@ export default function AcademicAgentConversation({
         aria-live="polite"
         className="flex flex-1 flex-col gap-4 overflow-y-auto px-4 py-4"
       >
+        {resumed && transcript.length > 0 && (
+          <details data-testid="academic-agent-resumed" className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs">
+            <summary className="cursor-pointer select-none font-medium">ממשיכים מהשיחה הקודמת{resumed.directions.length ? ` · ${resumed.directions.join(', ')}` : ''}</summary>
+            {resumed.decisions.length > 0 && (
+              <ul className="mt-1.5 flex flex-col gap-0.5 text-[var(--text-muted)]">
+                {resumed.decisions.map((decision) => <li key={decision}>• {decision}</li>)}
+              </ul>
+            )}
+          </details>
+        )}
         {transcript.length === 0 && !pending ? (
           <div className="m-auto flex max-w-sm flex-col items-center gap-3 text-center">
             <span aria-hidden="true" className="grid h-10 w-10 place-items-center rounded-full bg-[var(--purple-strong)] text-lg text-white">✦</span>

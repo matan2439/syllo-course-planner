@@ -61,7 +61,7 @@ test('ask_student ends the run and surfaces a typed clarification', async () => 
 
 test('an invalid submit_proposal is rejected and the agent keeps working until the plan validates', async () => {
   const submit = { tool: 'submit_proposal', args: { summary_he: 'תוכנית מלאה', tradeoffs_he: [], extra_hours_reason_he: null } }
-  const model = new FakeAgentModel([[submit], [{ tool: 'build_plan', args: { only_years: null } }], [submit]])
+  const model = new FakeAgentModel([[submit], [{ tool: 'build_plan', args: { only_years: null, start_over: null } }], [submit]])
   const result = await runPlannerAgent({ transcript, session: await newSession(KNOWN_COURSE_PREFERENCES) }, { model })
 
   expect(model.requests).toHaveLength(3)
@@ -82,7 +82,7 @@ test('update_preferences binds the planner: an avoided elective is never placed'
       add_avoided_course_ids: ['ALPHA'], remove_avoided_course_ids: null,
       semester_distribution: null, focus_areas: null, free_days: null, excluded_courses_answered: null, preferred_courses_answered: null,
     } }],
-    [{ tool: 'build_plan', args: { only_years: null } }],
+    [{ tool: 'build_plan', args: { only_years: null, start_over: null } }],
     [{ tool: 'submit_proposal', args: { summary_he: 'בלי אלפא', tradeoffs_he: [], extra_hours_reason_he: null } }],
   ])
   const result = await runPlannerAgent({ transcript, session }, { model })
@@ -409,7 +409,7 @@ describe('committed courses are locked', () => {
       code: 'locked_course_wrong_semester', courseIds: ['ALPHA'], semesterId: 'year_3_semester_a', blocksValidity: true,
       resolutionsHe: expect.arrayContaining(['לאשר העברה ל־שנה ד׳ סמסטר א׳']),
     })])
-    const built = await callTool(session, 'build_plan', { only_years: null })
+    const built = await callTool(session, 'build_plan', { only_years: null, start_over: null })
     expect(built).toMatchObject({ accepted: false, lock_conflicts: [expect.objectContaining({ blocks_validity: true })] })
     expect(built.validation.valid).toBe(false)
     expect(session.worker.getPlan().semesters.year_3_semester_a).toEqual(expect.arrayContaining(['MAND', 'ALPHA']))
@@ -421,7 +421,7 @@ describe('committed courses are locked', () => {
 
   test('a partial plan reaches the student labelled as not fully valid, in the server\'s own words', async () => {
     const model = new FakeAgentModel([
-      [{ tool: 'build_plan', args: { only_years: null } }],
+      [{ tool: 'build_plan', args: { only_years: null, start_over: null } }],
       [{ tool: 'submit_proposal', args: { summary_he: 'תכננתי את השאר', tradeoffs_he: [], extra_hours_reason_he: null } }],
     ])
     const result = await runPlannerAgent({ transcript, session: await newSession(KNOWN_COURSE_PREFERENCES, placed) }, { model })
@@ -442,7 +442,7 @@ describe('committed courses are locked', () => {
     expect(await callTool(session, 'submit_proposal', submit)).toMatchObject({ accepted: false })
     expect(session.submission).toBeUndefined()
     // After the planner fills in the rest, the same board goes out as a partial plan.
-    await callTool(session, 'build_plan', { only_years: null })
+    await callTool(session, 'build_plan', { only_years: null, start_over: null })
     expect(await callTool(session, 'submit_proposal', submit)).toMatchObject({ accepted: true, partial: true })
   })
 
@@ -468,7 +468,7 @@ describe('committed courses are locked', () => {
 
   test('building a plan keeps every committed course exactly where the student put it', async () => {
     const session = await newSession(KNOWN_COURSE_PREFERENCES, placed)
-    await callTool(session, 'build_plan', { only_years: null })
+    await callTool(session, 'build_plan', { only_years: null, start_over: null })
     expect(session.worker.getPlan().semesters.year_3_semester_a).toEqual(expect.arrayContaining(['MAND', 'ALPHA']))
     expect(session.lockViolations()).toEqual([])
     expect((await callTool(session, 'get_student_context', {})).data.locked_course_ids).toEqual(['MAND', 'ALPHA'])
@@ -497,7 +497,7 @@ describe('committed courses are locked', () => {
   test('avoiding a course that is already on the board keeps it and reports the conflict', async () => {
     const session = await newSession({ disallowed_course_ids: ['ALPHA'], __preferred_courses_answered: true }, legal)
     expect(session.lockConflicts).toEqual([expect.objectContaining({ code: 'locked_course_avoided', courseIds: ['ALPHA'] })])
-    const built = await callTool(session, 'build_plan', { only_years: null })
+    const built = await callTool(session, 'build_plan', { only_years: null, start_over: null })
     expect(built).toMatchObject({ accepted: true, lock_conflicts: [expect.objectContaining({ code: 'locked_course_avoided' })] })
     expect(placedCourseIds(session.worker.getPlan())).toContain('ALPHA')
     await callTool(session, 'submit_proposal', submit)
@@ -527,7 +527,7 @@ describe('preferred and avoided courses come before any build', () => {
 
   test('build_plan is refused until the student was asked, then never asks again', async () => {
     const session = await newSession()
-    const refused = await callTool(session, 'build_plan', { only_years: null })
+    const refused = await callTool(session, 'build_plan', { only_years: null, start_over: null })
     expect(refused).toMatchObject({ accepted: false, missing: ['preferred_courses', 'avoided_courses'] })
     expect(placedCourseIds(session.worker.getPlan())).toEqual([]) // nothing was planned
 
@@ -537,7 +537,7 @@ describe('preferred and avoided courses come before any build', () => {
     await callTool(next, 'update_preferences', { ...noPrefs, add_wanted_course_ids: ['BETA'], excluded_courses_answered: true, preferred_courses_answered: true })
     expect(next.preferredCoursesKnown()).toBe(true)
     expect(next.excludedCoursesKnown()).toBe(true)
-    const built = await callTool(next, 'build_plan', { only_years: null })
+    const built = await callTool(next, 'build_plan', { only_years: null, start_over: null })
     expect(built.accepted).toBe(true)
     expect(placedCourseIds(next.worker.getPlan())).toContain('BETA') // preferred = in the plan
 
@@ -560,7 +560,7 @@ describe('preferred and avoided courses come before any build', () => {
     expect(output.required_courses_kept).toEqual([expect.objectContaining({ course_id: 'MAND' })])
     expect(output.required_courses_note).toMatch(/required for the degree/)
     expect(session.preferences.disallowed_course_ids).toEqual(['ALPHA'])
-    await callTool(session, 'build_plan', { only_years: null })
+    await callTool(session, 'build_plan', { only_years: null, start_over: null })
     const placed = placedCourseIds(session.worker.getPlan())
     expect(placed).toContain('MAND')
     expect(placed).not.toContain('ALPHA')
@@ -577,7 +577,7 @@ describe('a partial request plans only the years the student asked for', () => {
 
   test('"year 4 only": new courses land only in year 4, year 3 is untouched, and the proposal passes the scope check', async () => {
     const session = await newSession(KNOWN_COURSE_PREFERENCES, withYear3)
-    const built = await callTool(session, 'build_plan', { only_years: [4] })
+    const built = await callTool(session, 'build_plan', { only_years: [4], start_over: null })
     expect(built).toMatchObject({ accepted: true, scope_years: [4] })
     expect(inYear(session, 3)).toEqual(['MAND'])
     expect(inYear(session, 4).length).toBeGreaterThan(0)
@@ -588,11 +588,11 @@ describe('a partial request plans only the years the student asked for', () => {
   test('a requirement that only fits another year is reported, never placed there', async () => {
     // Unscoped, the planner fills year 3 with the mandatory course; scoped to year 4 it must not.
     const whole = await newSession(KNOWN_COURSE_PREFERENCES)
-    await callTool(whole, 'build_plan', { only_years: null })
+    await callTool(whole, 'build_plan', { only_years: null, start_over: null })
     expect(inYear(whole, 3)).toContain('MAND')
 
     const session = await newSession(KNOWN_COURSE_PREFERENCES)
-    const built = await callTool(session, 'build_plan', { only_years: [4] })
+    const built = await callTool(session, 'build_plan', { only_years: [4], start_over: null })
     expect(inYear(session, 3)).toEqual([])
     expect(built).toMatchObject({ accepted: false, scope_years: [4] })
     expect(built.scope_note).toMatch(/Do NOT place courses in other years/)
@@ -602,7 +602,7 @@ describe('a partial request plans only the years the student asked for', () => {
 
   test('a draft that reaches outside the scope cannot be submitted', async () => {
     const session = await newSession(KNOWN_COURSE_PREFERENCES, withYear3)
-    await callTool(session, 'build_plan', { only_years: [4] })
+    await callTool(session, 'build_plan', { only_years: [4], start_over: null })
     // The final draft is checked whatever built it: against a year-3 scope these year-4 additions are outside.
     session.scopeYears = [3]
     expect(session.outOfScopePlacements().map((item) => yearOf(item.semester_id))).toEqual(expect.arrayContaining([4]))
@@ -613,7 +613,7 @@ describe('a partial request plans only the years the student asked for', () => {
 
   test('a course the student placed in another year cannot be taken out, even when removal is allowed', async () => {
     const session = await newSession(KNOWN_COURSE_PREFERENCES, withYear3)
-    await callTool(session, 'build_plan', { only_years: [4] })
+    await callTool(session, 'build_plan', { only_years: [4], start_over: null })
     expect(session.outOfScopeRemovals()).toEqual([])
     await callTool(session, 'unlock_courses', { course_ids: ['MAND'], student_words_he: 'אפשר להוריד' })
     await callTool(session, 'remove_course', { course_id: 'MAND' })
@@ -624,9 +624,9 @@ describe('a partial request plans only the years the student asked for', () => {
 
   test('a year the board does not have is refused, and null plans the whole board again', async () => {
     const session = await newSession(KNOWN_COURSE_PREFERENCES)
-    expect(await callTool(session, 'build_plan', { only_years: [7] })).toMatchObject({ accepted: false })
-    await callTool(session, 'build_plan', { only_years: [4] })
-    await callTool(session, 'build_plan', { only_years: null })
+    expect(await callTool(session, 'build_plan', { only_years: [7], start_over: null })).toMatchObject({ accepted: false })
+    await callTool(session, 'build_plan', { only_years: [4], start_over: null })
+    await callTool(session, 'build_plan', { only_years: null, start_over: null })
     expect(session.scopeYears).toBeUndefined()
   })
 })
@@ -669,7 +669,7 @@ describe('future years are projected, never confirmed', () => {
 
   test('the tools label every non-confirmed placement and say what that means', () => withDate(async () => {
     const session = await thirdYear()
-    const built = await callTool(session, 'build_plan', { only_years: null })
+    const built = await callTool(session, 'build_plan', { only_years: null, start_over: null })
     const labelled = built.plan.flatMap((semester: any) => semester.courses.map((course: any) => [semester.semester_id, course.course_id, course.offering]))
     expect(labelled).toEqual(expect.arrayContaining([['year_3_semester_a', 'MAND', undefined]]))
     expect(labelled.some(([semester, , offering]: string[]) => semester.startsWith('year_4') && offering === 'projected')).toBe(true)
@@ -682,7 +682,7 @@ describe('future years are projected, never confirmed', () => {
   test('a proposal built on a projection says so in the server\'s own words and in the wire data', () => withDate(async () => {
     const session = await thirdYear()
     const model = new FakeAgentModel([
-      [{ tool: 'build_plan', args: { only_years: null } }],
+      [{ tool: 'build_plan', args: { only_years: null, start_over: null } }],
       [{ tool: 'submit_proposal', args: { summary_he: 'תוכנית מלאה', tradeoffs_he: [], extra_hours_reason_he: null } }],
     ])
     const result = await runPlannerAgent({ transcript, session }, { model })

@@ -27,6 +27,7 @@ import { FileBoardRepository } from './board_repository_file';
 import { InMemoryProposalStore, type ProposalStore } from './proposal_store';
 import { InMemoryAcademicContextStore, type AcademicContextStore } from './academic_context_store';
 import type { AuthoritativeApplyStore } from './authoritative_apply_store';
+import { InMemoryPlannerSessionStore, type PlannerSessionStore } from './planner_session_store';
 import {
   createPostgresPlannerState,
   type PlannerPostgresSql,
@@ -180,6 +181,20 @@ export function getProposalStore(): ProposalStore {
   return proposalStore!;
 }
 
+let memorySessionStore: PlannerSessionStore | undefined;
+
+/**
+ * The planning-session store: Postgres when the planner runs on Postgres, otherwise in memory
+ * (local development; a restart forgets sessions, as it forgets everything else there).
+ */
+export function getPlannerSessionStore(): PlannerSessionStore {
+  if (selectedKind() === 'postgres') {
+    const store = initializePostgresState().plannerSessionStore;
+    if (store) return store;
+  }
+  return (memorySessionStore ??= new InMemoryPlannerSessionStore());
+}
+
 export function getAcademicContextStore(): AcademicContextStore {
   if (!academicContextStore) getBoardRepository();
   return academicContextStore!;
@@ -203,6 +218,7 @@ export async function adoptAnonymousPlannerState(fromOwnerId: string, toOwnerId:
 
 /** Test-only: drop both stores so suites cannot leak state into each other. */
 export function resetApplyRuntime(): void {
+  memorySessionStore = undefined;
   boardRepo = undefined;
   proposalStore = undefined;
   academicContextStore = undefined;
