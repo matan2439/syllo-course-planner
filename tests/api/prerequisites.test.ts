@@ -128,3 +128,56 @@ describe('course pathways from official prerequisites', () => {
     expect(index.get('C')).toBeUndefined()
   })
 })
+
+describe('approved course equivalences', () => {
+  const { loadEquivalences, withEquivalences: withEq } = require('../../api/ai/prerequisites')
+  const file = require('../../data/prerequisites/equivalences.json')
+  const has2 = (...ids: string[]) => (id: string) => ids.includes(id)
+
+  test('exactly the five approved mappings, with the four registrar-listed ones kept apart from the inferred one', () => {
+    const byRetired = Object.fromEntries(loadEquivalences().map((e: { retired: string; status: string }) => [e.retired, e.status]))
+    expect(byRetired).toEqual({
+      '0512-3632': 'registrar_listed', '0509-1824': 'registrar_listed', '0509-1843': 'registrar_listed',
+      '0509-1845': 'registrar_listed', '0509-1510': 'inferred',
+    })
+  })
+
+  test('Materials Science stays unresolved: it is not an accepted equivalence and nothing satisfies it', () => {
+    expect(loadEquivalences().some((e: { retired: string }) => e.retired === '0542-1830')).toBe(false)
+    expect(file.unresolved.map((u: { retired: string }) => u.retired)).toEqual(['0542-1830'])
+    expect(withEq(has2('0581-1111', '0581-2111'))('0542-1830')).toBe(false)
+  })
+
+  test('an approved equivalent satisfies the retired number; the program variants are alternatives', () => {
+    expect(withEq(has2('0509-1624'))('0509-1824')).toBe(true)
+    expect(withEq(has2('0509-1724'))('0509-1824')).toBe(true)
+    expect(withEq(has2('0509-1647'))('0509-1843')).toBe(true)
+    expect(withEq(has2('0512-2532'))('0512-3632')).toBe(true)
+    expect(withEq(has2('0509-1745'))('0509-1824')).toBe(false)
+    expect(withEq(has2())('0509-1824')).toBe(false)
+  })
+
+  test('similar names alone never count', () => {
+    expect(withEq(has2('0509-1546', '0581-1132', '0555-2106'))('0509-1843')).toBe(false)
+    expect(withEq(has2('0555-2106'))('0555-2250')).toBe(false)
+  })
+
+  test('the audit reports when an INFERRED equivalence made the difference', () => {
+    const catalog: PrerequisiteCatalog = {
+      '0542-1510': { status: 'verified_none', expression: null, corequisites: null },
+      '0542-2400': { status: 'verified', expression: { course: '0509-1510' }, corequisites: null },
+    }
+    const audit = shadowPrerequisiteAudit({
+      semesters: [{ semesterId: 's1', courseIds: ['0542-1510'] }, { semesterId: 's2', courseIds: ['0542-2400'] }],
+      completedCourseIds: [], catalog,
+    })
+    expect(audit.wouldBlock).toEqual([])
+    expect(audit.equivalenceUses).toEqual([{ courseId: '0542-2400', required: '0509-1510', satisfiedBy: '0542-1510', status: 'inferred' }])
+  })
+
+  test('without the equivalence the same plan would be blocked', () => {
+    const catalog: PrerequisiteCatalog = { '0542-2400': { status: 'verified', expression: { course: '0509-1510' }, corequisites: null } }
+    const audit = shadowPrerequisiteAudit({ semesters: [{ semesterId: 's1', courseIds: ['0542-2400'] }], completedCourseIds: [], catalog, equivalences: [] })
+    expect(audit.wouldBlock).toHaveLength(1)
+  })
+})

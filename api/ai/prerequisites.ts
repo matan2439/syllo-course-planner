@@ -52,6 +52,46 @@ export interface PrerequisiteRecord {
 
 export type PrerequisiteCatalog = Readonly<Record<string, PrerequisiteRecord>>;
 
+export type EquivalenceStatus = 'registrar_listed' | 'inferred';
+export interface CourseEquivalence {
+  retired: string;
+  status: EquivalenceStatus;
+  accepts: Array<{ course_id: string; name_he: string }>;
+}
+export type EquivalenceCatalog = ReadonlyArray<CourseEquivalence>;
+
+const EQUIVALENCE_FILE = join(__dirname, '..', '..', 'data', 'prerequisites', 'equivalences.json');
+let cachedEquivalences: EquivalenceCatalog | undefined;
+
+/** The owner-approved equivalences (empty when the file is absent). Unresolved ones are never here. */
+export function loadEquivalences(): EquivalenceCatalog {
+  if (cachedEquivalences === undefined) {
+    try { cachedEquivalences = JSON.parse(readFileSync(EQUIVALENCE_FILE, 'utf8')).equivalences as EquivalenceCatalog; } catch { cachedEquivalences = []; }
+  }
+  return cachedEquivalences;
+}
+
+/**
+ * A `satisfied` predicate that also accepts an approved equivalent of a required (retired) course.
+ * `onUse` is told when an equivalence made the difference, with its status, so an inferred match is
+ * never silently treated as official.
+ */
+export function withEquivalences(
+  satisfied: (courseId: string) => boolean,
+  equivalences: EquivalenceCatalog = loadEquivalences(),
+  onUse?: (use: { required: string; satisfiedBy: string; status: EquivalenceStatus }) => void,
+): (courseId: string) => boolean {
+  const byRetired = new Map(equivalences.map((equivalence) => [equivalence.retired, equivalence]));
+  return (courseId) => {
+    if (satisfied(courseId)) return true;
+    const equivalence = byRetired.get(courseId);
+    const match = equivalence?.accepts.find((accepted) => satisfied(accepted.course_id));
+    if (!equivalence || !match) return false;
+    onUse?.({ required: courseId, satisfiedBy: match.course_id, status: equivalence.status });
+    return true;
+  };
+}
+
 const UNKNOWN: PrerequisiteRecord = { status: 'unknown', expression: null, corequisites: null };
 const DATA_FILE = join(__dirname, '..', '..', 'data', 'prerequisites', 'tau.json');
 let cached: PrerequisiteCatalog | null | undefined;
@@ -113,6 +153,8 @@ export interface ShadowAudit {
   assumedNone: string[];
   /** Placed courses whose official sources disagree. */
   needsReview: string[];
+  /** Where an approved equivalence satisfied a requirement. `inferred` ones are not official. */
+  equivalenceUses: Array<{ courseId: string; required: string; satisfiedBy: string; status: EquivalenceStatus }>;
 }
 
 /**
@@ -124,6 +166,7 @@ export function shadowPrerequisiteAudit(input: {
   semesters: ReadonlyArray<{ semesterId: string; courseIds: readonly string[] }>;
   completedCourseIds: Iterable<string>;
   catalog?: PrerequisiteCatalog | null;
+  equivalences?: EquivalenceCatalog;
 }): ShadowAudit {
   const catalog = input.catalog === undefined ? loadPrerequisiteCatalog() : input.catalog;
   const completed = new Set(input.completedCourseIds);
@@ -131,7 +174,7 @@ export function shadowPrerequisiteAudit(input: {
   input.semesters.forEach((semester, index) => {
     for (const id of semester.courseIds) if (!firstIndex.has(id)) firstIndex.set(id, index);
   });
-  const audit: ShadowAudit = { wouldBlock: [], unknown: [], assumedNone: [], needsReview: [] };
+  const audit: ShadowAudit = { wouldBlock: [], unknown: [], assumedNone: [], needsReview: [], equivalenceUses: [] };
   input.semesters.forEach((semester, index) => {
     for (const courseId of semester.courseIds) {
       if (firstIndex.get(courseId) !== index) continue; // an annual course is checked at its first semester
@@ -142,9 +185,12 @@ export function shadowPrerequisiteAudit(input: {
       const byNow = (id: string) => completed.has(id) || (firstIndex.get(id) ?? Infinity) <= index;
       // The registrar lists some courses as both prerequisite and corequisite: taking them together is allowed.
       const concurrentOk = new Set(referencedCourseIds(record.corequisites));
-      const before = (id: string) => completed.has(id) || (firstIndex.get(id) ?? Infinity) < index || (concurrentOk.has(id) && byNow(id));
-      const unmetPrerequisites = unmetRequirements(record.expression, before);
-      const unmetCorequisites = unmetRequirements(record.corequisites, byNow);
+      const base = (id: string) => completed.has(id) || (firstIndex.get(id) ?? Infinity) < index || (concurrentOk.has(id) && byNow(id));
+      const note = (use: { required: string; satisfiedBy: string; status: EquivalenceStatus }) => {
+        if (!audit.equivalenceUses.some((seen) => seen.courseId === courseId && seen.required === use.required)) audit.equivalenceUses.push({ courseId, ...use });
+      };
+      const unmetPrerequisites = unmetRequirements(record.expression, withEquivalences(base, input.equivalences, note));
+      const unmetCorequisites = unmetRequirements(record.corequisites, withEquivalences(byNow, input.equivalences, note));
       if (unmetPrerequisites.length || unmetCorequisites.length) {
         audit.wouldBlock.push({ courseId, semesterId: semester.semesterId, status: record.status, unmetPrerequisites, unmetCorequisites });
       }

@@ -1,0 +1,63 @@
+{
+  "_note": "Course-number equivalences for prerequisite checks. A retired course number that the registrar still lists as a prerequisite is satisfied by completing any course in `accepts`. Approved by the project owner on 2026-11-14; status keeps how well each is supported. Nothing here changes the board or the catalog.",
+  "approved_on": "2026-11-14",
+  "catalog_year": 2026,
+  "statuses": {
+    "registrar_listed": "In other official requirements the registrar lists the retired number and each accepted course as alternatives (\"או\"). Official, but stated per requirement, not as a general equivalence.",
+    "inferred": "Matched by identical official name. NOT stated by the university; do not present it as officially verified."
+  },
+  "equivalences": [
+    {
+      "retired": "0512-3632", "name_he": "אותות אקראיים ורעש", "status": "registrar_listed",
+      "accepts": [{ "course_id": "0512-2532", "name_he": "אותות אקראיים ורעש", "programs": ["electrical_engineering"] }],
+      "evidence": "Listed as alternatives in 4 official requirements (0510-6202, 0512-4100, 0512-4161, 0512-4261); identical official name; 0512-3632 last in the catalog 2021/22.",
+      "source_urls": ["https://ims.tau.ac.il/tal/kr/Drishot_L.aspx?kurs=05106202&kv=01&sem=20261"]
+    },
+    {
+      "retired": "0509-1824", "name_he": "אלגברה לינארית", "status": "registrar_listed",
+      "accepts": [
+        { "course_id": "0509-1624", "name_he": "אלגברה ליניארית להנדסה מכנית", "programs": ["mechanical_engineering"] },
+        { "course_id": "0509-1724", "name_he": "אלגברה ליניארית להנדסת חשמל ואלקטרוניקה", "programs": ["electrical_engineering"] }
+      ],
+      "evidence": "Listed as an alternative to 0509-1624 (2 requirements) and 0509-1724 (4 requirements); not in the catalog 2020–2025.",
+      "source_urls": ["https://ims.tau.ac.il/tal/kr/Drishot_L.aspx?kurs=05091645&kv=01&sem=20261"]
+    },
+    {
+      "retired": "0509-1843", "name_he": "חשבון דיפרנציאלי ואינטגרלי", "status": "registrar_listed",
+      "accepts": [
+        { "course_id": "0509-1647", "name_he": "חשבון דיפרנציאלי ואינטגרלי 2ב' למכנית", "programs": ["mechanical_engineering"] },
+        { "course_id": "0509-1747", "name_he": "חשבון דיפרנציאלי ואינטגרלי 2ב' להנדסת חשמל ואלקטרוניקה", "programs": ["electrical_engineering"] }
+      ],
+      "evidence": "Listed as an alternative to 0509-1647 (2 requirements) and 0509-1747 (3 requirements); not in the catalog 2020–2025.",
+      "source_urls": ["https://ims.tau.ac.il/tal/kr/Drishot_L.aspx?kurs=05092843&kv=01&sem=20261"]
+    },
+    {
+      "retired": "0509-1845", "name_he": "משוואות דיפרנציאליות רגילות", "status": "registrar_listed",
+      "accepts": [
+        { "course_id": "0509-1645", "name_he": "משוואות דיפרנציאליות רגילות להנדסה מכנית", "programs": ["mechanical_engineering"] },
+        { "course_id": "0509-1745", "name_he": "משוואות דיפרנציאליות רגילות להנדסת חשמל ואלקטרוניקה", "programs": ["electrical_engineering"] }
+      ],
+      "evidence": "Listed as an alternative to 0509-1645 (4 requirements) and 0509-1745 (3 requirements); not in the catalog 2020–2025.",
+      "source_urls": ["https://ims.tau.ac.il/tal/kr/Drishot_L.aspx?kurs=05092843&kv=01&sem=20261"]
+    },
+    {
+      "retired": "0509-1510", "name_he": "גרפיקה הנדסית", "status": "inferred",
+      "accepts": [{ "course_id": "0542-1510", "name_he": "גרפיקה הנדסית", "programs": ["mechanical_engineering"] }],
+      "evidence": "Identical official name; 0509-1510 last in the catalog 2025/26; 0542-1510 is the Mechanical year-1 mandatory course. The university does not state the equivalence.",
+      "source_urls": ["https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05421510&year=2026"]
+    }
+  ],
+  "unresolved": [
+    {
+      "retired": "0542-1830", "name_he": "מבוא למדע והנדסת חומרים",
+      "required_by": ["0542-2400", "0542-3780", "0542-4091"],
+      "leading_candidate": "0581-1111",
+      "rejected_candidates": ["0581-2111"],
+      "reason": "No official statement links 0542-1830 to any current course, and it has no catalog record for 2018–2025, so its content cannot be compared. 0581-1111 is the strongest candidate (the Mechanical program's own mandatory materials course in 2025 and 2026, 4 credits, written for mechanical engineers); 0581-2111 does not fit (other audience, English, semester A, requires General Chemistry 1 and 2 which the Mechanical program does not contain). Left unresolved for the project owner's decision.",
+      "source_urls": [
+        "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05811111&year=2026",
+        "https://ims.tau.ac.il/tal/kr/search_l.aspx?course_num=05812111&year=2026"
+      ]
+    }
+  ]
+}

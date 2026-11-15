@@ -35,7 +35,7 @@ import { earlyYearCoursesFor } from '../../../shared/planner/early_year_courses'
 import { completedCreditHours } from '../conversation_clarification';
 import type { CourseProfile } from '../course_profile';
 import { coursePathway } from '../course_pathways';
-import { loadPrerequisiteCatalog } from '../prerequisites';
+import { loadPrerequisiteCatalog, withEquivalences } from '../prerequisites';
 
 export const AGENT_TOOL_NAMES = [
   'get_student_context', 'record_completed_courses', 'get_requirements_gap', 'search_courses', 'get_course_details',
@@ -397,7 +397,7 @@ export function buildAgentTools() {
         const placed = new Set(placedCourseIds(session.worker.getPlan()));
         const completed = new Set(session.completedCourseIds());
         return {
-          ...coursePathway({ courseId: course_id, model: session.model, catalog, satisfied: (id) => completed.has(id) || placed.has(id) }),
+          ...coursePathway({ courseId: course_id, model: session.model, catalog, satisfied: withEquivalences((id) => completed.has(id) || placed.has(id)) }),
           source: 'Official TAU syllabus pages (registrar prerequisite block). prerequisite_status says how sure the data is: verified / verified_none / assumed_none_no_syllabus / unknown.',
           ...(catalog ? {} : { note: 'The prerequisite catalog is unavailable right now; treat every prerequisite as unknown.' }),
         };
