@@ -1,6 +1,6 @@
 # Proposal: persistent AI planning sessions
 
-**Status: APPROVED for Preview only (2026-11-14). NOT YET APPLIED: the Preview database refused the connection (password authentication failed for `postgres`), so nothing has been executed anywhere. Production is not authorized.**
+**Status: APPLIED to Preview only (2026-11-16, migration `planner_003_planner_sessions` on project `syllo-preview`), verified: RLS on, no policies, no browser-role privileges, constraints and cascade checked, rollback ready. NOT applied to Production, which is not authorized.**
 
 The migration is now at `scripts/migrations/planner/003_planner_sessions.sql` (rollback: `003_planner_sessions.down.sql`) and is tested against PGlite. The feature is behind `AI_PLANNER_SESSIONS=true` (off by default) and degrades to the old transcript behaviour if the table is missing.
 
