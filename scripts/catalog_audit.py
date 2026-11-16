@@ -163,6 +163,21 @@ def main() -> None:
                                              if course_id in record.get("course_names", {})), None)
     program_of = lambda course_id: ", ".join(b.replace("_2027", "") for b in courses.get(course_id, {}).get("boards", [])) or "outside our programs"  # noqa: E731
 
+    approved = json.loads((ROOT / "data" / "prerequisites" / "equivalences.json").read_text(encoding="utf-8"))
+    lines += ["## 4a. Approved equivalences (consumed by the shadow audit)", "",
+              "`registrar_listed` = the registrar itself lists the numbers as alternatives. **`inferred` = NOT stated by the university**: the project owner approved it on the evidence below, and every use is reported as inferred in the shadow audit and in the agent's pathway tool.", "",
+              "| Retired | Accepted current course(s) | Status | Programs | Evidence |", "|---|---|---|---|---|"]
+    for entry in approved.get("equivalences", []):
+        accepted = ", ".join(f"{a['course_id']} {a.get('name_he', '')}" for a in entry["accepts"])
+        scope = ", ".join(entry.get("scope_programs", [])) or "all"
+        status = "**INFERRED (not official)**" if entry["status"] == "inferred" else "registrar-listed"
+        evidence = (entry.get("evidence") or "").replace("|", "/").replace("\n", " ")
+        lines.append(f"| {entry['retired']} {entry.get('name_he', '')} | {accepted} | {status} | {scope} | {evidence} |")
+    lines += ["", "Still unresolved (satisfy nothing):", ""]
+    for entry in approved.get("unresolved", []):
+        lines.append(f"- {entry['retired']} {entry.get('name_he', '')} — {entry.get('reason', '')}")
+    lines.append("")
+
     proposals = []
     lines += ["## 4. Proposed equivalences for retired prerequisite numbers — FOR APPROVAL, not applied", "",
               "A retired number needs a mapping only where the registrar requires it with no current alternative. Evidence levels:", "",

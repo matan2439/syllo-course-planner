@@ -91,6 +91,24 @@ Our boards against the semesters the official listing shows groups in this year.
 
 0 difference(s).
 
+## 4a. Approved equivalences (consumed by the shadow audit)
+
+`registrar_listed` = the registrar itself lists the numbers as alternatives. **`inferred` = NOT stated by the university**: the project owner approved it on the evidence below, and every use is reported as inferred in the shadow audit and in the agent's pathway tool.
+
+| Retired | Accepted current course(s) | Status | Programs | Evidence |
+|---|---|---|---|---|
+| 0512-3632 אותות אקראיים ורעש | 0512-2532 אותות אקראיים ורעש | registrar-listed | all | Listed as alternatives in 4 official requirements (0510-6202, 0512-4100, 0512-4161, 0512-4261); identical official name; 0512-3632 last in the catalog 2021/22. |
+| 0509-1824 אלגברה לינארית | 0509-1624 אלגברה ליניארית להנדסה מכנית, 0509-1724 אלגברה ליניארית להנדסת חשמל ואלקטרוניקה | registrar-listed | all | Listed as an alternative to 0509-1624 (2 requirements) and 0509-1724 (4 requirements); not in the catalog 2020–2025. |
+| 0509-1843 חשבון דיפרנציאלי ואינטגרלי | 0509-1647 חשבון דיפרנציאלי ואינטגרלי 2ב' למכנית, 0509-1747 חשבון דיפרנציאלי ואינטגרלי 2ב' להנדסת חשמל ואלקטרוניקה | registrar-listed | all | Listed as an alternative to 0509-1647 (2 requirements) and 0509-1747 (3 requirements); not in the catalog 2020–2025. |
+| 0509-1845 משוואות דיפרנציאליות רגילות | 0509-1645 משוואות דיפרנציאליות רגילות להנדסה מכנית, 0509-1745 משוואות דיפרנציאליות רגילות להנדסת חשמל ואלקטרוניקה | registrar-listed | all | Listed as an alternative to 0509-1645 (4 requirements) and 0509-1745 (3 requirements); not in the catalog 2020–2025. |
+| 0509-1510 גרפיקה הנדסית | 0542-1510 גרפיקה הנדסית | **INFERRED (not official)** | all | Identical official name; 0509-1510 last in the catalog 2025/26; 0542-1510 is the Mechanical year-1 mandatory course. The university does not state the equivalence. |
+| 0542-1830 מבוא למדע והנדסת חומרים | 0581-1111 מבוא למדע והנדסה של חומרים | **INFERRED (not official)** | mechanical_engineering | INFERRED, approved by the project owner on 2026-11-14; NOT stated by the university. For: 0581-1111 is a mandatory course of the current Mechanical Engineering program (official program page, 2025 and 2026, year 1 semester B, 4 credits: 3 lecture + 1 tutorial); its syllabus covers basic materials science for the mechanical engineer; the retired 0542-1830 has had no catalog record from 2018 to 2025 and is required only by Mechanical courses (0542-2400, 0542-3780, 0542-4091). Against: no official source confirms the equivalence and 0542-1830's content cannot be compared. Applies to the Mechanical Engineering program only; do not extend to other programs without evidence. |
+
+Still unresolved (satisfy nothing):
+
+- 0555-2250 מערכות פיזיולוגיות בגוף האדם (2) — Only a similar-name lead (0555-2106 is 'Physiological Systems of the Human Body', without the (2)); no official statement, no content comparison. Left unresolved.
+- 0512-4262 עיבוד תמונות — Listed in the catalog in 2025/26 and not offered this year; no current course found. Left unresolved.
+
 ## 4. Proposed equivalences for retired prerequisite numbers — FOR APPROVAL, not applied
 
 A retired number needs a mapping only where the registrar requires it with no current alternative. Evidence levels:

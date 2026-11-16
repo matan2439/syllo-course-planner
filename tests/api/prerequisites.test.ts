@@ -134,18 +134,41 @@ describe('approved course equivalences', () => {
   const file = require('../../data/prerequisites/equivalences.json')
   const has2 = (...ids: string[]) => (id: string) => ids.includes(id)
 
-  test('exactly the five approved mappings, with the four registrar-listed ones kept apart from the inferred one', () => {
+  test('exactly the six approved mappings: four registrar-listed, two inferred', () => {
     const byRetired = Object.fromEntries(loadEquivalences().map((e: { retired: string; status: string }) => [e.retired, e.status]))
     expect(byRetired).toEqual({
       '0512-3632': 'registrar_listed', '0509-1824': 'registrar_listed', '0509-1843': 'registrar_listed',
-      '0509-1845': 'registrar_listed', '0509-1510': 'inferred',
+      '0509-1845': 'registrar_listed', '0509-1510': 'inferred', '0542-1830': 'inferred',
     })
   })
 
-  test('Materials Science stays unresolved: it is not an accepted equivalence and nothing satisfies it', () => {
-    expect(loadEquivalences().some((e: { retired: string }) => e.retired === '0542-1830')).toBe(false)
-    expect(file.unresolved.map((u: { retired: string }) => u.retired)).toEqual(['0542-1830'])
-    expect(withEq(has2('0581-1111', '0581-2111'))('0542-1830')).toBe(false)
+  test('Materials Science is an INFERRED, Mechanical-only equivalence to 0581-1111; 0581-2111 never counts', () => {
+    const entry = loadEquivalences().find((e: { retired: string }) => e.retired === '0542-1830')
+    expect(entry).toMatchObject({ status: 'inferred', scope_programs: ['mechanical_engineering'] })
+    expect(entry.evidence).toMatch(/INFERRED/)
+    expect(withEq(has2('0581-1111'), undefined, undefined, 'mechanical_engineering_2027')('0542-1830')).toBe(true)
+    expect(withEq(has2('0581-1111'), undefined, undefined, 'mechanical_engineering_years_1_2_2027')('0542-1830')).toBe(true)
+    expect(withEq(has2('0581-1111'), undefined, undefined, 'electrical_engineering_2027')('0542-1830')).toBe(false)
+    expect(withEq(has2('0581-2111'), undefined, undefined, 'mechanical_engineering_2027')('0542-1830')).toBe(false)
+  })
+
+  test('the other uncertain equivalences stay unresolved and satisfy nothing', () => {
+    expect(file.unresolved.map((u: { retired: string }) => u.retired)).toEqual(['0555-2250', '0512-4262'])
+    expect(loadEquivalences().some((e: { retired: string }) => ['0555-2250', '0512-4262'].includes(e.retired))).toBe(false)
+  })
+
+  test('the audit reports an inferred Materials Science use for Mechanical and not for Electrical', () => {
+    const catalog: PrerequisiteCatalog = {
+      '0581-1111': { status: 'verified_none', expression: null, corequisites: null },
+      '0542-2400': { status: 'verified', expression: { course: '0542-1830' }, corequisites: null },
+    }
+    const semesters = [{ semesterId: 's1', courseIds: ['0581-1111'] }, { semesterId: 's2', courseIds: ['0542-2400'] }]
+    const mech = shadowPrerequisiteAudit({ semesters, completedCourseIds: [], catalog, programId: 'mechanical_engineering_2027' })
+    expect(mech.wouldBlock).toEqual([])
+    expect(mech.equivalenceUses).toEqual([{ courseId: '0542-2400', required: '0542-1830', satisfiedBy: '0581-1111', status: 'inferred' }])
+    const elec = shadowPrerequisiteAudit({ semesters, completedCourseIds: [], catalog, programId: 'electrical_engineering_2027' })
+    expect(elec.wouldBlock).toHaveLength(1)
+    expect(elec.equivalenceUses).toEqual([])
   })
 
   test('an approved equivalent satisfies the retired number; the program variants are alternatives', () => {

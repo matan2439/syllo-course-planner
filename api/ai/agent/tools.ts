@@ -421,8 +421,14 @@ export function buildAgentTools() {
         const catalog = loadPrerequisiteCatalog();
         const placed = new Set(placedCourseIds(session.worker.getPlan()));
         const completed = new Set(session.completedCourseIds());
+        const equivalencesUsed: Array<{ required: string; satisfied_by: string; status: string }> = [];
+        const satisfied = withEquivalences((id) => completed.has(id) || placed.has(id), undefined,
+          (use) => { if (!equivalencesUsed.some((seen) => seen.required === use.required)) equivalencesUsed.push({ required: use.required, satisfied_by: use.satisfiedBy, status: use.status }); },
+          session.input.programId);
         return {
-          ...coursePathway({ courseId: course_id, model: session.model, catalog, satisfied: withEquivalences((id) => completed.has(id) || placed.has(id)) }),
+          ...coursePathway({ courseId: course_id, model: session.model, catalog, satisfied }),
+          // An INFERRED equivalence is the project's judgement, not the university's: say so if you rely on it.
+          ...(equivalencesUsed.length ? { equivalences_used: equivalencesUsed, equivalences_note: 'status "inferred" = not stated by the university; "registrar_listed" = the registrar lists them as alternatives elsewhere.' } : {}),
           source: 'Official TAU syllabus pages (registrar prerequisite block). prerequisite_status says how sure the data is: verified / verified_none / assumed_none_no_syllabus / unknown.',
           ...(catalog ? {} : { note: 'The prerequisite catalog is unavailable right now; treat every prerequisite as unknown.' }),
         };

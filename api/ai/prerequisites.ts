@@ -56,8 +56,14 @@ export type EquivalenceStatus = 'registrar_listed' | 'inferred';
 export interface CourseEquivalence {
   retired: string;
   status: EquivalenceStatus;
-  accepts: Array<{ course_id: string; name_he: string }>;
+  /** Applies only to these programs (base ids such as 'mechanical_engineering'); absent = every program. */
+  scope_programs?: string[];
+  accepts: Array<{ course_id: string; name_he: string; programs?: string[] }>;
 }
+
+/** 'mechanical_engineering_years_1_2_2027' → 'mechanical_engineering'. */
+export const programBaseOf = (programId: string | null | undefined): string | null =>
+  programId ? programId.replace(/_years_\d+_\d+(?=_\d{4}$)/, '').replace(/_\d{4}$/, '') : null;
 export type EquivalenceCatalog = ReadonlyArray<CourseEquivalence>;
 
 const EQUIVALENCE_FILE = join(__dirname, '..', '..', 'data', 'prerequisites', 'equivalences.json');
@@ -80,12 +86,17 @@ export function withEquivalences(
   satisfied: (courseId: string) => boolean,
   equivalences: EquivalenceCatalog = loadEquivalences(),
   onUse?: (use: { required: string; satisfiedBy: string; status: EquivalenceStatus }) => void,
+  /** The program being planned. When given, an equivalence scoped to other programs is not applied. */
+  programId?: string | null,
 ): (courseId: string) => boolean {
+  const base = programBaseOf(programId);
   const byRetired = new Map(equivalences.map((equivalence) => [equivalence.retired, equivalence]));
   return (courseId) => {
     if (satisfied(courseId)) return true;
     const equivalence = byRetired.get(courseId);
-    const match = equivalence?.accepts.find((accepted) => satisfied(accepted.course_id));
+    if (equivalence && base && equivalence.scope_programs?.length && !equivalence.scope_programs.includes(base)) return false;
+    const match = equivalence?.accepts.find((accepted) =>
+      (!base || !accepted.programs?.length || accepted.programs.includes(base)) && satisfied(accepted.course_id));
     if (!equivalence || !match) return false;
     onUse?.({ required: courseId, satisfiedBy: match.course_id, status: equivalence.status });
     return true;
@@ -167,6 +178,8 @@ export function shadowPrerequisiteAudit(input: {
   completedCourseIds: Iterable<string>;
   catalog?: PrerequisiteCatalog | null;
   equivalences?: EquivalenceCatalog;
+  /** The program being audited: keeps a program-scoped equivalence from reaching another program. */
+  programId?: string | null;
 }): ShadowAudit {
   const catalog = input.catalog === undefined ? loadPrerequisiteCatalog() : input.catalog;
   const completed = new Set(input.completedCourseIds);
@@ -189,8 +202,8 @@ export function shadowPrerequisiteAudit(input: {
       const note = (use: { required: string; satisfiedBy: string; status: EquivalenceStatus }) => {
         if (!audit.equivalenceUses.some((seen) => seen.courseId === courseId && seen.required === use.required)) audit.equivalenceUses.push({ courseId, ...use });
       };
-      const unmetPrerequisites = unmetRequirements(record.expression, withEquivalences(base, input.equivalences, note));
-      const unmetCorequisites = unmetRequirements(record.corequisites, withEquivalences(byNow, input.equivalences, note));
+      const unmetPrerequisites = unmetRequirements(record.expression, withEquivalences(base, input.equivalences, note, input.programId));
+      const unmetCorequisites = unmetRequirements(record.corequisites, withEquivalences(byNow, input.equivalences, note, input.programId));
       if (unmetPrerequisites.length || unmetCorequisites.length) {
         audit.wouldBlock.push({ courseId, semesterId: semester.semesterId, status: record.status, unmetPrerequisites, unmetCorequisites });
       }
