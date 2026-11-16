@@ -298,6 +298,8 @@ export const planningSessionViewResponseSchema = z.object({
   ok: z.literal(true),
   /** false = persistent sessions are off: the page keeps its own transcript as before. */
   enabled: z.boolean(),
+  /** Why sessions are off, for diagnostics only (never a secret): the flag, the store, or a read error. */
+  reason: z.enum(['flag_off', 'store_unavailable', 'read_error']).optional(),
   session: z.object({
     turns: z.array(z.object({ role: z.enum(['user', 'assistant']), text: z.string().max(MAX_TEXT) }).strict()).max(MAX_TRANSCRIPT_TURNS),
     pending_question_he: z.string().max(400).nullable(),

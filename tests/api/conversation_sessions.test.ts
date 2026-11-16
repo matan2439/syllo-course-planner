@@ -94,7 +94,27 @@ test('the page restores the conversation after a reload, and "new conversation" 
 test('with persistent sessions off, nothing is stored and the page keeps its own transcript', async () => {
   const handler = make(null)
   expect((await post(handler, 'שלום')).statusCode).toBe(200)
-  expect((await call(handler, 'GET')).body).toEqual({ ok: true, enabled: false, session: null })
+  expect((await call(handler, 'GET')).body).toEqual({ ok: true, enabled: false, reason: 'flag_off', session: null })
+})
+
+test('the view says WHY sessions are off: flag off, store unavailable, or a read error', async () => {
+  const saved = process.env.AI_PLANNER_SESSIONS
+  try {
+    delete process.env.AI_PLANNER_SESSIONS
+    const noDeps = createConversationHandler({ resolveModel: () => ({ model: {} as any, name: 't' }), resolveOwner: async () => ({ ownerId: OWNER, issued: false }) })
+    const off = await call(noDeps, 'GET')
+    expect(off.body).toEqual({ ok: true, enabled: false, reason: 'flag_off', session: null })
+    expect(planningSessionViewResponseSchema.safeParse(off.body).success).toBe(true)
+    process.env.AI_PLANNER_SESSIONS = 'true'
+    // On, but no store can be built in this test environment's runtime → store_unavailable or a working in-memory store.
+    const on = await call(noDeps, 'GET')
+    expect(on.body.reason === undefined || on.body.reason === 'store_unavailable').toBe(true)
+  } finally {
+    if (saved === undefined) delete process.env.AI_PLANNER_SESSIONS; else process.env.AI_PLANNER_SESSIONS = saved
+  }
+  jest.spyOn(console, 'error').mockImplementation(() => undefined)
+  const throwing: PlannerSessionStore = { load: async () => { throw new Error('x') }, save: async () => ({ ok: false, reason: 'REVISION_CONFLICT' }), delete: async () => undefined }
+  expect((await call(make(throwing), 'GET')).body).toEqual({ ok: true, enabled: false, reason: 'read_error', session: null })
 })
 
 test('an unavailable session store never fails the reply: the turn runs from the client transcript', async () => {
