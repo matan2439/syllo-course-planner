@@ -18,7 +18,7 @@
 import { createHash } from 'crypto';
 import postgres from 'postgres';
 import { PG_OPTS } from './_quota';
-import { isolatedUrl } from '../db_env';
+import { databaseProjectRef, isolatedUrl } from '../db_env';
 import {
   InMemoryBoardRepository,
   type BoardRepository,
@@ -97,6 +97,20 @@ function plannerDatabaseUrl(env: NodeJS.ProcessEnv = process.env): string | null
   if (dedicatedUrl) return dedicatedUrl;
   const sharedUrl = isolatedUrl(env[SHARED_DATABASE_URL_ENV], SHARED_DATABASE_URL_ENV, env);
   return sharedUrl || null;
+}
+
+/**
+ * Which variable the planner storage reads and which public project ref its URL names — diagnostics only
+ * (variable NAME and the ref that is part of every Supabase URL; never the password or the URL itself).
+ */
+export function plannerDatabaseDiagnostics(env: NodeJS.ProcessEnv = process.env): { source: 'SYLLO_PLANNER_DATABASE_URL' | 'DATABASE_URL' | null; ref: string | null } {
+  if (isolatedUrl(env[PLANNER_DATABASE_URL_ENV], PLANNER_DATABASE_URL_ENV, env)) {
+    return { source: 'SYLLO_PLANNER_DATABASE_URL', ref: databaseProjectRef(env[PLANNER_DATABASE_URL_ENV]) };
+  }
+  if (isolatedUrl(env[SHARED_DATABASE_URL_ENV], SHARED_DATABASE_URL_ENV, env)) {
+    return { source: 'DATABASE_URL', ref: databaseProjectRef(env[SHARED_DATABASE_URL_ENV]) };
+  }
+  return { source: null, ref: null };
 }
 
 export function plannerDatabaseConfigured(env: NodeJS.ProcessEnv = process.env): boolean {

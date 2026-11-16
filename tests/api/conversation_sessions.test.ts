@@ -94,7 +94,7 @@ test('the page restores the conversation after a reload, and "new conversation" 
 test('with persistent sessions off, nothing is stored and the page keeps its own transcript', async () => {
   const handler = make(null)
   expect((await post(handler, 'שלום')).statusCode).toBe(200)
-  expect((await call(handler, 'GET')).body).toEqual({ ok: true, enabled: false, reason: 'flag_off', db_ref: null, session: null })
+  expect((await call(handler, 'GET')).body).toEqual({ ok: true, enabled: false, reason: 'flag_off', db_ref: null, db_source: null, session: null })
 })
 
 test('the view says WHY sessions are off: flag off, store unavailable, or a read error', async () => {
@@ -103,7 +103,7 @@ test('the view says WHY sessions are off: flag off, store unavailable, or a read
     delete process.env.AI_PLANNER_SESSIONS
     const noDeps = createConversationHandler({ resolveModel: () => ({ model: {} as any, name: 't' }), resolveOwner: async () => ({ ownerId: OWNER, issued: false }) })
     const off = await call(noDeps, 'GET')
-    expect(off.body).toEqual({ ok: true, enabled: false, reason: 'flag_off', db_ref: null, session: null })
+    expect(off.body).toEqual({ ok: true, enabled: false, reason: 'flag_off', db_ref: null, db_source: null, session: null })
     expect(planningSessionViewResponseSchema.safeParse(off.body).success).toBe(true)
     process.env.AI_PLANNER_SESSIONS = 'true'
     // On, but no store can be built in this test environment's runtime → store_unavailable or a working in-memory store.
@@ -114,7 +114,7 @@ test('the view says WHY sessions are off: flag off, store unavailable, or a read
   }
   jest.spyOn(console, 'error').mockImplementation(() => undefined)
   const throwing: PlannerSessionStore = { load: async () => { throw new Error('x') }, save: async () => ({ ok: false, reason: 'REVISION_CONFLICT' }), delete: async () => undefined }
-  expect((await call(make(throwing), 'GET')).body).toEqual({ ok: true, enabled: false, reason: 'read_error', db_ref: null, session: null })
+  expect((await call(make(throwing), 'GET')).body).toEqual({ ok: true, enabled: false, reason: 'read_error', db_ref: null, db_source: null, session: null })
 })
 
 test('an unavailable session store never fails the reply: the turn runs from the client transcript', async () => {
@@ -165,4 +165,13 @@ test('the diagnostic names only the public project ref, never the password', () 
   expect(databaseProjectRef('postgresql://postgres:s3cret@db.abcdefghijklmnopqrst.supabase.co:5432/postgres')).toBe('abcdefghijklmnopqrst')
   expect(databaseProjectRef('postgresql://u:p@example.com/db')).toBeNull()
   expect(databaseProjectRef(undefined)).toBeNull()
+})
+
+test('the planner storage diagnostic names the variable and ref actually used; SYLLO_PLANNER_DATABASE_URL wins over DATABASE_URL', () => {
+  const { plannerDatabaseDiagnostics } = require('../../api/ai/apply_runtime')
+  const a = 'postgresql://postgres.aaaaaaaaaaaaaaaaaaaa:pw@h.pooler.supabase.com:5432/postgres'
+  const b = 'postgresql://postgres.bbbbbbbbbbbbbbbbbbbb:pw@h.pooler.supabase.com:5432/postgres'
+  expect(plannerDatabaseDiagnostics({ VERCEL_ENV: 'preview', DATABASE_URL: a } as any)).toEqual({ source: 'DATABASE_URL', ref: 'aaaaaaaaaaaaaaaaaaaa' })
+  expect(plannerDatabaseDiagnostics({ VERCEL_ENV: 'preview', DATABASE_URL: a, SYLLO_PLANNER_DATABASE_URL: b } as any)).toEqual({ source: 'SYLLO_PLANNER_DATABASE_URL', ref: 'bbbbbbbbbbbbbbbbbbbb' })
+  expect(plannerDatabaseDiagnostics({ VERCEL_ENV: 'preview' } as any)).toEqual({ source: null, ref: null })
 })

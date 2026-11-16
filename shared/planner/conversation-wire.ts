@@ -302,6 +302,8 @@ export const planningSessionViewResponseSchema = z.object({
   reason: z.enum(['flag_off', 'store_unavailable', 'read_error']).optional(),
   /** With `reason`: the public Supabase project ref of this deployment's database, or null when its URL does not name one. */
   db_ref: z.string().max(40).nullable().optional(),
+  /** With `reason`: which variable the planner storage reads (a name, never a value). */
+  db_source: z.enum(['SYLLO_PLANNER_DATABASE_URL', 'DATABASE_URL']).nullable().optional(),
   session: z.object({
     turns: z.array(z.object({ role: z.enum(['user', 'assistant']), text: z.string().max(MAX_TEXT) }).strict()).max(MAX_TRANSCRIPT_TURNS),
     pending_question_he: z.string().max(400).nullable(),
