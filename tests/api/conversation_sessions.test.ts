@@ -94,7 +94,7 @@ test('the page restores the conversation after a reload, and "new conversation" 
 test('with persistent sessions off, nothing is stored and the page keeps its own transcript', async () => {
   const handler = make(null)
   expect((await post(handler, 'שלום')).statusCode).toBe(200)
-  expect((await call(handler, 'GET')).body).toEqual({ ok: true, enabled: false, reason: 'flag_off', session: null })
+  expect((await call(handler, 'GET')).body).toEqual({ ok: true, enabled: false, reason: 'flag_off', db_ref: null, session: null })
 })
 
 test('the view says WHY sessions are off: flag off, store unavailable, or a read error', async () => {
@@ -103,7 +103,7 @@ test('the view says WHY sessions are off: flag off, store unavailable, or a read
     delete process.env.AI_PLANNER_SESSIONS
     const noDeps = createConversationHandler({ resolveModel: () => ({ model: {} as any, name: 't' }), resolveOwner: async () => ({ ownerId: OWNER, issued: false }) })
     const off = await call(noDeps, 'GET')
-    expect(off.body).toEqual({ ok: true, enabled: false, reason: 'flag_off', session: null })
+    expect(off.body).toEqual({ ok: true, enabled: false, reason: 'flag_off', db_ref: null, session: null })
     expect(planningSessionViewResponseSchema.safeParse(off.body).success).toBe(true)
     process.env.AI_PLANNER_SESSIONS = 'true'
     // On, but no store can be built in this test environment's runtime → store_unavailable or a working in-memory store.
@@ -114,7 +114,7 @@ test('the view says WHY sessions are off: flag off, store unavailable, or a read
   }
   jest.spyOn(console, 'error').mockImplementation(() => undefined)
   const throwing: PlannerSessionStore = { load: async () => { throw new Error('x') }, save: async () => ({ ok: false, reason: 'REVISION_CONFLICT' }), delete: async () => undefined }
-  expect((await call(make(throwing), 'GET')).body).toEqual({ ok: true, enabled: false, reason: 'read_error', session: null })
+  expect((await call(make(throwing), 'GET')).body).toEqual({ ok: true, enabled: false, reason: 'read_error', db_ref: null, session: null })
 })
 
 test('an unavailable session store never fails the reply: the turn runs from the client transcript', async () => {
@@ -157,4 +157,12 @@ test('a request for the session needs a program id', async () => {
   const res = response()
   await make(new InMemoryPlannerSessionStore())({ method: 'GET', query: {}, headers: {} } as any, res)
   expect(res.statusCode).toBe(400)
+})
+
+test('the diagnostic names only the public project ref, never the password', () => {
+  const { databaseProjectRef } = require('../../api/db_env')
+  expect(databaseProjectRef('postgresql://postgres.abcdefghijklmnopqrst:s3cret@aws-0-eu-north-1.pooler.supabase.com:5432/postgres')).toBe('abcdefghijklmnopqrst')
+  expect(databaseProjectRef('postgresql://postgres:s3cret@db.abcdefghijklmnopqrst.supabase.co:5432/postgres')).toBe('abcdefghijklmnopqrst')
+  expect(databaseProjectRef('postgresql://u:p@example.com/db')).toBeNull()
+  expect(databaseProjectRef(undefined)).toBeNull()
 })

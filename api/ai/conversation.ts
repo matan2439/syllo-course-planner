@@ -54,6 +54,7 @@ import { DeterministicCandidateDecisionCapability } from './candidate_decision';
 import { loadBoardWithAddedSemesters } from './student_semesters';
 import { agentTranscript, finishSessionTurn, plannerSessionsEnabled, sessionView, startSessionTurn, type TurnStart } from './planning_session_service';
 import type { PlannerSessionStore } from './planner_session_store';
+import { databaseProjectRef } from '../db_env';
 
 type AgentModelConfig = { model: string | Model; name: string };
 
@@ -196,11 +197,11 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
         const stored = store ? await store.load(owner.ownerId, programId) : null;
         // When off, say why (diagnostics only): a switched-off flag and an unreachable store look the same to a student.
         const reason = store ? undefined : deps.sessionStore === null || (deps.sessionStore === undefined && !plannerSessionsEnabled()) ? 'flag_off' : 'store_unavailable';
-        res.status(200).json({ ok: true, enabled: store !== null, ...(reason ? { reason } : {}), session: stored ? sessionView(stored.state) : null });
+        res.status(200).json({ ok: true, enabled: store !== null, ...(reason ? { reason, db_ref: databaseProjectRef(process.env.DATABASE_URL) } : {}), session: stored ? sessionView(stored.state) : null });
       } catch (error) {
         console.error('[ai/conversation] session view failed:', error instanceof Error ? error.message : String(error));
         // Memory is a convenience: an unavailable store reads as "no session", never as an error.
-        res.status(200).json({ ok: true, enabled: false, reason: 'read_error', session: null });
+        res.status(200).json({ ok: true, enabled: false, reason: 'read_error', db_ref: databaseProjectRef(process.env.DATABASE_URL), session: null });
       }
       return;
     }
