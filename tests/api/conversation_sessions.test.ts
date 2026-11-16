@@ -175,3 +175,15 @@ test('the planner storage diagnostic names the variable and ref actually used; S
   expect(plannerDatabaseDiagnostics({ VERCEL_ENV: 'preview', DATABASE_URL: a, SYLLO_PLANNER_DATABASE_URL: b } as any)).toEqual({ source: 'SYLLO_PLANNER_DATABASE_URL', ref: 'bbbbbbbbbbbbbbbbbbbb' })
   expect(plannerDatabaseDiagnostics({ VERCEL_ENV: 'preview' } as any)).toEqual({ source: null, ref: null })
 })
+
+test('sessions use the ACCOUNT database (DATABASE_URL) on Vercel, even when the planner state has its own database', () => {
+  const { sessionDatabaseDiagnostics } = require('../../api/ai/apply_runtime')
+  const account = 'postgresql://postgres.aaaaaaaaaaaaaaaaaaaa:pw@h.pooler.supabase.com:5432/postgres'
+  const planner = 'postgresql://u:pw@ep-x.us-east-1.aws.neon.tech/neondb'
+  const env = { VERCEL: '1', VERCEL_ENV: 'preview', DATABASE_URL: account, SYLLO_PLANNER_DATABASE_URL: planner } as any
+  expect(sessionDatabaseDiagnostics(env)).toEqual({ source: 'DATABASE_URL', ref: 'aaaaaaaaaaaaaaaaaaaa' })
+  // Off Vercel (local development) the old behaviour is unchanged: the planner database decides.
+  expect(sessionDatabaseDiagnostics({ ...env, VERCEL: undefined })).toEqual({ source: 'SYLLO_PLANNER_DATABASE_URL', ref: null })
+  // The Production database is still refused outside Production.
+  expect(sessionDatabaseDiagnostics({ VERCEL: '1', VERCEL_ENV: 'preview', DATABASE_URL: 'postgresql://postgres.lxwtycowmqosuyfumcbo:pw@h/db' } as any)).toEqual({ source: null, ref: null })
+})

@@ -27,7 +27,7 @@ import { FileBoardRepository } from './board_repository_file';
 import { InMemoryProposalStore, type ProposalStore } from './proposal_store';
 import { InMemoryAcademicContextStore, type AcademicContextStore } from './academic_context_store';
 import type { AuthoritativeApplyStore } from './authoritative_apply_store';
-import { InMemoryPlannerSessionStore, type PlannerSessionStore } from './planner_session_store';
+import { InMemoryPlannerSessionStore, PostgresPlannerSessionStore, type PlannerSessionStore } from './planner_session_store';
 import {
   createPostgresPlannerState,
   type PlannerPostgresSql,
@@ -196,17 +196,37 @@ export function getProposalStore(): ProposalStore {
 }
 
 let memorySessionStore: PlannerSessionStore | undefined;
+let accountSessionStore: PlannerSessionStore | undefined;
+let accountSessionUrl: string | undefined;
 
 /**
  * The planning-session store: Postgres when the planner runs on Postgres, otherwise in memory
  * (local development; a restart forgets sessions, as it forgets everything else there).
  */
 export function getPlannerSessionStore(): PlannerSessionStore {
+  // Sessions reference auth.users, so they live in the ACCOUNT database (DATABASE_URL), not necessarily in
+  // the database a dedicated SYLLO_PLANNER_DATABASE_URL points the board state at. Own small connection pool.
+  const accountUrl = isolatedUrl(process.env[SHARED_DATABASE_URL_ENV], SHARED_DATABASE_URL_ENV);
+  if (accountUrl && process.env.VERCEL === '1') {
+    if (!accountSessionStore || accountSessionUrl !== accountUrl) {
+      accountSessionUrl = accountUrl;
+      accountSessionStore = new PostgresPlannerSessionStore(postgres(accountUrl, { ...PG_OPTS, max: 2 }) as unknown as ConstructorParameters<typeof PostgresPlannerSessionStore>[0]);
+    }
+    return accountSessionStore;
+  }
   if (selectedKind() === 'postgres') {
     const store = initializePostgresState().plannerSessionStore;
     if (store) return store;
   }
   return (memorySessionStore ??= new InMemoryPlannerSessionStore());
+}
+
+/** Which variable the SESSION store reads and the public project ref it names — diagnostics only. */
+export function sessionDatabaseDiagnostics(env: NodeJS.ProcessEnv = process.env): { source: 'DATABASE_URL' | 'SYLLO_PLANNER_DATABASE_URL' | null; ref: string | null } {
+  if (env.VERCEL === '1' && isolatedUrl(env[SHARED_DATABASE_URL_ENV], SHARED_DATABASE_URL_ENV, env)) {
+    return { source: 'DATABASE_URL', ref: databaseProjectRef(env[SHARED_DATABASE_URL_ENV]) };
+  }
+  return plannerDatabaseDiagnostics(env);
 }
 
 export function getAcademicContextStore(): AcademicContextStore {

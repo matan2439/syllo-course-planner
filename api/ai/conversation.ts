@@ -36,7 +36,7 @@ import {
   getAcademicContextStore,
   getBoardRepository,
   getPlannerSessionStore,
-  plannerDatabaseDiagnostics,
+  sessionDatabaseDiagnostics,
   getProposalStore,
   plannerStorageErrorCode,
   preferenceDigest,
@@ -197,11 +197,11 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
         const stored = store ? await store.load(owner.ownerId, programId) : null;
         // When off, say why (diagnostics only): a switched-off flag and an unreachable store look the same to a student.
         const reason = store ? undefined : deps.sessionStore === null || (deps.sessionStore === undefined && !plannerSessionsEnabled()) ? 'flag_off' : 'store_unavailable';
-        res.status(200).json({ ok: true, enabled: store !== null, ...(reason ? { reason, db_ref: plannerDatabaseDiagnostics().ref, db_source: plannerDatabaseDiagnostics().source } : {}), session: stored ? sessionView(stored.state) : null });
+        res.status(200).json({ ok: true, enabled: store !== null, ...(reason ? { reason, db_ref: sessionDatabaseDiagnostics().ref, db_source: sessionDatabaseDiagnostics().source } : {}), session: stored ? sessionView(stored.state) : null });
       } catch (error) {
         console.error('[ai/conversation] session view failed:', error instanceof Error ? error.message : String(error));
         // Memory is a convenience: an unavailable store reads as "no session", never as an error.
-        res.status(200).json({ ok: true, enabled: false, reason: 'read_error', db_ref: plannerDatabaseDiagnostics().ref, db_source: plannerDatabaseDiagnostics().source, session: null });
+        res.status(200).json({ ok: true, enabled: false, reason: 'read_error', db_ref: sessionDatabaseDiagnostics().ref, db_source: sessionDatabaseDiagnostics().source, session: null });
       }
       return;
     }
