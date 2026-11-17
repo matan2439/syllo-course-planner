@@ -13,7 +13,7 @@ const PROGRAM = 'test_program_intent_2027'
 const OWNER = 'auth:11111111-1111-4111-8111-111111111111'
 const status = { completed: [], currently_taking: [], planned: [], completed_knowledge: { status: 'known', provenance: 'explicit_user' } }
 const ctx = (semesters: any[] = []) => ({ semesters, total_hours_progress: { known_completed_hours: 177 }, personal_status: status })
-const PREFS = { disallowed_course_ids: [], __preferred_courses_answered: true }
+const PREFS = { disallowed_course_ids: [], __preferred_courses_answered: true, __intake_skip_requested: true }
 const BOARD = { version: 'v1', semesters: [{ semesterId: 'year_3_semester_a', courseIds: ['MAND'] }, { semesterId: 'year_4_semester_a', courseIds: [] }] }
 
 async function open(restored?: PlanningSessionState, committed = [{ id: 'year_3_semester_a', courses: [{ course_id: 'MAND' }] }], preferences: Record<string, unknown> = PREFS, dropped: DraftChange[] = []) {

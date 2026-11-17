@@ -32,6 +32,12 @@ export const MAX_EXCLUDED_ASKS = 2;
 export const PREFERRED_ASKED_KEY = '__preferred_courses_asked';
 /** The student answered that question (with courses or "none"). */
 export const PREFERRED_ANSWERED_KEY = '__preferred_courses_answered';
+/** Student answered the specialization/direction intake question (or said "no preference"). */
+export const INTAKE_DIRECTION_ANSWERED_KEY = '__intake_direction_answered';
+/** Student answered the workload/schedule intake question (or said "no constraints"). */
+export const INTAKE_WORKLOAD_ANSWERED_KEY = '__intake_workload_answered';
+/** Student explicitly asked to skip intake and build immediately. */
+export const INTAKE_SKIP_KEY = '__intake_skip_requested';
 
 /** `year_2_semester_a` → 2 (0 for an id outside the convention). */
 export const degreeYearOf = (semesterId: string) => Number(/^year_(\d+)_/.exec(semesterId)?.[1] ?? 0);
@@ -238,7 +244,33 @@ export class PlanningSession {
     const prefs = this.preferences as Record<string, unknown>;
     return (Array.isArray(prefs.focus_areas) && (prefs.focus_areas as unknown[]).length > 0)
       || typeof prefs.max_weekly_hours === 'number'
-      || (Array.isArray(prefs.free_days) && (prefs.free_days as unknown[]).length > 0);
+      || (Array.isArray(prefs.free_days) && (prefs.free_days as unknown[]).length > 0)
+      || prefs[INTAKE_DIRECTION_ANSWERED_KEY] === true
+      || prefs[INTAKE_WORKLOAD_ANSWERED_KEY] === true
+      || prefs[INTAKE_SKIP_KEY] === true;
+  }
+
+  /** Student answered (or skipped) the specialization/direction question. */
+  intakeDirectionKnown(): boolean {
+    const prefs = this.preferences as Record<string, unknown>;
+    return (Array.isArray(prefs.focus_areas) && (prefs.focus_areas as unknown[]).length > 0)
+      || prefs[INTAKE_DIRECTION_ANSWERED_KEY] === true
+      || prefs[INTAKE_SKIP_KEY] === true;
+  }
+
+  /** Student answered (or skipped) the workload/schedule question. */
+  intakeWorkloadKnown(): boolean {
+    const prefs = this.preferences as Record<string, unknown>;
+    return typeof prefs.max_weekly_hours === 'number'
+      || (Array.isArray(prefs.free_days) && (prefs.free_days as unknown[]).length > 0)
+      || prefs[INTAKE_WORKLOAD_ANSWERED_KEY] === true
+      || prefs[INTAKE_SKIP_KEY] === true;
+  }
+
+  /** True when the student has given enough intake context for a first plan. */
+  intakeComplete(): boolean {
+    return this.preferredCoursesKnown() && this.excludedCoursesKnown()
+      && (this.intakeDirectionKnown() || this.intakeWorkloadKnown());
   }
 
   excludedCoursesAsked(): number {

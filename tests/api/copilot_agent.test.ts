@@ -22,7 +22,7 @@ const planContext = {
   },
 }
 
-const KNOWN_COURSE_PREFERENCES = { disallowed_course_ids: [], __preferred_courses_answered: true }
+const KNOWN_COURSE_PREFERENCES = { disallowed_course_ids: [], __preferred_courses_answered: true, __intake_skip_requested: true }
 async function newSession(preferences: Record<string, unknown> = {}, context: Record<string, unknown> = planContext) {
   const clarification = await clarifyForAcademicDecision(extractClarificationContext(context, preferences, undefined))
   return new PlanningSession({
@@ -80,7 +80,7 @@ test('update_preferences binds the planner: an avoided elective is never placed'
     [{ tool: 'update_preferences', args: {
       max_weekly_hours: null, add_wanted_course_ids: null, remove_wanted_course_ids: null,
       add_avoided_course_ids: ['ALPHA'], remove_avoided_course_ids: null,
-      semester_distribution: null, focus_areas: null, free_days: null, excluded_courses_answered: null, preferred_courses_answered: null,
+      semester_distribution: null, focus_areas: null, free_days: null, excluded_courses_answered: true, preferred_courses_answered: null, intake_skip: true,
     } }],
     [{ tool: 'build_plan', args: { only_years: null, start_over: null } }],
     [{ tool: 'submit_proposal', args: { summary_he: 'בלי אלפא', tradeoffs_he: [], extra_hours_reason_he: null } }],
@@ -495,7 +495,7 @@ describe('committed courses are locked', () => {
   })
 
   test('avoiding a course that is already on the board keeps it and reports the conflict', async () => {
-    const session = await newSession({ disallowed_course_ids: ['ALPHA'], __preferred_courses_answered: true }, legal)
+    const session = await newSession({ disallowed_course_ids: ['ALPHA'], __preferred_courses_answered: true, __intake_skip_requested: true }, legal)
     expect(session.lockConflicts).toEqual([expect.objectContaining({ code: 'locked_course_avoided', courseIds: ['ALPHA'] })])
     const built = await callTool(session, 'build_plan', { only_years: null, start_over: null })
     expect(built).toMatchObject({ accepted: true, lock_conflicts: [expect.objectContaining({ code: 'locked_course_avoided' })] })
@@ -534,7 +534,7 @@ describe('preferred and avoided courses come before any build', () => {
     expect(await callTool(session, 'ask_student', ask)).toEqual({ asked: true })
     // The answers are stored with the preferences, so the next turn of the conversation has them.
     const next = await newSession(session.preferences)
-    await callTool(next, 'update_preferences', { ...noPrefs, add_wanted_course_ids: ['BETA'], excluded_courses_answered: true, preferred_courses_answered: true })
+    await callTool(next, 'update_preferences', { ...noPrefs, add_wanted_course_ids: ['BETA'], excluded_courses_answered: true, preferred_courses_answered: true, intake_skip: true })
     expect(next.preferredCoursesKnown()).toBe(true)
     expect(next.excludedCoursesKnown()).toBe(true)
     const built = await callTool(next, 'build_plan', { only_years: null, start_over: null })
@@ -721,33 +721,35 @@ describe('context-sensitive intake: soft preferences and multi-turn state', () =
     semester_distribution: null, focus_areas: null, free_days: null,
     excluded_courses_answered: null, preferred_courses_answered: null,
   }
+  // Course selection answered but no intake flags — for testing the intake gate specifically
+  const COURSE_PREFS_ONLY = { disallowed_course_ids: [], __preferred_courses_answered: true }
 
   test('hasSoftPreferences is false when neither focus areas nor schedule constraints are set', async () => {
-    const session = await newSession(KNOWN_COURSE_PREFERENCES)
+    const session = await newSession(COURSE_PREFS_ONLY)
     expect(session.hasSoftPreferences()).toBe(false)
   })
 
   test('recording max_weekly_hours makes hasSoftPreferences true', async () => {
-    const session = await newSession(KNOWN_COURSE_PREFERENCES)
+    const session = await newSession(COURSE_PREFS_ONLY)
     await callTool(session, 'update_preferences', { ...noPrefs, max_weekly_hours: 20 })
     expect(session.hasSoftPreferences()).toBe(true)
   })
 
   test('recording focus_areas makes hasSoftPreferences true', async () => {
-    const session = await newSession(KNOWN_COURSE_PREFERENCES)
+    const session = await newSession(COURSE_PREFS_ONLY)
     await callTool(session, 'update_preferences', { ...noPrefs, focus_areas: ['robotics'] })
     expect(session.hasSoftPreferences()).toBe(true)
   })
 
   test('recording free_days makes hasSoftPreferences true', async () => {
-    const session = await newSession(KNOWN_COURSE_PREFERENCES)
+    const session = await newSession(COURSE_PREFS_ONLY)
     await callTool(session, 'update_preferences', { ...noPrefs, free_days: ['ו'] })
     expect(session.hasSoftPreferences()).toBe(true)
   })
 
   test('soft preferences recorded in one turn are present in the next session turn', async () => {
     // The preferences object is persisted between turns, so answers survive the turn boundary.
-    const session = await newSession(KNOWN_COURSE_PREFERENCES)
+    const session = await newSession(COURSE_PREFS_ONLY)
     await callTool(session, 'update_preferences', { ...noPrefs, max_weekly_hours: 18, focus_areas: ['robotics'] })
     expect(session.hasSoftPreferences()).toBe(true)
 
@@ -757,19 +759,91 @@ describe('context-sensitive intake: soft preferences and multi-turn state', () =
     expect((nextTurn.preferences as Record<string, unknown>).focus_areas).toEqual(['robotics'])
   })
 
-  test('once course selection is answered, build_plan proceeds without requiring soft preferences', async () => {
-    // The intake gate only fires when the student has not engaged at all.
-    // Once preferred+excluded courses are both answered, the agent can build immediately
-    // without an additional soft-preference intake question.
-    const session = await newSession(KNOWN_COURSE_PREFERENCES)
+  test('course selection alone does not unlock build_plan — direction or workload also needed', async () => {
+    // Gate 2: even after preferred+excluded courses are known, the first plan also requires
+    // at least one dimension of intake: direction (specialization) OR workload/schedule.
+    const session = await newSession(COURSE_PREFS_ONLY)
     expect(session.isNewPlanningSession()).toBe(true)
     expect(session.hasSoftPreferences()).toBe(false)
+    expect(session.intakeComplete()).toBe(false)
+    expect(await callTool(session, 'build_plan', { only_years: null, start_over: null }))
+      .toMatchObject({ accepted: false })
+  })
+
+  test('intake_direction_answered unlocks build_plan on a new session', async () => {
+    const session = await newSession(COURSE_PREFS_ONLY)
+    await callTool(session, 'update_preferences', { ...noPrefs, intake_direction_answered: true })
+    expect(session.intakeDirectionKnown()).toBe(true)
+    expect(session.intakeComplete()).toBe(true)
     expect(await callTool(session, 'build_plan', { only_years: null, start_over: null }))
       .toMatchObject({ accepted: true })
   })
 
+  test('intake_workload_answered unlocks build_plan on a new session', async () => {
+    const session = await newSession(COURSE_PREFS_ONLY)
+    await callTool(session, 'update_preferences', { ...noPrefs, intake_workload_answered: true })
+    expect(session.intakeWorkloadKnown()).toBe(true)
+    expect(session.intakeComplete()).toBe(true)
+    expect(await callTool(session, 'build_plan', { only_years: null, start_over: null }))
+      .toMatchObject({ accepted: true })
+  })
+
+  test('intake_skip unlocks build_plan immediately on a new session', async () => {
+    const session = await newSession(COURSE_PREFS_ONLY)
+    await callTool(session, 'update_preferences', { ...noPrefs, intake_skip: true })
+    expect(session.intakeDirectionKnown()).toBe(true)
+    expect(session.intakeWorkloadKnown()).toBe(true)
+    expect(session.intakeComplete()).toBe(true)
+    expect(await callTool(session, 'build_plan', { only_years: null, start_over: null }))
+      .toMatchObject({ accepted: true })
+  })
+
+  test('focus_areas alone satisfies direction intake', async () => {
+    const session = await newSession(COURSE_PREFS_ONLY)
+    await callTool(session, 'update_preferences', { ...noPrefs, focus_areas: ['robotics'] })
+    expect(session.intakeDirectionKnown()).toBe(true)
+    expect(session.intakeComplete()).toBe(true)
+  })
+
+  test('max_weekly_hours alone satisfies workload intake', async () => {
+    const session = await newSession(COURSE_PREFS_ONLY)
+    await callTool(session, 'update_preferences', { ...noPrefs, max_weekly_hours: 20 })
+    expect(session.intakeWorkloadKnown()).toBe(true)
+    expect(session.intakeComplete()).toBe(true)
+  })
+
+  test('intake answers survive a turn boundary (persisted in preferences)', async () => {
+    const session = await newSession(COURSE_PREFS_ONLY)
+    await callTool(session, 'update_preferences', { ...noPrefs, intake_direction_answered: true })
+    const nextTurn = await newSession(session.preferences)
+    expect(nextTurn.intakeDirectionKnown()).toBe(true)
+    expect(nextTurn.intakeComplete()).toBe(true)
+  })
+
+  test('intake gate is bypassed on a returning session (not a new planning session)', async () => {
+    // A returning student (restoredSession present) skips the intake gate entirely.
+    const baseSession = await newSession(COURSE_PREFS_ONLY)
+    // simulate a returning session by giving it a restoredSession flag
+    ;(baseSession.input as { restoredSession?: unknown }).restoredSession = {}
+    expect(baseSession.isNewPlanningSession()).toBe(false)
+    // Even without any intake answers, build_plan should not hit the intake gate
+    expect(await callTool(baseSession, 'build_plan', { only_years: null, start_over: null }))
+      .toMatchObject({ accepted: true })
+  })
+
+  test('get_student_context includes intake_readiness', async () => {
+    const session = await newSession(COURSE_PREFS_ONLY)
+    const { data: ctx } = await callTool(session, 'get_student_context', {})
+    expect(ctx).toHaveProperty('intake_readiness')
+    expect(ctx.intake_readiness).toMatchObject({
+      direction_known: false,
+      workload_known: false,
+      intake_complete: false,
+    })
+  })
+
   test('isNewPlanningSession is false once the agent has recorded a planning decision', async () => {
-    const session = await newSession(KNOWN_COURSE_PREFERENCES)
+    const session = await newSession(COURSE_PREFS_ONLY)
     expect(session.isNewPlanningSession()).toBe(true)
     await callTool(session, 'update_planning_profile', {
       priorities: null, directions: null, free_days: null, max_weekly_hours: null,

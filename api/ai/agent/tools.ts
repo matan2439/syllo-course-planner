@@ -6,7 +6,7 @@
  */
 import { tool, type RunContext } from '@openai/agents';
 import { z } from 'zod';
-import { degreeYearOf, PREFERRED_ANSWERED_KEY, type ClarificationQuestionId, type PlanningSession } from './session';
+import { degreeYearOf, PREFERRED_ANSWERED_KEY, INTAKE_DIRECTION_ANSWERED_KEY, INTAKE_WORKLOAD_ANSWERED_KEY, INTAKE_SKIP_KEY, type ClarificationQuestionId, type PlanningSession } from './session';
 import { HIGHLIGHT_TARGET_PATTERN, UI_HIGHLIGHT_TARGETS } from '../../../shared/planner/ui-highlight';
 import {
   allowedSemesters,
@@ -252,11 +252,16 @@ export function buildAgentTools() {
           missing_critical_inputs: session.missingCriticalInputs()
             .map((input) => ({ field: input.field, message: input.message })),
           excluded_courses_asked_count: session.excludedCoursesAsked(),
-          // build_plan refuses until all three conditions are met.
+          // build_plan refuses until all conditions are met.
           preferred_courses_known: session.preferredCoursesKnown(),
           avoided_courses_known: session.excludedCoursesKnown(),
-          // true = first ever plan; build_plan also requires a soft-preference question first.
+          // true = first ever plan; build_plan also requires intake completion first.
           is_new_session: session.isNewPlanningSession(),
+          intake_readiness: {
+            direction_known: session.intakeDirectionKnown(),
+            workload_known: session.intakeWorkloadKnown(),
+            intake_complete: session.intakeComplete(),
+          },
         });
       }),
     }),
@@ -514,6 +519,12 @@ export function buildAgentTools() {
           .describe('true when the student answered the courses-to-leave-out question, including "none"'),
         preferred_courses_answered: z.boolean().nullable()
           .describe('true when the student answered which courses they would like included, including "none"'),
+        intake_direction_answered: z.boolean().nullish()
+          .describe('true when the student answered the academic direction/specialization question (even "no preference")'),
+        intake_workload_answered: z.boolean().nullish()
+          .describe('true when the student answered the workload/schedule question (even "no constraints")'),
+        intake_skip: z.boolean().nullish()
+          .describe('true when the student explicitly asked to skip intake and build immediately'),
       }),
       execute: observed('update_preferences', (session, args: {
         preferred_courses_answered?: boolean | null;
@@ -524,6 +535,9 @@ export function buildAgentTools() {
         focus_areas: string[] | null;
         free_days: string[] | null;
         excluded_courses_answered: boolean | null;
+        intake_direction_answered?: boolean | null;
+        intake_workload_answered?: boolean | null;
+        intake_skip?: boolean | null;
       }) => {
         const known = (id: string) => session.model.profiles.has(id);
         const all = [...(args.add_wanted_course_ids ?? []), ...(args.add_avoided_course_ids ?? [])];
@@ -555,6 +569,9 @@ export function buildAgentTools() {
           patch.disallowed_course_ids = [...avoided];
         }
         if (args.preferred_courses_answered) patch[PREFERRED_ANSWERED_KEY] = true;
+        if (args.intake_direction_answered) patch[INTAKE_DIRECTION_ANSWERED_KEY] = true;
+        if (args.intake_workload_answered) patch[INTAKE_WORKLOAD_ANSWERED_KEY] = true;
+        if (args.intake_skip) patch[INTAKE_SKIP_KEY] = true;
         if (args.max_weekly_hours !== null) patch.max_weekly_hours = args.max_weekly_hours;
         if (args.focus_areas !== null) patch.focus_areas = args.focus_areas;
         if (args.free_days !== null) patch.free_days = args.free_days;
@@ -605,14 +622,16 @@ export function buildAgentTools() {
             reason: 'Before building, ask the student ONE short question with ask_student covering what is missing: which courses they would like included (asks_preferred_courses true) and which to leave out (question_id excluded_courses). When they answer, record it with update_preferences (preferred_courses_answered / excluded_courses_answered true, also for "none"), then call build_plan.',
           };
         }
-        // Only ask for soft preferences when the student hasn't engaged at all yet (no course selection
-        // answers either). Once preferred+excluded courses are both known, the student has already
-        // expressed enough for us to proceed even without explicit focus_area / workload / free_days.
-        if (session.isNewPlanningSession() && !session.hasSoftPreferences()
-            && !(session.preferredCoursesKnown() && session.excludedCoursesKnown())) {
+        // For a brand-new session, require at least one dimension of intake beyond course selection:
+        // direction (specialization interest) OR workload/schedule constraints. The student can always
+        // skip by saying "just build it", which sets intake_skip via update_preferences.
+        if (session.isNewPlanningSession() && !session.intakeComplete()) {
+          const missingAspects: string[] = [];
+          if (!session.intakeDirectionKnown()) missingAspects.push('academic direction (specialization interest, e.g. robotics, algorithms — or "no preference")');
+          if (!session.intakeWorkloadKnown()) missingAspects.push('schedule constraints (max weekly hours, free days — or "no constraints")');
           return {
             accepted: false,
-            reason: 'This is the student\'s first plan. Before building, ask ONE short conversational question that covers both their academic direction (specialization interest, e.g. robotics, algorithms, bioinformatics — or "no preference") AND any schedule constraints (max weekly hours, free days). Record their answer with update_preferences (focus_areas, max_weekly_hours, free_days) or update_planning_profile, then call build_plan. If they already said this in their opening message, record it now and proceed.',
+            reason: `Before the first plan, ask ONE combined question covering: ${missingAspects.join(' and ')}. If the student says "just build the plan" or similar, call update_preferences with intake_skip: true and proceed immediately. Record direction answers with focus_areas and intake_direction_answered: true; workload answers with max_weekly_hours/free_days and intake_workload_answered: true.`,
           };
         }
         const unknownYears = (args.only_years ?? []).filter((year) => !session.model.knownSemesterIds.some((id) => degreeYearOf(id) === year));
