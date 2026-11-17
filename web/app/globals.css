@@ -152,8 +152,15 @@
   :root:not([data-theme]) .syllo-brand-asset-dark { display: block; }
 }
 
-body {
+/* Base background on <html> so it propagates to the canvas layer (below z-index:-1).
+   Body must be transparent — the CSS/WebGL gradient in .syllo-bg (z-index:-1) sits
+   above the canvas but below body content; body { background } would paint over it. */
+html {
   background: var(--bg);
+}
+
+body {
+  background: transparent;
   color: var(--text);
 }
 
