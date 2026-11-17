@@ -8,6 +8,7 @@ import { PostgresBoardRepository } from './postgres_board_repository';
 import { PostgresProposalStore } from './postgres_proposal_store';
 import { checkPlannerSchema } from './planner_schema';
 import { adoptOwnerState } from './adopt_owner';
+import { PostgresPlannerSessionStore, type PlannerSessionStore } from '../planner_session_store';
 
 type PlannerRow = Record<string, unknown>;
 
@@ -24,6 +25,8 @@ export interface PostgresPlannerState {
   academicContextStore: AcademicContextStore;
   proposalStore: ProposalStore;
   authoritativeApplyStore: AuthoritativeApplyStore;
+  /** Persistent planning sessions; absent in test doubles that predate them. */
+  plannerSessionStore?: PlannerSessionStore;
   ensureSchemaCurrent(): Promise<void>;
   adoptOwner(fromOwnerId: string, toOwnerId: string): Promise<void>;
 }
@@ -44,6 +47,7 @@ export function createPostgresPlannerState(sql: PlannerPostgresSql): PostgresPla
     academicContextStore: new PostgresAcademicContextStore(sql),
     proposalStore: new PostgresProposalStore(sql),
     authoritativeApplyStore: new PostgresAuthoritativeApplyStore(sql),
+    plannerSessionStore: new PostgresPlannerSessionStore(sql),
     adoptOwner: (fromOwnerId, toOwnerId) => adoptOwnerState(sql, fromOwnerId, toOwnerId),
     ensureSchemaCurrent(): Promise<void> {
       schemaCheck ??= checkPlannerSchema(sql).then((status) => {

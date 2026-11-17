@@ -9,7 +9,11 @@ import { buildCourseFitById, buildModel } from '../generate-plan';
 import { planContextToState } from '../planner_model';
 import { legalSemestersFor } from '../planner_actions';
 import { PlannerWorker } from '../planner_worker';
-import type { ConstraintModel } from '../planner_types';
+import { cloneState, type ConstraintModel } from '../planner_types';
+import { analyzeLockConflicts, type LockConflict } from '../placement_locks';
+import { emptyPlanningSession, SESSION_LIMITS, type DraftChange, type PlanningSessionState } from '../../../shared/planner/planning-session';
+import { catalogYearFromUrl, offeringStatus, PLANNING_CATALOG_YEAR, type OfferingStatus } from '../../../shared/planner/offering-status';
+import { defaultTermMapping } from '../../../shared/planner/schedule';
 import { storedDistributionPolicy } from '../planner_policy_context';
 import type { AcademicFocusArea } from '../academic_interest_profile';
 import type { ClarificationResult } from '../academic_decision_types';
@@ -41,12 +45,25 @@ export interface AgentQuestion {
   questionId?: ClarificationQuestionId;
 }
 
+export interface ProjectedPlacement { course_id: string; semester_id: string; status: 'projected' | 'unknown' }
+
 export interface AgentSubmission {
   summaryHe: string;
   tradeoffsHe: string[];
+  /** Placements whose offering is an estimate or unknown. Always disclosed with the proposal. */
+  projectedPlacements?: ProjectedPlacement[];
+  /**
+   * Set when the proposal is PARTIAL: everything the planner added is valid, but a committed
+   * course still breaks an availability rule. Shown with the proposal; never presented as valid.
+   */
+  unresolvedConflictsHe?: string[];
 }
 
 export interface PlanningSessionInput {
+  /** The persisted planning session of this student, already rebased onto the live committed board. */
+  restoredSession?: PlanningSessionState;
+  /** Draft changes of the restored session that the board has since overtaken (reported, never forced). */
+  droppedDraftChanges?: DraftChange[];
   programId: string;
   programBoard: unknown;
   /** The student's year in the degree (1–4) from their profile; null when they have not said. */
@@ -85,8 +102,24 @@ export class PlanningSession {
    * A hard constraint: new courses go only into these years and placed courses outside them stay put.
    */
   scopeYears?: number[];
+  /**
+   * Committed courses the student explicitly released in this turn ("you may move X").
+   * Everything else on the committed board is locked: never moved, removed or replaced.
+   */
+  readonly unlockedCourseIds = new Set<string>();
+  /** Where the locked placements collide with a rule or a request — explained, never auto-fixed. */
+  lockConflicts: LockConflict[] = [];
+  /** The structured planning state that outlives this turn (profile, decisions, draft, summary). */
+  planning: PlanningSessionState;
+  /** Draft additions the student said yes to: pinned for the rest of the session, never re-planned. */
+  readonly acceptedCourseIds = new Set<string>();
+  /** Saved draft changes that could not be re-applied this turn (illegal now, locked, or unknown). */
+  notReapplied: DraftChange[] = [];
 
   constructor(readonly input: PlanningSessionInput) {
+    this.planning = input.restoredSession ?? emptyPlanningSession(input.programId, null, new Date().toISOString());
+    for (const id of this.planning.unlocked_course_ids) this.unlockedCourseIds.add(id);
+    for (const change of this.planning.draft_changes) if (change.kind === 'add' && change.accepted) this.acceptedCourseIds.add(change.course_id);
     this.preferences = { ...input.preferences };
     // The leave-out question was asked twice and never answered: silence means none.
     if (!this.excludedCoursesKnown() && this.excludedCoursesAsked() >= MAX_EXCLUDED_ASKS) {
@@ -94,6 +127,92 @@ export class PlanningSession {
       this.preferencesChanged = true;
     }
     this.rebuild();
+    // A returning student: pick the draft up where it was left, around the committed board.
+    if (this.planning.draft_changes.length) this.notReapplied = this.replayDraft(this.planning.draft_changes);
+  }
+
+  /**
+   * What the draft changes relative to the committed board — the only part of a plan worth keeping
+   * between turns (the board itself is never copied). Reasons recorded earlier are carried over.
+   */
+  draftChanges(): DraftChange[] {
+    const committed = this.committedPlacements();
+    const planned = new Map<string, string[]>();
+    for (const [semesterId, ids] of Object.entries(this.worker.getPlan().semesters)) {
+      for (const id of new Set(ids)) planned.set(id, [...(planned.get(id) ?? []), semesterId]);
+    }
+    const reasonOf = new Map(this.planning.draft_changes.map((change) => [`${change.kind}|${change.course_id}`, change.reason_he]));
+    const changes: DraftChange[] = [];
+    for (const [id, semesters] of planned) {
+      const home = committed.get(id);
+      if (!home) changes.push({ kind: 'add', course_id: id, semester_id: semesters[0], accepted: this.acceptedCourseIds.has(id), ...(reasonOf.get(`add|${id}`) ? { reason_he: reasonOf.get(`add|${id}`) } : {}) });
+      else if (JSON.stringify([...home].sort()) !== JSON.stringify([...semesters].sort())) {
+        changes.push({ kind: 'move', course_id: id, semester_id: semesters[0], accepted: false, ...(reasonOf.get(`move|${id}`) ? { reason_he: reasonOf.get(`move|${id}`) } : {}) });
+      }
+    }
+    for (const [id] of committed) {
+      if (!planned.has(id) && this.model.profiles.has(id) && !this.model.completedCourseIds.has(id)) {
+        changes.push({ kind: 'remove', course_id: id, semester_id: null, accepted: false, ...(reasonOf.get(`remove|${id}`) ? { reason_he: reasonOf.get(`remove|${id}`) } : {}) });
+      }
+    }
+    return changes.slice(0, SESSION_LIMITS.draftChanges);
+  }
+
+  /**
+   * Re-apply saved draft changes on top of the committed board, through the same legality checks as
+   * any other change. Returns the ones that no longer apply (they are reported, never forced).
+   */
+  replayDraft(changes: readonly DraftChange[]): DraftChange[] {
+    const scratch = this.worker;
+    const notApplied: DraftChange[] = [];
+    for (const change of changes) {
+      const id = change.course_id;
+      if (!this.model.profiles.has(id) || (this.isLocked(id) && change.kind !== 'add')) { notApplied.push(change); continue; }
+      try {
+        const result = change.kind === 'add' ? scratch.addCourse(id, change.semester_id ?? undefined, 'llm')
+          : change.kind === 'move' ? scratch.moveCourse(id, change.semester_id ?? '', 'llm')
+            : scratch.removeCourse(id, 'llm');
+        if (!result.accepted) notApplied.push(change);
+      } catch { notApplied.push(change); }
+    }
+    for (const change of notApplied) if (change.kind === 'add') this.acceptedCourseIds.delete(change.course_id);
+    // A new worker, so accepted additions are pinned where they now stand.
+    this.worker = new PlannerWorker(this.model, cloneState(scratch.getPlan()), { topN: 6, rolloutSteps: 80 });
+    return notApplied;
+  }
+
+  /** Rebuild from changed preferences or status WITHOUT throwing the draft away. */
+  rebuildKeepingDraft(): DraftChange[] {
+    const changes = this.draftChanges();
+    this.rebuild();
+    this.notReapplied = this.replayDraft(changes);
+    return this.notReapplied;
+  }
+
+  /** The student said yes to these suggested additions: they stay exactly where the draft put them. */
+  acceptDraftCourses(courseIds: readonly string[]): { accepted: string[]; notInDraft: string[] } {
+    const inDraft = new Set(this.draftChanges().filter((change) => change.kind === 'add').map((change) => change.course_id));
+    const accepted = courseIds.filter((id) => inDraft.has(id));
+    for (const id of accepted) this.acceptedCourseIds.add(id);
+    this.model.pinnedCourseIds = new Set([...this.model.pinnedCourseIds, ...accepted]);
+    this.worker = new PlannerWorker(this.model, cloneState(this.worker.getPlan()), { topN: 6, rolloutSteps: 80 });
+    return { accepted, notInDraft: courseIds.filter((id) => !inDraft.has(id)) };
+  }
+
+  /** Remember a decision the student made, in a line (newest last, bounded). */
+  recordDecision(summaryHe: string, now = new Date().toISOString()): void {
+    this.planning = { ...this.planning, decisions: [...this.planning.decisions, { at: now, summary_he: summaryHe.slice(0, 300) }].slice(-SESSION_LIMITS.decisions) };
+  }
+
+  /** The structured state to persist at the end of the turn (turns and summary are added by the caller). */
+  planningState(now = new Date().toISOString()): PlanningSessionState {
+    return {
+      ...this.planning,
+      draft_changes: this.draftChanges(),
+      unlocked_course_ids: [...this.unlockedCourseIds].slice(0, 40),
+      pending_question: this.question ? { question_he: this.question.questionHe.slice(0, 400), ...(this.question.questionId ? { question_id: this.question.questionId } : {}) } : null,
+      updated_at: now,
+    };
   }
 
   excludedCoursesKnown(): boolean {
@@ -134,6 +253,115 @@ export class PlanningSession {
       }
     }
     return placed;
+  }
+
+  /** How sure we are that the course runs in that semester: confirmed, projected, unavailable or unknown. */
+  offeringStatusOf(courseId: string, semesterId: string): OfferingStatus {
+    const profile = this.model.profiles.get(courseId);
+    if (!profile) return 'unknown';
+    const mapping = defaultTermMapping(this.model.knownSemesterIds, new Date(), this.input.currentDegreeYear);
+    return offeringStatus(semesterId, mapping[semesterId], {
+      allowedSemesterIds: legalSemestersFor(this.model, courseId),
+      offeredInCatalogYear: profile.offered_in_year,
+      catalogYear: catalogYearFromUrl(profile.provenance.offering_source_url) ?? PLANNING_CATALOG_YEAR,
+    });
+  }
+
+  /** Every placement in the draft that rests on an estimate (or on nothing): never to be stated as fact. */
+  projectedPlacements(): ProjectedPlacement[] {
+    return Object.entries(this.worker.getPlan().semesters).flatMap(([semester_id, ids]) => [...new Set(ids)].flatMap((course_id) => {
+      const status = this.offeringStatusOf(course_id, semester_id);
+      return status === 'projected' || status === 'unknown' ? [{ course_id, semester_id, status }] : [];
+    }));
+  }
+
+  /** Locked placements: every committed course the student has not completed or released. */
+  lockedPlacements(): Map<string, string[]> {
+    const locked = new Map<string, string[]>();
+    for (const [id, homes] of this.committedPlacements()) {
+      if (this.unlockedCourseIds.has(id) || this.model.completedCourseIds.has(id) || !this.model.profiles.has(id)) continue;
+      locked.set(id, homes);
+    }
+    return locked;
+  }
+
+  isLocked(courseId: string): boolean {
+    return this.lockedPlacements().has(courseId);
+  }
+
+  /** Locked placements the draft no longer has exactly where the student put them. */
+  lockViolations(): Array<{ course_id: string; semester_id: string }> {
+    const plan = this.worker.getPlan().semesters;
+    return [...this.lockedPlacements()].flatMap(([course_id, homes]) => homes
+      .filter((semester_id) => !(plan[semester_id] ?? []).includes(course_id))
+      .map((semester_id) => ({ course_id, semester_id })));
+  }
+
+  /** The student released these courses: the planner may now change them. The draft is kept. */
+  unlock(courseIds: readonly string[]): void {
+    for (const id of courseIds) this.unlockedCourseIds.add(id);
+    const draft = cloneState(this.worker.getPlan());
+    this.rebuildModel();
+    this.worker = new PlannerWorker(this.model, draft, { topN: 6, rolloutSteps: 80 });
+  }
+
+  /**
+   * Make every locked placement a planner constraint: pinned to its semester. A locked course the
+   * student asked to avoid is kept (a preference never removes a commitment). A locked course that
+   * breaks an academic rule — not offered, or in a semester it is not given in — also stays where
+   * the student put it, but the rule is NOT relaxed: the plan is invalid until the student decides,
+   * and `lockConflicts` explains it with the valid alternatives.
+   */
+  private applyLocks(): void {
+    const avoided = new Set<string>();
+    const unavailable = new Map<string, string | null>();
+    const locked = this.lockedPlacements();
+    for (const id of locked.keys()) {
+      this.model.pinnedCourseIds.add(id);
+      const profile = this.model.profiles.get(id)!;
+      const wasAvoided = this.model.disallowedCourseIds.delete(id);
+      if (wasAvoided) {
+        avoided.add(id);
+        // `excluded` came from the student's own avoid request; catalog exclusions stay in force.
+        const catalogExcluded = profile.offered_in_year === false || profile.hours == null || !profile.name_he;
+        if (profile.excluded && !catalogExcluded) this.model.profiles.set(id, { ...profile, excluded: false, exclusion_reason: null });
+        else if (profile.excluded) unavailable.set(id, 'הקורס אינו נלמד בשנת הלימודים הנוכחית או שחסרים לו נתוני קטלוג.');
+      } else if (profile.excluded) {
+        unavailable.set(id, profile.exclusion_reason);
+      }
+    }
+    // Draft additions the student accepted are pinned for the session as well.
+    for (const id of this.acceptedCourseIds) if (this.model.profiles.has(id)) this.model.pinnedCourseIds.add(id);
+    this.lockConflicts = analyzeLockConflicts({ model: this.model, placements: locked, avoided, unavailable });
+  }
+
+  /** True while a locked placement breaks an academic rule: no plan containing it may be presented as valid. */
+  hasInvalidLockedPlacement(): boolean {
+    return this.lockConflicts.some((conflict) => conflict.blocksValidity);
+  }
+
+  /**
+   * The model the planner SEARCHES with: identical, except that invalid locked placements are
+   * tolerated where they stand, so the rest of the board can still be planned around them.
+   * Validation always uses the strict `model`, so such a plan is never reported as valid.
+   */
+  searchModel(): ConstraintModel {
+    if (!this.hasInvalidLockedPlacement()) return this.model;
+    const profiles = new Map(this.model.profiles);
+    const locked = this.lockedPlacements();
+    for (const conflict of this.lockConflicts) {
+      if (!conflict.blocksValidity) continue;
+      for (const id of conflict.courseIds) {
+        const profile = profiles.get(id);
+        const homes = locked.get(id);
+        if (!profile || !homes) continue;
+        profiles.set(id, {
+          ...profile, excluded: false, exclusion_reason: null,
+          offering_window_semesters: [...new Set([...legalSemestersFor(this.model, id), ...homes])],
+        });
+      }
+    }
+    return { ...this.model, profiles };
   }
 
   /** Limit this turn's planning to these degree years (null = the whole board). Resets the draft. */
@@ -216,7 +444,7 @@ export class PlanningSession {
       { ...this.input.planContext, personal_status: personal }, this.input.programId, this.input.programBoard,
       this.completedCourseIds());
     this.academicStatusChanged = true;
-    this.rebuild();
+    this.rebuildKeepingDraft();
   }
 
   /** Count an asked leave-out question (persisted like any preference). */
@@ -228,6 +456,15 @@ export class PlanningSession {
 
   /** Rebuild model + draft from the current preferences. Resets the draft to the committed board. */
   rebuild(): void {
+    this.rebuildModel();
+    this.worker = new PlannerWorker(
+      this.model,
+      planContextToState(this.input.committedContext, this.model),
+      { topN: 6, rolloutSteps: 80 },
+    );
+  }
+
+  private rebuildModel(): void {
     this.candidateSet = undefined;
     const focus = (Array.isArray(this.preferences.focus_areas) ? this.preferences.focus_areas : [])
       .map((area) => ({ area: area as AcademicFocusArea, weight: 1 }));
@@ -244,12 +481,8 @@ export class PlanningSession {
       ((this.input.committedContext.semesters ?? []) as any[])
         .flatMap((s) => (s?.courses ?? []).map((c: any) => c?.course_id)),
     );
+    this.applyLocks();
     this.applyScope();
-    this.worker = new PlannerWorker(
-      this.model,
-      planContextToState(this.input.committedContext, this.model),
-      { topN: 6, rolloutSteps: 80 },
-    );
   }
 
   get insights(): CourseInsightsProvider {
@@ -264,6 +497,6 @@ export class PlanningSession {
   updatePreferences(patch: Record<string, unknown>): void {
     this.preferences = { ...this.preferences, ...patch };
     this.preferencesChanged = true;
-    this.rebuild();
+    this.rebuildKeepingDraft();
   }
 }

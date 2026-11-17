@@ -14,6 +14,8 @@ import {
 import {
   conversationResponseSchema,
   conversationContextConflictResponseSchema,
+  planningSessionViewResponseSchema,
+  type PlanningSessionViewResponse,
   type ConversationRequest,
   type ConversationResponse,
   type ConversationContextConflictResponse,
@@ -252,6 +254,23 @@ async function readConversationStream(
  * while every other non-success status remains a transport/contract error.
  * With `onProgress`, the turn is streamed: tool steps and reply text arrive live.
  */
+/** The saved planning session of this student (null = none, or persistent sessions are off). Never throws: memory is a convenience. */
+export async function getPlanningSessionView(deps: ClientDeps, programId: string): Promise<PlanningSessionViewResponse | null> {
+  try {
+    const res = await deps.fetchImpl(`${deps.baseUrl}/api/ai/conversation?program_id=${encodeURIComponent(programId)}`, { method: 'GET', credentials: 'same-origin' });
+    if (res.status < 200 || res.status >= 300) return null;
+    const parsed = planningSessionViewResponseSchema.safeParse(await res.json());
+    return parsed.success ? parsed.data : null;
+  } catch { return null; }
+}
+
+/** "New conversation": forget the saved session. Best effort. */
+export async function resetPlanningSession(deps: ClientDeps, programId: string): Promise<void> {
+  try {
+    await deps.fetchImpl(`${deps.baseUrl}/api/ai/conversation?program_id=${encodeURIComponent(programId)}`, { method: 'DELETE', credentials: 'same-origin' });
+  } catch { /* the page already cleared its own copy */ }
+}
+
 export async function sendConversation(
   deps: ClientDeps,
   req: ConversationRequest,

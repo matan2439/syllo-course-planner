@@ -1,0 +1,166 @@
+
+
+<!doctype html>
+<html lang="he-IL" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta http-equiv="X-UA-Compatible" content="IE=10" />
+<link href="https://fonts.googleapis.com/earlyaccess/opensanshebrew.css" rel="stylesheet">
+<link href="/IncNet/Syllabus/assets/css/app.min.css" rel="stylesheet">
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+<title></title>
+<script type="text/javascript" src="https://ajax.aspnetcdn.com/ajax/jQuery/jquery-1.11.3.min.js"></script>
+<script type="text/javascript" src="https://ajax.aspnetcdn.com/ajax/jquery.ui/1.11.4/jquery-ui.min.js"></script>
+<link   type="text/css" rel="stylesheet" href="https://ajax.aspnetcdn.com/ajax/jquery.ui/1.11.4/themes/start/jquery-ui.css">
+<script type="text/javascript" src="/IncNet/V4/TauMajor.js?ver=000"></script>
+<link   type="text/css" rel="stylesheet" href="/IncNet/V4/TauMajor.css?ver=000">
+<script type="text/javascript">
+function $startAll()
+{
+    obj = document.forms[0];
+    if (obj.no_recfound_or_error.value == '1')
+    {
+        $setObjDisplay('div_data^div_dataToc^div_data_Matalot', 'none');
+    }
+    else
+    {
+        $setObjDisplay('div_error_no_data', 'none');
+    }
+    
+ }
+//
+function chk_form()
+{
+ obj=document.forms[0]; 
+ //
+ return chkFormEndShort(obj);
+}
+function print_page()
+{
+    window.print();
+}
+function save_page()
+{
+    
+}
+
+</script>
+<style type="text/css"> 
+html[lang="en-US"] ul {text-align:left;direction:ltr} 
+</style>
+</head>
+
+<body>
+
+<!--<span class='br4'><br></span>
+<span id="LblPage" class="pagekots" Dir="rtl"></span>
+ 
+
+
+<span style='display:block'><br></span><span class='br4'><br></span> -->
+      <header id="masthead">
+        <div class="container">
+            <a href="/" class="page-branding">
+                <img Class="desktop-logo" src="/IncNet/Syllabus/assets/img/logo.jpg" alt="TAU Desktop Logo" /><img Class="mobile-logo" src="/IncNet/Syllabus/assets/img/logo-no-slogan.png" alt="TAU Mobile Logo" />
+            </a>
+
+            <nav class="masthead-actions">
+                <ul>
+                     <li><a href = "#" onclick="print_page()" Class="print">הדפסה</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+<form name='frmfree' method=post>
+<main id="site-main" class="main">
+        <section class="main-course-hero">
+                  <div Class="container">          <a href = "javascript:history.go(-1)" Class="back">חזרה</a>          <div Class="main-course-hero--inner">              <h1>סילבוס</h1>              <nav Class="language-switcher">              <ul>                      <li> <a href = "Syllabus_L.aspx?lang=EN&course=000-0000000&year=2026&req=03de0c0ce3332992ef2d7b5f131c51aebccc95240acaf7da76503e22dc46c471&caller=" Class="current">English</a></li>              </ul>              </nav>          </div>      </div>
+        </section>
+        <section class="main-course-data">
+            <div class="container">
+                <div id="div_data" class="data-table">
+                    <div class="data-table-row course-name-number">
+                        <div class="data-table-cell">
+                            <small class="data-table-cell-label">מספר קורס</small>
+                            <span>0512-4126-01</span>
+                        </div>
+                        <div class="data-table-cell">
+                            <small class="data-table-cell-label">שם הקורס</small>
+                            <span>מעבדה מתקדמת  במחשוב קוונטי</span>
+                        </div>
+                    </div>
+                    <div class="data-table-row course-proff-names">
+                        <div class="data-table-cell">
+                            <small class="data-table-cell-label">יחידה אקדמית</small>
+                            <span>הפקולטה להנדסה ע"ש איבי ואלדר פליישמן - <br>מגמה להנדסת חשמל</span>
+                        </div>
+                        <div Class="data-table-cell">            <small Class="data-table-cell-label">מרצה</small>            <span>ד"ר  עופר כפיר</span><a href = "#contact" data-target=target1 Class="contact-proff">צרו קשר</a></div>
+                    </div>
+                    <div class="data-table-row contact-hidden" data-row="target1">         <div class="data-table-cell">             <small class="data-table-cell-label">צור קשר</small>             <span>דוא"ל: lecturer@example.invalid</span>         </div>         <div class="data-table-cell">             <small class="data-table-cell-label">שעות קבלה</small><span>רביעי 17:00 - 16:00</BR>בניין: Zoom  , חדר: 000 </span>         </div> </div>
+                    <div class="data-table-row course-time-location">       <div  Class="data-table-cell">           <small Class="data-table-cell-label">אופן ההוראה</small>          <span>מעבדה</span>       </div>       <div  Class="data-table-cell">            <small Class="data-table-cell-label">שעות סמסטריאליות</small>           <span>3</span>       </div>       <div Class="data-table-cell">            <small Class="data-table-cell-label">סמסטר</small>            <span>א' תשפ"ז</span>        </div>        <div Class="data-table-cell">            <small Class="data-table-cell-label">יום</small>            <span>א</span>        </div>        <div Class="data-table-cell">            <small Class="data-table-cell-label">שעות</small>            <span>15:00-18:00</span>        </div>        <div Class="data-table-cell">            <small Class="data-table-cell-label">בניין</small>            <span>וולפסון - הנדסת תוכנה</span>        </div>        <div Class="data-table-cell">            <small Class="data-table-cell-label">חדר</small>            <span>009</span>        </div>    </div>
+                    
+                </div>
+
+                <div id="div_error_no_data" class="data-table has-error">
+                        <strong>אין סילבוס</strong>
+                </div>
+
+            </div>
+        </section>
+        <section class="main-course-contents">
+            <div id="div_dataToc" class="container">
+                <h2>תוכן הקורס ומטרתו</h2><p>המעבדה מספקת נסיון בממשק ושליטה במחשב קוונטי אמיתי וביצוע מדידות קוונטיות. היא מיועדת לסטודנטים של הנדסת חשמל
+<br>* המעבדה פתוחה לסטודטים של פיסיקה ומדמ"ח 
+<br>   נדרש אישור של ועדת ההוראה של ביה"ס של פיסיקה/מדמ"ח (בפיסיקה יש לבקש דרך רונית lecturer@example.invalid)
+<br>
+<br>כל החומרים ודוחות המעבדה יהיו בשפה האנגלית.
+<br>
+<br>קורס המעבדה כולל חלק הדרכתי על צורת ושפת הממשק לשליטה בקיוביטים של מרכז החישוב הקוונטי הלאומי, כולל אפיון חשמלי של הבקר השולט בקיוביטים, ומורכב מ5 ניסויים. 
+<br>לפני כל ניסוי יידרשו הסטודנטים לבחן קצר המוודא כי הם מכירים את החומר הנדרש.</p>
+                <br><br><a href='/Tal/Scans/Syllabus_Download.aspx?kurs=05124126&syllabus=kr_syllabus_s20261_k00_v00.pdf&dt=12112026181545' class=full-syllabus target='_blank'>לסילבוס המפורט</a>
+             </div> 
+        </section>
+        <section class="main-course-requirements">
+            <div id="div_data_Matalot" class="container">
+                <div class="data-table">
+                    <div class="data-table-row">
+                        <div class="data-table-cell">
+                            <small class="data-table-cell-label">מטלות הקורס</small>
+                            <p><strong>אחר</strong></p>
+                            
+                            <p class="disclaimer">
+                                ייתכנו מטלות נוספות<br>רשימת המטלות המלאה תופיע בסילבוס המפורט של הקורס.
+                            </p>
+                     </div>
+
+                     <div class="data-table-cell">
+                          <!--  <small class="data-table-cell-label"></small> -->
+                           <small class="data-table-cell-label">קורסי קדם נדרשים</small><span><strong><small>מבוא לטכנולוגיות קוונטיות</small></strong><small>  (05124125) <strong><small>+</small></strong></small></span><span><strong><small>פיזיקה קוואנטית ומצב מוצק</small></strong><small>  (05122830) </small></span><strong><small>או</small></strong><span><strong><small>חומרה קוונטית</small></strong><small>  (03213818) </small></span>
+                                                     <p class="disclaimer">
+                                דרישות קדם ספציפיות בקורס בהתאם לתוכנית הלימודים הנלמדת, <br>מופיעות בדף הידיעון של התוכנית
+                            </p>
+                        </div>
+                    </div>
+                </div>
+        </section>
+    </main>
+    <script src="/IncNet/Syllabus/assets/js/jquery.min.js" type="text/javascript"></script>
+    <script src="/IncNet/Syllabus/assets/js/app.min.js" type="text/javascript"></script>
+
+
+<input type="hidden" name="peula" value="">
+<input type="hidden" name="javas" Value="0">
+<input name="no_recfound_or_error" type="hidden" id="no_recfound_or_error" value="0" />
+<input type="hidden" name="caller" Value="milgamechkar">
+</form><br>
+<span class='br16'><br></span>
+
+<script type='text/javascript'> try{$startTopAll()} catch(e){}
+ try{$startAll()} catch(e){} try{$setTauLang();} catch(e){}</script>
+<div id='HourGlass' class='rounddiv2 hourglass' style='width:50px;padding:0px'><img src='/IncNet/Images/taus.gif' style='display:block;margin:0 auto' alt='tau logo'><img src='/IncNet/Images/ajax_orange.gif' style='display:block;margin:0 auto' alt='hourglass'><span id='mjtimer' class='msgtiny' style='display:block;text-align:center;color:blue'>00:00</span></div>
+
+
+
+</body>
+</html>

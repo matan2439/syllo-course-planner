@@ -18,7 +18,7 @@
 import { createHash } from 'crypto';
 import postgres from 'postgres';
 import { PG_OPTS } from './_quota';
-import { isolatedUrl } from '../db_env';
+import { databaseProjectRef, isolatedUrl } from '../db_env';
 import {
   InMemoryBoardRepository,
   type BoardRepository,
@@ -27,6 +27,7 @@ import { FileBoardRepository } from './board_repository_file';
 import { InMemoryProposalStore, type ProposalStore } from './proposal_store';
 import { InMemoryAcademicContextStore, type AcademicContextStore } from './academic_context_store';
 import type { AuthoritativeApplyStore } from './authoritative_apply_store';
+import { InMemoryPlannerSessionStore, PostgresPlannerSessionStore, type PlannerSessionStore } from './planner_session_store';
 import {
   createPostgresPlannerState,
   type PlannerPostgresSql,
@@ -96,6 +97,20 @@ function plannerDatabaseUrl(env: NodeJS.ProcessEnv = process.env): string | null
   if (dedicatedUrl) return dedicatedUrl;
   const sharedUrl = isolatedUrl(env[SHARED_DATABASE_URL_ENV], SHARED_DATABASE_URL_ENV, env);
   return sharedUrl || null;
+}
+
+/**
+ * Which variable the planner storage reads and which public project ref its URL names — diagnostics only
+ * (variable NAME and the ref that is part of every Supabase URL; never the password or the URL itself).
+ */
+export function plannerDatabaseDiagnostics(env: NodeJS.ProcessEnv = process.env): { source: 'SYLLO_PLANNER_DATABASE_URL' | 'DATABASE_URL' | null; ref: string | null } {
+  if (isolatedUrl(env[PLANNER_DATABASE_URL_ENV], PLANNER_DATABASE_URL_ENV, env)) {
+    return { source: 'SYLLO_PLANNER_DATABASE_URL', ref: databaseProjectRef(env[PLANNER_DATABASE_URL_ENV]) };
+  }
+  if (isolatedUrl(env[SHARED_DATABASE_URL_ENV], SHARED_DATABASE_URL_ENV, env)) {
+    return { source: 'DATABASE_URL', ref: databaseProjectRef(env[SHARED_DATABASE_URL_ENV]) };
+  }
+  return { source: null, ref: null };
 }
 
 export function plannerDatabaseConfigured(env: NodeJS.ProcessEnv = process.env): boolean {
@@ -180,6 +195,40 @@ export function getProposalStore(): ProposalStore {
   return proposalStore!;
 }
 
+let memorySessionStore: PlannerSessionStore | undefined;
+let accountSessionStore: PlannerSessionStore | undefined;
+let accountSessionUrl: string | undefined;
+
+/**
+ * The planning-session store: Postgres when the planner runs on Postgres, otherwise in memory
+ * (local development; a restart forgets sessions, as it forgets everything else there).
+ */
+export function getPlannerSessionStore(): PlannerSessionStore {
+  // Sessions reference auth.users, so they live in the ACCOUNT database (DATABASE_URL), not necessarily in
+  // the database a dedicated SYLLO_PLANNER_DATABASE_URL points the board state at. Own small connection pool.
+  const accountUrl = isolatedUrl(process.env[SHARED_DATABASE_URL_ENV], SHARED_DATABASE_URL_ENV);
+  if (accountUrl && process.env.VERCEL === '1') {
+    if (!accountSessionStore || accountSessionUrl !== accountUrl) {
+      accountSessionUrl = accountUrl;
+      accountSessionStore = new PostgresPlannerSessionStore(postgres(accountUrl, { ...PG_OPTS, max: 2 }) as unknown as ConstructorParameters<typeof PostgresPlannerSessionStore>[0]);
+    }
+    return accountSessionStore;
+  }
+  if (selectedKind() === 'postgres') {
+    const store = initializePostgresState().plannerSessionStore;
+    if (store) return store;
+  }
+  return (memorySessionStore ??= new InMemoryPlannerSessionStore());
+}
+
+/** Which variable the SESSION store reads and the public project ref it names — diagnostics only. */
+export function sessionDatabaseDiagnostics(env: NodeJS.ProcessEnv = process.env): { source: 'DATABASE_URL' | 'SYLLO_PLANNER_DATABASE_URL' | null; ref: string | null } {
+  if (env.VERCEL === '1' && isolatedUrl(env[SHARED_DATABASE_URL_ENV], SHARED_DATABASE_URL_ENV, env)) {
+    return { source: 'DATABASE_URL', ref: databaseProjectRef(env[SHARED_DATABASE_URL_ENV]) };
+  }
+  return plannerDatabaseDiagnostics(env);
+}
+
 export function getAcademicContextStore(): AcademicContextStore {
   if (!academicContextStore) getBoardRepository();
   return academicContextStore!;
@@ -203,6 +252,7 @@ export async function adoptAnonymousPlannerState(fromOwnerId: string, toOwnerId:
 
 /** Test-only: drop both stores so suites cannot leak state into each other. */
 export function resetApplyRuntime(): void {
+  memorySessionStore = undefined;
   boardRepo = undefined;
   proposalStore = undefined;
   academicContextStore = undefined;

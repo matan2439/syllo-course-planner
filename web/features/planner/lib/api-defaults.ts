@@ -1,6 +1,6 @@
 import {
   applyPlan, editBoard, establishPlanningContext, getBoard, getCommittedBoard, getPlanningContext,
-  sendConversation,
+  sendConversation, getPlanningSessionView, resetPlanningSession,
 } from '../../../../shared/planner/api-client'
 
 // Wrap fetch so calling it as `deps.fetchImpl(...)` doesn't rebind `this` to the
@@ -22,3 +22,7 @@ export const defaultSendConversation = (
   req: Parameters<typeof sendConversation>[1],
   onProgress?: Parameters<typeof sendConversation>[2],
 ) => sendConversation({ fetchImpl: browserFetch, baseUrl: '' }, req, onProgress)
+export const defaultLoadPlanningSession = (programId: string) =>
+  getPlanningSessionView({ fetchImpl: browserFetch, baseUrl: '' }, programId)
+export const defaultResetPlanningSession = (programId: string) =>
+  resetPlanningSession({ fetchImpl: browserFetch, baseUrl: '' }, programId)

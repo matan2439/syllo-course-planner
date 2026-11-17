@@ -308,12 +308,16 @@ export default function WeeklyScheduleDrawer({
       const pairs = result.conflictingCoursePairs.map(([a, b]) => `${courseName(a)} ו־${courseName(b)}`)
       const englishPairs = result.conflictingCoursePairs.map(([a, b]) => `${courseName(a)} and ${courseName(b)}`)
       const blocking = result.coursesBlockingFreeDays.map(courseName)
+      const mine = result.lockedClashes.map(([a, b]) => `${courseName(a)} ו־${courseName(b)}`)
+      const englishMine = result.lockedClashes.map(([a, b]) => `${courseName(a)} and ${courseName(b)}`)
       setBestMessage([[
-        'לא נמצא שילוב קבוצות בלי חפיפות.',
+        'לא נמצא שילוב קבוצות בלי חפיפות. הבחירות שלכם נשמרו.',
+        mine.length ? `הקבוצות שבחרתם חופפות זו לזו: ${mine.join('; ')} — שנו אחת מהן.` : '',
         pairs.length ? `חופפים תמיד: ${pairs.join('; ')}.` : '',
         blocking.length ? `לא ניתן לפנות את הימים שבחרתם בגלל: ${blocking.join(', ')}.` : '',
       ].filter(Boolean).join(' '), [
-        'No combination without overlaps was found.',
+        'No combination without overlaps was found. Your choices were kept.',
+        englishMine.length ? `Groups you chose overlap each other: ${englishMine.join('; ')} — change one of them.` : '',
         englishPairs.length ? `Always overlap: ${englishPairs.join('; ')}.` : '',
         blocking.length ? `These courses prevent keeping your chosen days free: ${blocking.join(', ')}.` : '',
       ].filter(Boolean).join(' ')])
@@ -326,9 +330,11 @@ export default function WeeklyScheduleDrawer({
     }
     setState((previous) => ({ ...previous, selections: nextSelections }))
     const freeKept = WEEK_DAYS.filter((day) => !result.daysUsed.includes(day))
+    // A group the student chose is never swapped: when it sits on a free day or in a busy time, say so.
+    const kept = [...new Set(result.lockedConflicts.map((item) => courseName(item.courseId)))]
     setBestMessage([
-      `נבחרו הקבוצות הנוחות ביותר: ${result.daysUsed.length} ימים בקמפוס${freeKept.length ? ` (פנויים: ${freeKept.join(', ')})` : ''}.`,
-      `Selected the most convenient groups: ${result.daysUsed.length} days on campus${freeKept.length ? ` (free: ${freeKept.map((day) => weekDayLabel(day, 'en')).join(', ')})` : ''}.`,
+      `נבחרו הקבוצות הנוחות ביותר: ${result.daysUsed.length} ימים בקמפוס${freeKept.length ? ` (פנויים: ${freeKept.join(', ')})` : ''}.${kept.length ? ` הקבוצות שבחרתם ב: ${kept.join(', ')} נשמרו, אף שהן חופפות ליום פנוי או לשעות חסומות — אפשר לשנות אותן ידנית.` : ''}`,
+      `Selected the most convenient groups: ${result.daysUsed.length} days on campus${freeKept.length ? ` (free: ${freeKept.map((day) => weekDayLabel(day, 'en')).join(', ')})` : ''}.${kept.length ? ` Your chosen groups for ${kept.join(', ')} were kept although they fall on a free day or a busy time — change them manually if you wish.` : ''}`,
     ])
   }
 

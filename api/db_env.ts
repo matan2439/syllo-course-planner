@@ -12,6 +12,15 @@
 /** Public project ref (it is in every URL), not a secret. */
 export const PRODUCTION_SUPABASE_REF = 'lxwtycowmqosuyfumcbo';
 
+/**
+ * The Supabase project ref a connection URL names (pooler user `postgres.<ref>` or host `db.<ref>.supabase.co`),
+ * or null when the URL does not say. The ref is public; the password is never read. Diagnostics only.
+ */
+export function databaseProjectRef(url: string | undefined): string | null {
+  const text = url ?? '';
+  return /postgres\.([a-z]{20})(?![a-z])/.exec(text)?.[1] ?? /db\.([a-z]{20})\.supabase\.co/.exec(text)?.[1] ?? null;
+}
+
 /** True when `url` may be used under this env. Empty urls are allowed (= unconfigured). */
 export function dbIsolationOk(url: string, env: NodeJS.ProcessEnv = process.env): boolean {
   if (!url) return true;

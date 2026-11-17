@@ -5,6 +5,8 @@ import type { buildDraftVM } from '../../../lib/planner/draft-vm'
 import AgentOutcomeDetails from '../../agent/components/AgentOutcomeDetails'
 import GroundedExplanation from '../../agent/components/GroundedExplanation'
 import AlternativeBoardSwitcher from './AlternativeBoardSwitcher'
+import { PROJECTED_NOTE_HE } from '../../../../shared/planner/offering-status'
+import { semesterTitleHe } from '../../../lib/planner/board-vm'
 import { AGENT_OUTCOME_LABEL_HE, STALE_MESSAGE_HE } from '../constants'
 import type { StaleReason } from '../types'
 
@@ -16,8 +18,12 @@ type Alternatives = NonNullable<GeneratedPlanModel['alternatives']>
  */
 export default function ProposalView({
   draft, intentOutcome, semesterLoads, removed, stale, staleReason, canApply, applying, applyError, onApply, onReject,
-  alternatives, selectedAlternativeId, onSelectAlternative, courseNameById,
+  alternatives, selectedAlternativeId, onSelectAlternative, courseNameById, unresolvedConflictsHe = [], projectedPlacements = [],
 }: {
+  /** Placements whose availability is an estimate (or unknown), shown as such next to the proposal. */
+  projectedPlacements?: ReadonlyArray<{ courseId: string; semesterId: string; status: 'projected' | 'unknown' }>
+  /** A partial plan: what stays unresolved on the student's board. Always visible, never collapsed. */
+  unresolvedConflictsHe?: readonly string[]
   draft: ReturnType<typeof buildDraftVM>
   intentOutcome?: GeneratedPlanModel['intentOutcome']
   /** Weekly hours per semester with the server's cap verdicts (agent proposals). */
@@ -63,6 +69,28 @@ export default function ProposalView({
           onSelect={onSelectAlternative} courseNameById={courseNameById} disabled={stale} />
       )}
 
+      {unresolvedConflictsHe.length > 0 && (
+        <div role="alert" aria-label="התנגשות שלא נפתרה" className="rounded-xl border border-amber-500/60 bg-amber-500/10 px-3 py-2">
+          <p className="font-bold text-amber-800 dark:text-amber-200">תוכנית חלקית — לא תקינה במלואה</p>
+          <p className="mt-0.5 text-xs text-[var(--text-muted)]">שאר הקורסים תוכננו סביב הקורס הבעייתי. הוא נשאר במקומו עד שתחליטו.</p>
+          <ul className="mt-1.5 flex flex-col gap-1 text-xs">
+            {unresolvedConflictsHe.map((line) => <li key={line}>{line}</li>)}
+          </ul>
+        </div>
+      )}
+      {projectedPlacements.length > 0 && (
+        <div role="note" aria-label="זמינות צפויה" className="rounded-xl border border-sky-500/50 bg-sky-500/10 px-3 py-2 text-xs">
+          <p className="font-semibold">{PROJECTED_NOTE_HE}</p>
+          <ul className="mt-1 flex flex-col gap-0.5 text-[var(--text-muted)]">
+            {projectedPlacements.slice(0, 12).map((item) => (
+              <li key={`${item.courseId}|${item.semesterId}`}>
+                {courseNameById?.[item.courseId] ?? item.courseId} · {semesterTitleHe(item.semesterId)} — {item.status === 'projected' ? 'צפוי' : 'אין מידע מספיק'}
+              </li>
+            ))}
+            {projectedPlacements.length > 12 && <li>ועוד {projectedPlacements.length - 12}</li>}
+          </ul>
+        </div>
+      )}
       {draft.blocked && <div><Badge variant="warn">הצעה חסומה — לא ניתן להחיל</Badge></div>}
       {draft.agentOutcome && draft.agentOutcome !== 'proposal' && !draft.blocked && (
         <div><Badge variant="warn">{AGENT_OUTCOME_LABEL_HE[draft.agentOutcome]}</Badge></div>

@@ -4,6 +4,7 @@ jest.mock('../../api/ai/board_loader', () => ({
 
 jest.mock('../../api/ai/apply_runtime', () => ({
   getAcademicContextStore: jest.fn(),
+  getBoardRepository: jest.fn(),
 }));
 
 jest.mock('../../api/ai/generate-plan', () => ({
@@ -19,7 +20,7 @@ jest.mock('../../api/ai/plan_alternatives', () => ({
 }));
 
 import { loadLocalBoardJson } from '../../api/ai/board_loader';
-import { getAcademicContextStore } from '../../api/ai/apply_runtime';
+import { getAcademicContextStore, getBoardRepository } from '../../api/ai/apply_runtime';
 import { buildModel } from '../../api/ai/generate-plan';
 import { constraintFingerprint } from '../../api/ai/plan_alternatives';
 import { validatePlanState } from '../../api/ai/planner_validate';
@@ -82,5 +83,45 @@ describe('authoritative stored-candidate revalidation', () => {
       ownerId: 'owner', programId: 'program', profileVersion: 0, semesters: [],
     })).resolves.toEqual({ valid: false, constraintFingerprint: 'cf_unavailable' });
     expect(validatePlanState).not.toHaveBeenCalled();
+  });
+
+  describe('a problem already on the committed board does not block additions planned around it', () => {
+    const OLD = 'קורס A משובץ בs2 אך מותר רק בs1.';
+    const setUp = (candidateErrors: string[], committedErrors: string[], committed: Array<{ semesterId: string; courseIds: string[] }> | null) => {
+      mocked(getAcademicContextStore).mockReturnValue({
+        load: jest.fn().mockResolvedValue({ ownerId: 'owner', programId: 'program', digest: 'as_1', personalStatus: {},
+          planContext: {}, preferences: {}, updatedAt: 1 }),
+        put: jest.fn(),
+      });
+      mocked(loadLocalBoardJson).mockReturnValue({ metadata: { version: 1 } });
+      mocked(buildModel).mockReturnValue({ knownSemesterIds: ['s1', 's2'], completedCourseIds: new Set() } as any);
+      mocked(constraintFingerprint).mockReturnValue('cf');
+      mocked(validatePlanState)
+        .mockReturnValueOnce({ valid: candidateErrors.length === 0, errors: candidateErrors } as any)
+        .mockReturnValueOnce({ valid: committedErrors.length === 0, errors: committedErrors } as any);
+      mocked(getBoardRepository).mockReturnValue({ load: jest.fn().mockResolvedValue(committed ? { version: 'v1', semesters: committed } : null) } as any);
+    };
+    const validate = () => validateAuthoritativeCandidate({ ownerId: 'owner', programId: 'program', profileVersion: 1,
+      semesters: [{ semesterId: 's2', courseIds: ['A', 'B'] }] });
+
+    test('the same error as before is tolerated', async () => {
+      setUp([OLD], [OLD], [{ semesterId: 's2', courseIds: ['A'] }]);
+      expect((await validate()).valid).toBe(true);
+    });
+
+    test('a NEW error still refuses the apply', async () => {
+      setUp([OLD, 'שגיאה חדשה'], [OLD], [{ semesterId: 's2', courseIds: ['A'] }]);
+      expect((await validate()).valid).toBe(false);
+    });
+
+    test('a second copy of an existing error counts as new', async () => {
+      setUp([OLD, OLD], [OLD], [{ semesterId: 's2', courseIds: ['A'] }]);
+      expect((await validate()).valid).toBe(false);
+    });
+
+    test('with no committed board there is nothing to tolerate', async () => {
+      setUp([OLD], [], null);
+      expect((await validate()).valid).toBe(false);
+    });
   });
 });

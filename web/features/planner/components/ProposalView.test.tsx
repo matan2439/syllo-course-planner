@@ -29,3 +29,32 @@ test('removing a board course needs an explicit second confirmation', () => {
   fireEvent.click(screen.getByRole('button', { name: 'כן, להסיר ולהחיל' }))
   expect(onApply).toHaveBeenCalledTimes(1)
 })
+
+test('a partial plan always shows that it is not fully valid, with the unresolved conflict', () => {
+  render(<ProposalView {...base} removed={[]} onApply={jest.fn()}
+    unresolvedConflictsHe={['הקורס "אלפא" משובץ בסמסטר שבו אינו ניתן. אפשרויות: לאשר העברה / לאשר הסרה.']} />)
+  const banner = screen.getByRole('alert', { name: 'התנגשות שלא נפתרה' })
+  expect(banner).toHaveTextContent('תוכנית חלקית — לא תקינה במלואה')
+  expect(banner).toHaveTextContent('אלפא')
+})
+
+test('a fully valid proposal shows no unresolved-conflict banner', () => {
+  render(<ProposalView {...base} removed={[]} onApply={jest.fn()} />)
+  expect(screen.queryByRole('alert', { name: 'התנגשות שלא נפתרה' })).toBeNull()
+})
+
+test('placements that rest on an estimated offering are labelled as estimates, never as confirmed', () => {
+  render(<ProposalView {...base} removed={[]} onApply={jest.fn()} courseNameById={{ C1: 'בינה חישובית', C2: 'אלמנטים סופיים' }}
+    projectedPlacements={[{ courseId: 'C1', semesterId: 'year_4_semester_a', status: 'projected' }, { courseId: 'C2', semesterId: 'year_4_semester_b', status: 'unknown' }]} />)
+  const note = screen.getByRole('note', { name: 'זמינות צפויה' })
+  expect(note).toHaveTextContent('צפויה בלבד')
+  expect(note).toHaveTextContent('בינה חישובית')
+  expect(note).toHaveTextContent('צפוי')
+  expect(note).toHaveTextContent('אין מידע מספיק')
+  expect(note).not.toHaveTextContent('מאושר')
+})
+
+test('a proposal with only confirmed offerings shows no estimate note', () => {
+  render(<ProposalView {...base} removed={[]} onApply={jest.fn()} />)
+  expect(screen.queryByRole('note', { name: 'זמינות צפויה' })).toBeNull()
+})

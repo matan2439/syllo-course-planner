@@ -38,8 +38,9 @@ export default function CurrentPlanSection({
   current, previewBoard, diffMarkers, alternatives, selectedAlternativeId, onSelectAlternative, stale,
   commitManualRemove, commitManualAdd, commitManualMove, selectBoardCourse, manualEditPhase,
   activeDrag, rejectedDrop, justPlaced, onDragStateChange, completedCredit, completedCategoryCounts = {},
-  onAddSemester, removableSemesterIds, onRemoveSemester, companion, legendCategories,
+  onAddSemester, removableSemesterIds, onRemoveSemester, companion, legendCategories, projectedSemesterIds,
 }: {
+  projectedSemesterIds?: ReadonlySet<string>
   current: BoardModel
   legendCategories?: readonly LegendCategory[]
   /** The proposal (or selected alternative) applied to the current board, or null when none is being previewed. */
@@ -134,6 +135,7 @@ export default function CurrentPlanSection({
         removableSemesterIds={removableSemesterIds}
         onRemoveSemester={previewBoard ? undefined : onRemoveSemester}
         companion={companion}
+        projectedSemesterIds={projectedSemesterIds}
       />
     </section>
 

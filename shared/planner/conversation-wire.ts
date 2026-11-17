@@ -110,6 +110,10 @@ const toolStatusEventSchema = z.object({
     'get_course_syllabus',
     'get_course_grades',
     'highlight_element',
+    'unlock_courses',
+    'get_course_pathway',
+    'decide_on_suggestions',
+    'update_planning_profile',
   ]),
   status: z.enum(['started', 'completed', 'rejected']),
 }).strict()
@@ -189,6 +193,17 @@ const conversationProposalSchema = z.object({
   expires_at: z.number().int().nonnegative(),
   /** Read-only server materialization for the draft UI; Apply still names ids. */
   alternatives: z.array(conversationAlternativeSchema).min(1).max(12),
+  /**
+   * Present on a PARTIAL plan: a committed course still breaks an availability rule. The plan
+   * is not fully valid and the UI must say so wherever the proposal is shown.
+   */
+  unresolved_conflicts_he: z.array(boundedText).min(1).max(12).optional(),
+  /** Placements that rest on a projected or unknown offering; the UI labels them as estimates. */
+  projected_placements: z.array(z.object({
+    course_id: z.string().trim().min(1).max(128),
+    semester_id: z.string().trim().min(1).max(128),
+    status: z.enum(['projected', 'unknown']),
+  }).strict()).min(1).max(80).optional(),
 }).strict()
 
 const academicDecisionSummarySchema = z.object({
@@ -277,6 +292,26 @@ export const conversationContextConflictResponseSchema = z.object({
   message_he: boundedText,
   currentBoardVersion: z.string().trim().min(1).max(256).nullable().optional(),
 }).strict()
+
+/** What the page restores after a reload or on another device (GET /api/ai/conversation?program_id=…). */
+export const planningSessionViewResponseSchema = z.object({
+  ok: z.literal(true),
+  /** false = persistent sessions are off: the page keeps its own transcript as before. */
+  enabled: z.boolean(),
+  /** Why sessions are off, for diagnostics only (never a secret): the flag, the store, or a read error. */
+  reason: z.enum(['flag_off', 'store_unavailable', 'read_error']).optional(),
+  /** With `reason`: the public Supabase project ref of this deployment's database, or null when its URL does not name one. */
+  db_ref: z.string().max(40).nullable().optional(),
+  /** With `reason`: which variable the planner storage reads (a name, never a value). */
+  db_source: z.enum(['SYLLO_PLANNER_DATABASE_URL', 'DATABASE_URL']).nullable().optional(),
+  session: z.object({
+    turns: z.array(z.object({ role: z.enum(['user', 'assistant']), text: z.string().max(MAX_TEXT) }).strict()).max(MAX_TRANSCRIPT_TURNS),
+    pending_question_he: z.string().max(400).nullable(),
+    directions_he: z.array(z.string().max(80)).max(5),
+    decisions_he: z.array(z.string().max(300)).max(8),
+  }).strict().nullable(),
+}).strict()
+export type PlanningSessionViewResponse = z.infer<typeof planningSessionViewResponseSchema>
 
 export type ConversationTurn = z.infer<typeof conversationTurnSchema>
 export type ConversationRequest = z.infer<typeof conversationRequestSchema>

@@ -60,6 +60,7 @@ import type { ManualAddIntent } from '../types'
 import type { PlannerDragPayload } from '../../../lib/planner/drag-payload'
 import { degreeYearsForBoard, nextSemesterId, type DegreeYear } from '../../../lib/planner/semester-window'
 import { programIdOfBoard } from '../../../../shared/planner/window_board'
+import { projectedSemesterIds as projectedSemesterIdsOf } from '../../../../shared/planner/offering-status'
 import { getAiSessionToken } from '../../../lib/ai-session-token'
 import type { BoardSnapshot } from '../lib/saved-plans'
 import { useLocale } from '../../locale/LocaleProvider'
@@ -300,6 +301,10 @@ export default function NativePlannerJourney({
   const addableSemesterId = current && programIdOfBoard(programId) === programId
     ? nextSemesterId([...catalogSemesterIds, ...current.semesters.map((semester) => semester.semesterId)])
     : null
+  // Semesters of an academic year whose official timetable is not published yet: labelled as estimates.
+  const projectedSemesterIds = current
+    ? projectedSemesterIdsOf(current.semesters.map((semester) => semester.semesterId), currentDegreeYear, new Date())
+    : undefined
   useInitialPlanningContext({
     enabled: initializePlanningContext, current, academicContextPhase,
     loadedAcademicContext, buildRequest, convProfileRef, establishPlanningContextFn, programId,
@@ -425,6 +430,7 @@ export default function NativePlannerJourney({
             .map((semester) => semester.semesterId))}
           onRemoveSemester={(semesterId) => void commitSemesterChange('remove_semester', semesterId)}
           companion={companion}
+          projectedSemesterIds={projectedSemesterIds}
           legendCategories={degreeRequirements?.categories}
           completedCredit={academicStatus.confirmed ? Object.fromEntries(completedCourseIdsOf(academicStatus).flatMap((id) => {
             // Same credit rule as the profile panel and the server: Years 1–2 table, else catalog hours.
@@ -526,6 +532,8 @@ export default function NativePlannerJourney({
             onApply={apply}
             onReject={clearProposal}
             alternatives={proposal.alternatives}
+            unresolvedConflictsHe={proposal.unresolvedConflictsHe}
+            projectedPlacements={proposal.projectedPlacements}
             selectedAlternativeId={selectedAlternativeId}
             onSelectAlternative={setSelectedAlternativeId}
             courseNameById={Object.fromEntries(Object.entries(current.courseCatalog).map(([id, course]) => [id, course.nameHe || null]))}

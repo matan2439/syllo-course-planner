@@ -28,7 +28,7 @@ const validBody = {
 test('conversation endpoint allows POST only', async () => {
   const handler = createConversationHandler({ resolveModel: () => null })
   const res = response()
-  await handler({ method: 'GET' } as any, res)
+  await handler({ method: 'PUT' } as any, res)
   expect(res.statusCode).toBe(405)
   expect(res.body).toEqual(expect.objectContaining({ code: 'METHOD_NOT_ALLOWED' }))
 })
