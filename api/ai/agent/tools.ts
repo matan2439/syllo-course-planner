@@ -605,7 +605,11 @@ export function buildAgentTools() {
             reason: 'Before building, ask the student ONE short question with ask_student covering what is missing: which courses they would like included (asks_preferred_courses true) and which to leave out (question_id excluded_courses). When they answer, record it with update_preferences (preferred_courses_answered / excluded_courses_answered true, also for "none"), then call build_plan.',
           };
         }
-        if (session.isNewPlanningSession() && !session.hasSoftPreferences()) {
+        // Only ask for soft preferences when the student hasn't engaged at all yet (no course selection
+        // answers either). Once preferred+excluded courses are both known, the student has already
+        // expressed enough for us to proceed even without explicit focus_area / workload / free_days.
+        if (session.isNewPlanningSession() && !session.hasSoftPreferences()
+            && !(session.preferredCoursesKnown() && session.excludedCoursesKnown())) {
           return {
             accepted: false,
             reason: 'This is the student\'s first plan. Before building, ask ONE short conversational question that covers both their academic direction (specialization interest, e.g. robotics, algorithms, bioinformatics — or "no preference") AND any schedule constraints (max weekly hours, free days). Record their answer with update_preferences (focus_areas, max_weekly_hours, free_days) or update_planning_profile, then call build_plan. If they already said this in their opening message, record it now and proceed.',
