@@ -78,6 +78,20 @@ export function groundedTopicsForFocusAreas(
 }
 
 /**
+ * Inverse of FOCUS_TO_TOPIC: given a set of TopicIds, return all AcademicFocusArea
+ * values that map to any of those topics. Used to score courses whose profiles
+ * carry AcademicFocusArea weights against a TopicId-based objective.
+ */
+export function areasForTopicIds(topicIds: ReadonlyArray<TopicId>): Set<AcademicFocusArea> {
+  const requested = new Set(topicIds);
+  const result = new Set<AcademicFocusArea>();
+  for (const [area, topic] of Object.entries(FOCUS_TO_TOPIC) as Array<[AcademicFocusArea, TopicId]>) {
+    if (requested.has(topic)) result.add(area);
+  }
+  return result;
+}
+
+/**
  * Add an explicitly interpreted "focus on …" request to the same composed
  * grounded objective set used by typed conversation preferences.
  *

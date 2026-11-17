@@ -6,6 +6,8 @@
  */
 import type { ConversationEvent } from '../../../shared/planner/conversation-wire';
 import { buildCourseFitById, buildModel } from '../generate-plan';
+import { buildCourseFitByIdFromTopicProfiles } from '../generate_plan_interest_evaluation';
+import { groundedTopicsForFocusAreas } from '../focus_topic_objective';
 import { planContextToState } from '../planner_model';
 import { legalSemestersFor } from '../planner_actions';
 import { PlannerWorker } from '../planner_worker';
@@ -523,13 +525,26 @@ export class PlanningSession {
     const focus = (Array.isArray(this.preferences.focus_areas) ? this.preferences.focus_areas : [])
       .map((area) => ({ area: area as AcademicFocusArea, weight: 1 }));
     const fit = buildCourseFitById(this.input.programBoard, focus, this.input.programId);
+    // Also build topic-profile-based fit for the same focus areas and merge.
+    const topicIds = groundedTopicsForFocusAreas(focus);
+    const topicFit = topicIds.length ? buildCourseFitByIdFromTopicProfiles(this.input.programBoard, topicIds) : undefined;
+    let fitById = fit?.fitById;
+    if (topicFit) {
+      if (!fitById) {
+        fitById = topicFit;
+      } else {
+        const merged = new Map(fitById);
+        for (const [id, score] of topicFit) merged.set(id, (merged.get(id) ?? 0) + score);
+        fitById = merged;
+      }
+    }
     this.model = buildModel(
       this.input.programBoard,
       this.input.planContext,
       this.preferences as any,
       this.input.programId,
       undefined,
-      fit?.fitById,
+      fitById,
       storedDistributionPolicy(this.preferences),
       // The committed board, not the stored context, decides which courses are already placed.
       ((this.input.committedContext.semesters ?? []) as any[])

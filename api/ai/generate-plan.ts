@@ -73,7 +73,7 @@ import { placedCourseIds, semesterOf, emptyState } from './planner_types';
 import { resumeClarificationPreflight } from './academic_clarification_preflight';
 import { mergeClarificationAnswersIntoGeneratePlanInputs } from './academic_clarification_plan_inputs';
 import { normalizeAcademicInterestProfile, type RawAcademicInterestProfile } from './academic_interest_profile';
-import { buildGeneratePlanInterestEvaluation } from './generate_plan_interest_evaluation';
+import { buildGeneratePlanInterestEvaluation, buildCourseFitByIdFromTopicProfiles } from './generate_plan_interest_evaluation';
 import {
   extractClarificationContext,
   clarifyForAcademicDecision,
@@ -1593,7 +1593,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   // General user-fit (focus-area) → per-course soft fit signal for the planner,
   // sourced from the VALIDATED enrichment cache (no semantic extraction at Generate).
   const courseFit = interpret_free_text === true ? buildCourseFitById(board, interpretedIntent?.focusAreas ?? [], program_id) : undefined;
-  const courseFitById = courseFit?.fitById;
+  let courseFitById = courseFit?.fitById;
 
   // Slice 14/17A — resolve the typed preference profile ONCE (single source of
   // truth): the eligibility filter drives both the semester-distribution policy
@@ -1642,6 +1642,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   // 'neutral' → undefined so the model (and every existing snapshot) stays byte-identical.
   const distributionPolicy: DistributionPolicy | undefined =
     resolvedPolicy && resolvedPolicy.policy !== 'neutral' ? resolvedPolicy.policy : undefined;
+
+  // Priority 4: topic-profile-based fit — ground the interest_fit planner signal
+  // in real, evidence-backed per-course topic coverage from the static catalog.
+  // Merges additively with any cache-based fit: courses get credit from both
+  // sources when both agree, and either source alone is enough to rank a course.
+  if (resolvedGrounded?.topicIds?.length) {
+    const topicFit = buildCourseFitByIdFromTopicProfiles(board, resolvedGrounded.topicIds);
+    if (topicFit) {
+      if (!courseFitById) {
+        courseFitById = topicFit;
+      } else {
+        const merged = new Map(courseFitById);
+        for (const [id, score] of topicFit) merged.set(id, (merged.get(id) ?? 0) + score);
+        courseFitById = merged;
+      }
+    }
+  }
 
   const model = buildModel(board, effectivePlanContext, effectivePreferences, program_id, currentlyPlannedCourseIds, courseFitById, distributionPolicy);
   const initialState = planContextToState(effectivePlanContext, model);
