@@ -17,7 +17,7 @@ import { finishSessionTurn, sessionView, startSessionTurn, type BoardSnapshot } 
 const PROGRAM = 'test_program_intent_2027'
 const OWNER = 'auth:11111111-1111-4111-8111-111111111111'
 const status = { completed: [], currently_taking: [], planned: [], completed_knowledge: { status: 'known', provenance: 'explicit_user' } }
-const PREFS = { disallowed_course_ids: [], __preferred_courses_answered: true }
+const PREFS = { disallowed_course_ids: [], __preferred_courses_answered: true, __intake_skip_requested: true }
 const BOARD: BoardSnapshot = { version: 'v1', semesters: [{ semesterId: 'year_3_semester_a', courseIds: ['MAND'] }, { semesterId: 'year_4_semester_a', courseIds: [] }] }
 const T0 = Date.UTC(2026, 10, 16)
 
