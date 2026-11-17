@@ -1,6 +1,8 @@
 # PR #144 — release readiness (assessment of 2026-11-16)
 
-Status: **Preview not yet fully validated.** One configuration blocker (below). No Production change has been made.
+Status update 2026-11-17: PR #144 is merged and live on Production with persistent sessions OFF. The `planner_sessions` migration is applied to Production (verified: RLS on, no policies, no browser privileges, 0 rows). Privacy wording is published by the follow-up PR. Remaining: enable `AI_PLANNER_SESSIONS=true` in Production (needs explicit approval, after the privacy PR is merged).
+
+Original status (2026-11-16): Preview not yet fully validated; the planner-database blocker in section 2 was resolved by storing sessions in the account database.
 
 ## 1. Preview deployment facts
 
