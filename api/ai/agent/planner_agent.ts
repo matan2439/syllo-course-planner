@@ -3,10 +3,13 @@
  * tools. The run ends when the agent asks the student something (ask_student),
  * submits a validated proposal (submit_proposal), or answers in plain text.
  */
+import OpenAI from 'openai';
 import { usageFromAgentRun, type OperationUsage } from '../credits';
+import { usageCompatFetch } from './openai_usage_compat';
 import {
   Agent,
   MaxTurnsExceededError,
+  OpenAIProvider,
   Runner,
   assistant,
   extractAllTextOutput,
@@ -134,9 +137,12 @@ export function toInputItems(transcript: readonly ConversationTurn[], profile?: 
 
 /** Tracing would send student data to OpenAI's trace store; opt-in only. */
 export function createAgentRunner(): Runner {
+  const apiKey = (process.env.OPENAI_API_KEY ?? '').trim();
   return new Runner({
     tracingDisabled: process.env.AI_AGENT_TRACING !== 'true',
     traceIncludeSensitiveData: false,
+    // OpenAI's usage report now has nested objects the SDK rejects; see openai_usage_compat.ts.
+    ...(apiKey ? { modelProvider: new OpenAIProvider({ openAIClient: new OpenAI({ apiKey, fetch: usageCompatFetch() }) }) } : {}),
   });
 }
 
