@@ -18,7 +18,7 @@ const alternative = (candidateId: string, labelHe: string) => ({
   workload: { peakHours: 4, totalHours: 8, activePeriods: 2 },
 })
 
-test('each button shows only the alternative name; its courses live in the expandable details', () => {
+test('each button shows the alternative name and workload; its courses live in the expandable details', () => {
   const onSelect = jest.fn()
   const alternatives = [
     { ...alternative('a', 'עומס מאוזן'), semesters: [{ semesterId: 'year_3_semester_a', courseIds: ['c-1'] }] },
@@ -28,11 +28,12 @@ test('each button shows only the alternative name; its courses live in the expan
   expect(screen.getByTestId('alternative-board-switcher')).toHaveTextContent('בחרו חלופה להצגה על הלוח')
   const first = screen.getByRole('radio', { name: /עומס מאוזן/ })
   expect(first).toHaveAttribute('aria-checked', 'true')
-  expect(first).toHaveTextContent(/^✓ חלופה א׳ · עומס מאוזן$/)
+  // Card shows name + workload badge; courses never appear inside the button
+  expect(first).toHaveTextContent('✓ חלופה א׳ · עומס מאוזן')
+  expect(first).toHaveTextContent('4 ש״ש שיא · 2 סמסטרים')
   expect(first).not.toHaveTextContent('מבוא למערכות')
-  expect(first).toHaveClass('truncate', 'max-w-full') // long names never overflow a phone
   const second = screen.getByRole('radio', { name: /סיום מהיר/ })
-  expect(second).toHaveTextContent(/^חלופה ב׳ · סיום מהיר$/)
+  expect(second).toHaveTextContent('חלופה ב׳ · סיום מהיר')
   expect(second).not.toHaveTextContent('תכנון מתקדם')
   // The shown alternative's courses are in the details section, not in a button.
   const preview = screen.getByTestId('alternative-preview-a')
