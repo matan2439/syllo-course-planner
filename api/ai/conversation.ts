@@ -776,8 +776,8 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
           alternatives: wireAlternatives,
           ...(agent.outcome === 'proposal' && agent.projectedPlacements?.length ? { projected_placements: agent.projectedPlacements.slice(0, 80) } : {}),
           ...(partialPlan ? { unresolved_conflicts_he: agent.unresolvedConflictsHe!.map((line) => line.slice(0, 4_000)).slice(0, 12) } : {}),
-          ...(agent.outcome === 'proposal' ? { summary_he: agent.summaryHe.slice(0, 1_500) } : {}),
-          ...(agent.outcome === 'proposal' && agent.tradeoffsHe.length ? { tradeoffs_he: agent.tradeoffsHe.map((line) => line.slice(0, 300)).slice(0, 8) } : {}),
+          ...(agent.outcome === 'proposal' && agent.summaryHe ? { summary_he: agent.summaryHe.slice(0, 1_500) } : {}),
+          ...(agent.outcome === 'proposal' && agent.tradeoffsHe?.length ? { tradeoffs_he: agent.tradeoffsHe.map((line) => line.slice(0, 300)).slice(0, 8) } : {}),
         },
       });
     } catch (error) {

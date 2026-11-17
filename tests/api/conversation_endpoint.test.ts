@@ -61,6 +61,8 @@ test('a board edited mid-conversation is read live, and the proposal is pinned t
   const runAgent = jest.fn(async () => ({
     outcome: 'proposal',
     messageHe: 'הכנתי חלופה חוקית.',
+    summaryHe: '',
+    tradeoffsHe: [],
     events: [{ type: 'assistant_message', text_he: 'הכנתי חלופה חוקית.' }],
     draftPlan: { semesters: { semester_a: ['COURSE-1'] } },
     validation: { valid: true },
@@ -191,6 +193,8 @@ test('configured conversation returns a server-owned proposal receipt after the 
     runAgent: async () => ({
       outcome: 'proposal',
       messageHe: 'הכנתי חלופה חוקית.',
+      summaryHe: '',
+      tradeoffsHe: [],
       events: [{ type: 'assistant_message', text_he: 'הכנתי חלופה חוקית.' }],
       draftPlan: { semesters: { semester_a: ['COURSE-1'] } },
       validation: { valid: true },
@@ -254,6 +258,8 @@ test('configured conversation runs the AcademicDecisionAgent pipeline over the a
     runAgent: async () => ({
       outcome: 'proposal',
       messageHe: 'הכנתי חלופה חוקית.',
+      summaryHe: '',
+      tradeoffsHe: [],
       events: [{ type: 'assistant_message', text_he: 'הכנתי חלופה חוקית.' }],
       draftPlan: { semesters: { semester_a: ['COURSE-1'] } },
       validation: { valid: true },
@@ -307,6 +313,8 @@ test('conversation blocks an early proposal until critical academic facts are kn
     runAgent: async () => ({
       outcome: 'proposal',
       messageHe: 'הכנתי חלופה מוקדם מדי.',
+      summaryHe: '',
+      tradeoffsHe: [],
       events: [{ type: 'assistant_message', text_he: 'הכנתי חלופה מוקדם מדי.' }],
       draftPlan: { semesters: {} },
       validation: { valid: true },
@@ -397,7 +405,7 @@ test('the plan the agent submitted is stored as the recommended, apply-checkable
     }),
     loadProgramBoard: () => ({ semesters: [], metadata: {} }),
     runAgent: async () => ({
-      outcome: 'proposal', messageHe: 'הכנתי חלופה חוקית.', events: [],
+      outcome: 'proposal', messageHe: 'הכנתי חלופה חוקית.', summaryHe: '', tradeoffsHe: [], events: [],
       draftPlan: { semesters: { semester_a: ['COURSE-1'] } }, validation: { valid: true },
     } as any),
     putProposal,
@@ -493,7 +501,7 @@ test('each proposal alternative carries the degree requirements it would leave, 
       }),
       loadProgramBoard: () => programBoard as any,
       runAgent: async () => ({
-        outcome: 'proposal', messageHe: 'הכנתי חלופה חוקית.',
+        outcome: 'proposal', messageHe: 'הכנתי חלופה חוקית.', summaryHe: '', tradeoffsHe: [],
         events: [{ type: 'assistant_message', text_he: 'הכנתי חלופה חוקית.' }],
         draftPlan: { semesters: { semester_a: ['COURSE-1'] } }, validation: { valid: true },
       } as any),
@@ -614,7 +622,7 @@ test('a leave-out question asked by the endpoint gate is counted toward the two-
     }),
     loadProgramBoard: () => ({ semesters: [], metadata: {} }),
     runAgent: async () => ({
-      outcome: 'proposal', messageHe: 'הכנתי חלופה.', events: [],
+      outcome: 'proposal', messageHe: 'הכנתי חלופה.', summaryHe: '', tradeoffsHe: [], events: [],
       draftPlan: { semesters: { semester_a: ['COURSE-1'] } }, validation: { valid: true },
     } as any),
     putProposal: async (record: any) => record,
@@ -650,7 +658,7 @@ test('a leave-out answer recorded during the turn unblocks the proposal in that 
       runAgent: async ({ session }) => {
         if (answerNone) session.updatePreferences({ disallowed_course_ids: [] })
         return {
-          outcome: 'proposal', messageHe: 'הכנתי חלופה.', events: [],
+          outcome: 'proposal', messageHe: 'הכנתי חלופה.', summaryHe: '', tradeoffsHe: [], events: [],
           draftPlan: { semesters: { semester_a: ['COURSE-1'] } }, validation: { valid: true },
         } as any
       },
@@ -718,6 +726,8 @@ describe('a long agent run still fits the wire (many tool calls)', () => {
     const result = await send(handlerWith(async () => ({
       outcome: 'proposal',
       messageHe: 'הכנתי חלופה חוקית.',
+      summaryHe: '',
+      tradeoffsHe: [],
       events: [...toolEvents(150), { type: 'assistant_message', text_he: 'הכנתי חלופה חוקית.' }],
       draftPlan: { semesters: { semester_a: ['COURSE-1'] } },
       validation: { valid: true },
@@ -753,7 +763,7 @@ test('metering: every delivered reply (partial text included) consumes its credi
   })
   const agents: Record<string, () => any> = {
     proposal: () => ({
-      outcome: 'proposal', messageHe: 'הכנתי חלופה חוקית.', events: [],
+      outcome: 'proposal', messageHe: 'הכנתי חלופה חוקית.', summaryHe: '', tradeoffsHe: [], events: [],
       draftPlan: { semesters: { semester_a: ['COURSE-1'] } }, validation: { valid: true },
       usage: { input_tokens: 321 },
     }),
