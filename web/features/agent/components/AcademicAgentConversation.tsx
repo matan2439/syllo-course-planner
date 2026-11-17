@@ -1,6 +1,7 @@
 'use client'
 
 import ChatText from './ChatText'
+import ProposalCard from './ProposalCard'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useAuth } from '../../auth/AuthProvider'
 import { AiAccessNotice, AiPaywall, useAiAccess } from '../../billing/ai_access'
@@ -458,19 +459,10 @@ export default function AcademicAgentConversation({
                 </div>
               )}
               {turnMeta[index]?.proposal && (
-                <section aria-label="הצעה מוכנה" className="rounded-xl border border-emerald-500/40 bg-emerald-500/5 p-3 text-sm">
-                  <p className="font-semibold text-emerald-800 dark:text-emerald-200">✓ ההצעה מוכנה — הלוח מציג תצוגה מקדימה</p>
-                  <p className="mt-0.5 text-xs text-[var(--text-muted)]">
-                    {turnMeta[index].proposal!.alternatives.length > 1 ? `${turnMeta[index].proposal!.alternatives.length} חלופות לבחירה · ` : ''}
-                    עברו עליה ואשרו כדי להחיל — הלוח לא משתנה בלי אישורכם.
-                  </p>
-                  {onShowProposal && (
-                    <button type="button" onClick={onShowProposal}
-                      className="mt-2 rounded-full bg-emerald-600 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700">
-                      לפרטי ההצעה
-                    </button>
-                  )}
-                </section>
+                <ProposalCard
+                  proposal={turnMeta[index].proposal!}
+                  onShowProposal={onShowProposal}
+                />
               )}
             </div>
           </div>

@@ -713,3 +713,69 @@ describe('future years are projected, never confirmed', () => {
     expect(session.worker.getPlan().semesters.year_4_semester_a).toContain('ALPHA')
   }))
 })
+
+describe('context-sensitive intake: soft preferences and multi-turn state', () => {
+  const noPrefs = {
+    max_weekly_hours: null, add_wanted_course_ids: null, remove_wanted_course_ids: null,
+    add_avoided_course_ids: null, remove_avoided_course_ids: null,
+    semester_distribution: null, focus_areas: null, free_days: null,
+    excluded_courses_answered: null, preferred_courses_answered: null,
+  }
+
+  test('hasSoftPreferences is false when neither focus areas nor schedule constraints are set', async () => {
+    const session = await newSession(KNOWN_COURSE_PREFERENCES)
+    expect(session.hasSoftPreferences()).toBe(false)
+  })
+
+  test('recording max_weekly_hours makes hasSoftPreferences true', async () => {
+    const session = await newSession(KNOWN_COURSE_PREFERENCES)
+    await callTool(session, 'update_preferences', { ...noPrefs, max_weekly_hours: 20 })
+    expect(session.hasSoftPreferences()).toBe(true)
+  })
+
+  test('recording focus_areas makes hasSoftPreferences true', async () => {
+    const session = await newSession(KNOWN_COURSE_PREFERENCES)
+    await callTool(session, 'update_preferences', { ...noPrefs, focus_areas: ['robotics'] })
+    expect(session.hasSoftPreferences()).toBe(true)
+  })
+
+  test('recording free_days makes hasSoftPreferences true', async () => {
+    const session = await newSession(KNOWN_COURSE_PREFERENCES)
+    await callTool(session, 'update_preferences', { ...noPrefs, free_days: ['ו'] })
+    expect(session.hasSoftPreferences()).toBe(true)
+  })
+
+  test('soft preferences recorded in one turn are present in the next session turn', async () => {
+    // The preferences object is persisted between turns, so answers survive the turn boundary.
+    const session = await newSession(KNOWN_COURSE_PREFERENCES)
+    await callTool(session, 'update_preferences', { ...noPrefs, max_weekly_hours: 18, focus_areas: ['robotics'] })
+    expect(session.hasSoftPreferences()).toBe(true)
+
+    const nextTurn = await newSession(session.preferences)
+    expect(nextTurn.hasSoftPreferences()).toBe(true)
+    expect((nextTurn.preferences as Record<string, unknown>).max_weekly_hours).toBe(18)
+    expect((nextTurn.preferences as Record<string, unknown>).focus_areas).toEqual(['robotics'])
+  })
+
+  test('once course selection is answered, build_plan proceeds without requiring soft preferences', async () => {
+    // The intake gate only fires when the student has not engaged at all.
+    // Once preferred+excluded courses are both answered, the agent can build immediately
+    // without an additional soft-preference intake question.
+    const session = await newSession(KNOWN_COURSE_PREFERENCES)
+    expect(session.isNewPlanningSession()).toBe(true)
+    expect(session.hasSoftPreferences()).toBe(false)
+    expect(await callTool(session, 'build_plan', { only_years: null, start_over: null }))
+      .toMatchObject({ accepted: true })
+  })
+
+  test('isNewPlanningSession is false once the agent has recorded a planning decision', async () => {
+    const session = await newSession(KNOWN_COURSE_PREFERENCES)
+    expect(session.isNewPlanningSession()).toBe(true)
+    await callTool(session, 'update_planning_profile', {
+      priorities: null, directions: null, free_days: null, max_weekly_hours: null,
+      specialization_may_exceed_preferred_load: null,
+      decision_he: 'הסטודנט רוצה להתמקד ברובוטיקה',
+    })
+    expect(session.isNewPlanningSession()).toBe(false)
+  })
+})

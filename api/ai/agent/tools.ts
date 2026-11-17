@@ -252,9 +252,11 @@ export function buildAgentTools() {
           missing_critical_inputs: session.missingCriticalInputs()
             .map((input) => ({ field: input.field, message: input.message })),
           excluded_courses_asked_count: session.excludedCoursesAsked(),
-          // build_plan refuses until both are true.
+          // build_plan refuses until all three conditions are met.
           preferred_courses_known: session.preferredCoursesKnown(),
           avoided_courses_known: session.excludedCoursesKnown(),
+          // true = first ever plan; build_plan also requires a soft-preference question first.
+          is_new_session: session.isNewPlanningSession(),
         });
       }),
     }),
@@ -603,6 +605,16 @@ export function buildAgentTools() {
             reason: 'Before building, ask the student ONE short question with ask_student covering what is missing: which courses they would like included (asks_preferred_courses true) and which to leave out (question_id excluded_courses). When they answer, record it with update_preferences (preferred_courses_answered / excluded_courses_answered true, also for "none"), then call build_plan.',
           };
         }
+        // Only ask for soft preferences when the student hasn't engaged at all yet (no course selection
+        // answers either). Once preferred+excluded courses are both known, the student has already
+        // expressed enough for us to proceed even without explicit focus_area / workload / free_days.
+        if (session.isNewPlanningSession() && !session.hasSoftPreferences()
+            && !(session.preferredCoursesKnown() && session.excludedCoursesKnown())) {
+          return {
+            accepted: false,
+            reason: 'This is the student\'s first plan. Before building, ask ONE short conversational question that covers both their academic direction (specialization interest, e.g. robotics, algorithms, bioinformatics — or "no preference") AND any schedule constraints (max weekly hours, free days). Record their answer with update_preferences (focus_areas, max_weekly_hours, free_days) or update_planning_profile, then call build_plan. If they already said this in their opening message, record it now and proceed.',
+          };
+        }
         const unknownYears = (args.only_years ?? []).filter((year) => !session.model.knownSemesterIds.some((id) => degreeYearOf(id) === year));
         if (unknownYears.length) {
           return { accepted: false, reason: `This board has no semesters for degree year(s) ${unknownYears.join(', ')}. Known semesters: ${session.model.knownSemesterIds.join(', ')}.` };
@@ -631,6 +643,24 @@ export function buildAgentTools() {
         session.worker = new PlannerWorker(session.model, cloneState(selected?.state ?? set.legacyState), { topN: 6, rolloutSteps: 80 });
         const outOfScope = session.outOfScopePlacements();
         const invalidLock = session.hasInvalidLockedPlacement();
+        // Shadow-mode prerequisite warnings: courses the AI placed that have unmet prerequisites.
+        // Prerequisites are advisory only — the planner does not enforce them — but the agent must
+        // tell the student about any that affect near-term plans (include in tradeoffs_he).
+        const prereqWarnings: Array<{ course_id: string; name_he: string | null; semester_id: string; unmet_prereq_ids: string[] }> = [];
+        const prereqCatalog = loadPrerequisiteCatalog();
+        if (prereqCatalog) {
+          const committedIds = new Set(session.committedPlacements().keys());
+          const completedIds = session.model.completedCourseIds;
+          for (const [semId, ids] of Object.entries(session.worker.getPlan().semesters)) {
+            for (const id of ids) {
+              if (committedIds.has(id) || completedIds.has(id)) continue;
+              const status = prerequisiteStatus(session.worker, id, semId);
+              if (status.missing_course_ids.length > 0) {
+                prereqWarnings.push({ course_id: id, name_he: nameOf(session, id), semester_id: semId, unmet_prereq_ids: status.missing_course_ids });
+              }
+            }
+          }
+        }
         return {
           accepted: Boolean(selected) && !invalidLock,
           ...(invalidLock ? { reason: 'A committed course breaks an availability rule (lock_conflicts with blocks_validity). The rest of the board was planned around it, so this is a PARTIAL plan: it is not fully valid. You may submit it — it will be labelled as unresolved — but you must explain the conflict and its valid alternatives and let the student decide; never describe it as a valid plan.' } : {}),
@@ -646,6 +676,7 @@ export function buildAgentTools() {
           ...(session.lockConflicts.length ? { lock_conflicts: lockConflictRows(session), lock_conflicts_note: LOCK_CONFLICT_NOTE } : {}),
           plan: planSummary(session),
           ...(session.projectedPlacements().length ? { projected_placements: session.projectedPlacements(), offering_note: OFFERING_NOTE } : {}),
+          ...(prereqWarnings.length ? { prerequisite_warnings: prereqWarnings, prerequisite_note: 'Prerequisites are advisory only — the planner placed these courses anyway. For each warning, tell the student by course name which prerequisites are unmet and in which semester, and include it in tradeoffs_he if it affects near-term plans.' } : {}),
           validation: validationSummary(session),
         };
       }),
@@ -917,7 +948,9 @@ export function buildAgentTools() {
       name: 'submit_proposal',
       description: 'Submit the current draft to the student as a proposal. It is validated first: if invalid you get the errors back and must fix the draft; if valid this ends your turn and the student sees it on their board.',
       parameters: z.object({
-        summary_he: z.string().trim().min(1).max(1500).describe('Short Hebrew explanation of the plan and how it answers the student'),
+        summary_he: z.string().trim().min(1).max(1500).describe(
+          'Hebrew summary of the plan, written as structured markdown. Use the same format as your other messages: one opening sentence, then 2–3 short "## " headings (e.g. "## שינויים עיקריים", "## עומס סמסטריאלי", "## נקודות לתשומת לב"), each followed by a "- " bullet list. Bold (**) only numbers and course names that matter. Keep it under 150 words total.'
+        ),
         tradeoffs_he: z.array(z.string().trim().min(1).max(300)).max(8).describe('Requests that could not be fully honored, and why'),
         extra_hours_reason_he: z.string().trim().max(300).nullable().describe('Why the plan needs more weekly hours than the degree requires (null when it does not exceed)'),
       }),

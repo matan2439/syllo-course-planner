@@ -21,6 +21,11 @@ const LETTERS = ['א׳', 'ב׳', 'ג׳', 'ד׳', 'ה׳', 'ו׳', 'ז׳', 'ח׳',
 export const alternativeName = (alternative: Alternative, index: number) =>
   `חלופה ${LETTERS[index] ?? index + 1}${alternative.labelHe ? ` · ${alternative.labelHe}` : ''}`
 
+/** Compact workload badge text for one alternative. */
+function workloadBadge(alt: Alternative) {
+  return `${alt.workload.peakHours} ש״ש שיא · ${alt.workload.activePeriods} סמסטרים`
+}
+
 export default function AlternativeBoardSwitcher({
   alternatives,
   selectedId,
@@ -38,16 +43,20 @@ export default function AlternativeBoardSwitcher({
   if (alternatives.length < 2) return null
   const shownIndex = Math.max(0, alternatives.findIndex((alternative) => alternative.candidateId === selectedId))
   const shown = alternatives[shownIndex]
+  const shownDifferences = shown.differencesHe ?? []
   return (
     <section data-testid="alternative-board-switcher" aria-label="חלופות על לוח הסמסטרים" className="mb-3 rounded-xl border border-[var(--purple)]/35 bg-[var(--purple)]/5 p-3" dir="rtl">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h3 className="text-sm font-bold">בחרו חלופה להצגה על הלוח</h3>
         <span className="text-xs text-[var(--text-muted)]">התצוגה מקדימה בלבד — הלוח לא השתנה</span>
       </div>
-      <div role="radiogroup" aria-label="בחירת חלופה על לוח הסמסטרים" className="mt-3 flex flex-wrap gap-2">
+
+      {/* Alternative selector — one card per option */}
+      <div role="radiogroup" aria-label="בחירת חלופה על לוח הסמסטרים" className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
         {alternatives.map((alternative, index) => {
           const selected = alternative.candidateId === selectedId
           const name = alternativeName(alternative, index)
+          const diffs = alternative.differencesHe ?? []
           return (
             <button
               key={alternative.candidateId}
@@ -55,22 +64,47 @@ export default function AlternativeBoardSwitcher({
               role="radio"
               aria-checked={selected}
               disabled={disabled}
-              title={name}
               onClick={() => onSelect(alternative.candidateId)}
-              className={`min-w-0 max-w-full truncate rounded-full border px-3.5 py-1.5 text-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--purple)] disabled:cursor-not-allowed disabled:opacity-50 ${
-                selected ? 'border-[var(--purple-strong)] bg-[var(--surface)] font-semibold' : 'border-[var(--border)] hover:border-[var(--purple)]/50'
+              className={`flex min-w-0 flex-col items-start gap-0.5 rounded-lg border px-3 py-2 text-start text-xs transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--purple)] disabled:cursor-not-allowed disabled:opacity-50 sm:max-w-[16rem] ${
+                selected
+                  ? 'border-[var(--purple-strong)] bg-[var(--surface)] ring-1 ring-[var(--purple-strong)]'
+                  : 'border-[var(--border)] hover:border-[var(--purple)]/50 hover:bg-[var(--surface)]/60'
               }`}
             >
-              {selected ? '✓ ' : ''}{name}
+              <span className="font-semibold text-[var(--text)]">
+                {selected ? '✓ ' : ''}{name}
+              </span>
+              <span className="text-[.7rem] text-[var(--text-muted)]">{workloadBadge(alternative)}</span>
+              {/* Show first difference inline as a quick preview */}
+              {diffs.length > 0 && (
+                <span className="mt-0.5 line-clamp-2 text-[.7rem] text-[var(--text-muted)]">
+                  {diffs[0]}
+                  {diffs.length > 1 ? ` +${diffs.length - 1} עוד` : ''}
+                </span>
+              )}
             </button>
           )
         })}
       </div>
-      {/* What the shown alternative contains — out of the buttons, one tap away. */}
+
+      {/* Detail panel for the selected alternative */}
       <details className="mt-2 text-xs" open={detailsOpen} onToggle={(event) => setDetailsOpen(event.currentTarget.open)}>
         <summary className="cursor-pointer select-none text-[var(--text-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--purple)]">
           הקורסים ב{alternativeName(shown, shownIndex)} · עומס שיא {shown.workload.peakHours} ש״ש · {shown.workload.activePeriods} סמסטרים פעילים
         </summary>
+
+        {/* Academic differences — the most important section for comparison */}
+        {shownDifferences.length > 0 && (
+          <div className="mt-2 rounded-md border border-[var(--purple)]/20 bg-[var(--surface)] px-2.5 py-2" role="note" aria-label="הבדלים מול ההצעה">
+            <p className="mb-1 font-semibold text-[var(--text)]">הבדלים מהצעת העוזר:</p>
+            <ul className="flex flex-col gap-0.5 text-[var(--text-muted)]">
+              {shownDifferences.map((line, i) => (
+                <li key={i}>• {line}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         <div
           data-testid={`alternative-preview-${shown.candidateId}`}
           aria-label={`תצוגת לוח: ${alternativeName(shown, shownIndex)}`}

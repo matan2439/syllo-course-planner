@@ -5,7 +5,7 @@
  */
 export const UI_HIGHLIGHT_TARGETS = [
   'button:planning-tools',
-  'view:board', 'view:schedule', 'view:bidding',
+  'view:schedule', 'view:bidding',
   'panel:courses', 'panel:assistant',
   'saved-plans', 'years-view', 'progress', 'proposal',
   'filter:category', 'filter:semester', 'filter:assessment', 'filter:grade', 'filter:favorites',

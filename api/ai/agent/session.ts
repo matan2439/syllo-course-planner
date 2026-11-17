@@ -219,6 +219,28 @@ export class PlanningSession {
     return resolveHardExcludedCourseIds(this.preferences as { disallowed_course_ids?: string[] }) !== undefined;
   }
 
+  /**
+   * True for a genuinely new planning session: no prior planning decisions and no restored
+   * session. A returning student (even if starting over) has prior context and should not be
+   * re-interrogated about basic preferences.
+   */
+  isNewPlanningSession(): boolean {
+    return !this.input.restoredSession && this.planning.decisions.length === 0;
+  }
+
+  /**
+   * True when at least one soft preference that shapes the plan is known:
+   * focus areas (specialization direction), workload cap, or free days.
+   * Used together with isNewPlanningSession() to gate build_plan on a brief
+   * conversational intake before the first ever plan.
+   */
+  hasSoftPreferences(): boolean {
+    const prefs = this.preferences as Record<string, unknown>;
+    return (Array.isArray(prefs.focus_areas) && (prefs.focus_areas as unknown[]).length > 0)
+      || typeof prefs.max_weekly_hours === 'number'
+      || (Array.isArray(prefs.free_days) && (prefs.free_days as unknown[]).length > 0);
+  }
+
   excludedCoursesAsked(): number {
     return Number(this.preferences[EXCLUDED_ASKED_KEY] ?? 0) || 0;
   }

@@ -1,5 +1,6 @@
 import { createConversationHandler } from '../../api/ai/conversation'
 import { conversationResponseSchema } from '../../shared/planner/conversation-wire'
+import type { ConversationProposal } from '../../shared/planner/conversation-wire'
 import { PlannerStorageError, academicStatusDigest, preferenceDigest } from '../../api/ai/apply_runtime'
 import type { AcademicDecisionAgentRun } from '../../api/ai/academic_decision_integration'
 
@@ -61,6 +62,8 @@ test('a board edited mid-conversation is read live, and the proposal is pinned t
   const runAgent = jest.fn(async () => ({
     outcome: 'proposal',
     messageHe: 'הכנתי חלופה חוקית.',
+    summaryHe: '',
+    tradeoffsHe: [],
     events: [{ type: 'assistant_message', text_he: 'הכנתי חלופה חוקית.' }],
     draftPlan: { semesters: { semester_a: ['COURSE-1'] } },
     validation: { valid: true },
@@ -191,6 +194,8 @@ test('configured conversation returns a server-owned proposal receipt after the 
     runAgent: async () => ({
       outcome: 'proposal',
       messageHe: 'הכנתי חלופה חוקית.',
+      summaryHe: '',
+      tradeoffsHe: [],
       events: [{ type: 'assistant_message', text_he: 'הכנתי חלופה חוקית.' }],
       draftPlan: { semesters: { semester_a: ['COURSE-1'] } },
       validation: { valid: true },
@@ -254,6 +259,8 @@ test('configured conversation runs the AcademicDecisionAgent pipeline over the a
     runAgent: async () => ({
       outcome: 'proposal',
       messageHe: 'הכנתי חלופה חוקית.',
+      summaryHe: '',
+      tradeoffsHe: [],
       events: [{ type: 'assistant_message', text_he: 'הכנתי חלופה חוקית.' }],
       draftPlan: { semesters: { semester_a: ['COURSE-1'] } },
       validation: { valid: true },
@@ -307,6 +314,8 @@ test('conversation blocks an early proposal until critical academic facts are kn
     runAgent: async () => ({
       outcome: 'proposal',
       messageHe: 'הכנתי חלופה מוקדם מדי.',
+      summaryHe: '',
+      tradeoffsHe: [],
       events: [{ type: 'assistant_message', text_he: 'הכנתי חלופה מוקדם מדי.' }],
       draftPlan: { semesters: {} },
       validation: { valid: true },
@@ -397,7 +406,7 @@ test('the plan the agent submitted is stored as the recommended, apply-checkable
     }),
     loadProgramBoard: () => ({ semesters: [], metadata: {} }),
     runAgent: async () => ({
-      outcome: 'proposal', messageHe: 'הכנתי חלופה חוקית.', events: [],
+      outcome: 'proposal', messageHe: 'הכנתי חלופה חוקית.', summaryHe: '', tradeoffsHe: [], events: [],
       draftPlan: { semesters: { semester_a: ['COURSE-1'] } }, validation: { valid: true },
     } as any),
     putProposal,
@@ -493,7 +502,7 @@ test('each proposal alternative carries the degree requirements it would leave, 
       }),
       loadProgramBoard: () => programBoard as any,
       runAgent: async () => ({
-        outcome: 'proposal', messageHe: 'הכנתי חלופה חוקית.',
+        outcome: 'proposal', messageHe: 'הכנתי חלופה חוקית.', summaryHe: '', tradeoffsHe: [],
         events: [{ type: 'assistant_message', text_he: 'הכנתי חלופה חוקית.' }],
         draftPlan: { semesters: { semester_a: ['COURSE-1'] } }, validation: { valid: true },
       } as any),
@@ -614,7 +623,7 @@ test('a leave-out question asked by the endpoint gate is counted toward the two-
     }),
     loadProgramBoard: () => ({ semesters: [], metadata: {} }),
     runAgent: async () => ({
-      outcome: 'proposal', messageHe: 'הכנתי חלופה.', events: [],
+      outcome: 'proposal', messageHe: 'הכנתי חלופה.', summaryHe: '', tradeoffsHe: [], events: [],
       draftPlan: { semesters: { semester_a: ['COURSE-1'] } }, validation: { valid: true },
     } as any),
     putProposal: async (record: any) => record,
@@ -650,7 +659,7 @@ test('a leave-out answer recorded during the turn unblocks the proposal in that 
       runAgent: async ({ session }) => {
         if (answerNone) session.updatePreferences({ disallowed_course_ids: [] })
         return {
-          outcome: 'proposal', messageHe: 'הכנתי חלופה.', events: [],
+          outcome: 'proposal', messageHe: 'הכנתי חלופה.', summaryHe: '', tradeoffsHe: [], events: [],
           draftPlan: { semesters: { semester_a: ['COURSE-1'] } }, validation: { valid: true },
         } as any
       },
@@ -718,6 +727,8 @@ describe('a long agent run still fits the wire (many tool calls)', () => {
     const result = await send(handlerWith(async () => ({
       outcome: 'proposal',
       messageHe: 'הכנתי חלופה חוקית.',
+      summaryHe: '',
+      tradeoffsHe: [],
       events: [...toolEvents(150), { type: 'assistant_message', text_he: 'הכנתי חלופה חוקית.' }],
       draftPlan: { semesters: { semester_a: ['COURSE-1'] } },
       validation: { valid: true },
@@ -753,7 +764,7 @@ test('metering: every delivered reply (partial text included) consumes its credi
   })
   const agents: Record<string, () => any> = {
     proposal: () => ({
-      outcome: 'proposal', messageHe: 'הכנתי חלופה חוקית.', events: [],
+      outcome: 'proposal', messageHe: 'הכנתי חלופה חוקית.', summaryHe: '', tradeoffsHe: [], events: [],
       draftPlan: { semesters: { semester_a: ['COURSE-1'] } }, validation: { valid: true },
       usage: { input_tokens: 321 },
     }),
@@ -805,4 +816,235 @@ test('metering: every delivered reply (partial text included) consumes its credi
   expect(await run('throws')).toEqual({ status: 500, calls: ['open', 'release:no_reply'] })
   // A stale context is refused before the model runs: nothing charged. (A newer board is not a conflict.)
   expect(await run('chat', { ...body, academic_status_digest: 'as_stale' })).toEqual({ status: 409, calls: ['open', 'release:no_reply'] })
+})
+
+// ─── Committed-course protection regression tests ─────────────────────────────
+//
+// When a proposal is built, the agent's draftPlan only contains "managed"
+// (catalog-known, not-yet-completed) courses. The conversation handler must
+// re-inject any "unmanaged" courses — completed courses and courses outside the
+// program catalog — back into the proposal semesters so they are never silently
+// removed when the student applies a plan.
+
+describe('committed-course protection: augmentSemesters preserves unmanaged courses', () => {
+  // Build a handler whose agent returns whatever draftPlan we pass, running against
+  // the given board and personalStatus.
+  const makeHandler = ({
+    board,
+    personalStatus = { completed: [] as any[], completed_knowledge: { status: 'known', provenance: 'explicit_user' } },
+    programBoard = { semesters: [] as any[], metadata: {} as any },
+    draftPlan,
+  }: {
+    board: Array<{ semesterId: string; courseIds: string[] }>,
+    personalStatus?: Record<string, unknown>,
+    programBoard?: Record<string, unknown>,
+    draftPlan: Record<string, string[]>,
+  }) => {
+    const preferences = { max_weekly_hours: 22, disallowed_course_ids: [] }
+    return createConversationHandler({
+      resolveModel: () => ({ model: {} as any, name: 'test-model' } as any),
+      loadBoard: async () => ({
+        ownerId: 'server-owner', programId: validBody.program_id, version: 'bv_1',
+        semesters: board, updatedAt: 1,
+      } as any),
+      loadAcademicContext: async () => ({
+        ownerId: 'server-owner', programId: validBody.program_id,
+        digest: validBody.academic_status_digest,
+        personalStatus,
+        planContext: {}, preferences, updatedAt: 1,
+      }),
+      loadProgramBoard: () => programBoard as any,
+      runAgent: async () => ({
+        outcome: 'proposal',
+        messageHe: 'הכנתי חלופה.',
+        summaryHe: '',
+        tradeoffsHe: [],
+        events: [{ type: 'assistant_message', text_he: 'הכנתי חלופה.' }],
+        draftPlan: { semesters: draftPlan },
+        validation: { valid: true },
+      } as any),
+      putProposal: async (record: any) => record,
+    })
+  }
+
+  const send = async (handler: any) => {
+    const preferences = { max_weekly_hours: 22, disallowed_course_ids: [] }
+    const res = response()
+    await handler({
+      method: 'POST', headers: { cookie: `syllo_owner=${'x'.repeat(43)}` },
+      body: { ...validBody, preference_digest: preferenceDigest(preferences) },
+    } as any, res)
+    return res
+  }
+
+  test('completed courses on the board are always included in proposal semesters', async () => {
+    // The board has COMP-101 (completed) and COMP-201 (planned).
+    // The agent's draft only mentions COMP-201 — it never puts completed courses in the plan.
+    // The proposal semesters must still contain COMP-101 so it isn't deleted on apply.
+    const handler = makeHandler({
+      board: [{ semesterId: 'sem_a', courseIds: ['COMP-101', 'COMP-201'] }],
+      personalStatus: {
+        completed: [{ course_id: 'COMP-101', grade: 90 }],
+        completed_knowledge: { status: 'known', provenance: 'explicit_user' },
+      },
+      programBoard: {
+        semesters: [],
+        metadata: {
+          program_repository_courses: [
+            { course_id: 'COMP-201', name_he: 'קורס', weekly_hours: 3, is_mandatory: false },
+          ],
+        },
+      },
+      draftPlan: { sem_a: ['COMP-201'] },
+    })
+
+    const res = await send(handler)
+    expect(res.statusCode).toBe(200)
+    const proposal = res.body.proposal as ConversationProposal
+    const semA = proposal.alternatives[0].semesters.find((s: any) => s.semester_id === 'sem_a')
+    expect(semA?.course_ids).toContain('COMP-101')
+    expect(semA?.course_ids).toContain('COMP-201')
+  })
+
+  test('courses not in the program catalog are always included in proposal semesters', async () => {
+    // MYSTERY-999 is on the board but not in the catalog, so model.profiles won't have it.
+    // The agent won't put it in its plan. The proposal must still carry it.
+    const handler = makeHandler({
+      board: [{ semesterId: 'sem_b', courseIds: ['MYSTERY-999', 'KNOWN-100'] }],
+      personalStatus: {
+        completed: [],
+        completed_knowledge: { status: 'known', provenance: 'explicit_user' },
+      },
+      programBoard: {
+        semesters: [],
+        metadata: {
+          program_repository_courses: [
+            { course_id: 'KNOWN-100', name_he: 'קורס ידוע', weekly_hours: 4, is_mandatory: false },
+          ],
+        },
+      },
+      draftPlan: { sem_b: ['KNOWN-100'] },
+    })
+
+    const res = await send(handler)
+    expect(res.statusCode).toBe(200)
+    const proposal = res.body.proposal as ConversationProposal
+    const semB = proposal.alternatives[0].semesters.find((s: any) => s.semester_id === 'sem_b')
+    expect(semB?.course_ids).toContain('MYSTERY-999')
+    expect(semB?.course_ids).toContain('KNOWN-100')
+  })
+
+  test('stored candidates also carry unmanaged courses (not just wire response)', async () => {
+    // The putProposal record is what the apply path uses. Confirm it also carries the completed course.
+    const putProposal = jest.fn(async (record: any) => record)
+    const preferences = { max_weekly_hours: 22, disallowed_course_ids: [] }
+    const handler = createConversationHandler({
+      resolveModel: () => ({ model: {} as any, name: 'test-model' } as any),
+      loadBoard: async () => ({
+        ownerId: 'server-owner', programId: validBody.program_id, version: 'bv_1',
+        semesters: [{ semesterId: 'sem_c', courseIds: ['DONE-50', 'PLAN-60'] }], updatedAt: 1,
+      } as any),
+      loadAcademicContext: async () => ({
+        ownerId: 'server-owner', programId: validBody.program_id,
+        digest: validBody.academic_status_digest,
+        personalStatus: {
+          completed: [{ course_id: 'DONE-50', grade: 85 }],
+          completed_knowledge: { status: 'known', provenance: 'explicit_user' },
+        },
+        planContext: {}, preferences, updatedAt: 1,
+      }),
+      loadProgramBoard: () => ({
+        semesters: [],
+        metadata: {
+          program_repository_courses: [
+            { course_id: 'PLAN-60', name_he: 'קורס', weekly_hours: 3, is_mandatory: false },
+          ],
+        },
+      } as any),
+      runAgent: async () => ({
+        outcome: 'proposal', messageHe: 'הכנתי חלופה.', summaryHe: '', tradeoffsHe: [], events: [],
+        draftPlan: { semesters: { sem_c: ['PLAN-60'] } }, validation: { valid: true },
+      } as any),
+      putProposal,
+    })
+
+    const res = response()
+    await handler({
+      method: 'POST', headers: { cookie: `syllo_owner=${'x'.repeat(43)}` },
+      body: { ...validBody, preference_digest: preferenceDigest(preferences) },
+    } as any, res)
+
+    expect(res.statusCode).toBe(200)
+    const record = putProposal.mock.calls[0][0]
+    const recommended = record.candidates.find((c: any) => c.recommended)
+    const semC = recommended.semesters.find((s: any) => s.semesterId === 'sem_c')
+    expect(semC?.courseIds).toContain('DONE-50')
+    expect(semC?.courseIds).toContain('PLAN-60')
+  })
+
+  test('managed plan courses moved by the agent reflect the agent decision (no over-protection)', async () => {
+    // PLAN-A is a known catalog course the agent deliberately removed from sem_1 and placed in sem_2.
+    // The proposal must NOT re-add it to sem_1 — only unmanaged courses get preserved.
+    const handler = makeHandler({
+      board: [
+        { semesterId: 'sem_1', courseIds: ['PLAN-A'] },
+        { semesterId: 'sem_2', courseIds: [] },
+      ],
+      personalStatus: {
+        completed: [],
+        completed_knowledge: { status: 'known', provenance: 'explicit_user' },
+      },
+      programBoard: {
+        semesters: [],
+        metadata: {
+          program_repository_courses: [
+            { course_id: 'PLAN-A', name_he: 'קורס', weekly_hours: 3, is_mandatory: false },
+          ],
+        },
+      },
+      draftPlan: { sem_1: [], sem_2: ['PLAN-A'] },
+    })
+
+    const res = await send(handler)
+    expect(res.statusCode).toBe(200)
+    const proposal = res.body.proposal as ConversationProposal
+    const sem1 = proposal.alternatives[0].semesters.find((s: any) => s.semester_id === 'sem_1')
+    const sem2 = proposal.alternatives[0].semesters.find((s: any) => s.semester_id === 'sem_2')
+    // Agent moved it to sem_2 — that must hold, sem_1 must be empty.
+    expect(sem1?.course_ids ?? []).not.toContain('PLAN-A')
+    expect(sem2?.course_ids).toContain('PLAN-A')
+  })
+
+  test('a completed course present in multiple semesters is preserved in each', async () => {
+    // Edge case: same completed course ID appears in two semesters (data anomaly on the board).
+    // Both semesters must still contain it after augmentation.
+    const handler = makeHandler({
+      board: [
+        { semesterId: 'sem_x', courseIds: ['MULTI-99', 'ACTIVE-1'] },
+        { semesterId: 'sem_y', courseIds: ['MULTI-99', 'ACTIVE-2'] },
+      ],
+      personalStatus: {
+        completed: [{ course_id: 'MULTI-99', grade: 70 }],
+        completed_knowledge: { status: 'known', provenance: 'explicit_user' },
+      },
+      programBoard: {
+        semesters: [],
+        metadata: {
+          program_repository_courses: [
+            { course_id: 'ACTIVE-1', name_he: 'קורס א', weekly_hours: 3, is_mandatory: false },
+            { course_id: 'ACTIVE-2', name_he: 'קורס ב', weekly_hours: 3, is_mandatory: false },
+          ],
+        },
+      },
+      draftPlan: { sem_x: ['ACTIVE-1'], sem_y: ['ACTIVE-2'] },
+    })
+
+    const res = await send(handler)
+    expect(res.statusCode).toBe(200)
+    const proposal = res.body.proposal as ConversationProposal
+    const semX = proposal.alternatives[0].semesters.find((s: any) => s.semester_id === 'sem_x')
+    const semY = proposal.alternatives[0].semesters.find((s: any) => s.semester_id === 'sem_y')
+    expect(semX?.course_ids).toContain('MULTI-99')
+    expect(semY?.course_ids).toContain('MULTI-99')
+  })
 })
