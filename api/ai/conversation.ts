@@ -565,6 +565,32 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
       const agentSemesters = Object.entries(agent.draftPlan.semesters)
         .map(([semesterId, courseIds]) => ({ semesterId, courseIds: [...courseIds] }));
       const agentIdentity = candidateIdentity(agentSemesters);
+      // Build a lookup of committed courses by semester so we can add back unmanaged
+      // (completed + unknown) courses that planContextToState() excluded from the plan
+      // state. Without this, those courses appear falsely as "removed" in the proposal UI
+      // and would be genuinely deleted from the board on apply.
+      const committedBySemester = new Map<string, string[]>();
+      const committedSems = (committedContext.semesters ?? []) as Array<{ id?: unknown; courses?: Array<{ course_id?: unknown }> }>;
+      for (const sem of committedSems) {
+        if (typeof sem?.id === 'string') {
+          committedBySemester.set(
+            sem.id,
+            (sem.courses ?? []).map((c) => c.course_id).filter((id): id is string => typeof id === 'string'),
+          );
+        }
+      }
+      const isUnmanaged = (id: string) => model.completedCourseIds.has(id) || !model.profiles.has(id);
+      // Augment plan semesters with any unmanaged committed courses so the proposal semesters
+      // fully cover the committed board. Workload and identity still use agentSemesters (plan-only).
+      const augmentSemesters = (
+        sems: Array<{ semester_id: string; course_ids: string[] }>,
+      ): Array<{ semester_id: string; course_ids: string[] }> =>
+        sems.map(({ semester_id, course_ids }) => {
+          const inPlan = new Set(course_ids);
+          const unmanaged = (committedBySemester.get(semester_id) ?? [])
+            .filter((id) => !inPlan.has(id) && isUnmanaged(id));
+          return { semester_id, course_ids: unmanaged.length ? [...course_ids, ...unmanaged] : course_ids };
+        });
       const hoursFor = (courseId: string) => model.profiles.get(courseId)?.hours ?? 0;
       const workloadFor = (semesters: Array<{ semesterId: string; courseIds: string[] }>) => {
         const loads = semesters.map((semester) =>
@@ -581,10 +607,10 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
         normalized_identity: agentIdentity,
         recommended: true,
         applyable: true,
-        semesters: agentSemesters.map((semester) => ({
+        semesters: augmentSemesters(agentSemesters.map((semester) => ({
           semester_id: semester.semesterId,
           course_ids: [...semester.courseIds],
-        })),
+        }))),
         constraint_fingerprint: fingerprint,
         profile_version: profileVersion,
         snapshot_id: snapshotId,
@@ -621,10 +647,10 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
                 normalized_identity: candidateIdentity(semesters),
                 recommended: false,
                 applyable: alternative.applyable,
-                semesters: semesters.map((semester) => ({
+                semesters: augmentSemesters(semesters.map((semester) => ({
                   semester_id: semester.semesterId,
                   course_ids: semester.courseIds,
-                })),
+                }))),
                 constraint_fingerprint: alternative.constraintFingerprint,
                 profile_version: alternative.profileVersion,
                 snapshot_id: alternative.snapshotId,
