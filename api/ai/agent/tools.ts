@@ -643,6 +643,24 @@ export function buildAgentTools() {
         session.worker = new PlannerWorker(session.model, cloneState(selected?.state ?? set.legacyState), { topN: 6, rolloutSteps: 80 });
         const outOfScope = session.outOfScopePlacements();
         const invalidLock = session.hasInvalidLockedPlacement();
+        // Shadow-mode prerequisite warnings: courses the AI placed that have unmet prerequisites.
+        // Prerequisites are advisory only — the planner does not enforce them — but the agent must
+        // tell the student about any that affect near-term plans (include in tradeoffs_he).
+        const prereqWarnings: Array<{ course_id: string; name_he: string | null; semester_id: string; unmet_prereq_ids: string[] }> = [];
+        const prereqCatalog = loadPrerequisiteCatalog();
+        if (prereqCatalog) {
+          const committedIds = new Set(session.committedPlacements().keys());
+          const completedIds = session.model.completedCourseIds;
+          for (const [semId, ids] of Object.entries(session.worker.getPlan().semesters)) {
+            for (const id of ids) {
+              if (committedIds.has(id) || completedIds.has(id)) continue;
+              const status = prerequisiteStatus(session.worker, id, semId);
+              if (status.missing_course_ids.length > 0) {
+                prereqWarnings.push({ course_id: id, name_he: nameOf(session, id), semester_id: semId, unmet_prereq_ids: status.missing_course_ids });
+              }
+            }
+          }
+        }
         return {
           accepted: Boolean(selected) && !invalidLock,
           ...(invalidLock ? { reason: 'A committed course breaks an availability rule (lock_conflicts with blocks_validity). The rest of the board was planned around it, so this is a PARTIAL plan: it is not fully valid. You may submit it — it will be labelled as unresolved — but you must explain the conflict and its valid alternatives and let the student decide; never describe it as a valid plan.' } : {}),
@@ -658,6 +676,7 @@ export function buildAgentTools() {
           ...(session.lockConflicts.length ? { lock_conflicts: lockConflictRows(session), lock_conflicts_note: LOCK_CONFLICT_NOTE } : {}),
           plan: planSummary(session),
           ...(session.projectedPlacements().length ? { projected_placements: session.projectedPlacements(), offering_note: OFFERING_NOTE } : {}),
+          ...(prereqWarnings.length ? { prerequisite_warnings: prereqWarnings, prerequisite_note: 'Prerequisites are advisory only — the planner placed these courses anyway. For each warning, tell the student by course name which prerequisites are unmet and in which semester, and include it in tradeoffs_he if it affects near-term plans.' } : {}),
           validation: validationSummary(session),
         };
       }),
