@@ -917,7 +917,9 @@ export function buildAgentTools() {
       name: 'submit_proposal',
       description: 'Submit the current draft to the student as a proposal. It is validated first: if invalid you get the errors back and must fix the draft; if valid this ends your turn and the student sees it on their board.',
       parameters: z.object({
-        summary_he: z.string().trim().min(1).max(1500).describe('Short Hebrew explanation of the plan and how it answers the student'),
+        summary_he: z.string().trim().min(1).max(1500).describe(
+          'Hebrew summary of the plan, written as structured markdown. Use the same format as your other messages: one opening sentence, then 2–3 short "## " headings (e.g. "## שינויים עיקריים", "## עומס סמסטריאלי", "## נקודות לתשומת לב"), each followed by a "- " bullet list. Bold (**) only numbers and course names that matter. Keep it under 150 words total.'
+        ),
         tradeoffs_he: z.array(z.string().trim().min(1).max(300)).max(8).describe('Requests that could not be fully honored, and why'),
         extra_hours_reason_he: z.string().trim().max(300).nullable().describe('Why the plan needs more weekly hours than the degree requires (null when it does not exceed)'),
       }),

@@ -204,6 +204,10 @@ const conversationProposalSchema = z.object({
     semester_id: z.string().trim().min(1).max(128),
     status: z.enum(['projected', 'unknown']),
   }).strict()).min(1).max(80).optional(),
+  /** Structured Hebrew summary from the agent (markdown: headings, bullets, bold). Rendered in the proposal card. */
+  summary_he: boundedText.optional(),
+  /** Requests the agent could not fully honor. Each is a short Hebrew bullet line. */
+  tradeoffs_he: z.array(boundedText).max(8).optional(),
 }).strict()
 
 const academicDecisionSummarySchema = z.object({

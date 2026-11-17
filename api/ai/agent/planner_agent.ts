@@ -40,6 +40,8 @@ export type PlannerAgentResult =
   | {
       outcome: 'proposal';
       messageHe: string;
+      summaryHe: string;
+      tradeoffsHe: string[];
       events: ConversationEvent[];
       draftPlan: ReturnType<PlannerWorker['getPlan']>;
       validation: ReturnType<PlannerWorker['validateCandidate']>;
@@ -212,6 +214,8 @@ export async function runPlannerAgent(input: PlannerAgentInput, deps: PlannerAge
       return {
         outcome: 'proposal',
         messageHe,
+        summaryHe,
+        tradeoffsHe,
         events,
         draftPlan: session.worker.getPlan(),
         validation: session.worker.validateCandidate(),

@@ -464,6 +464,14 @@ export default function AcademicAgentConversation({
                     {turnMeta[index].proposal!.alternatives.length > 1 ? `${turnMeta[index].proposal!.alternatives.length} חלופות לבחירה · ` : ''}
                     עברו עליה ואשרו כדי להחיל — הלוח לא משתנה בלי אישורכם.
                   </p>
+                  {(turnMeta[index].proposal!.tradeoffs_he?.length ?? 0) > 0 && (
+                    <div className="mt-2 rounded-lg border border-amber-500/40 bg-amber-500/5 px-2.5 py-2 text-xs" role="note" aria-label="מה לא כובד במלואו">
+                      <p className="font-semibold text-amber-800 dark:text-amber-200">לא כובד במלואו:</p>
+                      <ul className="mt-1 flex flex-col gap-0.5 text-[var(--text-muted)]">
+                        {turnMeta[index].proposal!.tradeoffs_he!.map((line, i) => <li key={i}>• {line}</li>)}
+                      </ul>
+                    </div>
+                  )}
                   {onShowProposal && (
                     <button type="button" onClick={onShowProposal}
                       className="mt-2 rounded-full bg-emerald-600 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700">
