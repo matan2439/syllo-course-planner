@@ -167,6 +167,11 @@ const conversationAlternativeSchema = z.object({
   }).strict()).max(32),
   label_he: boundedText,
   differences_he: z.array(boundedText).max(32),
+  differences: z.array(z.object({
+    kind: z.enum(['adds', 'removes', 'moves', 'peak_hours', 'active_periods']),
+    text_he: boundedText,
+    course_ids: z.array(z.string().trim().min(1).max(256)).max(64).optional(),
+  }).strict()).max(32).optional(),
   workload: z.object({
     peak_hours: z.number().nonnegative(),
     total_hours: z.number().nonnegative(),

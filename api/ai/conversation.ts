@@ -662,6 +662,11 @@ export function createConversationHandler(deps: ConversationEndpointDeps = {}) {
                 })),
                 label_he: alternative.labelHe,
                 differences_he: [...alternative.differencesHe],
+                differences: alternative.differences.map((d) => ({
+                  kind: d.kind,
+                  text_he: d.textHe,
+                  ...(d.courseIds ? { course_ids: [...d.courseIds] } : {}),
+                })),
                 workload: {
                   peak_hours: alternative.workload.peakHours,
                   total_hours: alternative.workload.totalHours,

@@ -24,6 +24,13 @@ export function conversationProposalToModel(input: ConversationProposal): Genera
     })),
     labelHe: alternative.label_he,
     differencesHe: [...alternative.differences_he],
+    ...(alternative.differences ? {
+      differences: alternative.differences.map((d) => ({
+        kind: d.kind,
+        textHe: d.text_he,
+        ...(d.course_ids ? { courseIds: [...d.course_ids] } : {}),
+      })),
+    } : {}),
     workload: {
       peakHours: alternative.workload.peak_hours,
       totalHours: alternative.workload.total_hours,
