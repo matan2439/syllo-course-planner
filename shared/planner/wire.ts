@@ -197,6 +197,11 @@ export const generatePlanResponseSchema = z
                 objectiveScores: z.array(z.object({ objectiveId: z.string(), normalized: z.number() })),
                 labelHe: z.string(),
                 differencesHe: z.array(z.string()),
+                differences: z.array(z.object({
+                  kind: z.enum(['adds', 'removes', 'moves', 'peak_hours', 'active_periods']),
+                  textHe: z.string(),
+                  courseIds: z.array(z.string()).optional(),
+                })).optional(),
                 workload: z.object({ peakHours: z.number(), totalHours: z.number(), activePeriods: z.number() }),
               }))
               .optional(),

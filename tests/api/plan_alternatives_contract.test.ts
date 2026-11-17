@@ -118,6 +118,7 @@ interface AlternativeView {
   objectiveScores: Array<{ objectiveId: string; normalized: number }>;
   labelHe: string;
   differencesHe: string[];
+  differences?: Array<{ kind: string; textHe: string; courseIds?: string[] }>;
   workload: { peakHours: number; totalHours: number; activePeriods: number };
 }
 const alternativesOf = (body: any): AlternativeView[] =>
@@ -260,6 +261,28 @@ describe('C2 — differences are derived from the plans themselves', () => {
     const other = alts.find((a) => !a.recommended)!;
     const onlyOther = coursesOf(other).filter((c) => !coursesOf(rec).includes(c));
     expect(other.differencesHe.join(' ')).toContain(onlyOther[0]);
+  });
+
+  test('structured differences carry kind + courseIds for added/removed courses', async () => {
+    const alts = alternativesOf((await run(request([projectPref(), topicPref()])))._body);
+    const other = alts.find((a) => !a.recommended)!;
+    // Every alternative (non-recommended) must carry structured differences.
+    expect(other.differences).toBeDefined();
+    const diffs = other.differences!;
+    expect(Array.isArray(diffs)).toBe(true);
+    // differencesHe and differences must agree in count and text.
+    expect(diffs.length).toBe(other.differencesHe.length);
+    for (const d of diffs) {
+      expect(['adds', 'removes', 'moves', 'peak_hours', 'active_periods']).toContain(d.kind);
+      expect(typeof d.textHe).toBe('string');
+      expect(d.textHe.length).toBeGreaterThan(0);
+    }
+    // adds/removes entries must carry course ids.
+    const courseKinds = diffs.filter((d) => d.kind === 'adds' || d.kind === 'removes');
+    for (const d of courseKinds) {
+      expect(Array.isArray(d.courseIds)).toBe(true);
+      expect(d.courseIds!.length).toBeGreaterThan(0);
+    }
   });
 
   test('workload metrics are computed from the alternative, not copied', async () => {

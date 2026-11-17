@@ -33,6 +33,15 @@ export interface AlternativeSemester {
   courseIds: string[];
 }
 
+export type DifferenceKind = 'adds' | 'removes' | 'moves' | 'peak_hours' | 'active_periods';
+
+export interface PlanDifference {
+  kind: DifferenceKind;
+  textHe: string;
+  /** Course ids relevant to this difference (adds / removes / moves). */
+  courseIds?: string[];
+}
+
 export interface PlanAlternative {
   /** Stable candidate id — the Apply target, never an array position. */
   candidateId: string;
@@ -51,8 +60,10 @@ export interface PlanAlternative {
   objectiveScores: Array<{ objectiveId: string; normalized: number }>;
   /** Short, factual, derived from the plan — never a planning-input name. */
   labelHe: string;
-  /** Factual differences against the recommended alternative. */
+  /** Factual differences against the recommended alternative — plain Hebrew strings (backward compat). */
   differencesHe: string[];
+  /** Structured version of the same differences, for richer UI rendering. */
+  differences: PlanDifference[];
   workload: { peakHours: number; totalHours: number; activePeriods: number };
 }
 
@@ -154,21 +165,29 @@ function labelFor(
 }
 
 /** Factual differences against the recommended plan — derived, never authored. */
-function differencesHe(
+function computeDifferences(
   candidate: PlanCandidate,
   recommended: PlanCandidate,
   model: ConstraintModel,
-): string[] {
+): PlanDifference[] {
   if (candidate.id === recommended.id) return [];
-  const out: string[] = [];
+  const diffs: PlanDifference[] = [];
   const mine = coursesOf(candidate);
   const theirs = coursesOf(recommended);
   const name = (id: string) => model.profiles.get(id)?.name_he ?? id;
 
   const added = mine.filter((c) => !theirs.includes(c));
   const removed = theirs.filter((c) => !mine.includes(c));
-  if (added.length) out.push(`כולל ${added.map((c) => `${name(c)} (${c})`).join(', ')}`);
-  if (removed.length) out.push(`לא כולל ${removed.map((c) => `${name(c)} (${c})`).join(', ')}`);
+  if (added.length) diffs.push({
+    kind: 'adds',
+    textHe: `כולל ${added.map((c) => `${name(c)} (${c})`).join(', ')}`,
+    courseIds: added,
+  });
+  if (removed.length) diffs.push({
+    kind: 'removes',
+    textHe: `לא כולל ${removed.map((c) => `${name(c)} (${c})`).join(', ')}`,
+    courseIds: removed,
+  });
 
   // A course kept but placed in a different period is a real, separate fact.
   const periodOf = (c: PlanCandidate, id: string) =>
@@ -176,17 +195,21 @@ function differencesHe(
   const moved = mine
     .filter((c) => theirs.includes(c))
     .filter((c) => periodOf(candidate, c) !== periodOf(recommended, c));
-  if (moved.length) out.push(`מיקום שונה בסמסטר: ${moved.map((c) => `${name(c)} (${c})`).join(', ')}`);
+  if (moved.length) diffs.push({
+    kind: 'moves',
+    textHe: `מיקום שונה בסמסטר: ${moved.map((c) => `${name(c)} (${c})`).join(', ')}`,
+    courseIds: moved,
+  });
 
   const a = workloadOf(candidate, model);
   const b = workloadOf(recommended, model);
   if (a.peakHours !== b.peakHours) {
-    out.push(`עומס שיא ${a.peakHours} ש״ש לעומת ${b.peakHours} ש״ש`);
+    diffs.push({ kind: 'peak_hours', textHe: `עומס שיא ${a.peakHours} ש״ש לעומת ${b.peakHours} ש״ש` });
   }
   if (a.activePeriods !== b.activePeriods) {
-    out.push(`${a.activePeriods} סמסטרים פעילים לעומת ${b.activePeriods}`);
+    diffs.push({ kind: 'active_periods', textHe: `${a.activePeriods} סמסטרים פעילים לעומת ${b.activePeriods}` });
   }
-  return out;
+  return diffs;
 }
 
 export interface BuildAlternativesInput {
@@ -280,7 +303,10 @@ export function buildPlanAlternatives(input: BuildAlternativesInput): PlanAltern
       usedLabels.add(label);
       return label;
     })(),
-    differencesHe: differencesHe(c, recommended, input.model),
+    ...(() => {
+      const diffs = computeDifferences(c, recommended, input.model);
+      return { differences: diffs, differencesHe: diffs.map((d) => d.textHe) };
+    })(),
     workload: workloadOf(c, input.model),
   }));
 }
