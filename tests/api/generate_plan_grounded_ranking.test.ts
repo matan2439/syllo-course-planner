@@ -676,6 +676,29 @@ describe('K8 — prefer_project_courses changes real selection through Generate'
     });
   });
 
+  test('focus+avoid: groundedObjective reports prefer_topic_alignment, not avoid_topic_exposure', async () => {
+    // Regression guard: when both focusAreas and avoidAreas are set,
+    // evidence.groundedObjective must reflect the preference objective, not the
+    // avoidance one (which sorts alphabetically first in the legacy field).
+    MOCK_DOCUMENTS = [
+      topicDoc('E1', 'חומרים הנדסיים ותכונות החומר.'),
+      topicDoc('E2', 'רובוטיקה ומכאטרוניקה.'),
+      topicDoc('E3', 'מבוא כללי.'),
+      topicDoc('E4', 'מבוא כללי.'),
+    ];
+    const res = await run(body({
+      academic_interest_profile: {
+        focusAreas: [{ area: 'robotics', weight: 1 }],
+        avoidAreas: [{ area: 'materials', weight: 1 }],
+      },
+    }));
+    expect(res._body.blocked).toBe(false);
+    // The focus-on-robotics objective is the primary preference → reported
+    expect(candidates(res._body).evidence.groundedObjective).toBe('prefer_topic_alignment');
+    // Avoidance still works: E1 (materials) should not be placed
+    expect(placed(res._body)).not.toContain('E1');
+  }, 60000);
+
   test('the explanation names the PROJECT feature, not laboratory', async () => {
     MOCK_DOCUMENTS = [doc('E1', 'שיעור'), doc('E2', 'שיעור'), doc('E3', 'פרוייקט'), doc('E4', 'שיעור')];
     const res = await run(withPref([projectPref()]));

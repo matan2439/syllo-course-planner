@@ -1807,7 +1807,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       id: id!,
       confirmed: true as const,
       snapshotId: preparedEvidence.snapshot.snapshotId,
-      ...(resolvedGrounded?.topicIds?.length ? { topicIds: resolvedGrounded.topicIds } : {}),
+      ...(preferTopicIds?.length ? { topicIds: preferTopicIds } : {}),
     });
     // M1/M2 — EVERY confirmed objective reaches ranking. No precedence: the
     // set is scored independently per objective against this ONE snapshot and
@@ -1877,7 +1877,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
                 `עבור קטלוג ${String(model.catalogYear ?? '')}; היא אינה קובעת חוקיות, תנאי קדם או דרישות תואר.`,
             }
           : {}),
-        groundedObjective: resolvedGrounded?.objective ?? null,
+        groundedObjective: (resolvedGrounded?.objectives.find((o) => o.id === 'prefer_topic_alignment')?.id
+          ?? resolvedGrounded?.objective) ?? null,
         preferenceProfileVersion: preference_profile?.version ?? null,
         // K9C — the impact signal the conversation needs to decide whether asking
         // the grounded question could actually change the selected plan. Computed
@@ -2082,7 +2083,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
         // objective happens to sort first, so reading it here made the topic
         // label unreachable whenever another objective was also active.
         ...(() => {
-          const topics = (resolvedGrounded?.objectives ?? []).find((o) => o.kind === 'topic')?.topicIds;
+          const topics = (resolvedGrounded?.objectives ?? []).find((o) => o.id === 'prefer_topic_alignment')?.topicIds;
           return topics?.length ? { topicIds: topics } : {};
         })(),
       }),
