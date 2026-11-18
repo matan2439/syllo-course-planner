@@ -16,8 +16,17 @@
 import type { SyllabusSnapshot } from './syllabus_snapshot';
 import { getProgramEntry } from '../../shared/programs';
 
-/** Supported capability ontology for this slice (extensible; only mechanical_design has data). */
-export const CAPABILITY_ONTOLOGY = ['mechanical_design'] as const;
+/** Supported capability ontology for this slice — all ACADEMIC_FOCUS_AREAS values. */
+export const CAPABILITY_ONTOLOGY = [
+  // Mechanical Engineering
+  'strength_analysis', 'finite_elements', 'mechanical_design',
+  'heat_transfer', 'thermal_systems', 'fluids', 'control_systems',
+  'manufacturing', 'materials', 'biomechanics', 'energy', 'robotics', 'general',
+  // Electrical Engineering
+  'signal_processing', 'vlsi', 'electromagnetics', 'communications',
+  'ml_ai', 'circuits_electronics', 'optics_photonics', 'bioelectronics',
+  'quantum_engineering', 'energy_power', 'computer_systems',
+] as const;
 /** Capabilities a program declares in the degree registry (unknown program: none). */
 export function capabilitiesFor(programId: string): readonly string[] {
   return getProgramEntry(programId)?.capabilities ?? [];

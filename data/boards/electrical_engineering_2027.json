@@ -1568,7 +1568,7 @@
         "offering_source_url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622",
         "offering_source_confidence": "high",
         "official_data_year": 2026,
-        "syllabus_summary_he": "שעות: 4 ש\"ס משקל: 3.5",
+        "syllabus_summary_he": "חלק ראשון - אותות קומפלקסים: הגדרה, תכונות ושערוך אופטימלי של משתנים, וקטורים ותהליך אקראי קומפלקסי. חלק שני - אפנון אנלוגי: ייצוג baseband של סיגנל, התמרת הילברט ופילטר הילברט, שיטות אפנון אנלוגי (DSB-SC, AM, SSB), גילוי אופטימלי (MMSE, LMMSE), ניתוח ספקטרלי וביצועי SNR. מבוא מקוצר לשיטות אפנוני זווית (PM, FM). חלק שלישי - אפנון דיגיטלי: דגימה, קוונטיזציה ורעש קוונטיזציה. אותות ציקלו-סטציונריים. קונסטלציות שידור. הפרעות בין סימבולים (ISI) - דיאגרמת עין, קריטריון נייקוויסט ופולסי נייקוויסט. מסנן מתואם.",
         "syllabus_topics_he": [],
         "syllabus_prerequisites_he": [
           "אותות אקראיים ורעש",
@@ -1591,7 +1591,8 @@
         "syllabus_assessment_he": "בחינה סופית ייתכנו מטלות נוספות רשימת המטלות המלאה תופיע בסילבוס המפורט של הקורס. | בחינה סופית ייתכנו מטלות נוספות רשימת המטלות המלאה תופיע בסילבוס המפורט של הקורס.",
         "syllabus_structure_he": "3.0 שעות הרצאה",
         "syllabus_source_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512410001&year=2026",
-        "syllabus_confidence": 0.8
+        "syllabus_confidence": 0.8,
+        "syllabus_last_fetched_at": "2026-11-18T00:00:00Z"
       },
       {
         "course_id": "0512-4161",
@@ -1943,7 +1944,7 @@
         "offering_source_url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622",
         "offering_source_confidence": "high",
         "official_data_year": 2026,
-        "syllabus_summary_he": "שעות:                4 ש\"ס משקל:               3.5",
+        "syllabus_summary_he": "בקורס יוצגו מושגי יסוד בתקשורת מחשבים, בהתבסס על משפחת פרוטוקולי TCP/IP ורשת האינטרנט. בין הנושאים בקורס: קודים לתיקון שגיאות, ערוצים מרובי-גישה, רשתות מקומיות (LAN), מיתוג, ניתוב, תזמון, בקרת זרימה, אבטחת מידע ותכנות שקעים (sockets). הקורס כולל משימות תכנות משמעותיות: שליטה בשפת C היא דרישת קדם.",
         "syllabus_topics_he": [],
         "syllabus_prerequisites_he": [
           "מערכות הפעלה (מבוא לתכנות מערכות)",
@@ -1960,7 +1961,8 @@
         "syllabus_assessment_he": "בחינה סופית ייתכנו מטלות נוספות רשימת המטלות המלאה תופיע בסילבוס המפורט של הקורס. | בחינה סופית ייתכנו מטלות נוספות רשימת המטלות המלאה תופיע בסילבוס המפורט של הקורס.",
         "syllabus_structure_he": "3.0 שעות הרצאה",
         "syllabus_source_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512446201&year=2026",
-        "syllabus_confidence": 0.8
+        "syllabus_confidence": 0.8,
+        "syllabus_last_fetched_at": "2026-11-18T00:00:00Z"
       },
       {
         "course_id": "0512-4602",
@@ -2267,7 +2269,10 @@
         ],
         "offering_source_url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622",
         "offering_source_confidence": "high",
-        "official_data_year": 2026
+        "official_data_year": 2026,
+        "syllabus_summary_he": "The Z transform, review and extensions. Pole Zero and region convergence(ROC) analysis, relation to stability and causality. Inverse Z transform. Transform analysis of linear time invariant (LTI) systems. Minimum phase systems. Discrete time processing of continuous time signals, review and extensions. Sampling rate conversions. Polyphase decompositions. Design of digital filters. Design of finite impulse response (FIR) filters, windows and frequency sampling. Linear phase filters. Optimal (minimax) design of FIR filters. Design of infinite impulse response (IIR) filters from analog filters. Discrete Fourier series (DFS). Discrete Fourier transform (DFT). Circular convolution and linear convolution using the DFT. The fast Fourier transform (FFT) for fast calculation of the DFT. Applications for linear convolution with Overlap & Add and Overlap & Save.",
+        "syllabus_source_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512420001&year=2025",
+        "syllabus_last_fetched_at": "2026-11-18T00:00:00Z"
       },
       {
         "course_id": "0512-4261",
@@ -6643,7 +6648,7 @@
         "offering_source_url": "https://www.tau.ac.il/study-program?safa=1&shana=2026&tab=schedule&tcid=7622",
         "offering_source_confidence": "high",
         "official_data_year": 2026,
-        "syllabus_summary_he": "שעות:  3 ש\"ס משקל:  1.5",
+        "syllabus_summary_he": "הסטודנטים המשתתפים במעבדה יחקרו תופעות ופעולות עיבוד אות נפוצות. הניסויים במעבדה מבוססים על ערכת פיתוח Xilinx Zenboard, הכוללת מעגלי דגימה, ומעבד משולב חומרה+תוכנה (FPGA+ARM). הניסויים מבוססים על מימושי חומרה (Verilog) ותוכנה (שפת C) עבור המעבד, וכן סימולציות וניתוח נתונים ב-Python. ניסויים: 1. Introduction to the environment & fixed-point arithmetic. 2. Basic signal processing operations. 3. Digital filtering. 4. Adaptive digital filtering. 5. Spectral analysis (DFT & FFT). 6. Spectral analysis of random processes.",
         "syllabus_topics_he": [],
         "syllabus_prerequisites_he": [
           "מבוא לעיבוד אותות סטטיסטי (או במקביל)",
@@ -6665,7 +6670,8 @@
         "syllabus_assessment_he": "דוח מעבדה ייתכנו מטלות נוספות רשימת המטלות המלאה תופיע בסילבוס המפורט של הקורס.",
         "syllabus_structure_he": "3.0 שעות הרצאה",
         "syllabus_source_url": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512429001&year=2026",
-        "syllabus_confidence": 0.8
+        "syllabus_confidence": 0.8,
+        "syllabus_last_fetched_at": "2026-11-18T00:00:00Z"
       },
       {
         "course_id": "0512-4291",

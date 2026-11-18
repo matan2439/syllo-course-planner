@@ -1,0 +1,700 @@
+{
+  "programOrCatalog": "electrical_engineering_2027",
+  "generatedAt": "2026-11-18T00:00:00.000Z",
+  "schemaVersion": "1",
+  "ontologyVersion": "1",
+  "extractorVersion": "1",
+  "extractorName": "captured-review-v1",
+  "extractorKind": "captured",
+  "profiles": {
+    "0512-4200": {
+      "courseId": "0512-4200",
+      "snapshotHash": "d862a3117521e14cd1f2d60af8daa104f8602b7d2b15a9e7c78917c06fa00ab2",
+      "schemaVersion": "1",
+      "ontologyVersion": "1",
+      "extractorVersion": "1",
+      "extractorName": "captured-review-v1",
+      "extractorKind": "captured",
+      "evaluatedCapabilities": [
+        "signal_processing"
+      ],
+      "evidence": [
+        {
+          "courseId": "0512-4200",
+          "capability": "signal_processing",
+          "claim": "Official syllabus teaches core DSP theory: Z-transform, FIR/IIR filter design, FFT, and sampling-rate conversion.",
+          "strength": 0.9,
+          "sourceType": "official_syllabus",
+          "sourceUrl": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512420001&year=2025",
+          "sourceAuthority": "tau_official_syllabus",
+          "sourceYear": 2025,
+          "extractedEvidence": "Design of finite impulse response (FIR) filters, windows and frequency sampling. Linear phase filters. Optimal (minimax) design of FIR filters. Design of infinite impulse response (IIR) filters from analog filters.",
+          "inferenceLevel": "explicit",
+          "confidence": 0.9,
+          "retrievedAt": "2026-11-18T00:00:00.000Z"
+        }
+      ],
+      "quarantined": [],
+      "createdAt": "2026-11-18"
+    },
+    "0512-4261": {
+      "courseId": "0512-4261",
+      "snapshotHash": "3f1f638da2f9f887269f99d4ec33b23b24bc3dcac8909f67545cdc89c4a78e8e",
+      "schemaVersion": "1",
+      "ontologyVersion": "1",
+      "extractorVersion": "1",
+      "extractorName": "captured-review-v1",
+      "extractorKind": "captured",
+      "evaluatedCapabilities": [
+        "signal_processing"
+      ],
+      "evidence": [
+        {
+          "courseId": "0512-4261",
+          "capability": "signal_processing",
+          "claim": "Official syllabus explicitly teaches statistical signal processing: Bayesian and non-Bayesian estimation, optimal filter design, and consistency/optimality theory.",
+          "strength": 0.9,
+          "sourceType": "official_syllabus",
+          "sourceUrl": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512426101&year=2026",
+          "sourceAuthority": "tau_official_syllabus",
+          "sourceYear": 2026,
+          "extractedEvidence": "שערוך בייסיאני ולא-בייסיאני, הקשר בין שערוך קלאסי לשערוך בעזרת למידת מכונה, אופטימליות וקונסיסטנטיות",
+          "inferenceLevel": "explicit",
+          "confidence": 0.9,
+          "retrievedAt": "2026-11-18T00:00:00.000Z"
+        }
+      ],
+      "quarantined": [],
+      "createdAt": "2026-11-18"
+    },
+    "0512-4295": {
+      "courseId": "0512-4295",
+      "snapshotHash": "c5ed70f8cddb4a211f47d921d8596bf74686bd18c8614ec0cb156c0ec7552d27",
+      "schemaVersion": "1",
+      "ontologyVersion": "1",
+      "extractorVersion": "1",
+      "extractorName": "captured-review-v1",
+      "extractorKind": "captured",
+      "evaluatedCapabilities": [
+        "signal_processing"
+      ],
+      "evidence": [
+        {
+          "courseId": "0512-4295",
+          "capability": "signal_processing",
+          "claim": "Course applies DSP methods to the music industry (effects, compression, AI composition) — the content is experiential and creative, not core communications-engineering theory. DERIVED: DSP tools are used in a music context rather than taught as foundational methodology.",
+          "strength": 0.6,
+          "sourceType": "official_syllabus",
+          "sourceUrl": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512429501&year=2026",
+          "sourceAuthority": "tau_official_syllabus",
+          "sourceYear": 2026,
+          "extractedEvidence": "תעשיית המוזיקה מקיפה מיגוון היבטים של הנדסת חשמל",
+          "inferenceLevel": "derived",
+          "confidence": 0.6,
+          "retrievedAt": "2026-11-18T00:00:00.000Z"
+        }
+      ],
+      "quarantined": [],
+      "createdAt": "2026-11-18"
+    },
+    "0512-4263": {
+      "courseId": "0512-4263",
+      "snapshotHash": "884aaa28daccdc3a3f397704aed9a68d4d3688e92b09cd0c15b6c333719b9af9",
+      "schemaVersion": "1",
+      "ontologyVersion": "1",
+      "extractorVersion": "1",
+      "extractorName": "captured-review-v1",
+      "extractorKind": "captured",
+      "evaluatedCapabilities": [
+        "signal_processing"
+      ],
+      "evidence": [
+        {
+          "courseId": "0512-4263",
+          "capability": "signal_processing",
+          "claim": "Course teaches video processing and analysis — applies signal processing methods to visual signals. DERIVED: domain-specific application rather than foundational SP theory.",
+          "strength": 0.5,
+          "sourceType": "official_syllabus",
+          "sourceUrl": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512426301&year=2026",
+          "sourceAuthority": "tau_official_syllabus",
+          "sourceYear": 2026,
+          "extractedEvidence": "הקורס נועד ללמד את יסודות עיבוד וניתוח וידאו",
+          "inferenceLevel": "derived",
+          "confidence": 0.5,
+          "retrievedAt": "2026-11-18T00:00:00.000Z"
+        }
+      ],
+      "quarantined": [],
+      "createdAt": "2026-11-18"
+    },
+    "0512-4290": {
+      "courseId": "0512-4290",
+      "snapshotHash": "bda962bd834a3d28eec1db9755e7d5ff59d97e747a51df6ed43e269dc93a32ce",
+      "schemaVersion": "1",
+      "ontologyVersion": "1",
+      "extractorVersion": "1",
+      "extractorName": "captured-review-v1",
+      "extractorKind": "captured",
+      "evaluatedCapabilities": [
+        "signal_processing"
+      ],
+      "evidence": [
+        {
+          "courseId": "0512-4290",
+          "capability": "signal_processing",
+          "claim": "Advanced laboratory course on digital signal processing implementation: Xilinx FPGA hardware, spectral analysis, adaptive filtering, and FFT. DERIVED: applies established SP theory in hands-on hardware experiments.",
+          "strength": 0.65,
+          "sourceType": "official_syllabus",
+          "sourceUrl": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512429001&year=2026",
+          "sourceAuthority": "tau_official_syllabus",
+          "sourceYear": 2026,
+          "extractedEvidence": "5. Spectral analysis (DFT & FFT). 6. Spectral analysis of random processes.",
+          "inferenceLevel": "derived",
+          "confidence": 0.65,
+          "retrievedAt": "2026-11-18T00:00:00.000Z"
+        }
+      ],
+      "quarantined": [],
+      "createdAt": "2026-11-18"
+    },
+    "0512-4707": {
+      "courseId": "0512-4707",
+      "snapshotHash": "9610e8c2efbed1581b36bb68fe8fbed3efbb82f792eb06405339d91469797c88",
+      "schemaVersion": "1",
+      "ontologyVersion": "1",
+      "extractorVersion": "1",
+      "extractorName": "captured-review-v1",
+      "extractorKind": "captured",
+      "evaluatedCapabilities": [
+        "vlsi"
+      ],
+      "evidence": [
+        {
+          "courseId": "0512-4707",
+          "capability": "vlsi",
+          "claim": "Official syllabus covers the full advanced VLSI design flow: Verilog RTL, logical synthesis, physical design, place-and-route, timing analysis, and low-power design.",
+          "strength": 0.9,
+          "sourceType": "official_syllabus",
+          "sourceUrl": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512470701&year=2026",
+          "sourceAuthority": "tau_official_syllabus",
+          "sourceYear": 2026,
+          "extractedEvidence": "ידע בסיסי בשפת ורילוג, סינתזה לוגית של שפה עילית. תכנון פיזי של הרכיב. תכנון היררכי של ריצפת הרכיב.",
+          "inferenceLevel": "explicit",
+          "confidence": 0.9,
+          "retrievedAt": "2026-11-18T00:00:00.000Z"
+        }
+      ],
+      "quarantined": [],
+      "createdAt": "2026-11-18"
+    },
+    "0512-4711": {
+      "courseId": "0512-4711",
+      "snapshotHash": "5c1b81f5da0ed40b31840f25eb13a9945c640a332e9b1fbe5bba26bafdde8b62",
+      "schemaVersion": "1",
+      "ontologyVersion": "1",
+      "extractorVersion": "1",
+      "extractorName": "captured-review-v1",
+      "extractorKind": "captured",
+      "evaluatedCapabilities": [
+        "vlsi"
+      ],
+      "evidence": [
+        {
+          "courseId": "0512-4711",
+          "capability": "vlsi",
+          "claim": "Official syllabus explicitly covers VLSI design methodologies (FPGA/ASIC/Custom), RTL design with Verilog/SystemVerilog, UVM verification, formal property verification (SVA/FPV), and logic synthesis.",
+          "strength": 0.9,
+          "sourceType": "official_syllabus",
+          "sourceUrl": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512471101&year=2026",
+          "sourceAuthority": "tau_official_syllabus",
+          "sourceYear": 2026,
+          "extractedEvidence": "מתודולוגיות של תכן ספרתי; סוגים של מעגלים משולבים (FPGA, ASIC, Custom Design); מבוא ל-Verilog",
+          "inferenceLevel": "explicit",
+          "confidence": 0.9,
+          "retrievedAt": "2026-11-18T00:00:00.000Z"
+        }
+      ],
+      "quarantined": [],
+      "createdAt": "2026-11-18"
+    },
+    "0512-4706": {
+      "courseId": "0512-4706",
+      "snapshotHash": "b1affa1205d35b596a7cddabd76c62f31e8d4a4d414c62c520e28dcb1472af05",
+      "schemaVersion": "1",
+      "ontologyVersion": "1",
+      "extractorVersion": "1",
+      "extractorName": "captured-review-v1",
+      "extractorKind": "captured",
+      "evaluatedCapabilities": [
+        "circuits_electronics",
+        "vlsi"
+      ],
+      "evidence": [
+        {
+          "courseId": "0512-4706",
+          "capability": "circuits_electronics",
+          "claim": "Official syllabus explicitly teaches analog integrated circuit design: MOS and BJT transistor models, single-stage amplifier design, differential amplifiers, stability, op-amp topologies, and ADC/switched-capacitor circuits.",
+          "strength": 0.9,
+          "sourceType": "official_syllabus",
+          "sourceUrl": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512470601&year=2026",
+          "sourceAuthority": "tau_official_syllabus",
+          "sourceYear": 2026,
+          "extractedEvidence": "מודלים של טרנזיסטורי MOS ו- BJT כמגברים. תכנון מגברים חד דרגתיים",
+          "inferenceLevel": "explicit",
+          "confidence": 0.9,
+          "retrievedAt": "2026-11-18T00:00:00.000Z"
+        },
+        {
+          "courseId": "0512-4706",
+          "capability": "vlsi",
+          "claim": "DERIVED: analog IC design on a chip uses MOS transistors and integrated circuit techniques, overlapping with VLSI methodology, but the focus is analog circuits not digital VLSI.",
+          "strength": 0.5,
+          "sourceType": "official_syllabus",
+          "sourceUrl": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512470601&year=2026",
+          "sourceAuthority": "tau_official_syllabus",
+          "sourceYear": 2026,
+          "extractedEvidence": "אי אידאליות ועריכה של מעגלים משולבים",
+          "inferenceLevel": "derived",
+          "confidence": 0.5,
+          "retrievedAt": "2026-11-18T00:00:00.000Z"
+        }
+      ],
+      "quarantined": [],
+      "createdAt": "2026-11-18"
+    },
+    "0512-4161": {
+      "courseId": "0512-4161",
+      "snapshotHash": "5d36e342ec2917e76ffaa6909551f9b00f519ded1aed9d153657ed0eaf557f3f",
+      "schemaVersion": "1",
+      "ontologyVersion": "1",
+      "extractorVersion": "1",
+      "extractorName": "captured-review-v1",
+      "extractorKind": "captured",
+      "evaluatedCapabilities": [
+        "communications",
+        "signal_processing"
+      ],
+      "evidence": [
+        {
+          "courseId": "0512-4161",
+          "capability": "communications",
+          "claim": "Official syllabus explicitly covers digital communications: receiver design, maximum likelihood decision rules, AWGN channels, error probability, and performance analysis.",
+          "strength": 0.9,
+          "sourceType": "official_syllabus",
+          "sourceUrl": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512416101&year=2026",
+          "sourceAuthority": "tau_official_syllabus",
+          "sourceYear": 2026,
+          "extractedEvidence": "Receiver design and decision rules: Minimum error probability criterion, maximum likelihood criterion, minimum distance criterion",
+          "inferenceLevel": "explicit",
+          "confidence": 0.9,
+          "retrievedAt": "2026-11-18T00:00:00.000Z"
+        },
+        {
+          "courseId": "0512-4161",
+          "capability": "signal_processing",
+          "claim": "DERIVED: digital communications system design relies on signal-space representation and linear filtering — SP tools applied within a communications context.",
+          "strength": 0.6,
+          "sourceType": "official_syllabus",
+          "sourceUrl": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512416101&year=2026",
+          "sourceAuthority": "tau_official_syllabus",
+          "sourceYear": 2026,
+          "extractedEvidence": "Signal-space representation of finite-energy signals",
+          "inferenceLevel": "derived",
+          "confidence": 0.6,
+          "retrievedAt": "2026-11-18T00:00:00.000Z"
+        }
+      ],
+      "quarantined": [],
+      "createdAt": "2026-11-18"
+    },
+    "0512-4162": {
+      "courseId": "0512-4162",
+      "snapshotHash": "70095f4252a8bbad53ed0928c64d8d506aada7b24e8b2c1acd071fb1765ebe1a",
+      "schemaVersion": "1",
+      "ontologyVersion": "1",
+      "extractorVersion": "1",
+      "extractorName": "captured-review-v1",
+      "extractorKind": "captured",
+      "evaluatedCapabilities": [
+        "communications",
+        "signal_processing"
+      ],
+      "evidence": [
+        {
+          "courseId": "0512-4162",
+          "capability": "communications",
+          "claim": "Official syllabus explicitly teaches digital signal transmission: source coding, quantization, digital communication principles, and algorithms used in communications industry R&D.",
+          "strength": 0.9,
+          "sourceType": "official_syllabus",
+          "sourceUrl": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512416201&year=2026",
+          "sourceAuthority": "tau_official_syllabus",
+          "sourceYear": 2026,
+          "extractedEvidence": "הקורס עוסק בעקרונות של קידוד מקור, קוונטיזציה, שידור וגילוי בתקשורת ספרתית",
+          "inferenceLevel": "explicit",
+          "confidence": 0.9,
+          "retrievedAt": "2026-11-18T00:00:00.000Z"
+        },
+        {
+          "courseId": "0512-4162",
+          "capability": "signal_processing",
+          "claim": "DERIVED: source coding, quantization and channel modeling are applied SP techniques used in communications context.",
+          "strength": 0.6,
+          "sourceType": "official_syllabus",
+          "sourceUrl": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512416201&year=2026",
+          "sourceAuthority": "tau_official_syllabus",
+          "sourceYear": 2026,
+          "extractedEvidence": "קידוד מקור, קוונטיזציה, שידור וגילוי בתקשורת ספרתית",
+          "inferenceLevel": "derived",
+          "confidence": 0.6,
+          "retrievedAt": "2026-11-18T00:00:00.000Z"
+        }
+      ],
+      "quarantined": [],
+      "createdAt": "2026-11-18"
+    },
+    "0512-4100": {
+      "courseId": "0512-4100",
+      "snapshotHash": "c06c45cfb7913aa404893a2c58694c2e6c4d64e79e9f56534498d66fa0f6404c",
+      "schemaVersion": "1",
+      "ontologyVersion": "1",
+      "extractorVersion": "1",
+      "extractorName": "captured-review-v1",
+      "extractorKind": "captured",
+      "evaluatedCapabilities": [
+        "communications",
+        "signal_processing"
+      ],
+      "evidence": [
+        {
+          "courseId": "0512-4100",
+          "capability": "communications",
+          "claim": "Official syllabus explicitly covers analog modulation (DSB-SC, AM, SSB, PM/FM) and digital modulation (constellations, ISI, matched filtering, Nyquist criteria) — core communications engineering curriculum.",
+          "strength": 0.9,
+          "sourceType": "official_syllabus",
+          "sourceUrl": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512410001&year=2026",
+          "sourceAuthority": "tau_official_syllabus",
+          "sourceYear": 2026,
+          "extractedEvidence": "שיטות אפנון אנלוגי (DSB-SC, AM, SSB), גילוי אופטימלי (MMSE, LMMSE)",
+          "inferenceLevel": "explicit",
+          "confidence": 0.9,
+          "retrievedAt": "2026-11-18T00:00:00.000Z"
+        },
+        {
+          "courseId": "0512-4100",
+          "capability": "signal_processing",
+          "claim": "DERIVED: complex baseband representation, Hilbert transform, spectral analysis, and optimal estimation are signal processing foundations used in communications context.",
+          "strength": 0.55,
+          "sourceType": "official_syllabus",
+          "sourceUrl": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512410001&year=2026",
+          "sourceAuthority": "tau_official_syllabus",
+          "sourceYear": 2026,
+          "extractedEvidence": "חלק ראשון - אותות קומפלקסים: הגדרה, תכונות ושערוך אופטימלי של משתנים",
+          "inferenceLevel": "derived",
+          "confidence": 0.55,
+          "retrievedAt": "2026-11-18T00:00:00.000Z"
+        }
+      ],
+      "quarantined": [],
+      "createdAt": "2026-11-18"
+    },
+    "0512-4800": {
+      "courseId": "0512-4800",
+      "snapshotHash": "8ea6991366fa413419e2c1a885470d3f6f8356328a8184acc696a47f55a49be4",
+      "schemaVersion": "1",
+      "ontologyVersion": "1",
+      "extractorVersion": "1",
+      "extractorName": "captured-review-v1",
+      "extractorKind": "captured",
+      "evaluatedCapabilities": [
+        "electromagnetics"
+      ],
+      "evidence": [
+        {
+          "courseId": "0512-4800",
+          "capability": "electromagnetics",
+          "claim": "Official syllabus explicitly covers microwave engineering: waveguide analysis, TE/TM modes, scattering matrices, resonators, and planar waveguides.",
+          "strength": 0.9,
+          "sourceType": "official_syllabus",
+          "sourceUrl": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512480001&year=2026",
+          "sourceAuthority": "tau_official_syllabus",
+          "sourceYear": 2026,
+          "extractedEvidence": "Introduction to microwave components and systems. Noise in microwave systems. Microwave network analysis: reciprocity theorem, impedance, admittance and scattering matrices",
+          "inferenceLevel": "explicit",
+          "confidence": 0.9,
+          "retrievedAt": "2026-11-18T00:00:00.000Z"
+        }
+      ],
+      "quarantined": [],
+      "createdAt": "2026-11-18"
+    },
+    "0512-4264": {
+      "courseId": "0512-4264",
+      "snapshotHash": "48e2d5c2d7504bdcb5e477d5cd2dd4d7b88878f7e1512802c0adec31ecc7a316",
+      "schemaVersion": "1",
+      "ontologyVersion": "1",
+      "extractorVersion": "1",
+      "extractorName": "captured-review-v1",
+      "extractorKind": "captured",
+      "evaluatedCapabilities": [
+        "ml_ai"
+      ],
+      "evidence": [
+        {
+          "courseId": "0512-4264",
+          "capability": "ml_ai",
+          "claim": "Official syllabus explicitly teaches statistical machine learning: supervised/unsupervised learning, SVM, linear regression, and neural networks.",
+          "strength": 0.9,
+          "sourceType": "official_syllabus",
+          "sourceUrl": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512426401&year=2026",
+          "sourceAuthority": "tau_official_syllabus",
+          "sourceYear": 2026,
+          "extractedEvidence": "Support Vector Machines (SVM), רגרסיה לינארית ורשתות נוירונים",
+          "inferenceLevel": "explicit",
+          "confidence": 0.9,
+          "retrievedAt": "2026-11-18T00:00:00.000Z"
+        }
+      ],
+      "quarantined": [],
+      "createdAt": "2026-11-18"
+    },
+    "0512-4265": {
+      "courseId": "0512-4265",
+      "snapshotHash": "b3457632ff82d4c19c6db656210e95dd71a523d721bfb2fed911e2760993e7e4",
+      "schemaVersion": "1",
+      "ontologyVersion": "1",
+      "extractorVersion": "1",
+      "extractorName": "captured-review-v1",
+      "extractorKind": "captured",
+      "evaluatedCapabilities": [
+        "ml_ai"
+      ],
+      "evidence": [
+        {
+          "courseId": "0512-4265",
+          "capability": "ml_ai",
+          "claim": "Official syllabus explicitly covers reinforcement learning — a subfield of machine learning teaching long-horizon optimal decision-making including deep RL applications.",
+          "strength": 0.9,
+          "sourceType": "official_syllabus",
+          "sourceUrl": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512426501&year=2026",
+          "sourceAuthority": "tau_official_syllabus",
+          "sourceYear": 2026,
+          "extractedEvidence": "למידה באמצעות חיזוקים הינו תת-תחום של למידת מכונה שבו לומדים כיצד לבצע החלטות ארוכות טווח באופן אופטימלי",
+          "inferenceLevel": "explicit",
+          "confidence": 0.9,
+          "retrievedAt": "2026-11-18T00:00:00.000Z"
+        }
+      ],
+      "quarantined": [],
+      "createdAt": "2026-11-18"
+    },
+    "0510-6101": {
+      "courseId": "0510-6101",
+      "snapshotHash": "8f9670766cacd1e3483f328d8486d0e60ef58f3ef087d59e6f25bdd14e92d19d",
+      "schemaVersion": "1",
+      "ontologyVersion": "1",
+      "extractorVersion": "1",
+      "extractorName": "captured-review-v1",
+      "extractorKind": "captured",
+      "evaluatedCapabilities": [
+        "communications",
+        "signal_processing"
+      ],
+      "evidence": [
+        {
+          "courseId": "0510-6101",
+          "capability": "communications",
+          "claim": "Official syllabus explicitly covers information theory foundations for communications: discrete channel capacity, Fano/Feinstein inequalities, channel coding theorems, and rate-distortion theory.",
+          "strength": 0.9,
+          "sourceType": "official_syllabus",
+          "sourceUrl": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0510610101&year=2026",
+          "sourceAuthority": "tau_official_syllabus",
+          "sourceYear": 2026,
+          "extractedEvidence": "קיבול ערוץ בדיד. אי- שיויונות של Fanoו-Feinstein. משפטי קידוד עבור ערוץ בדיד",
+          "inferenceLevel": "explicit",
+          "confidence": 0.9,
+          "retrievedAt": "2026-11-18T00:00:00.000Z"
+        },
+        {
+          "courseId": "0510-6101",
+          "capability": "signal_processing",
+          "claim": "DERIVED: entropy, mutual information, and rate-distortion theory are foundational to SP source coding — but the course's core focus is information-theoretic, not SP algorithmic.",
+          "strength": 0.6,
+          "sourceType": "official_syllabus",
+          "sourceUrl": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0510610101&year=2026",
+          "sourceAuthority": "tau_official_syllabus",
+          "sourceYear": 2026,
+          "extractedEvidence": "מדד האינפורמציה להודעה. אנטרופיה של אנסמבל",
+          "inferenceLevel": "derived",
+          "confidence": 0.6,
+          "retrievedAt": "2026-11-18T00:00:00.000Z"
+        }
+      ],
+      "quarantined": [],
+      "createdAt": "2026-11-18"
+    },
+    "0512-4703": {
+      "courseId": "0512-4703",
+      "snapshotHash": "2d39b07f7426c4f54ea884e1dd1bb44c66d755268f14e1815eb446e58d788c64",
+      "schemaVersion": "1",
+      "ontologyVersion": "1",
+      "extractorVersion": "1",
+      "extractorName": "captured-review-v1",
+      "extractorKind": "captured",
+      "evaluatedCapabilities": [
+        "vlsi"
+      ],
+      "evidence": [
+        {
+          "courseId": "0512-4703",
+          "capability": "vlsi",
+          "claim": "Official syllabus introduces VLSI integrated circuit design: IC history, nMOS/pMOS transistors, chip design methodology, and the scale of modern integration.",
+          "strength": 0.85,
+          "sourceType": "official_syllabus",
+          "sourceUrl": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512470301&year=2026",
+          "sourceAuthority": "tau_official_syllabus",
+          "sourceYear": 2026,
+          "extractedEvidence": "Today chips typically only contain two active elements (nMOS and pMOS transistors) and wires",
+          "inferenceLevel": "explicit",
+          "confidence": 0.85,
+          "retrievedAt": "2026-11-18T00:00:00.000Z"
+        }
+      ],
+      "quarantined": [],
+      "createdAt": "2026-11-18"
+    },
+    "0512-4492": {
+      "courseId": "0512-4492",
+      "snapshotHash": "04b7b343c5bd79ec61b6727f41d6af4347e1210c037bacf24a6e7218acbc3203",
+      "schemaVersion": "1",
+      "ontologyVersion": "1",
+      "extractorVersion": "1",
+      "extractorName": "captured-review-v1",
+      "extractorKind": "captured",
+      "evaluatedCapabilities": [
+        "computer_systems"
+      ],
+      "evidence": [
+        {
+          "courseId": "0512-4492",
+          "capability": "computer_systems",
+          "claim": "Official syllabus explicitly covers hardware design and debugging: RISC processor implementation on FPGA, computer structure components, main memory, and bus protocol.",
+          "strength": 0.85,
+          "sourceType": "official_syllabus",
+          "sourceUrl": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512449201&year=2026",
+          "sourceAuthority": "tau_official_syllabus",
+          "sourceYear": 2026,
+          "extractedEvidence": "Design, implementation and debugging of a simple RISC processor using a target FPGA board",
+          "inferenceLevel": "explicit",
+          "confidence": 0.85,
+          "retrievedAt": "2026-11-18T00:00:00.000Z"
+        }
+      ],
+      "quarantined": [],
+      "createdAt": "2026-11-18"
+    },
+    "0512-4462": {
+      "courseId": "0512-4462",
+      "snapshotHash": "335e426fb76223b805194f48ecb1e62815bd7b0adacdd0ff148e05a37b34610c",
+      "schemaVersion": "1",
+      "ontologyVersion": "1",
+      "extractorVersion": "1",
+      "extractorName": "captured-review-v1",
+      "extractorKind": "captured",
+      "evaluatedCapabilities": [
+        "computer_systems"
+      ],
+      "evidence": [
+        {
+          "courseId": "0512-4462",
+          "capability": "computer_systems",
+          "claim": "DERIVED: course covers networking fundamentals (TCP/IP, LAN, routing) which relates to computer systems — but the focus is protocol-level networking, not system architecture.",
+          "strength": 0.5,
+          "sourceType": "official_syllabus",
+          "sourceUrl": "https://ims.tau.ac.il/Tal/Syllabus/Syllabus_L.aspx?course=0512446201&year=2026",
+          "sourceAuthority": "tau_official_syllabus",
+          "sourceYear": 2026,
+          "extractedEvidence": "בקורס יוצגו מושגי יסוד בתקשורת מחשבים, בהתבסס על משפחת פרוטוקולי TCP/IP ורשת האינטרנט",
+          "inferenceLevel": "derived",
+          "confidence": 0.5,
+          "retrievedAt": "2026-11-18T00:00:00.000Z"
+        }
+      ],
+      "quarantined": [],
+      "createdAt": "2026-11-18"
+    }
+  },
+  "runDiagnostics": {
+    "0512-4200": {
+      "normalAttempts": 1,
+      "schemaRepairAttempts": 0
+    },
+    "0512-4261": {
+      "normalAttempts": 1,
+      "schemaRepairAttempts": 0
+    },
+    "0512-4295": {
+      "normalAttempts": 1,
+      "schemaRepairAttempts": 0
+    },
+    "0512-4263": {
+      "normalAttempts": 1,
+      "schemaRepairAttempts": 0
+    },
+    "0512-4290": {
+      "normalAttempts": 1,
+      "schemaRepairAttempts": 0
+    },
+    "0512-4707": {
+      "normalAttempts": 1,
+      "schemaRepairAttempts": 0
+    },
+    "0512-4711": {
+      "normalAttempts": 1,
+      "schemaRepairAttempts": 0
+    },
+    "0512-4706": {
+      "normalAttempts": 1,
+      "schemaRepairAttempts": 0
+    },
+    "0512-4161": {
+      "normalAttempts": 1,
+      "schemaRepairAttempts": 0
+    },
+    "0512-4162": {
+      "normalAttempts": 1,
+      "schemaRepairAttempts": 0
+    },
+    "0512-4100": {
+      "normalAttempts": 1,
+      "schemaRepairAttempts": 0
+    },
+    "0512-4800": {
+      "normalAttempts": 1,
+      "schemaRepairAttempts": 0
+    },
+    "0512-4264": {
+      "normalAttempts": 1,
+      "schemaRepairAttempts": 0
+    },
+    "0512-4265": {
+      "normalAttempts": 1,
+      "schemaRepairAttempts": 0
+    },
+    "0510-6101": {
+      "normalAttempts": 1,
+      "schemaRepairAttempts": 0
+    },
+    "0512-4703": {
+      "normalAttempts": 1,
+      "schemaRepairAttempts": 0
+    },
+    "0512-4492": {
+      "normalAttempts": 1,
+      "schemaRepairAttempts": 0
+    },
+    "0512-4462": {
+      "normalAttempts": 1,
+      "schemaRepairAttempts": 0
+    }
+  }
+}

@@ -90,7 +90,11 @@
       "status": "draft",
       "publicPlanner": true,
       "isFamilyDefault": true,
-      "capabilities": []
+      "capabilities": [
+        "signal_processing", "vlsi", "electromagnetics", "communications",
+        "ml_ai", "circuits_electronics", "optics_photonics", "bioelectronics",
+        "quantum_engineering", "energy_power", "computer_systems"
+      ]
     }
   ]
 }
