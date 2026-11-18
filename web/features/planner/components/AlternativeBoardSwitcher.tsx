@@ -24,6 +24,10 @@ const DIFF_ICON: Record<string, string> = {
   moves: '↔',
   peak_hours: '📊',
   active_periods: '📅',
+  specialization: '🎯',
+  prerequisite_warnings: '⚠️',
+  unverified_prerequisites: '❔',
+  progress: '🎓',
 }
 
 const DIFF_COLOR: Record<string, string> = {
@@ -32,6 +36,10 @@ const DIFF_COLOR: Record<string, string> = {
   moves: 'text-amber-600 dark:text-amber-400',
   peak_hours: 'text-[var(--text-muted)]',
   active_periods: 'text-[var(--text-muted)]',
+  specialization: 'text-[var(--purple)]',
+  prerequisite_warnings: 'text-amber-600 dark:text-amber-400',
+  unverified_prerequisites: 'text-[var(--text-muted)]',
+  progress: 'text-emerald-600 dark:text-emerald-400',
 }
 
 /** The button's whole label: "חלופה א׳ · <short title>". The courses live in the details below. */

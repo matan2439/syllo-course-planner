@@ -24,6 +24,8 @@ import type { ConstraintModel } from './planner_types';
 import { placedCourseIds } from './planner_types';
 import { TOPIC_INTEREST_LABELS_HE } from './preference_elicitation';
 import type { TopicId } from './course_topics';
+import { degreeHours } from './planner_goals';
+import { shadowPrerequisiteAudit, type PrerequisiteCatalog } from './prerequisites';
 
 /** Repository-established bound: `DEFAULT_MAX_CANDIDATES`. */
 export const MAX_EXPOSED_ALTERNATIVES = 3;
@@ -33,7 +35,10 @@ export interface AlternativeSemester {
   courseIds: string[];
 }
 
-export type DifferenceKind = 'adds' | 'removes' | 'moves' | 'peak_hours' | 'active_periods';
+export type DifferenceKind =
+  | 'adds' | 'removes' | 'moves' | 'peak_hours' | 'active_periods'
+  /** Quality dimensions — each is emitted only when the data supports it and the two plans differ. */
+  | 'specialization' | 'prerequisite_warnings' | 'unverified_prerequisites' | 'progress';
 
 export interface PlanDifference {
   kind: DifferenceKind;
@@ -65,6 +70,8 @@ export interface PlanAlternative {
   /** Structured version of the same differences, for richer UI rendering. */
   differences: PlanDifference[];
   workload: { peakHours: number; totalHours: number; activePeriods: number };
+  /** Specialization, prerequisite and progress quality derived from held data (server-side; the wire carries the differences). */
+  quality: AlternativeQuality;
 }
 
 /**
@@ -164,11 +171,50 @@ function labelFor(
   return used.has(label) ? `חלופה ${index + 1}` : label;
 }
 
+/**
+ * Quality of one candidate on dimensions beyond course placement. Every number is derived from data the
+ * system actually holds: the stated-interest fit map, the official registrar prerequisite records and the
+ * degree-hours model. Nothing here is an invented score.
+ */
+export interface AlternativeQuality {
+  /** Courses with topic fit for the stated interest. `null` = no interest was stated (not applicable, not zero). */
+  specialization: { focusCourses: number; focusHours: number } | null;
+  prerequisites: {
+    /** Placements an official, verified prerequisite would reject — SHADOW MODE: shown as warnings, never blocking. */
+    verifiedWarnings: number;
+    /** Placed courses whose "no prerequisites" is an assumption or a single-source absence, or whose requirement is unresolved. */
+    unverifiedCourses: number;
+  };
+  progress: { degreeHours: number; requiredHours: number };
+}
+
+export function qualityOf(c: PlanCandidate, model: ConstraintModel, catalog?: PrerequisiteCatalog | null): AlternativeQuality {
+  const fit = model.courseFitById;
+  const placed = coursesOf(c);
+  const hours = (id: string) => model.profiles.get(id)?.hours ?? 0;
+  const focus = fit?.size ? placed.filter((id) => (fit.get(id) ?? 0) > 0) : null;
+  const audit = shadowPrerequisiteAudit({
+    semesters: model.knownSemesterIds.map((semesterId) => ({ semesterId, courseIds: c.state.semesters[semesterId] ?? [] })),
+    completedCourseIds: [...model.completedCourseIds, ...(model.currentlyPlannedCourseIds ?? [])],
+    programId: model.programId,
+    ...(catalog !== undefined ? { catalog } : {}),
+  });
+  return {
+    specialization: focus ? { focusCourses: focus.length, focusHours: focus.reduce((sum, id) => sum + hours(id), 0) } : null,
+    prerequisites: {
+      verifiedWarnings: audit.wouldBlock.filter((b) => b.enforcementGrade === 'verified').length,
+      unverifiedCourses: new Set([...audit.unknown, ...audit.assumedNone, ...audit.wouldBlock.filter((b) => b.enforcementGrade === 'advisory').map((b) => b.courseId)]).size,
+    },
+    progress: { degreeHours: degreeHours(c.state, model), requiredHours: model.degreeRequiredHours },
+  };
+}
+
 /** Factual differences against the recommended plan — derived, never authored. */
 function computeDifferences(
   candidate: PlanCandidate,
   recommended: PlanCandidate,
   model: ConstraintModel,
+  catalog?: PrerequisiteCatalog | null,
 ): PlanDifference[] {
   if (candidate.id === recommended.id) return [];
   const diffs: PlanDifference[] = [];
@@ -209,6 +255,21 @@ function computeDifferences(
   if (a.activePeriods !== b.activePeriods) {
     diffs.push({ kind: 'active_periods', textHe: `${a.activePeriods} סמסטרים פעילים לעומת ${b.activePeriods}` });
   }
+
+  const qa = qualityOf(candidate, model, catalog);
+  const qb = qualityOf(recommended, model, catalog);
+  if (qa.specialization && qb.specialization && qa.specialization.focusCourses !== qb.specialization.focusCourses) {
+    diffs.push({ kind: 'specialization', textHe: `${qa.specialization.focusCourses} קורסים התואמים את תחום ההתמקדות לעומת ${qb.specialization.focusCourses}` });
+  }
+  if (qa.prerequisites.verifiedWarnings !== qb.prerequisites.verifiedWarnings) {
+    diffs.push({ kind: 'prerequisite_warnings', textHe: `${qa.prerequisites.verifiedWarnings} אזהרות דרישות קדם רשמיות לעומת ${qb.prerequisites.verifiedWarnings} (אזהרה בלבד, לא חסימה)` });
+  }
+  if (qa.prerequisites.unverifiedCourses !== qb.prerequisites.unverifiedCourses) {
+    diffs.push({ kind: 'unverified_prerequisites', textHe: `${qa.prerequisites.unverifiedCourses} קורסים עם דרישות קדם שלא אומתו לעומת ${qb.prerequisites.unverifiedCourses}` });
+  }
+  if (qa.progress.degreeHours !== qb.progress.degreeHours) {
+    diffs.push({ kind: 'progress', textHe: `${qa.progress.degreeHours} מתוך ${qa.progress.requiredHours} ש״ש לתואר לעומת ${qb.progress.degreeHours}` });
+  }
   return diffs;
 }
 
@@ -223,6 +284,8 @@ export interface BuildAlternativesInput {
   objectiveIds: string[];
   topicIds?: readonly TopicId[];
   maxExposed?: number;
+  /** Test seam: the official prerequisite catalog (defaults to the committed registrar data). */
+  prerequisiteCatalog?: PrerequisiteCatalog | null;
 }
 
 /**
@@ -304,9 +367,10 @@ export function buildPlanAlternatives(input: BuildAlternativesInput): PlanAltern
       return label;
     })(),
     ...(() => {
-      const diffs = computeDifferences(c, recommended, input.model);
+      const diffs = computeDifferences(c, recommended, input.model, input.prerequisiteCatalog);
       return { differences: diffs, differencesHe: diffs.map((d) => d.textHe) };
     })(),
     workload: workloadOf(c, input.model),
+    quality: qualityOf(c, input.model, input.prerequisiteCatalog),
   }));
 }

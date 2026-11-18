@@ -237,7 +237,7 @@ export interface GeneratedPlanModel {
     objectiveScores: Array<{ objectiveId: string; normalized: number }>
     labelHe: string
     differencesHe: string[]
-    differences?: Array<{ kind: 'adds' | 'removes' | 'moves' | 'peak_hours' | 'active_periods'; textHe: string; courseIds?: string[] }>
+    differences?: Array<{ kind: 'adds' | 'removes' | 'moves' | 'peak_hours' | 'active_periods' | 'specialization' | 'prerequisite_warnings' | 'unverified_prerequisites' | 'progress'; textHe: string; courseIds?: string[] }>
     workload: { peakHours: number; totalHours: number; activePeriods: number }
     /** Degree requirements recomputed by the server for this alternative's plan. */
     requirementsValidation?: BoardRequirementsModel

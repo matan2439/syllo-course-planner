@@ -44,3 +44,18 @@ test('each button shows the alternative name and workload; its courses live in t
   fireEvent.click(second)
   expect(onSelect).toHaveBeenCalledWith('b')
 })
+
+test('quality differences (specialization, prerequisite warnings, unverified data, progress) render with their own marker', () => {
+  const diffs = [
+    { kind: 'specialization' as const, textHe: '3 קורסים התואמים את תחום ההתמקדות לעומת 1' },
+    { kind: 'prerequisite_warnings' as const, textHe: '0 אזהרות דרישות קדם רשמיות לעומת 2 (אזהרה בלבד, לא חסימה)' },
+    { kind: 'unverified_prerequisites' as const, textHe: '1 קורסים עם דרישות קדם שלא אומתו לעומת 0' },
+    { kind: 'progress' as const, textHe: '185 מתוך 185 ש״ש לתואר לעומת 183' },
+  ]
+  const alternatives = [alternative('a', 'מומלצת'), { ...alternative('b', 'התמקדות'), differences: diffs, differencesHe: diffs.map((d) => d.textHe) }]
+  render(<AlternativeBoardSwitcher alternatives={alternatives} selectedId="b" onSelect={jest.fn()} courseNameById={{}} />)
+  const list = screen.getByLabelText('הבדלים מול ההצעה המומלצת')
+  for (const d of diffs) expect(within(list).getByText(d.textHe)).toBeInTheDocument()
+  expect(list).toHaveTextContent('🎯')
+  expect(list).toHaveTextContent('⚠️')
+})
