@@ -42,6 +42,16 @@ export interface ConstraintModel {
   knownSemesterIds: string[];
   /** Courses the user already completed (never re-placed). */
   completedCourseIds: Set<string>;
+  /**
+   * True when the student explicitly provided their completion history (via AI
+   * session, transcript import, or authoritative board). False/absent means the
+   * history is unknown — the prerequisite gate must NOT enforce in that state,
+   * because an empty `completedCourseIds` with no knowledge marker means "never
+   * asked", not "nothing completed". Built from `personal_status.completed_knowledge`
+   * by `buildModel`; always set to `true` in test fixtures that explicitly supply
+   * completion data to verify gate behaviour.
+   */
+  completedCoursesKnown?: boolean;
   /** Courses the user is currently taking/in-progress (already accounted for as prior progress; must not be re-proposed). Always set by buildConstraintModel (defaults to empty); optional here so hand-built fixtures don't need to supply it. */
   currentlyPlannedCourseIds?: Set<string>;
   /** Not-completed mandatory course_ids that must appear in the plan. */
