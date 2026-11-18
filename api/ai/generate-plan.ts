@@ -1675,8 +1675,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   // in real, evidence-backed per-course topic coverage from the static catalog.
   // Merges additively with any cache-based fit: courses get credit from both
   // sources when both agree, and either source alone is enough to rank a course.
-  if (resolvedGrounded?.topicIds?.length) {
-    const topicFit = buildCourseFitByIdFromTopicProfiles(board, resolvedGrounded.topicIds);
+  const preferTopicIds = resolvedGrounded?.objectives.find((o) => o.id === 'prefer_topic_alignment')?.topicIds;
+  if (preferTopicIds?.length) {
+    const topicFit = buildCourseFitByIdFromTopicProfiles(board, preferTopicIds);
     if (topicFit) {
       if (!courseFitById) {
         courseFitById = topicFit;
@@ -1754,7 +1755,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       id: id!,
       confirmed: true as const,
       snapshotId: preparedEvidence.snapshot.snapshotId,
-      ...(resolvedGrounded?.topicIds?.length ? { topicIds: resolvedGrounded.topicIds } : {}),
+      ...(preferTopicIds?.length ? { topicIds: preferTopicIds } : {}),
     });
     // M1/M2 — EVERY confirmed objective reaches ranking. No precedence: the
     // set is scored independently per objective against this ONE snapshot and
@@ -2029,7 +2030,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
         // objective happens to sort first, so reading it here made the topic
         // label unreachable whenever another objective was also active.
         ...(() => {
-          const topics = (resolvedGrounded?.objectives ?? []).find((o) => o.kind === 'topic')?.topicIds;
+          const topics = (resolvedGrounded?.objectives ?? []).find((o) => o.id === 'prefer_topic_alignment')?.topicIds;
           return topics?.length ? { topicIds: topics } : {};
         })(),
       }),
