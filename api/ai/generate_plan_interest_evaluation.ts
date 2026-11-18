@@ -21,6 +21,8 @@ import type { RawAcademicInterestProfile } from './academic_interest_profile';
 import { evaluateAcademicInterestFit } from './academic_interest_evaluation';
 import type { AcademicInterestEvaluationResult } from './academic_interest_evaluation';
 import { createMechanicalEngineering2027Resolver } from './course_topic_profiles_static';
+import type { TopicId } from './course_topics';
+import { areasForTopicIds } from './focus_topic_objective';
 
 export interface ProposalSemester {
   semester_id: string;
@@ -36,6 +38,51 @@ export function extractPlannedCourseIds(semesters: ProposalSemester[]): string[]
     }
   }
   return out;
+}
+
+/**
+ * Build a per-course soft fit score from the static topic profiles, grounded in
+ * the confirmed topicIds (from a `prefer_topic_alignment` objective). Scores each
+ * catalog course by summing the weights of matching AcademicFocusArea entries in
+ * its CourseTopicProfile. Returns undefined when topicIds is empty, no courses
+ * are on the board, or none score above zero — the planner is byte-identical
+ * to the no-fit case in all such scenarios.
+ */
+export function buildCourseFitByIdFromTopicProfiles(
+  board: unknown,
+  topicIds: ReadonlyArray<TopicId>,
+): Map<string, number> | undefined {
+  if (!topicIds.length) return undefined;
+
+  const requestedAreas = areasForTopicIds(topicIds);
+  if (!requestedAreas.size) return undefined;
+
+  const boardAny = board as Record<string, unknown> | null | undefined;
+  const courseIds: string[] = [];
+  const seen = new Set<string>();
+  const addId = (c: unknown) => {
+    const id = (c as Record<string, unknown> | null | undefined)?.course_id;
+    if (typeof id === 'string' && id && !seen.has(id)) { seen.add(id); courseIds.push(id); }
+  };
+  for (const s of (boardAny?.semesters as unknown[]) ?? []) {
+    for (const c of (s as Record<string, unknown> | null | undefined)?.courses as unknown[] ?? []) addId(c);
+  }
+  for (const c of ((boardAny?.metadata as Record<string, unknown> | null | undefined)?.program_repository_courses as unknown[]) ?? []) addId(c);
+
+  if (!courseIds.length) return undefined;
+
+  const resolver = createMechanicalEngineering2027Resolver();
+  const { profilesByCourseId } = resolver.resolveCourseTopicProfiles(courseIds);
+
+  const fitById = new Map<string, number>();
+  for (const [courseId, profile] of Object.entries(profilesByCourseId)) {
+    let score = 0;
+    for (const tw of profile.topics) {
+      if (requestedAreas.has(tw.area)) score += tw.weight;
+    }
+    if (score > 0) fitById.set(courseId, score);
+  }
+  return fitById.size ? fitById : undefined;
 }
 
 /**
