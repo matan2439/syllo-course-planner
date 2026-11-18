@@ -1825,7 +1825,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
                 `עבור קטלוג ${String(model.catalogYear ?? '')}; היא אינה קובעת חוקיות, תנאי קדם או דרישות תואר.`,
             }
           : {}),
-        groundedObjective: resolvedGrounded?.objective ?? null,
+        groundedObjective: (resolvedGrounded?.objectives.find((o) => o.id === 'prefer_topic_alignment')?.id
+          ?? resolvedGrounded?.objective) ?? null,
         preferenceProfileVersion: preference_profile?.version ?? null,
         // K9C — the impact signal the conversation needs to decide whether asking
         // the grounded question could actually change the selected plan. Computed
