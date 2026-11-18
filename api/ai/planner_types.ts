@@ -8,6 +8,7 @@
 import type { CourseProfile } from './course_profile';
 import type { AcademicProgress } from './academic_progress';
 import type { DegreeRule } from '../../shared/planner/degree-rules';
+import type { SpecializationPathway } from './specialization_pathway';
 
 /** An elective/requirement category the plan must satisfy. */
 export interface CategoryReq {
@@ -124,6 +125,25 @@ export interface ConstraintModel {
    * => no fit preference expressed, and scoring is byte-identical to before.
    */
   courseFitById?: Map<string, number>;
+  /**
+   * Workload-balance tolerance (weekly hours). When set (and no confirmed distribution policy),
+   * scorePlan ranks peak/spread in bands of this width, so a few hours of difference in the heaviest
+   * semester no longer outranks the student's stated interests. Legality (hard/user caps) is untouched.
+   * Absent => exact legacy comparison, byte-identical.
+   */
+  balanceToleranceHours?: number;
+  /**
+   * Official, VERIFIED prerequisite expressions by course id (only courses whose registrar record is
+   * `verified`, agrees across sources and names no course missing from the catalog). When present,
+   * scorePlan's legality slot counts placed courses whose prerequisite is not met by a completed or
+   * strictly-earlier course. This is a RANKING preference — it never blocks a plan.
+   * Absent => byte-identical to before.
+   */
+  officialPrerequisites?: ReadonlyMap<string, import('./prerequisites').PrerequisiteExpression>;
+  /** Program base id used to scope approved equivalences when evaluating officialPrerequisites. */
+  prerequisiteProgramId?: string;
+  /** Recommended (inferred, never official) specialization pathway ranked by the pathway_coherence goal. */
+  pathway?: SpecializationPathway;
   /** Phase 0 — institution identity. Left undefined until a real multi-institution source exists. */
   institutionId?: string;
   /** Phase 0 — program identity, derived from the request's program_id where already parsed. */

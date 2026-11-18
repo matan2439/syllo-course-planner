@@ -116,6 +116,12 @@ export function inferFocusAreasFromText(text: string): AcademicFocusArea[] {
   return [...areas];
 }
 
+/** The explicit name keywords that define the given focus areas (for corroboration against syllabus text). */
+export function topicKeywordsForAreas(areas: ReadonlyArray<AcademicFocusArea>): string[] {
+  const wanted = new Set<AcademicFocusArea>(areas);
+  return TOPIC_NAME_RULES.filter((rule) => wanted.has(rule.value)).flatMap((rule) => rule.keywords);
+}
+
 export function inferCourseTopicProfile(course: CatalogCourse): CourseTopicProfile {
   const name = (course.nameHe ?? '').toLowerCase();
   const category = course.categoryId ?? '';

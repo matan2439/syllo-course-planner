@@ -238,3 +238,22 @@ export function shadowPrerequisiteAudit(input: {
   });
   return audit;
 }
+
+/**
+ * The prerequisite expressions a ranking objective may trust: official, `verified`, agreeing across
+ * sources, and naming no course that is missing from the current catalog (those stay advisory — a
+ * student cannot plan to satisfy them). Courses outside this set simply carry no readiness rule.
+ */
+export function verifiedPrerequisiteRules(courseIds: Iterable<string>, catalog: PrerequisiteCatalog | null = loadPrerequisiteCatalog(),
+  referenced: PrerequisiteCatalog | null = loadReferencedPrerequisiteCatalog(), equivalences: EquivalenceCatalog = loadEquivalences()): Map<string, PrerequisiteExpression> {
+  const rules = new Map<string, PrerequisiteExpression>();
+  const mapped = new Set(equivalences.map((e) => e.retired));
+  for (const id of courseIds) {
+    const record = catalog?.[id];
+    if (!record || record.status !== 'verified' || !record.expression || record.needs_review || record.sources_disagree) continue;
+    const unresolved = referencedCourseIds(record.expression).some((ref) =>
+      !mapped.has(ref) && ((catalog?.[ref] ?? referenced?.[ref])?.status === 'not_in_catalog'));
+    if (!unresolved) rules.set(id, record.expression);
+  }
+  return rules;
+}
