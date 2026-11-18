@@ -753,7 +753,7 @@ export function prerequisiteVerifiedGate(
   // the current planning window), enforcing globally here produces false
   // positives for real students. The gate itself is correct; it is only
   // disabled by default pending that data-completeness fix.
-  if (!process.env.AI_PREREQ_ENFORCEMENT_STAGE2) return [];
+  if (process.env.AI_PREREQ_ENFORCEMENT_STAGE2 !== 'true') return [];
   const audit = shadowPrerequisiteAudit({
     semesters: semesters.map(s => ({ semesterId: s.semester_id, courseIds: s.course_ids })),
     completedCourseIds: model.completedCourseIds,
