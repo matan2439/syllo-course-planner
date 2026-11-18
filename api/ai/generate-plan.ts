@@ -128,6 +128,7 @@ import { preferencesWithPlannerPolicy } from './planner_policy_context';
 import { GATEWAY_ASSESSMENT_TYPES, gatewayAssessmentMismatchIds } from './gateway_assessment';
 import { databaseUrl } from '../db_env';
 import { loadBoardWithAddedSemesters } from './student_semesters';
+import { shadowPrerequisiteAudit } from './prerequisites';
 
 export const preferencesSchema = z.object({
   max_weekly_hours:        z.number().nullish(),
@@ -1381,6 +1382,33 @@ export function toProposal(
 
   // report.warnings === validatePlanState(finalState, model, pinnedHome).warnings
   warnings_he.push(...report.warnings);
+
+  // Priority 5 (staged) — surface verified prerequisite violations from the
+  // structured tau.json catalog as soft warnings. The planner already enforces
+  // flat profiles.prerequisites; this catches additional violations the richer
+  // AND/OR data sees that the flat list misses. Never blocks plans (Stage 2 /
+  // future PR will flip verified violations to blocking errors).
+  const prereqAudit = shadowPrerequisiteAudit({
+    semesters: semesters.map(s => ({ semesterId: s.semester_id, courseIds: s.course_ids })),
+    completedCourseIds: model.completedCourseIds,
+    programId: model.programId,
+  });
+  for (const block of prereqAudit.wouldBlock) {
+    if (block.status !== 'verified') continue;
+    const auditCourseName = model.profiles.get(block.courseId)?.name_he ?? block.courseId;
+    for (const alternatives of block.unmetPrerequisites) {
+      const prereqNames = alternatives
+        .map(id => model.profiles.get(id)?.name_he ?? id)
+        .join(' או ');
+      warnings_he.push(`קדם-קורס חסר: ${auditCourseName} דורש ${prereqNames}.`);
+    }
+    for (const alternatives of block.unmetCorequisites) {
+      const prereqNames = alternatives
+        .map(id => model.profiles.get(id)?.name_he ?? id)
+        .join(' או ');
+      warnings_he.push(`קו-קורס חסר: ${auditCourseName} מחייב לימוד במקביל עם ${prereqNames}.`);
+    }
+  }
 
   // Codex review finding (PR #62, round 13, continued): report.valid (above)
   // — and therefore the caller-supplied rationale_he (PlannerWorker.explain()'s
