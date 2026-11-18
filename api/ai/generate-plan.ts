@@ -722,6 +722,53 @@ function legalityGate(
 }
 
 /**
+ * Stage 2 of prerequisite enforcement — flip verified violations from the
+ * structured tau.json catalog (AND/OR trees, `status: "verified"`) to
+ * blocking errors, closing the same "computed-but-discarded validation
+ * signal" gap every other gate here addresses for its own check.
+ *
+ * Stage 1 (Priority 5, PR #152) already adds soft warnings_he entries for
+ * these exact violations in toProposal(); this gate adds matching hard
+ * blocking errors so a plan with an unmet verified prerequisite is blocked
+ * (blocked:true), never just warned.
+ *
+ * Uses LEGALITY_VIOLATION_ERROR_PREFIX so academic_decision_runtime.ts's
+ * cause-attribution classifies this as a legality violation — the same
+ * treatment legalityGate applies to flat-prereq violations from
+ * validatePlanState.
+ *
+ * Only fires for status === 'verified' entries — the same set Stage 1 warns
+ * about — and fully respects course equivalences and completedCourseIds (via
+ * shadowPrerequisiteAudit's own loadEquivalences / catalog calls).
+ */
+export function prerequisiteVerifiedGate(
+  semesters: Array<{ semester_id: string; course_ids: string[] }>,
+  model: ConstraintModel,
+): string[] {
+  // Guarded behind AI_PREREQ_ENFORCEMENT_STAGE2 for staged rollout: real
+  // boards can carry tau.json verified prerequisites for courses whose
+  // prerequisites were completed in prior academic years not captured in the
+  // current plan_context's personal_status.completed list. Until the board
+  // data pipeline is extended to include the full course history (not just
+  // the current planning window), enforcing globally here produces false
+  // positives for real students. The gate itself is correct; it is only
+  // disabled by default pending that data-completeness fix.
+  if (!process.env.AI_PREREQ_ENFORCEMENT_STAGE2) return [];
+  const audit = shadowPrerequisiteAudit({
+    semesters: semesters.map(s => ({ semesterId: s.semester_id, courseIds: s.course_ids })),
+    completedCourseIds: model.completedCourseIds,
+    programId: model.programId,
+  });
+  const errors: string[] = [];
+  for (const block of audit.wouldBlock) {
+    if (block.status !== 'verified') continue;
+    const courseName = model.profiles.get(block.courseId)?.name_he ?? block.courseId;
+    errors.push(`${LEGALITY_VIOLATION_ERROR_PREFIX} דרישת הקדם לא מולאה עבור ${courseName}.`);
+  }
+  return errors;
+}
+
+/**
  * Deterministic Hebrew rationale — used when ExplanationCapability is absent or
  * throws (dev mode / LLM failure fallback).
  */
@@ -1383,11 +1430,12 @@ export function toProposal(
   // report.warnings === validatePlanState(finalState, model, pinnedHome).warnings
   warnings_he.push(...report.warnings);
 
-  // Priority 5 (staged) — surface verified prerequisite violations from the
-  // structured tau.json catalog as soft warnings. The planner already enforces
-  // flat profiles.prerequisites; this catches additional violations the richer
-  // AND/OR data sees that the flat list misses. Never blocks plans (Stage 2 /
-  // future PR will flip verified violations to blocking errors).
+  // Priority 5 (Stage 1) — surface verified prerequisite violations from the
+  // structured tau.json catalog as soft warnings_he. The planner already
+  // enforces flat profiles.prerequisites; this catches additional violations
+  // the richer AND/OR data sees that the flat list misses. Stage 2 (Priority
+  // 6) flips these same violations to blocking errors via
+  // prerequisiteVerifiedGate in the blockingErrors array below.
   const prereqAudit = shadowPrerequisiteAudit({
     semesters: semesters.map(s => ({ semesterId: s.semester_id, courseIds: s.course_ids })),
     completedCourseIds: model.completedCourseIds,
@@ -2098,6 +2146,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     ...missingMandatoryGate(proposal.semesters, model),
     ...mustIncludeGate(proposal.semesters, model),
     ...degreeHoursGate(proposal.semesters, model, pinnedHome),
+    ...prerequisiteVerifiedGate(proposal.semesters, model),
   ];
   // Soft, non-blocking — see maxWeeklyHoursWarnings' own comment (issue #25
   // Finding #3). Not a blockingError: the hard cap already gates via
