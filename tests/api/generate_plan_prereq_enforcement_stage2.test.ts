@@ -72,6 +72,10 @@ function minModel(profiles: CourseProfile[], degreeHours: number, completed = ne
     profiles: new Map(profiles.map(p => [p.course_id, p])),
     knownSemesterIds: ['s1', 's2'],
     completedCourseIds: completed,
+    // Unit tests supply explicit completion data (the fixture is the known state).
+    // Set completedCoursesKnown: true so the prerequisite gate runs — without it
+    // the gate skips enforcement because the history is treated as unknown.
+    completedCoursesKnown: true,
     requiredMandatoryCourseIds: [],
     categories: [],
     degreeRequiredHours: degreeHours,
@@ -148,6 +152,18 @@ describe('prerequisiteVerifiedGate (Stage 2) — unit tests', () => {
     expect(err).toContain(LEGALITY_VIOLATION_ERROR_PREFIX);
   });
 
+  test('7a. completedCoursesKnown absent/false: gate returns empty (no false positives for unknown history)', () => {
+    // A model with completedCoursesKnown not set (undefined) — simulates a student
+    // who has not yet told the system their completion history. The gate must NOT
+    // enforce in this state: an empty completedCourseIds means "never asked", not
+    // "nothing completed", and enforcing would produce false positives for real
+    // students whose year-1/2 history hasn't been recorded yet.
+    const model = { ...minModel([FE_PROFILE, S1_PROFILE, S2_PROFILE], 3), completedCoursesKnown: false };
+    const semesters = [{ semester_id: 's1', course_ids: [FE] }, { semester_id: 's2', course_ids: [] }];
+    const errors = prerequisiteVerifiedGate(semesters, model);
+    expect(errors).toEqual([]);
+  });
+
   test('7. Stage 1 warnings_he still fire alongside Stage 2 errors (no double-suppression)', () => {
     const model = minModel([FE_PROFILE, S1_PROFILE, S2_PROFILE], 3);
     const state: PlanState = { semesters: { s1: [FE], s2: [] } };
@@ -165,6 +181,15 @@ describe('prerequisiteVerifiedGate (Stage 2) — unit tests', () => {
 // ── Section B: integration tests via handler ─────────────────────────────────
 
 function planContextWithFEPlaced(personalStatus: any) {
+  // Merge a completed_knowledge marker so buildModel sets completedCoursesKnown:
+  // the prerequisite gate only enforces when the student's completion history is
+  // explicitly known (not just absent/unasked). Integration tests simulate a
+  // student who has explicitly provided their history (even if the list is empty —
+  // "I completed nothing yet").
+  const personalStatusWithKnowledge = {
+    ...personalStatus,
+    completed_knowledge: { status: 'known', provenance: 'explicit_user' },
+  };
   return {
     program_name: 'בדיקה',
     semesters: [
@@ -187,7 +212,7 @@ function planContextWithFEPlaced(personalStatus: any) {
     // degree-hour gap to fill, so it cannot incidentally place SOLIDS1 or
     // SOLIDS2 and inadvertently cure the very violation this file reproduces.
     total_hours_progress: { known_completed_hours: 182, degree_required_hours: 185 },
-    personal_status: personalStatus,
+    personal_status: personalStatusWithKnowledge,
     mandatory_unplaced: [],
   };
 }
