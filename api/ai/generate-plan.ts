@@ -1727,8 +1727,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   // in real, evidence-backed per-course topic coverage from the static catalog.
   // Merges additively with any cache-based fit: courses get credit from both
   // sources when both agree, and either source alone is enough to rank a course.
-  if (resolvedGrounded?.topicIds?.length) {
-    const topicFit = buildCourseFitByIdFromTopicProfiles(board, resolvedGrounded.topicIds);
+  const preferTopicIds = resolvedGrounded?.objectives.find((o) => o.id === 'prefer_topic_alignment')?.topicIds;
+  if (preferTopicIds?.length) {
+    const topicFit = buildCourseFitByIdFromTopicProfiles(board, preferTopicIds, program_id);
     if (topicFit) {
       if (!courseFitById) {
         courseFitById = topicFit;
@@ -2230,7 +2231,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   // plan. Never influences plan generation, scorePlan, ranking, or the fields
   // above — purely a read of proposal.semesters. Absent flag => key absent.
   if (include_interest_evaluation === true) {
-    responseBody.interestEvaluation = buildGeneratePlanInterestEvaluation(proposal.semesters, academic_interest_profile);
+    responseBody.interestEvaluation = buildGeneratePlanInterestEvaluation(proposal.semesters, academic_interest_profile, program_id);
   }
   // Opt-in AcademicDecisionAgent path — additive, default-off. The REAL
   // AcademicDecisionAgent class (academic_decision_agent.ts, built by

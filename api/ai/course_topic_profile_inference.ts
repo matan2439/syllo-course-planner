@@ -77,12 +77,51 @@ const TOPIC_NAME_RULES: ReadonlyArray<KeywordRule<AcademicFocusArea>> = [
   // the title. 'תכן'/'design'/'cad' are direct design words and are kept only for
   // display-side topic hints and for LOCATING candidate courses, never as proof.
   { keywords: ['תכן', 'תיכון', 'design', 'cad'], value: 'mechanical_design', weight: STRONG },
+  // ── EE rules ──────────────────────────────────────────────────────────────────
+  // 'תקשורת' (communications) is used here as a strong EE signal; it does not
+  // appear in the ME keyword set so there is no cross-program false-positive risk.
+  { keywords: ['תקשורת', 'תורת האינפורמציה', 'communication', 'information theory'], value: 'communications', weight: STRONG },
+  // 'עיבוד אותות' distinguishes signal processing from manufacturing ('עיבוד שבבי').
+  // The existing programming_electronics rule also lists 'עיבוד אותות' — a course
+  // may legitimately carry both areas; the two rules are independent.
+  { keywords: ['עיבוד אותות', 'עיבוד ספרתי', 'signal processing', 'DSP'], value: 'signal_processing', weight: STRONG },
+  { keywords: ['למידה עמוקה', 'למידה חישובית', 'בינה מלאכותית', 'רשת עצבית', 'machine learning', 'deep learning', 'neural network', 'reinforcement learning'], value: 'ml_ai', weight: STRONG },
+  // 'אלקטרוניקה' alone maps here: an EE electronics course is about circuits.
+  // ME courses whose names contain 'אלקטרוניקה' (e.g., basic electronics exposure)
+  // also receive this tag — honest, since they do teach circuits concepts.
+  { keywords: ['מעגלים אלקטרוניים', 'מעגלים אנלוגי', 'מעגלים ספרתי', 'התקנים אלקטרוני', 'אלקטרוניקה', 'electronic circuit', 'analog circuit'], value: 'circuits_electronics', weight: STRONG },
+  // 'תמסורת' (transmission lines) is specific to EM; 'גלים' alone is too broad.
+  { keywords: ['אנטנות', 'מיקרוגל', 'קרינה אלקטרומגנ', 'תמסורת גלים', 'electromagnetic', 'antenna', 'microwave'], value: 'electromagnetics', weight: STRONG },
+  { keywords: ['vlsi', 'VLSI', 'מעגלים משולבים', 'סינתזה לוגית'], value: 'vlsi', weight: STRONG },
+  { keywords: ['אופטיק', 'לייזר', 'פוטוני', 'optic', 'laser', 'photon'], value: 'optics_photonics', weight: STRONG },
+  // 'ביואלקטרוניקה' is specific; avoids overlap with the ME 'ביו' biomechanics rule.
+  { keywords: ['ביואלקטרוניקה', 'ביו-אלקטרוני', 'פיסיולוגי', 'bioelectronic', 'physiological'], value: 'bioelectronics', weight: STRONG },
+  { keywords: ['קוונטי', 'קוואנטי', 'quantum'], value: 'quantum_engineering', weight: STRONG },
+  // EE power/energy: 'המרת אנרגיה' (energy conversion) and 'הינע חשמלי' (electric drive)
+  // distinguish this from ME's bare 'אנרגיה' (energy) which maps to 'energy'.
+  { keywords: ['המרת אנרגיה', 'הינע חשמלי', 'ממיר', 'מנוע חשמלי', 'energy conversion', 'power electronics', 'electric motor'], value: 'energy_power', weight: STRONG },
+  { keywords: ['מבנה המחשב', 'מערכות הפעלה', 'ארכיטקטור', 'computer architecture', 'operating system'], value: 'computer_systems', weight: STRONG },
 ];
 
 /** Clean, homogeneous category ids that justify a (medium-weight) topic area on their own. */
 const CATEGORY_TOPIC_RULES: Readonly<Record<string, AcademicFocusArea>> = {
+  // ME categories
   fluids: 'fluids',
   solids: 'strength_analysis',
+  // EE categories — each is homogeneous enough to establish the area on its own
+  communications: 'communications',
+  signal_processing: 'signal_processing',
+  ml_ai: 'ml_ai',
+  devices_nanoelectronics: 'circuits_electronics',
+  electromagnetics_radiation: 'electromagnetics',
+  vlsi: 'vlsi',
+  optics_photonics: 'optics_photonics',
+  bioelectronics: 'bioelectronics',
+  quantum: 'quantum_engineering',
+  energy_renewables: 'energy_power',
+  computer_systems: 'computer_systems',
+  // EE control shares the existing ME control_systems area
+  control_autonomous: 'control_systems',
 };
 
 /** Style rules matched as case-insensitive substrings of the course name. */

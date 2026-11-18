@@ -41,6 +41,7 @@ export const TOPIC_MAPPER_VERSION = 'topic-map/1.1.0';
  * Nothing is added here because a user asked for it.
  */
 export const TOPIC_IDS = [
+  // Mechanical Engineering topics
   'engineering_design',
   'finite_element_analysis',
   'solid_mechanics',
@@ -51,6 +52,18 @@ export const TOPIC_IDS = [
   'thermofluids',
   'energy_systems',
   'programming_electronics',
+  // Electrical Engineering topics
+  'communications_networking',
+  'signal_processing',
+  'machine_learning',
+  'analog_digital_circuits',
+  'electromagnetics',
+  'vlsi_chip_design',
+  'optics_photonics',
+  'biomedical_electronics',
+  'quantum_information',
+  'power_systems',
+  'embedded_systems',
 ] as const;
 export type TopicId = (typeof TOPIC_IDS)[number];
 
@@ -209,6 +222,120 @@ const VOCABULARY: VocabularyEntry[] = [
   {
     topicId: 'programming_electronics',
     phrases: ['תכנות', 'מיקרו-בקר', 'מעגל חשמלי', 'חיישנים', 'עיבוד אותות', 'אלקטרוניקה', 'ארדואינו'],
+    confidence: 0.9,
+  },
+  // ── Electrical Engineering vocabulary ────────────────────────────────────────
+  // Phrases characteristic of official TAU EE syllabi. The same conservative
+  // constraints apply: boundary-enforced phrase matching, no title mining, no
+  // inference from context. Only added for topicIds new in the EE extension;
+  // 'programming_electronics' above already covers basic circuit and sensor work.
+  {
+    topicId: 'communications_networking',
+    phrases: [
+      'ערוצי תקשורת', 'תורת האינפורמציה', 'קידוד ערוץ', 'מודולציה', 'רב-גישה',
+      'ניצולת הספקטרום', 'רשת תקשורת', 'פרוטוקולי תקשורת', 'communication channel',
+      'channel capacity', 'channel coding', 'modulation', 'multiple access',
+      'information theory', 'network protocol',
+    ],
+    confidence: 0.9,
+  },
+  {
+    topicId: 'signal_processing',
+    phrases: [
+      'עיבוד אותות ספרתי', 'המרת פורייה', 'פילטרים דיגיטליים', 'ניתוח ספקטרלי',
+      'אות ומערכת', 'דגימה ושחזור', 'ממירי A/D', 'digital filter', 'spectral analysis',
+      'discrete Fourier transform', 'DFT', 'FFT', 'sampling theorem', 'Z-transform',
+    ],
+    confidence: 0.9,
+  },
+  {
+    topicId: 'machine_learning',
+    phrases: [
+      'למידת מכונה', 'למידה עמוקה', 'רשתות עצביות', 'רשת עצבית', 'בינה מלאכותית',
+      'סיווג', 'אשכול', 'רגרסיה', 'machine learning', 'deep learning',
+      'neural network', 'reinforcement learning', 'supervised learning',
+      'convolutional neural', 'transformer', 'gradient descent',
+    ],
+    confidence: 0.9,
+  },
+  {
+    topicId: 'analog_digital_circuits',
+    phrases: [
+      'מעגלים אנלוגיים', 'מעגלים ספרתיים', 'מגבר תפעולי', 'טרנזיסטור', 'דיודה',
+      'מעגלים אלקטרוניים', 'לוגיקה ספרתית', 'שערים לוגיים', 'רשמים', 'מונים',
+      'analog circuit', 'operational amplifier', 'transistor', 'MOSFET', 'BJT',
+      'digital logic', 'combinational circuit', 'sequential circuit', 'flip-flop',
+    ],
+    confidence: 0.9,
+  },
+  {
+    topicId: 'electromagnetics',
+    phrases: [
+      'שדה אלקטרומגנטי', 'גלים אלקטרומגנטיים', 'קרינה אלקטרומגנטית', 'אנטנות',
+      'מיקרוגל', 'התפשטות גלים', 'שדה חשמלי', 'שדה מגנטי', 'electromagnetic field',
+      'electromagnetic wave', 'Maxwell equations', 'antenna', 'microwave',
+      'wave propagation', 'transmission line', 'radiation', 'electromagnetic',
+    ],
+    confidence: 0.9,
+  },
+  {
+    topicId: 'vlsi_chip_design',
+    phrases: [
+      'מעגלים משולבים', 'עיצוב VLSI', 'סינתזה לוגית', 'מיפוי טכנולוגי', 'הנחת פיזית',
+      'נתיב קריטי', 'כלי EDA', 'VLSI', 'integrated circuit design', 'logic synthesis',
+      'place and route', 'static timing analysis', 'HDL', 'Verilog', 'VHDL',
+      'hardware description language', 'CMOS design',
+    ],
+    confidence: 0.9,
+  },
+  {
+    topicId: 'optics_photonics',
+    phrases: [
+      'אופטיקה', 'סיבים אופטיים', 'לייזר', 'פוטוניקה', 'פיזיקת הלייזר',
+      'סיב אופטי', 'עדשות', 'ספקטרוסקופיה', 'optics', 'photonics', 'laser',
+      'optical fiber', 'electromagnetic spectrum', 'optical communication',
+      'waveguide', 'holography', 'photodetector',
+    ],
+    confidence: 0.9,
+  },
+  {
+    topicId: 'biomedical_electronics',
+    phrases: [
+      'ביואלקטרוניקה', 'אלקטרו-פיסיולוגיה', 'אות ביולוגי', 'מכשיר רפואי',
+      'ביואימפדנס', 'EEG', 'ECG', 'EMG', 'bioelectronics', 'bioimpedance',
+      'physiological signal', 'neural recording', 'medical device', 'biosensor',
+      'bio-instrumentation',
+    ],
+    confidence: 0.9,
+  },
+  {
+    topicId: 'quantum_information',
+    phrases: [
+      'מחשוב קוונטי', 'אינפורמציה קוונטית', 'ביט קוונטי', 'קיוביט', 'שזירה קוונטית',
+      'הצפנה קוונטית', 'אלגוריתמים קוונטיים', 'quantum computing', 'quantum information',
+      'qubit', 'quantum entanglement', 'quantum cryptography', 'quantum algorithm',
+      'quantum circuit', 'superposition',
+    ],
+    confidence: 0.9,
+  },
+  {
+    topicId: 'power_systems',
+    phrases: [
+      'אלקטרוניקת הספק', 'המרת אנרגיה', 'ממיר', 'הינע חשמלי', 'מנוע חשמלי',
+      'מערכת חשמל', 'רשת חשמל', 'כוח חשמלי', 'power electronics', 'power converter',
+      'electric drive', 'power system', 'renewable energy', 'inverter', 'rectifier',
+      'DC-DC converter', 'grid-connected', 'electric motor',
+    ],
+    confidence: 0.9,
+  },
+  {
+    topicId: 'embedded_systems',
+    phrases: [
+      'מערכות משובצות', 'מעבד', 'מיקרו-עיבד', 'ארכיטקטורת מחשב', 'מערכת הפעלה',
+      'תכנות מערכתי', 'RTOS', 'embedded system', 'microprocessor', 'computer architecture',
+      'operating system', 'real-time system', 'memory hierarchy', 'pipeline',
+      'instruction set', 'cache memory', 'hardware-software interface',
+    ],
     confidence: 0.9,
   },
 ];

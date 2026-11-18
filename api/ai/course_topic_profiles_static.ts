@@ -24,13 +24,14 @@
  * or any UI. No LLM, no Supabase.
  */
 
-import { loadMechanicalEngineering2027Catalog } from './course_catalog';
+import { loadMechanicalEngineering2027Catalog, loadElectricalEngineering2027Catalog } from './course_catalog';
 import { inferCourseTopicProfile } from './course_topic_profile_inference';
 import { createStaticCourseTopicProfileResolver } from './course_topic_profile_resolver';
 import type { CourseTopicProfileResolver } from './course_topic_profile_resolver';
 import type { CourseTopicProfile, CourseTopicProfileSource } from './course_topic_profile';
 
 let cachedProfiles: Record<string, CourseTopicProfile> | null = null;
+let cachedEeProfiles: Record<string, CourseTopicProfile> | null = null;
 
 /**
  * The full-catalog courseId->CourseTopicProfile map (memoized). Built once by
@@ -49,6 +50,20 @@ export function getMechanicalEngineering2027TopicProfiles(): Record<string, Cour
 /** A resolver backed by the full-catalog static seed. */
 export function createMechanicalEngineering2027Resolver(): CourseTopicProfileResolver {
   return createStaticCourseTopicProfileResolver(getMechanicalEngineering2027TopicProfiles());
+}
+
+export function getElectricalEngineering2027TopicProfiles(): Record<string, CourseTopicProfile> {
+  if (cachedEeProfiles) return cachedEeProfiles;
+  const map: Record<string, CourseTopicProfile> = {};
+  for (const course of loadElectricalEngineering2027Catalog()) {
+    map[course.courseId] = inferCourseTopicProfile(course);
+  }
+  cachedEeProfiles = map;
+  return map;
+}
+
+export function createElectricalEngineering2027Resolver(): CourseTopicProfileResolver {
+  return createStaticCourseTopicProfileResolver(getElectricalEngineering2027TopicProfiles());
 }
 
 export interface CourseTopicProfileSourceSummary {
