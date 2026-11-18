@@ -1,0 +1,792 @@
+{
+ "prerequisite_source": {
+  "catalog_year": 2026,
+  "generated_at": "2026-11-13",
+  "parser_version": "2"
+ },
+ "boards": {
+  "mechanical_engineering_2027": {
+   "family": "mechanical_engineering",
+   "total_courses": 156,
+   "syllabus": {
+    "text_available": 117,
+    "url_but_no_text": 31,
+    "no_official_url": 8
+   },
+   "prerequisites": {
+    "verified_expression": 59,
+    "verified_none": 61,
+    "none_listed_single_source": 28,
+    "assumed_none_no_syllabus": 0,
+    "not_in_catalog": 8,
+    "unknown": 0,
+    "no_record": 0,
+    "unresolved_total": 36,
+    "unresolved_course_ids": [
+     "0542-4093",
+     "0555-4000",
+     "0555-4432",
+     "0608-1153",
+     "0609-1018",
+     "0609-1201",
+     "0609-1209",
+     "0609-1225",
+     "0609-1226",
+     "0612-6041",
+     "0612-6044",
+     "0621-1194",
+     "0621-1220",
+     "0622-1004",
+     "0631-2503",
+     "0662-1180",
+     "0662-1757",
+     "0662-2253",
+     "0662-2615",
+     "0662-2642",
+     "0662-2649",
+     "0662-2653",
+     "0662-2656",
+     "0669-6198",
+     "0669-6203",
+     "0671-1130",
+     "0671-2215",
+     "0671-2331",
+     "0671-2383",
+     "0671-2668",
+     "0671-2669",
+     "0671-2670",
+     "0671-4389",
+     "0672-1557",
+     "0677-1283",
+     "1673-4026"
+    ],
+    "needs_review": [],
+    "sources_disagree": []
+   },
+   "equivalence_reliance": {
+    "edges_via_inferred_equivalence": [
+     "0542-2400→0509-1510",
+     "0542-2400→0542-1830",
+     "0542-3780→0509-1510",
+     "0542-3780→0542-1830",
+     "0542-4091→0542-1830",
+     "0542-4425→0509-1510"
+    ],
+    "edges_via_registrar_listed_alternative": [
+     "0542-2500→0509-1845",
+     "0542-4422→0509-1824"
+    ],
+    "edges_to_retired_course_without_equivalence": [
+     "0512-4702→0512-2507",
+     "0671-1238→0671-1035"
+    ],
+    "edges_to_courses_outside_this_board": 60
+   },
+   "topics": {
+    "official_syllabus_topics": 1,
+    "machine_extracted_topics_only": 0,
+    "unstructured_syllabus_summary_only": 116,
+    "no_usable_topics": 39,
+    "captured_evidence_profiles": 7
+   },
+   "availability": {
+    "confirmed_official_year": 119,
+    "not_offered_this_year": 37,
+    "unknown": 0,
+    "projected": 0,
+    "note": "No projection from historical offering patterns exists yet; every availability value is the official listing of catalog year 2026."
+   },
+   "classification": {
+    "unresolved": 12,
+    "unresolved_course_ids": [
+     "0512-1204",
+     "0542-2400",
+     "0542-2500",
+     "0542-3243",
+     "0542-3620",
+     "0542-3780",
+     "0542-3791",
+     "0542-3792",
+     "0542-4010",
+     "0542-4020",
+     "0542-4091",
+     "0542-4092"
+    ]
+   },
+   "specialization_requirements": {
+    "spec_present": true,
+    "categories": [
+     "fluids",
+     "solids",
+     "systems",
+     "advanced_labs",
+     "other_specialization"
+    ],
+    "mandatory_courses": 35,
+    "source_conflicts_recorded": 10,
+    "known_gaps_recorded": 0
+   }
+  },
+  "mechanical_engineering_years_1_2_2027": {
+   "family": "mechanical_engineering",
+   "total_courses": 112,
+   "syllabus": {
+    "text_available": 55,
+    "url_but_no_text": 26,
+    "no_official_url": 31
+   },
+   "prerequisites": {
+    "verified_expression": 17,
+    "verified_none": 62,
+    "none_listed_single_source": 26,
+    "assumed_none_no_syllabus": 0,
+    "not_in_catalog": 7,
+    "unknown": 0,
+    "no_record": 0,
+    "unresolved_total": 33,
+    "unresolved_course_ids": [
+     "0608-1153",
+     "0609-1018",
+     "0609-1201",
+     "0609-1209",
+     "0609-1225",
+     "0609-1226",
+     "0612-6041",
+     "0612-6044",
+     "0621-1194",
+     "0621-1220",
+     "0622-1004",
+     "0631-2503",
+     "0662-1180",
+     "0662-1757",
+     "0662-2253",
+     "0662-2615",
+     "0662-2642",
+     "0662-2649",
+     "0662-2653",
+     "0662-2656",
+     "0669-6198",
+     "0669-6203",
+     "0671-1130",
+     "0671-2215",
+     "0671-2331",
+     "0671-2383",
+     "0671-2668",
+     "0671-2669",
+     "0671-2670",
+     "0671-4389",
+     "0672-1557",
+     "0677-1283",
+     "1673-4026"
+    ],
+    "needs_review": [],
+    "sources_disagree": []
+   },
+   "equivalence_reliance": {
+    "edges_via_inferred_equivalence": [],
+    "edges_via_registrar_listed_alternative": [
+     "0509-1645→0509-1824",
+     "0509-1647→0509-1824",
+     "0509-2805→0509-1824",
+     "0509-2805→0509-1843",
+     "0509-2843→0509-1843",
+     "0509-2843→0509-1845",
+     "0509-2844→0509-1824",
+     "0509-2844→0509-1843",
+     "0509-2846→0509-1845",
+     "0512-1205→0509-1845",
+     "0542-2200→0509-1845",
+     "0542-2500→0509-1845"
+    ],
+    "edges_to_retired_course_without_equivalence": [
+     "0509-1645→0509-1846",
+     "0509-1647→0509-1846",
+     "0671-1238→0671-1035"
+    ],
+    "edges_to_courses_outside_this_board": 16
+   },
+   "topics": {
+    "official_syllabus_topics": 0,
+    "machine_extracted_topics_only": 0,
+    "unstructured_syllabus_summary_only": 55,
+    "no_usable_topics": 57,
+    "captured_evidence_profiles": 0
+   },
+   "availability": {
+    "confirmed_official_year": 55,
+    "not_offered_this_year": 33,
+    "unknown": 24,
+    "projected": 0,
+    "note": "No projection from historical offering patterns exists yet; every availability value is the official listing of catalog year 2026."
+   },
+   "classification": {
+    "unresolved": 24,
+    "unresolved_course_ids": [
+     "0509-1624",
+     "0509-1645",
+     "0509-1646",
+     "0509-1647",
+     "0509-1815",
+     "0509-1829",
+     "0509-1834",
+     "0509-2805",
+     "0509-2843",
+     "0509-2844",
+     "0509-2846",
+     "0512-1205",
+     "0542-1510",
+     "0542-1800",
+     "0542-1810",
+     "0542-1820",
+     "0542-1821",
+     "0542-2110",
+     "0542-2200",
+     "0542-2500",
+     "0542-2600",
+     "0542-3804",
+     "0581-1111",
+     "0581-1132"
+    ]
+   },
+   "specialization_requirements": {
+    "spec_present": true,
+    "categories": [
+     "fluids",
+     "solids",
+     "systems",
+     "advanced_labs",
+     "other_specialization"
+    ],
+    "mandatory_courses": 35,
+    "source_conflicts_recorded": 10,
+    "known_gaps_recorded": 0
+   }
+  },
+  "electrical_engineering_2027": {
+   "family": "electrical_engineering",
+   "total_courses": 194,
+   "syllabus": {
+    "text_available": 161,
+    "url_but_no_text": 26,
+    "no_official_url": 7
+   },
+   "prerequisites": {
+    "verified_expression": 95,
+    "verified_none": 66,
+    "none_listed_single_source": 26,
+    "assumed_none_no_syllabus": 0,
+    "not_in_catalog": 7,
+    "unknown": 0,
+    "no_record": 0,
+    "unresolved_total": 33,
+    "unresolved_course_ids": [
+     "0608-1153",
+     "0609-1018",
+     "0609-1201",
+     "0609-1209",
+     "0609-1225",
+     "0609-1226",
+     "0612-6041",
+     "0612-6044",
+     "0621-1194",
+     "0621-1220",
+     "0622-1004",
+     "0631-2503",
+     "0662-1180",
+     "0662-1757",
+     "0662-2253",
+     "0662-2615",
+     "0662-2642",
+     "0662-2649",
+     "0662-2653",
+     "0662-2656",
+     "0669-6198",
+     "0669-6203",
+     "0671-1130",
+     "0671-2215",
+     "0671-2331",
+     "0671-2383",
+     "0671-2668",
+     "0671-2669",
+     "0671-2670",
+     "0671-4389",
+     "0672-1557",
+     "0677-1283",
+     "1673-4026"
+    ],
+    "needs_review": [],
+    "sources_disagree": []
+   },
+   "equivalence_reliance": {
+    "edges_via_inferred_equivalence": [],
+    "edges_via_registrar_listed_alternative": [
+     "0510-6101→0512-3632",
+     "0510-6202→0512-3632",
+     "0512-4100→0512-3632",
+     "0512-4161→0512-3632",
+     "0512-4261→0512-3632",
+     "0512-4360→0512-3632",
+     "0512-4602→0512-3632"
+    ],
+    "edges_to_retired_course_without_equivalence": [
+     "0512-3513→0512-2509",
+     "0512-3513→0512-2531",
+     "0512-3543→0512-2531",
+     "0512-4263→0512-4262",
+     "0512-4660→0512-2526",
+     "0512-4702→0512-2507",
+     "0512-4800→0512-2526",
+     "0555-3240→0555-2250",
+     "0671-1238→0671-1035"
+    ],
+    "edges_to_courses_outside_this_board": 64
+   },
+   "topics": {
+    "official_syllabus_topics": 0,
+    "machine_extracted_topics_only": 0,
+    "unstructured_syllabus_summary_only": 133,
+    "no_usable_topics": 61,
+    "captured_evidence_profiles": 0
+   },
+   "availability": {
+    "confirmed_official_year": 161,
+    "not_offered_this_year": 33,
+    "unknown": 0,
+    "projected": 0,
+    "note": "No projection from historical offering patterns exists yet; every availability value is the official listing of catalog year 2026."
+   },
+   "classification": {
+    "unresolved": 8,
+    "unresolved_course_ids": [
+     "0512-3513",
+     "0512-3514",
+     "0512-3526",
+     "0512-3543",
+     "0512-3581",
+     "0512-3582",
+     "0512-4000",
+     "0512-4001"
+    ]
+   },
+   "specialization_requirements": {
+    "spec_present": true,
+    "categories": [
+     "communications",
+     "signal_processing",
+     "computer_systems",
+     "control_autonomous",
+     "energy_renewables",
+     "optics_photonics",
+     "devices_nanoelectronics",
+     "electromagnetics_radiation",
+     "bioelectronics",
+     "electronic_materials",
+     "quantum",
+     "multidisciplinary",
+     "vlsi",
+     "ml_ai",
+     "advanced_labs",
+     "hardware_exposure_elective"
+    ],
+    "mandatory_courses": 29,
+    "source_conflicts_recorded": 5,
+    "known_gaps_recorded": 0
+   }
+  },
+  "electrical_engineering_years_1_2_2027": {
+   "family": "electrical_engineering",
+   "total_courses": 207,
+   "syllabus": {
+    "text_available": 153,
+    "url_but_no_text": 27,
+    "no_official_url": 27
+   },
+   "prerequisites": {
+    "verified_expression": 104,
+    "verified_none": 70,
+    "none_listed_single_source": 26,
+    "assumed_none_no_syllabus": 0,
+    "not_in_catalog": 7,
+    "unknown": 0,
+    "no_record": 0,
+    "unresolved_total": 33,
+    "unresolved_course_ids": [
+     "0608-1153",
+     "0609-1018",
+     "0609-1201",
+     "0609-1209",
+     "0609-1225",
+     "0609-1226",
+     "0612-6041",
+     "0612-6044",
+     "0621-1194",
+     "0621-1220",
+     "0622-1004",
+     "0631-2503",
+     "0662-1180",
+     "0662-1757",
+     "0662-2253",
+     "0662-2615",
+     "0662-2642",
+     "0662-2649",
+     "0662-2653",
+     "0662-2656",
+     "0669-6198",
+     "0669-6203",
+     "0671-1130",
+     "0671-2215",
+     "0671-2331",
+     "0671-2383",
+     "0671-2668",
+     "0671-2669",
+     "0671-2670",
+     "0671-4389",
+     "0672-1557",
+     "0677-1283",
+     "1673-4026"
+    ],
+    "needs_review": [],
+    "sources_disagree": []
+   },
+   "equivalence_reliance": {
+    "edges_via_inferred_equivalence": [],
+    "edges_via_registrar_listed_alternative": [
+     "0509-1745→0509-1824",
+     "0509-1747→0509-1824",
+     "0509-2801→0509-1843",
+     "0509-2843→0509-1843",
+     "0509-2843→0509-1845",
+     "0509-2844→0509-1824",
+     "0509-2844→0509-1843",
+     "0509-2846→0509-1845",
+     "0510-6101→0512-3632",
+     "0510-6202→0512-3632",
+     "0512-2832→0509-1845",
+     "0512-3561→0509-1824",
+     "0512-4100→0512-3632",
+     "0512-4161→0512-3632",
+     "0512-4261→0512-3632",
+     "0512-4360→0512-3632",
+     "0512-4602→0512-3632"
+    ],
+    "edges_to_retired_course_without_equivalence": [
+     "0509-1745→0509-1846",
+     "0509-1747→0509-1846",
+     "0512-4263→0512-4262",
+     "0512-4660→0512-2526",
+     "0512-4702→0512-2507",
+     "0512-4800→0512-2526",
+     "0555-3240→0555-2250",
+     "0671-1238→0671-1035"
+    ],
+    "edges_to_courses_outside_this_board": 56
+   },
+   "topics": {
+    "official_syllabus_topics": 0,
+    "machine_extracted_topics_only": 0,
+    "unstructured_syllabus_summary_only": 128,
+    "no_usable_topics": 79,
+    "captured_evidence_profiles": 0
+   },
+   "availability": {
+    "confirmed_official_year": 153,
+    "not_offered_this_year": 33,
+    "unknown": 21,
+    "projected": 0,
+    "note": "No projection from historical offering patterns exists yet; every availability value is the official listing of catalog year 2026."
+   },
+   "classification": {
+    "unresolved": 21,
+    "unresolved_course_ids": [
+     "0509-1117",
+     "0509-1118",
+     "0509-1724",
+     "0509-1745",
+     "0509-1746",
+     "0509-1747",
+     "0509-1820",
+     "0509-1829",
+     "0509-1834",
+     "0509-2801",
+     "0509-2843",
+     "0509-2844",
+     "0509-2846",
+     "0512-2508",
+     "0512-2510",
+     "0512-2525",
+     "0512-2532",
+     "0512-2830",
+     "0512-2832",
+     "0512-2835",
+     "0512-3561"
+    ]
+   },
+   "specialization_requirements": {
+    "spec_present": true,
+    "categories": [
+     "communications",
+     "signal_processing",
+     "computer_systems",
+     "control_autonomous",
+     "energy_renewables",
+     "optics_photonics",
+     "devices_nanoelectronics",
+     "electromagnetics_radiation",
+     "bioelectronics",
+     "electronic_materials",
+     "quantum",
+     "multidisciplinary",
+     "vlsi",
+     "ml_ai",
+     "advanced_labs",
+     "hardware_exposure_elective"
+    ],
+    "mandatory_courses": 29,
+    "source_conflicts_recorded": 5,
+    "known_gaps_recorded": 0
+   }
+  }
+ },
+ "registered_programs_without_board": [
+  {
+   "program": "mechanical_engineering_2025",
+   "year": 2025,
+   "status": "live",
+   "board_file_present": false
+  },
+  {
+   "program": "mechanical_engineering_biomedical_track_2025",
+   "year": 2025,
+   "status": "live",
+   "board_file_present": false
+  }
+ ],
+ "priority_gaps": [
+  {
+   "course_id": "0509-1824",
+   "name_he": "אלגברה לינארית",
+   "status": "not_in_catalog",
+   "mandatory_in_a_spec": false,
+   "dependent_courses": 8,
+   "impact_score": 24,
+   "equivalence_status": "registrar_listed"
+  },
+  {
+   "course_id": "0512-3632",
+   "name_he": "אותות אקראיים ורעש",
+   "status": "not_in_catalog",
+   "mandatory_in_a_spec": false,
+   "dependent_courses": 7,
+   "impact_score": 21,
+   "equivalence_status": "registrar_listed"
+  },
+  {
+   "course_id": "0509-1845",
+   "name_he": "משוואות דיפרנציאליות רגילות",
+   "status": "not_in_catalog",
+   "mandatory_in_a_spec": false,
+   "dependent_courses": 6,
+   "impact_score": 18,
+   "equivalence_status": "registrar_listed"
+  },
+  {
+   "course_id": "0509-1843",
+   "name_he": "חשבון דיפרנציאלי ואינטגרלי",
+   "status": "not_in_catalog",
+   "mandatory_in_a_spec": false,
+   "dependent_courses": 4,
+   "impact_score": 12,
+   "equivalence_status": "registrar_listed"
+  },
+  {
+   "course_id": "0509-1846",
+   "name_he": "חשבון דיפרנציאלי ואינטגרלי 1ב",
+   "status": "not_in_catalog",
+   "mandatory_in_a_spec": false,
+   "dependent_courses": 4,
+   "impact_score": 12,
+   "equivalence_status": null
+  },
+  {
+   "course_id": "0509-1510",
+   "name_he": "גרפיקה הנדסית",
+   "status": "not_in_catalog",
+   "mandatory_in_a_spec": false,
+   "dependent_courses": 3,
+   "impact_score": 9,
+   "equivalence_status": "inferred"
+  },
+  {
+   "course_id": "0542-1830",
+   "name_he": "מבוא למדע והנדסת חומרים",
+   "status": "not_in_catalog",
+   "mandatory_in_a_spec": false,
+   "dependent_courses": 3,
+   "impact_score": 9,
+   "equivalence_status": "inferred"
+  },
+  {
+   "course_id": "0512-2526",
+   "name_he": "שדות וגלים אלקטרו מגנטיים",
+   "status": "not_in_catalog",
+   "mandatory_in_a_spec": false,
+   "dependent_courses": 2,
+   "impact_score": 6,
+   "equivalence_status": null
+  },
+  {
+   "course_id": "0512-2531",
+   "name_he": "מבוא למערכות לינאריות",
+   "status": "not_in_catalog",
+   "mandatory_in_a_spec": false,
+   "dependent_courses": 2,
+   "impact_score": 6,
+   "equivalence_status": null
+  },
+  {
+   "course_id": "0512-2507",
+   "name_he": "מבוא לפיזיקה של מוליכים למחצה",
+   "status": "not_in_catalog",
+   "mandatory_in_a_spec": false,
+   "dependent_courses": 1,
+   "impact_score": 3,
+   "equivalence_status": null
+  },
+  {
+   "course_id": "0512-2509",
+   "name_he": "מבוא להתקנים אלקטרוניים",
+   "status": "not_in_catalog",
+   "mandatory_in_a_spec": false,
+   "dependent_courses": 1,
+   "impact_score": 3,
+   "equivalence_status": null
+  },
+  {
+   "course_id": "0512-4262",
+   "name_he": "עיבוד תמונות",
+   "status": "not_in_catalog",
+   "mandatory_in_a_spec": false,
+   "dependent_courses": 1,
+   "impact_score": 3,
+   "equivalence_status": null
+  },
+  {
+   "course_id": "0555-2250",
+   "name_he": "מערכות פיזיולוגיות בגוף האדם (2)",
+   "status": "not_in_catalog",
+   "mandatory_in_a_spec": false,
+   "dependent_courses": 1,
+   "impact_score": 3,
+   "equivalence_status": null
+  },
+  {
+   "course_id": "0671-1035",
+   "name_he": "מבוא לארכיאולוגיה של תקופות הברונזה והברזל בדרום הלבנט",
+   "status": "not_in_catalog",
+   "mandatory_in_a_spec": false,
+   "dependent_courses": 1,
+   "impact_score": 3,
+   "equivalence_status": null
+  },
+  {
+   "course_id": "0542-4093",
+   "name_he": "מעבדה במערכות אנרגיה",
+   "status": "not_in_catalog",
+   "mandatory_in_a_spec": false,
+   "dependent_courses": 0,
+   "impact_score": 1,
+   "equivalence_status": null
+  },
+  {
+   "course_id": "0555-4000",
+   "name_he": "אתיקה מעשית לתלמידי  תואר ראשון  בהנדסה ומדעים",
+   "status": "none_listed",
+   "mandatory_in_a_spec": false,
+   "dependent_courses": 0,
+   "impact_score": 1,
+   "equivalence_status": null
+  },
+  {
+   "course_id": "0555-4432",
+   "name_he": "תכנון מערכות ביו-רפואיות",
+   "status": "none_listed",
+   "mandatory_in_a_spec": false,
+   "dependent_courses": 0,
+   "impact_score": 1,
+   "equivalence_status": null
+  },
+  {
+   "course_id": "0608-1153",
+   "name_he": "על רקע רומנטי? סוגיות מגדריות בספרות מתח",
+   "status": "none_listed",
+   "mandatory_in_a_spec": false,
+   "dependent_courses": 0,
+   "impact_score": 1,
+   "equivalence_status": null
+  },
+  {
+   "course_id": "0609-1018",
+   "name_he": "קשב ולמידה",
+   "status": "not_in_catalog",
+   "mandatory_in_a_spec": false,
+   "dependent_courses": 0,
+   "impact_score": 1,
+   "equivalence_status": null
+  },
+  {
+   "course_id": "0609-1201",
+   "name_he": "מיתולוגיות בתרבות העכשווית",
+   "status": "not_in_catalog",
+   "mandatory_in_a_spec": false,
+   "dependent_courses": 0,
+   "impact_score": 1,
+   "equivalence_status": null
+  },
+  {
+   "course_id": "0609-1209",
+   "name_he": "מדעי העבר : פענוח תרבות ואירועים מהעבר האנושי בעזרת המדעים המדוייקים",
+   "status": "not_in_catalog",
+   "mandatory_in_a_spec": false,
+   "dependent_courses": 0,
+   "impact_score": 1,
+   "equivalence_status": null
+  },
+  {
+   "course_id": "0609-1225",
+   "name_he": "צבע וצבען: סמליות ומשמעות",
+   "status": "not_in_catalog",
+   "mandatory_in_a_spec": false,
+   "dependent_courses": 0,
+   "impact_score": 1,
+   "equivalence_status": null
+  },
+  {
+   "course_id": "0609-1226",
+   "name_he": "הנפש והאהבה: סוגיות נבחרות במחשבת ישראל",
+   "status": "not_in_catalog",
+   "mandatory_in_a_spec": false,
+   "dependent_courses": 0,
+   "impact_score": 1,
+   "equivalence_status": null
+  },
+  {
+   "course_id": "0612-6041",
+   "name_he": "רטוריקה ומסר במקרא",
+   "status": "none_listed",
+   "mandatory_in_a_spec": false,
+   "dependent_courses": 0,
+   "impact_score": 1,
+   "equivalence_status": null
+  },
+  {
+   "course_id": "0612-6044",
+   "name_he": "אהבה, חרדה ורגש במקרא",
+   "status": "none_listed",
+   "mandatory_in_a_spec": false,
+   "dependent_courses": 0,
+   "impact_score": 1,
+   "equivalence_status": null
+  }
+ ],
+ "priority_gap_total": 50
+}

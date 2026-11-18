@@ -94,6 +94,44 @@ describe('shadow audit: what strict enforcement would block', () => {
   })
 })
 
+describe('shadow audit: enforcement grade of a would-block placement', () => {
+  const catalog: PrerequisiteCatalog = {
+    BASE: { status: 'verified_none', expression: null, corequisites: null },
+    GONE: { status: 'not_in_catalog', expression: null, corequisites: null },
+    REAL: { status: 'verified', expression: c('BASE'), corequisites: null },
+    NEEDS_GONE: { status: 'verified', expression: { all: [c('BASE'), c('GONE')] }, corequisites: null },
+    OR_GONE: { status: 'verified', expression: { any: [c('GONE'), c('BASE')] }, corequisites: null },
+    DISAGREE: { status: 'verified', expression: c('BASE'), corequisites: null, needs_review: true, sources_disagree: true },
+  }
+  const run = (semesters: string[][]) => shadowPrerequisiteAudit({
+    semesters: semesters.map((courseIds, i) => ({ semesterId: `s${i + 1}`, courseIds })), completedCourseIds: [], catalog,
+  }).wouldBlock
+
+  test('a violated prerequisite on a plannable catalog course is a verified violation', () => {
+    expect(run([['BASE', 'REAL']])).toEqual([expect.objectContaining({ courseId: 'REAL', enforcementGrade: 'verified', advisoryReasons: [] })])
+  })
+
+  test('a requirement that names a course missing from the official catalog is advisory, never verified', () => {
+    const [block] = run([['BASE'], ['NEEDS_GONE']])
+    expect(block).toMatchObject({ courseId: 'NEEDS_GONE', enforcementGrade: 'advisory' })
+    expect(block.advisoryReasons).toEqual(['unresolved_requirement:GONE'])
+  })
+
+  test('a retired alternative inside an OR does not block when its sibling is met', () => {
+    expect(run([['BASE'], ['OR_GONE']])).toEqual([])
+  })
+
+  test('records whose official sources disagree stay advisory', () => {
+    const [block] = run([['BASE', 'DISAGREE']])
+    expect(block).toMatchObject({ courseId: 'DISAGREE', enforcementGrade: 'advisory' })
+    expect(block.advisoryReasons).toContain('official_sources_disagree')
+  })
+
+  test('same-semester placement of a prerequisite still counts as unmet', () => {
+    expect(run([['BASE', 'REAL']])[0].unmetPrerequisites).toEqual([['BASE']])
+  })
+})
+
 describe('course pathways from official prerequisites', () => {
   // Imported lazily so the suites above stay independent of the planner model.
   const { coursePathway, buildSuccessorIndex } = require('../../api/ai/course_pathways')

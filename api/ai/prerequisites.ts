@@ -115,6 +115,16 @@ export function loadPrerequisiteCatalog(): PrerequisiteCatalog | null {
   return cached;
 }
 
+let cachedReferenced: PrerequisiteCatalog | null | undefined;
+
+/** Courses the official prerequisites mention but the supported boards do not carry (retired ids live here). */
+export function loadReferencedPrerequisiteCatalog(): PrerequisiteCatalog | null {
+  if (cachedReferenced === undefined) {
+    try { cachedReferenced = JSON.parse(readFileSync(DATA_FILE, 'utf8')).referenced_courses as PrerequisiteCatalog; } catch { cachedReferenced = null; }
+  }
+  return cachedReferenced;
+}
+
 export const prerequisiteRecord = (catalog: PrerequisiteCatalog | null, courseId: string): PrerequisiteRecord =>
   catalog?.[courseId] ?? UNKNOWN;
 
@@ -153,6 +163,14 @@ export interface PlacementCheck {
   unmetPrerequisites: string[][];
   /** Corequisites not completed and not in this or an earlier semester. */
   unmetCorequisites: string[][];
+  /**
+   * How far a blocking rollout could trust this finding. `verified`: an official, agreeing record and
+   * every unmet requirement names a course the current catalog lists. `advisory`: the requirement
+   * names a course missing from the catalog, or two official sources disagree — it must never block a
+   * student, only inform. Shadow mode only; nothing enforces on this yet.
+   */
+  enforcementGrade: 'verified' | 'advisory';
+  advisoryReasons: string[];
 }
 
 export interface ShadowAudit {
@@ -205,7 +223,16 @@ export function shadowPrerequisiteAudit(input: {
       const unmetPrerequisites = unmetRequirements(record.expression, withEquivalences(base, input.equivalences, note, input.programId));
       const unmetCorequisites = unmetRequirements(record.corequisites, withEquivalences(byNow, input.equivalences, note, input.programId));
       if (unmetPrerequisites.length || unmetCorequisites.length) {
-        audit.wouldBlock.push({ courseId, semesterId: semester.semesterId, status: record.status, unmetPrerequisites, unmetCorequisites });
+        const advisoryReasons: string[] = [];
+        for (const id of new Set([...unmetPrerequisites, ...unmetCorequisites].flat())) {
+          const known = catalog?.[id] ?? (input.catalog === undefined ? loadReferencedPrerequisiteCatalog()?.[id] : undefined);
+          if (known?.status === 'not_in_catalog') advisoryReasons.push(`unresolved_requirement:${id}`);
+        }
+        if (record.needs_review || record.sources_disagree) advisoryReasons.push('official_sources_disagree');
+        audit.wouldBlock.push({
+          courseId, semesterId: semester.semesterId, status: record.status, unmetPrerequisites, unmetCorequisites,
+          enforcementGrade: advisoryReasons.length ? 'advisory' : 'verified', advisoryReasons,
+        });
       }
     }
   });
