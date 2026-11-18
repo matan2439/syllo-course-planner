@@ -10,9 +10,11 @@
  * stays `data-blocked`).
  *
  * Goal order (planner_goals.ts GOAL_STACK): degree > mandatory > category > legality >
- * balance(peak,spread) > preferences(wanted) > unwanted_avoidance > interest_fit >
- * difficulty. interest_fit is index 8 of 10, so it is a pure tiebreaker below every
- * hard constraint — proven below by construction.
+ * preferences(wanted) > unwanted_avoidance > interest_fit > balance(peak,spread) >
+ * difficulty. interest_fit is index 6 of 10, elevated above balance goals so
+ * specialization coherence is a first-class objective — still below every hard
+ * constraint (completion, requirements, legality) and explicit preferences, proven
+ * below by construction.
  */
 import { scorePlan, compareScore } from '../../api/ai/planner_goals';
 import { type ConstraintModel, type PlanState, emptyState } from '../../api/ai/planner_types';

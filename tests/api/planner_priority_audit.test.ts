@@ -82,13 +82,12 @@ describe('Gate 1 — wanted is soft but a legal wanted course is not stranded by
     expect(placedCourseIds(run(model, 'balanced'))).toContain('WANT');
   });
 
-  test('g5/g5b sit BELOW the distribution slots in the score vector (soft, not hard)', () => {
-    // Positional proof: the vector is [g1,g2a,g2b,g3,g4a,g4b,g5,g5b,gFit,g6].
+  test('score vector has the expected length', () => {
+    // Vector is [g1,g2a,g2b,g3,g5,g5b,gFit,g4a,g4b,g6].
+    // Preferences (g5/g5b) and interest fit (gFit) now sit ABOVE distribution
+    // (g4a/g4b) so specialization coherence is a first-class planning objective.
     const m = mk([{ id: 'E1', hours: 4 }], { totalHours: 4 });
     const v = scorePlan({ semesters: { [SEM_A]: ['E1'], [SEM_B]: [] } }, m);
     expect(v.length).toBe(10);
-    // g4a index 4, g4b index 5, g5 index 6, g5b index 7 — distribution precedes wanted.
-    // (This is the LEGACY order; g5/g5b are soft preference terms, so distribution
-    // outranking them matches required-priority item 6 > item 7.)
   });
 });
