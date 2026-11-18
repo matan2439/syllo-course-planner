@@ -11,6 +11,7 @@ import type { TopicId } from './course_topics';
 import type { GroundedObjectiveResult, ResolvedObjective } from './grounded_preference';
 
 const FOCUS_TO_TOPIC: Partial<Record<AcademicFocusArea, TopicId>> = {
+  // Mechanical Engineering
   strength_analysis: 'solid_mechanics',
   finite_elements: 'finite_element_analysis',
   mechanical_design: 'engineering_design',
@@ -22,6 +23,18 @@ const FOCUS_TO_TOPIC: Partial<Record<AcademicFocusArea, TopicId>> = {
   materials: 'materials',
   energy: 'energy_systems',
   robotics: 'robotics',
+  // Electrical Engineering
+  communications: 'communications_networking',
+  signal_processing: 'signal_processing',
+  ml_ai: 'machine_learning',
+  circuits_electronics: 'analog_digital_circuits',
+  electromagnetics: 'electromagnetics',
+  vlsi: 'vlsi_chip_design',
+  optics_photonics: 'optics_photonics',
+  bioelectronics: 'biomedical_electronics',
+  quantum_engineering: 'quantum_information',
+  energy_power: 'power_systems',
+  computer_systems: 'embedded_systems',
 };
 
 const STYLE_TO_OBJECTIVE: Partial<Record<CourseStyle, {

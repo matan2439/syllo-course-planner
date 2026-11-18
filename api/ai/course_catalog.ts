@@ -17,6 +17,7 @@
 import { loadLocalBoardJson } from './board_loader';
 
 export const MECHANICAL_ENGINEERING_2027_PROGRAM_ID = 'mechanical_engineering_2027';
+export const ELECTRICAL_ENGINEERING_2027_PROGRAM_ID = 'electrical_engineering_2027';
 
 export interface CatalogCourse {
   courseId: string;
@@ -84,3 +85,7 @@ export function loadProgramCatalog(programId: string): CatalogCourse[] {
 /** Load the full TAU Mechanical Engineering 2027 catalog universe from the committed local board. */
 export const loadMechanicalEngineering2027Catalog = (): CatalogCourse[] =>
   loadProgramCatalog(MECHANICAL_ENGINEERING_2027_PROGRAM_ID);
+
+/** Load the full TAU Electrical Engineering 2027 catalog universe from the committed local board. */
+export const loadElectricalEngineering2027Catalog = (): CatalogCourse[] =>
+  loadProgramCatalog(ELECTRICAL_ENGINEERING_2027_PROGRAM_ID);

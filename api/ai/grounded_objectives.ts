@@ -62,6 +62,7 @@ const OBJECTIVE_FEATURE: Record<'prefer_laboratory_courses' | 'prefer_project_co
  * explanation stays recognisable and auditable.
  */
 const TOPIC_LABEL_HE: Record<TopicId, string> = {
+  // ME topics
   engineering_design: 'תכן ועיצוב הנדסי',
   finite_element_analysis: 'ניתוח אלמנטים סופיים',
   solid_mechanics: 'מכניקת מוצקים',
@@ -72,6 +73,18 @@ const TOPIC_LABEL_HE: Record<TopicId, string> = {
   thermofluids: 'זרימה ומעבר חום',
   energy_systems: 'מערכות אנרגיה',
   programming_electronics: 'תכנות ואלקטרוניקה',
+  // EE topics
+  communications_networking: 'תקשורת ורשתות',
+  signal_processing: 'עיבוד אותות',
+  machine_learning: 'למידת מכונה ובינה מלאכותית',
+  analog_digital_circuits: 'מעגלים אנלוגיים וספרתיים',
+  electromagnetics: 'שדות אלקטרומגנטיים ואנטנות',
+  vlsi_chip_design: 'תכנון VLSI ומעגלים משולבים',
+  optics_photonics: 'אופטיקה ופוטוניקה',
+  biomedical_electronics: 'ביואלקטרוניקה',
+  quantum_information: 'אינפורמציה וטכנולוגיות קוונטיות',
+  power_systems: 'מערכות הספק והמרת אנרגיה',
+  embedded_systems: 'מחשבים ומערכות משובצות',
 };
 
 /**

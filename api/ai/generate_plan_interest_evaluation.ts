@@ -20,7 +20,7 @@ import { normalizeAcademicInterestProfile } from './academic_interest_profile';
 import type { RawAcademicInterestProfile } from './academic_interest_profile';
 import { evaluateAcademicInterestFit } from './academic_interest_evaluation';
 import type { AcademicInterestEvaluationResult } from './academic_interest_evaluation';
-import { createMechanicalEngineering2027Resolver } from './course_topic_profiles_static';
+import { createMechanicalEngineering2027Resolver, createElectricalEngineering2027Resolver } from './course_topic_profiles_static';
 import type { TopicId } from './course_topics';
 import { areasForTopicIds } from './focus_topic_objective';
 
@@ -40,6 +40,12 @@ export function extractPlannedCourseIds(semesters: ProposalSemester[]): string[]
   return out;
 }
 
+/** Select the right resolver for the program being planned. Falls back to ME. */
+function resolverForProgram(programId?: string | null) {
+  if (programId?.startsWith('electrical_engineering')) return createElectricalEngineering2027Resolver();
+  return createMechanicalEngineering2027Resolver();
+}
+
 /**
  * Build a per-course soft fit score from the static topic profiles, grounded in
  * the confirmed topicIds (from a `prefer_topic_alignment` objective). Scores each
@@ -51,6 +57,7 @@ export function extractPlannedCourseIds(semesters: ProposalSemester[]): string[]
 export function buildCourseFitByIdFromTopicProfiles(
   board: unknown,
   topicIds: ReadonlyArray<TopicId>,
+  programId?: string | null,
 ): Map<string, number> | undefined {
   if (!topicIds.length) return undefined;
 
@@ -71,7 +78,7 @@ export function buildCourseFitByIdFromTopicProfiles(
 
   if (!courseIds.length) return undefined;
 
-  const resolver = createMechanicalEngineering2027Resolver();
+  const resolver = resolverForProgram(programId);
   const { profilesByCourseId } = resolver.resolveCourseTopicProfiles(courseIds);
 
   const fitById = new Map<string, number>();
@@ -94,12 +101,13 @@ export function buildCourseFitByIdFromTopicProfiles(
 export function buildGeneratePlanInterestEvaluation(
   semesters: ProposalSemester[],
   rawProfile: unknown,
+  programId?: string | null,
 ): AcademicInterestEvaluationResult {
   const academicInterestProfile = normalizeAcademicInterestProfile(
     (rawProfile ?? {}) as RawAcademicInterestProfile,
   );
   const plannedCourseIds = extractPlannedCourseIds(semesters);
-  const resolver = createMechanicalEngineering2027Resolver();
+  const resolver = resolverForProgram(programId);
   const { profilesByCourseId } = resolver.resolveCourseTopicProfiles(plannedCourseIds);
 
   return evaluateAcademicInterestFit({

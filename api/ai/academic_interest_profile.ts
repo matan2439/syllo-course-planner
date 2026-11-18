@@ -27,6 +27,7 @@
 // ── Canonical enum lists (single source of truth) ─────────────────────────────
 
 export const ACADEMIC_FOCUS_AREAS = [
+  // Mechanical Engineering focus areas
   'strength_analysis',
   'finite_elements',
   'mechanical_design',
@@ -40,6 +41,18 @@ export const ACADEMIC_FOCUS_AREAS = [
   'energy',
   'robotics',
   'general',
+  // Electrical Engineering focus areas
+  'communications',
+  'signal_processing',
+  'ml_ai',
+  'circuits_electronics',
+  'electromagnetics',
+  'vlsi',
+  'optics_photonics',
+  'bioelectronics',
+  'quantum_engineering',
+  'energy_power',
+  'computer_systems',
 ] as const;
 export type AcademicFocusArea = (typeof ACADEMIC_FOCUS_AREAS)[number];
 

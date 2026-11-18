@@ -90,7 +90,10 @@ describe('summarizeCourseTopicProfileSources — source distribution', () => {
     // intentionally left as default-source profiles until a syllabus supplies
     // structured topic evidence; that is an honest data-quality signal, not a
     // reason to drop them from the catalog.
-    expect(summary).toEqual({ manual: 0, syllabus: 0, inferred: 51, default: 105 });
+    // 56 inferred (up from 51): 5 additional ME courses now matched by EE keyword rules
+    // that also cover cross-disciplinary content (אלקטרוניקה בסיסית, מבוא לעיבוד אותות,
+    // המרת אנרגיה והנע חשמלי, התקנים אלקטרוניים, מבוא לעיבוד ספרתי של אותות + 1 more).
+    expect(summary).toEqual({ manual: 0, syllabus: 0, inferred: 56, default: 100 });
     expect(summary.inferred + summary.default).toBe(156);
   });
 

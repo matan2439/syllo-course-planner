@@ -97,9 +97,15 @@ describe('T3 — controlled mappings over official wording', () => {
   test('the taxonomy contains no entry that the corpus never evidenced', () => {
     // Guards against adding an id because a USER asked for it rather than
     // because an official document says it.
+    // EE topic IDs added 2026-11: grounded in EE 2027 program official course categories
+    // and course names (not arbitrary user phrases). Same standard as ME topics.
     expect([...TOPIC_IDS].sort()).toEqual([
-      'control', 'energy_systems', 'engineering_design', 'finite_element_analysis', 'manufacturing',
-      'materials', 'programming_electronics', 'robotics', 'solid_mechanics', 'thermofluids',
+      'analog_digital_circuits', 'biomedical_electronics', 'communications_networking',
+      'control', 'electromagnetics', 'embedded_systems', 'energy_systems',
+      'engineering_design', 'finite_element_analysis', 'machine_learning', 'manufacturing',
+      'materials', 'optics_photonics', 'power_systems', 'programming_electronics',
+      'quantum_information', 'robotics', 'signal_processing', 'solid_mechanics',
+      'thermofluids', 'vlsi_chip_design',
     ]);
   });
 });
