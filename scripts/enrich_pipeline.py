@@ -388,6 +388,7 @@ def run_program(prog):
         'schemaVersion': SCHEMA_VERSION,
         'ontologyVersion': ONTOLOGY_VERSION,
         'extractorVersion': EXTRACTOR_VERSION,
+        'extractorKind': EXTRACTOR_KIND,
         'generatedAt': GENERATED_AT,
         'profiles': new_profiles,
     }
