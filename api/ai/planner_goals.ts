@@ -6,15 +6,18 @@
  *   1. degree_completion   — reach the required degree hours (e.g. 185).
  *   2. requirements        — place all mandatory courses + satisfy all categories.
  *   3. legality            — no semester over the hard cap / over the user cap.
- *   4a. balance (peak)     — minimize the heaviest semester's load (minimum user
- *                            burden); opening a lighter/empty semester to lower
- *                            the peak is preferred over consolidating onto a
- *                            heavy one.
- *   4b. balance (spread)   — secondary: among equal-peak plans, prefer a tighter
- *                            distribution across non-empty semesters (never a
- *                            reason to open an empty semester on its own).
- *   5. preferences         — place the courses the user wants.
- *   6. difficulty_comfort  — lower total difficulty (pure tiebreaker; never a
+ *   4. preferences         — place the courses the user wants; avoid unwanted ones.
+ *   5. interest_fit        — among otherwise-equal plans, prefer topic-aligned
+ *                            elective choices. For students with no stated interests
+ *                            this is always 0 (inert). Elevated above balance so
+ *                            that specialization coherence is a first-class planning
+ *                            objective, not a last-resort tiebreaker.
+ *   6a. balance (peak)     — minimize the heaviest semester's load; secondary to
+ *                            preferences and fit so a topic-aligned elective is
+ *                            never demoted just to trim a semester by one point.
+ *   6b. balance (spread)   — among equal-peak plans, prefer a tighter distribution
+ *                            (never a reason to open an empty semester on its own).
+ *   7. difficulty_comfort  — lower total difficulty (pure tiebreaker; never a
  *                            reason to skip a required course).
  *
  * `scorePlan` returns a lexicographic vector (higher is better at every
@@ -38,11 +41,11 @@ export const GOAL_STACK = [
   'requirements_mandatory',
   'requirements_category',
   'legality',
-  'balance_peak',
-  'balance_spread',
   'preferences',
   'unwanted_avoidance',
   'interest_fit',
+  'balance_peak',
+  'balance_spread',
   'difficulty_comfort',
 ] as const;
 export type Goal = (typeof GOAL_STACK)[number];
@@ -993,13 +996,12 @@ export function scorePlan(state: PlanState, model: ConstraintModel): number[] {
   // 5b. unwanted avoidance — penalise each unwanted course placed.
   const g5b = -[...placed].filter(id => model.profiles.get(id)?.is_unwanted).length;
 
-  // 5c. interest fit — SOFT general user-fit: total per-course fit score of the
-  //     placed courses, for the requested focus area(s)/style(s). Ranked below
-  //     explicit wanted/unwanted preferences and above the difficulty tiebreak,
-  //     so among equally-legal, equally-complete plans it prefers the one whose
-  //     ELECTIVE choices are more aligned — never overriding legality,
-  //     completion, or an explicit preference. Zero (inert) when no fit map is
-  //     supplied, so control plans are byte-identical to before.
+  // 5c. interest fit — first-class specialization objective: total per-course fit
+  //     score for the requested focus area(s)/style(s). Ranked ABOVE balance goals
+  //     so topic-aligned elective choices are never demoted just to shave a point
+  //     off the heaviest semester. Never overrides legality, completion, or an
+  //     explicit want/unwanted preference. Zero (inert) when no fit map is
+  //     supplied, so plans without interest signals are byte-identical to before.
   let gFit = 0;
   if (model.courseFitById) for (const cid of placed) gFit += model.courseFitById.get(cid) ?? 0;
 
@@ -1009,7 +1011,7 @@ export function scorePlan(state: PlanState, model: ConstraintModel): number[] {
   for (const cid of placed) totalDifficulty += comfortCost(model.profiles.get(cid));
   const g6 = -totalDifficulty;
 
-  return [g1, g2a, g2b, g3, g4a, g4b, g5, g5b, gFit, g6];
+  return [g1, g2a, g2b, g3, g5, g5b, gFit, g4a, g4b, g6];
 }
 
 /**
