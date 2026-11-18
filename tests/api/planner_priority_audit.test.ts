@@ -86,7 +86,7 @@ describe('Gate 1 — wanted is soft but a legal wanted course is not stranded by
     // Positional proof: the vector is [g1,g2a,g2b,g3,g4a,g4b,g5,g5b,gFit,g6].
     const m = mk([{ id: 'E1', hours: 4 }], { totalHours: 4 });
     const v = scorePlan({ semesters: { [SEM_A]: ['E1'], [SEM_B]: [] } }, m);
-    expect(v.length).toBe(10);
+    expect(v.length).toBe(11);
     // g4a index 4, g4b index 5, g5 index 6, g5b index 7 — distribution precedes wanted.
     // (This is the LEGACY order; g5/g5b are soft preference terms, so distribution
     // outranking them matches required-priority item 6 > item 7.)

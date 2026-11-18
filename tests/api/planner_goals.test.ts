@@ -90,7 +90,7 @@ function withCourses(sem: string, ids: string[]): PlanState {
 describe('GOAL_STACK', () => {
   it('lists the prioritized goals, completion first and balance split into peak+spread', () => {
     expect(GOAL_STACK[0]).toBe('degree_completion');
-    expect(GOAL_STACK).toHaveLength(10);
+    expect(GOAL_STACK).toHaveLength(11);
     expect(GOAL_STACK[GOAL_STACK.length - 1]).toBe('difficulty_comfort');
     // balance is now two goals: peak (primary) above spread (secondary tiebreak).
     expect((GOAL_STACK as readonly string[]).indexOf('balance_peak'))
@@ -1242,3 +1242,126 @@ describe('scorePlan — g4 empty semester penalty', () => {
     expect(compareScore(scorePlan(oneActive, m), scorePlan(twoBalanced, m))).toBeGreaterThanOrEqual(0);
   });
 });
+
+describe('specialization objective: banded balance and pathway coherence (opt-in, soft)', () => {
+  const idx = (g: string) => (GOAL_STACK as readonly string[]).indexOf(g);
+  const twoSem = (a: string[], b: string[]): PlanState => { const s = emptyState(SEMS); s.semesters[SEMS[0]] = a; s.semesters[SEMS[1]] = b; return s; };
+
+  test('without a tolerance, a 1-hour lower peak outranks higher interest fit (legacy, byte-identical)', () => {
+    const profiles = new Map(model().profiles);
+    profiles.set('fitHeavy', profile('fitHeavy', { hours: 5 }));
+    profiles.set('fitLight', profile('fitLight', { hours: 4 }));
+    const m = model({ degreeRequiredHours: 4, profiles, courseFitById: new Map([['fitHeavy', 1]]) });
+    const heavy = twoSem(['fitHeavy', 'e1', 'e2', 'e3'], []);   // peak 17
+    const light = twoSem(['fitLight', 'e1', 'e2', 'e3'], []);   // peak 16
+    expect(compareScore(scorePlan(light, m), scorePlan(heavy, m))).toBeGreaterThan(0);
+  })
+
+  test('with a tolerance and no confirmed policy, interest fit decides inside the band', () => {
+    const profiles = new Map(model().profiles);
+    profiles.set('fitHeavy', profile('fitHeavy', { hours: 5 }));
+    profiles.set('fitLight', profile('fitLight', { hours: 4 }));
+    const m = model({ degreeRequiredHours: 4, profiles, courseFitById: new Map([['fitHeavy', 1]]), balanceToleranceHours: 3 });
+    const heavy = twoSem(['fitHeavy', 'e1', 'e2', 'e3'], []);   // peak 17 -> band 5
+    const light = twoSem(['fitLight', 'e1', 'e2', 'e3'], []);   // peak 16 -> band 5
+    expect(compareScore(scorePlan(heavy, m), scorePlan(light, m))).toBeGreaterThan(0);
+  })
+
+  test('the band never overrides legality: an over-cap semester still loses', () => {
+    const profiles = new Map(model().profiles);
+    profiles.set('fit', profile('fit', { hours: 8 }));
+    const m = model({ degreeRequiredHours: 4, profiles, courseFitById: new Map([['fit', 1]]), balanceToleranceHours: 3, maxHoursPerSemester: 20, hardCap: 22 });
+    const over = twoSem(['fit', 'e1', 'e2', 'e3'], []);          // 20 -> not over; make over:
+    const reallyOver = twoSem(['fit', 'e1', 'e2', 'e3', 'e4'], []); // 24 > hard cap
+    expect(compareScore(scorePlan(over, m), scorePlan(reallyOver, m))).toBeGreaterThan(0);
+  })
+
+  test('a confirmed distribution policy keeps exact balance (the band is ignored)', () => {
+    const profiles = new Map(model().profiles);
+    profiles.set('fitHeavy', profile('fitHeavy', { hours: 5 }));
+    profiles.set('fitLight', profile('fitLight', { hours: 4 }));
+    const m = model({ degreeRequiredHours: 4, profiles, courseFitById: new Map([['fitHeavy', 1]]), balanceToleranceHours: 3, distributionPolicy: 'balanced' });
+    const heavy = twoSem(['fitHeavy', 'e1', 'e2', 'e3'], []);
+    const light = twoSem(['fitLight', 'e1', 'e2', 'e3'], []);
+    expect(compareScore(scorePlan(light, m), scorePlan(heavy, m))).toBeGreaterThan(0);
+  })
+
+  test('pathway_coherence sits after interest_fit and before difficulty, and is inert without a pathway', () => {
+    expect(idx('interest_fit')).toBeLessThan(idx('pathway_coherence'));
+    expect(idx('pathway_coherence')).toBeLessThan(idx('difficulty_comfort'));
+    const m = model();
+    expect(scorePlan(withCourses(SEMS[0], ['e1']), m)[idx('pathway_coherence')]).toBe(0);
+  })
+
+  test('with a pathway, a prepared connected sequence outranks scattered members of equal fit', () => {
+    const { buildSpecializationPathway } = require('../../api/ai/specialization_pathway');
+    const profiles = new Map(model().profiles);
+    for (const id of ['base', 'mid', 'adv', 'lone']) profiles.set(id, profile(id, { hours: 4 }));
+    const catalog = {
+      base: { status: 'verified_none', expression: null, corequisites: null },
+      mid: { status: 'verified', expression: { course: 'base' }, corequisites: null },
+      adv: { status: 'verified', expression: { course: 'mid' }, corequisites: null },
+    };
+    const fit = new Map([['mid', 1], ['adv', 1], ['lone', 1]]);
+    const pathway = buildSpecializationPathway({ fitById: fit, universeIds: new Set(profiles.keys()), catalog });
+    const m = model({ degreeRequiredHours: 4, profiles, courseFitById: fit, pathway });
+    const chain = twoSem(['base', 'mid'], ['adv']);          // fit 2, official chain base>mid>adv
+    const scattered = twoSem(['lone', 'e1'], ['adv']);        // fit 2, adv without its prerequisite
+    expect(scorePlan(chain, m)[idx('interest_fit')]).toBe(scorePlan(scattered, m)[idx('interest_fit')]);
+    expect(compareScore(scorePlan(chain, m), scorePlan(scattered, m))).toBeGreaterThan(0);
+  })
+})
+
+describe('official-prerequisite readiness ranking (flagged, soft, never blocking)', () => {
+  const { verifiedPrerequisiteRules } = require('../../api/ai/prerequisites');
+  const idx = (g: string) => (GOAL_STACK as readonly string[]).indexOf(g);
+  const mk = (rules?: Map<string, any>) => {
+    const profiles = new Map(model().profiles);
+    for (const id of ['P', 'E', 'ALT']) profiles.set(id, profile(id, { hours: 4 }));
+    return model({ degreeRequiredHours: 8, profiles, ...(rules ? { officialPrerequisites: rules } : {}) });
+  };
+  const rules = new Map<string, any>([['E', { course: 'P' }]]);
+  const place = (a: string[], b: string[]): PlanState => { const s = emptyState(SEMS); s.semesters[SEMS[0]] = a; s.semesters[SEMS[1]] = b; return s; };
+
+  test('flag off: no rule, byte-identical vector for a plan with an unmet prerequisite', () => {
+    const m = mk();
+    expect(compareScore(scorePlan(place(['E'], ['ALT']), m), scorePlan(place(['ALT'], ['E']), m))).toBe(0);
+  })
+
+  test('flag on: a placement whose verified prerequisite is unmet ranks below an equivalent ready plan', () => {
+    const m = mk(rules);
+    const unready = place(['E'], ['ALT']);          // P never placed or completed
+    const ready = place(['P'], ['E']);               // P strictly earlier
+    expect(compareScore(scorePlan(ready, m), scorePlan(unready, m))).toBeGreaterThan(0);
+  })
+
+  test('the same semester does not satisfy a prerequisite; a completed course does', () => {
+    const m = mk(rules);
+    const sameSemester = place(['P', 'E'], []);
+    const earlier = place(['P'], ['E']);
+    expect(compareScore(scorePlan(earlier, m), scorePlan(sameSemester, m))).toBeGreaterThan(0);
+    const done = mk(rules); done.completedCourseIds = new Set(['P']);
+    expect(compareScore(scorePlan(place(['E'], []), done), scorePlan(place(['ALT'], []), done))).toBe(0);
+  })
+
+  test('it is a ranking only: legality stays above completion-level effects and nothing throws or rejects', () => {
+    const m = mk(rules);
+    expect(() => scorePlan(place(['E'], []), m)).not.toThrow();
+    expect(scorePlan(place(['E'], []), m).length).toBe(GOAL_STACK.length);
+    expect(idx('legality')).toBeLessThan(idx('balance_peak'));
+  })
+
+  test('rules exclude unresolved, single-source and disagreeing records (they stay advisory)', () => {
+    const c = (course: string) => ({ course });
+    const catalog = {
+      OK: { status: 'verified', expression: c('X'), corequisites: null },
+      GONE_REF: { status: 'verified', expression: { all: [c('X'), c('GONE')] }, corequisites: null },
+      ONE_SRC: { status: 'none_listed', expression: c('X'), corequisites: null },
+      DISAGREE: { status: 'verified', expression: c('X'), corequisites: null, sources_disagree: true },
+      X: { status: 'verified_none', expression: null, corequisites: null },
+      GONE: { status: 'not_in_catalog', expression: null, corequisites: null },
+    };
+    const out = verifiedPrerequisiteRules(['OK', 'GONE_REF', 'ONE_SRC', 'DISAGREE', 'X'], catalog, null, []);
+    expect([...out.keys()]).toEqual(['OK']);
+  })
+})

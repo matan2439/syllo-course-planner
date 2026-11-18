@@ -14,6 +14,9 @@
  *                            distribution across non-empty semesters (never a
  *                            reason to open an empty semester on its own).
  *   5. preferences         — place the courses the user wants.
+ *   5c. pathway_coherence  — among equally-fit plans, prefer a connected, prepared
+ *                            sequence (official prerequisite chains) over scattered
+ *                            keyword-matching courses. Inert without a pathway.
  *   6. difficulty_comfort  — lower total difficulty (pure tiebreaker; never a
  *                            reason to skip a required course).
  *
@@ -32,6 +35,8 @@ import {
 } from './planner_types';
 import { ABSOLUTE_MAX_REASONABLE } from './load_constants';
 import { getLegalSemesters, type CourseLegalityInfo } from './completion_analysis';
+import { pathwayCoherence } from './specialization_pathway';
+import { evaluatePrerequisites, withEquivalences } from './prerequisites';
 
 export const GOAL_STACK = [
   'degree_completion',
@@ -43,6 +48,7 @@ export const GOAL_STACK = [
   'preferences',
   'unwanted_avoidance',
   'interest_fit',
+  'pathway_coherence',
   'difficulty_comfort',
 ] as const;
 export type Goal = (typeof GOAL_STACK)[number];
@@ -860,6 +866,25 @@ export function mandatoryPlaced(state: PlanState, model: ConstraintModel): numbe
  * Lexicographic score vector (higher = better at each position), one entry per
  * goal in GOAL_STACK order.
  */
+/** Placed courses whose verified official prerequisite is unmet at their (first) semester. 0 unless enabled. */
+export function unreadyPlacements(state: PlanState, model: ConstraintModel): number {
+  const rules = model.officialPrerequisites;
+  if (!rules || rules.size === 0) return 0;
+  const firstIndex = new Map<string, number>();
+  model.knownSemesterIds.forEach((sem, i) => {
+    for (const id of state.semesters[sem] ?? []) if (!firstIndex.has(id)) firstIndex.set(id, i);
+  });
+  let unready = 0;
+  for (const [id, index] of firstIndex) {
+    const expression = rules.get(id);
+    if (!expression) continue;
+    const base = (req: string) =>
+      model.completedCourseIds.has(req) || (model.currentlyPlannedCourseIds?.has(req) ?? false) || (firstIndex.get(req) ?? Infinity) < index;
+    if (!evaluatePrerequisites(expression, withEquivalences(base, undefined, undefined, model.prerequisiteProgramId))) unready++;
+  }
+  return unready;
+}
+
 export function scorePlan(state: PlanState, model: ConstraintModel): number[] {
   const loads = semesterLoads(state, model);
 
@@ -958,7 +983,10 @@ export function scorePlan(state: PlanState, model: ConstraintModel): number[] {
   // 3. legality — penalize semesters over the hard cap and over the user cap.
   const overHard = loads.filter(h => h > model.hardCap).length;
   const overUser = loads.filter(h => h > model.maxHoursPerSemester).length;
-  const g3 = -(overHard * 10 + overUser);
+  // Optional (flagged) official-prerequisite readiness: each placed course whose VERIFIED prerequisite is
+  // not met by a completed/in-progress course or one in a STRICTLY earlier semester costs one unit —
+  // the same weight as one semester over the user's cap. Ranking only; a plan is never rejected on it.
+  const g3 = -(overHard * 10 + overUser + unreadyPlacements(state, model));
 
   // 4a. balance (peak) — minimize the heaviest semester's load (minimum user
   //     burden). Peak is taken over ALL semesters (empty ones count as 0), so a
@@ -975,16 +1003,22 @@ export function scorePlan(state: PlanState, model: ConstraintModel): number[] {
   // so the policy can never override any higher-priority objective.
   const activeLs = loads.filter(h => h > 0);
   const spread = activeLs.length > 1 ? Math.max(...activeLs) - Math.min(...activeLs) : 0;
+  // Banded balance: only when interests are expressed AND the student confirmed no distribution
+  // policy. Differences smaller than the band no longer outrank the student's interests; an explicit
+  // workload/distribution preference keeps the exact legacy comparison.
+  const band = model.balanceToleranceHours && model.balanceToleranceHours > 0 && model.distributionPolicy === undefined
+    ? model.balanceToleranceHours : 0;
+  const banded = (hours: number) => (band > 0 ? Math.floor(hours / band) : hours);
   const g4a =
     model.distributionPolicy === 'compact'
       ? -activeLs.length // fewer occupied periods preferred (consolidation)
-      : (loads.length ? -Math.max(...loads) : 0); // legacy: lower peak preferred
+      : (loads.length ? -banded(Math.max(...loads)) : 0); // legacy: lower peak preferred
 
   // 4b. balance (spread) — secondary tiebreak. Under 'balanced'/'neutral' it is
   //     the legacy spread tiebreak among equal-peak plans; under 'compact' it is
   //     the SAME deterministic spread tiebreak among equal active-count plans
   //     (a legacy tiebreak, not a compact-policy preference). Order-invariant.
-  const g4b = -spread;
+  const g4b = -banded(spread);
 
   // 5. preferences — wanted courses placed.
   const placed = new Set(placedCourseIds(state));
@@ -1003,13 +1037,21 @@ export function scorePlan(state: PlanState, model: ConstraintModel): number[] {
   let gFit = 0;
   if (model.courseFitById) for (const cid of placed) gFit += model.courseFitById.get(cid) ?? 0;
 
+  // 5d. pathway coherence — connected, prepared specialization sequence (official prerequisite
+  //     edges only). Completed courses count as done so a continuation scores as continuity.
+  let gCoh = 0;
+  if (model.pathway) {
+    const done = new Set<string>([...placed, ...model.completedCourseIds]);
+    gCoh = pathwayCoherence(done, model.pathway, placed).score;
+  }
+
   // 6. difficulty / comfort — lower total comfort cost preferred (tiebreaker;
   //    grade-risky courses lose ties but are never barred from filling hours).
   let totalDifficulty = 0;
   for (const cid of placed) totalDifficulty += comfortCost(model.profiles.get(cid));
   const g6 = -totalDifficulty;
 
-  return [g1, g2a, g2b, g3, g4a, g4b, g5, g5b, gFit, g6];
+  return [g1, g2a, g2b, g3, g4a, g4b, g5, g5b, gFit, gCoh, g6];
 }
 
 /**

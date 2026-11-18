@@ -198,7 +198,7 @@ export const generatePlanResponseSchema = z
                 labelHe: z.string(),
                 differencesHe: z.array(z.string()),
                 differences: z.array(z.object({
-                  kind: z.enum(['adds', 'removes', 'moves', 'peak_hours', 'active_periods']),
+                  kind: z.enum(['adds', 'removes', 'moves', 'peak_hours', 'active_periods', 'specialization', 'prerequisite_warnings', 'unverified_prerequisites', 'progress']),
                   textHe: z.string(),
                   courseIds: z.array(z.string()).optional(),
                 })).optional(),

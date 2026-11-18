@@ -115,6 +115,16 @@ export function loadPrerequisiteCatalog(): PrerequisiteCatalog | null {
   return cached;
 }
 
+let cachedReferenced: PrerequisiteCatalog | null | undefined;
+
+/** Courses the official prerequisites mention but the supported boards do not carry (retired ids live here). */
+export function loadReferencedPrerequisiteCatalog(): PrerequisiteCatalog | null {
+  if (cachedReferenced === undefined) {
+    try { cachedReferenced = JSON.parse(readFileSync(DATA_FILE, 'utf8')).referenced_courses as PrerequisiteCatalog; } catch { cachedReferenced = null; }
+  }
+  return cachedReferenced;
+}
+
 export const prerequisiteRecord = (catalog: PrerequisiteCatalog | null, courseId: string): PrerequisiteRecord =>
   catalog?.[courseId] ?? UNKNOWN;
 
@@ -153,6 +163,14 @@ export interface PlacementCheck {
   unmetPrerequisites: string[][];
   /** Corequisites not completed and not in this or an earlier semester. */
   unmetCorequisites: string[][];
+  /**
+   * How far a blocking rollout could trust this finding. `verified`: an official, agreeing record and
+   * every unmet requirement names a course the current catalog lists. `advisory`: the requirement
+   * names a course missing from the catalog, or two official sources disagree — it must never block a
+   * student, only inform. Shadow mode only; nothing enforces on this yet.
+   */
+  enforcementGrade: 'verified' | 'advisory';
+  advisoryReasons: string[];
 }
 
 export interface ShadowAudit {
@@ -205,9 +223,37 @@ export function shadowPrerequisiteAudit(input: {
       const unmetPrerequisites = unmetRequirements(record.expression, withEquivalences(base, input.equivalences, note, input.programId));
       const unmetCorequisites = unmetRequirements(record.corequisites, withEquivalences(byNow, input.equivalences, note, input.programId));
       if (unmetPrerequisites.length || unmetCorequisites.length) {
-        audit.wouldBlock.push({ courseId, semesterId: semester.semesterId, status: record.status, unmetPrerequisites, unmetCorequisites });
+        const advisoryReasons: string[] = [];
+        for (const id of new Set([...unmetPrerequisites, ...unmetCorequisites].flat())) {
+          const known = catalog?.[id] ?? (input.catalog === undefined ? loadReferencedPrerequisiteCatalog()?.[id] : undefined);
+          if (known?.status === 'not_in_catalog') advisoryReasons.push(`unresolved_requirement:${id}`);
+        }
+        if (record.needs_review || record.sources_disagree) advisoryReasons.push('official_sources_disagree');
+        audit.wouldBlock.push({
+          courseId, semesterId: semester.semesterId, status: record.status, unmetPrerequisites, unmetCorequisites,
+          enforcementGrade: advisoryReasons.length ? 'advisory' : 'verified', advisoryReasons,
+        });
       }
     }
   });
   return audit;
+}
+
+/**
+ * The prerequisite expressions a ranking objective may trust: official, `verified`, agreeing across
+ * sources, and naming no course that is missing from the current catalog (those stay advisory — a
+ * student cannot plan to satisfy them). Courses outside this set simply carry no readiness rule.
+ */
+export function verifiedPrerequisiteRules(courseIds: Iterable<string>, catalog: PrerequisiteCatalog | null = loadPrerequisiteCatalog(),
+  referenced: PrerequisiteCatalog | null = loadReferencedPrerequisiteCatalog(), equivalences: EquivalenceCatalog = loadEquivalences()): Map<string, PrerequisiteExpression> {
+  const rules = new Map<string, PrerequisiteExpression>();
+  const mapped = new Set(equivalences.map((e) => e.retired));
+  for (const id of courseIds) {
+    const record = catalog?.[id];
+    if (!record || record.status !== 'verified' || !record.expression || record.needs_review || record.sources_disagree) continue;
+    const unresolved = referencedCourseIds(record.expression).some((ref) =>
+      !mapped.has(ref) && ((catalog?.[ref] ?? referenced?.[ref])?.status === 'not_in_catalog'));
+    if (!unresolved) rules.set(id, record.expression);
+  }
+  return rules;
 }

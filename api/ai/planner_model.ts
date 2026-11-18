@@ -48,6 +48,10 @@ export interface BuildModelOptions {
   unwantedCourseIds?: string[];
   /** Per-course general user-fit score (0..1) for a requested focus area/style — soft planner signal. */
   courseFitById?: Map<string, number>;
+  balanceToleranceHours?: number;
+  officialPrerequisites?: ReadonlyMap<string, import('./prerequisites').PrerequisiteExpression>;
+  prerequisiteProgramId?: string;
+  pathway?: import('./specialization_pathway').SpecializationPathway;
   /** Hard-excluded course_ids (explicit user exclusion / disallowed). */
   disallowedCourseIds?: string[];
   pinnedCourseIds?: string[];
@@ -291,6 +295,9 @@ export function buildConstraintModel(boardJson: any, opts: BuildModelOptions = {
     mustIncludeCourseIds,
     ...(opts.distributionPolicy ? { distributionPolicy: opts.distributionPolicy } : {}),
     courseFitById: opts.courseFitById,
+    ...(opts.balanceToleranceHours ? { balanceToleranceHours: opts.balanceToleranceHours } : {}),
+    ...(opts.pathway ? { pathway: opts.pathway } : {}),
+    ...(opts.officialPrerequisites ? { officialPrerequisites: opts.officialPrerequisites, prerequisiteProgramId: opts.prerequisiteProgramId } : {}),
     institutionId: opts.institutionId,
     programId: opts.programId,
     catalogYear: opts.catalogYear,

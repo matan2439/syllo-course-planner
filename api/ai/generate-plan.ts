@@ -128,7 +128,8 @@ import { preferencesWithPlannerPolicy } from './planner_policy_context';
 import { GATEWAY_ASSESSMENT_TYPES, gatewayAssessmentMismatchIds } from './gateway_assessment';
 import { databaseUrl } from '../db_env';
 import { loadBoardWithAddedSemesters } from './student_semesters';
-import { shadowPrerequisiteAudit } from './prerequisites';
+import { shadowPrerequisiteAudit, verifiedPrerequisiteRules } from './prerequisites';
+import { buildSpecializationPathway } from './specialization_pathway';
 
 export const preferencesSchema = z.object({
   max_weekly_hours:        z.number().nullish(),
@@ -294,6 +295,9 @@ function withGatewayAssessmentExclusions(board: any, ctx: any, prefs: Preference
   return blocked.length ? [...new Set([...(hard ?? []), ...blocked])] : hard;
 }
 
+/** Weekly-hour width of the workload bands used when a specialization objective is active. */
+export const SPECIALIZATION_BALANCE_BAND_HOURS = 3;
+
 /** Build the model from board_json (full universe). board is always non-null here. */
 export function buildModel(board: any, ctx: any, prefs: Preferences, program_id?: string, currentlyPlannedCourseIds?: string[], courseFitById?: Map<string, number>, distributionPolicy?: DistributionPolicy, onBoardCourseIds?: Iterable<string>): ConstraintModel {
   // Phase 0 — identity metadata only; parseProgramVersionId is the same parser
@@ -332,6 +336,20 @@ export function buildModel(board: any, ctx: any, prefs: Preferences, program_id?
     // Columns the student added past the board's own (see withCommittedColumns for stored contexts).
     extraSemesterIds: ((ctx?.semesters ?? []) as any[]).map((s) => s?.id),
   });
+  // Specialization objective (soft only; legality/requirements/hard preferences are ranked above it).
+  // When the student expressed interests and confirmed no workload/distribution policy: (1) rank
+  // workload balance in coarse bands so a couple of hours cannot outrank those interests, and (2) rank
+  // pathway coherence from official prerequisite chains. Kill switch: AI_SPECIALIZATION_OBJECTIVE=off.
+  if (courseFitById?.size && !distributionPolicy && (process.env.AI_SPECIALIZATION_OBJECTIVE ?? '').toLowerCase() !== 'off') {
+    model.balanceToleranceHours = SPECIALIZATION_BALANCE_BAND_HOURS;
+    model.pathway = buildSpecializationPathway({ fitById: courseFitById, universeIds: new Set(model.profiles.keys()) });
+  }
+  // Official-prerequisite readiness ranking (soft, never blocking). OFF by default: turning it on changes
+  // which plans are proposed, so it ships dark until the project owner approves (AI_PREREQ_READINESS_OBJECTIVE=on).
+  if ((process.env.AI_PREREQ_READINESS_OBJECTIVE ?? '').toLowerCase() === 'on') {
+    const rules = verifiedPrerequisiteRules([...model.profiles.keys()]);
+    if (rules.size) { model.officialPrerequisites = rules; model.prerequisiteProgramId = program_id; }
+  }
   const initialState = planContextToState(ctx, model);
   const inProgress = deriveInProgressCredit(ctx, model, initialState);
   model.inProgressHours = inProgress.totalHours;

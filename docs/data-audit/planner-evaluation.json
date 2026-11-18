@@ -1,0 +1,3705 @@
+{
+ "board": "mechanical_engineering_2027",
+ "summary": {
+  "meanElectiveDistanceBetweenInterests": {
+   "baseline": 0.3350605593114439,
+   "specialization": 0.46733807558110974,
+   "specialization_readiness": 0.09693877551020406
+  },
+  "totals": {
+   "baseline": {
+    "focusCourses": 35,
+    "focusCorroboratedBySyllabus": 18,
+    "focusCourseHours": 136.5,
+    "verifiedPrereqViolations": 60,
+    "nonLockedViolations": 36,
+    "missingMandatory": 0,
+    "blocked": 0,
+    "meanPeak": 26
+   },
+   "specialization": {
+    "focusCourses": 36,
+    "focusCorroboratedBySyllabus": 19,
+    "focusCourseHours": 139.5,
+    "verifiedPrereqViolations": 59,
+    "nonLockedViolations": 35,
+    "missingMandatory": 0,
+    "blocked": 0,
+    "meanPeak": 26
+   },
+   "specialization_readiness": {
+    "focusCourses": 18,
+    "focusCorroboratedBySyllabus": 7,
+    "focusCourseHours": 69.5,
+    "verifiedPrereqViolations": 37,
+    "nonLockedViolations": 13,
+    "missingMandatory": 0,
+    "blocked": 0,
+    "meanPeak": 26
+   }
+  }
+ },
+ "rows": [
+  {
+   "scenario": {
+    "id": "none",
+    "label": "No stated interest (control)"
+   },
+   "baseline": {
+    "blocked": false,
+    "errors": 0,
+    "status": 200,
+    "missingMandatory": [],
+    "verifiedPrereqViolations": [
+     "0542-3620@year_3_semester_a",
+     "0542-3792@year_3_semester_a",
+     "0555-4562@year_4_semester_a",
+     "0512-1202@year_4_semester_b",
+     "0555-4555@year_4_semester_b"
+    ],
+    "violationDetail": [
+     {
+      "course": "0542-3620",
+      "semester": "year_3_semester_a",
+      "unmet": [
+       [
+        "0542-2500"
+       ]
+      ],
+      "locked": true
+     },
+     {
+      "course": "0542-3792",
+      "semester": "year_3_semester_a",
+      "unmet": [
+       [
+        "0542-2500"
+       ]
+      ],
+      "locked": true
+     },
+     {
+      "course": "0555-4562",
+      "semester": "year_4_semester_a",
+      "unmet": [
+       [
+        "0512-1203"
+       ]
+      ],
+      "locked": false
+     },
+     {
+      "course": "0512-1202",
+      "semester": "year_4_semester_b",
+      "unmet": [
+       [
+        "0512-1201"
+       ]
+      ],
+      "locked": false
+     },
+     {
+      "course": "0555-4555",
+      "semester": "year_4_semester_b",
+      "unmet": [
+       [
+        "0512-1202"
+       ],
+       [
+        "0509-1545"
+       ],
+       [
+        "0555-2106"
+       ]
+      ],
+      "locked": false
+     }
+    ],
+    "warnings": 42,
+    "warningText": [
+     "בyear_3_semester_a יש 26 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_3_semester_b יש 24 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_4_semester_a יש 26 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_4_semester_b יש 24 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש)."
+    ],
+    "advisoryPrereqFindings": 0,
+    "totalHours": 96,
+    "peakHours": 26,
+    "electives": [
+     "0542-4455",
+     "0542-4123",
+     "0542-4527",
+     "0542-4191",
+     "0542-4391",
+     "0542-4220",
+     "0542-4124",
+     "0542-4524",
+     "0555-4562",
+     "0512-1202",
+     "0542-4722",
+     "0542-4135",
+     "0555-4555"
+    ],
+    "focusCourses": [],
+    "focusCorroboratedBySyllabus": [],
+    "focusChainDepth": 0,
+    "wantedPresent": [],
+    "wantedMissing": [],
+    "unwantedPresent": [],
+    "focusCourseHours": 0
+   },
+   "specialization": {
+    "blocked": false,
+    "errors": 0,
+    "status": 200,
+    "missingMandatory": [],
+    "verifiedPrereqViolations": [
+     "0542-3620@year_3_semester_a",
+     "0542-3792@year_3_semester_a",
+     "0555-4562@year_4_semester_a",
+     "0512-1202@year_4_semester_b",
+     "0555-4555@year_4_semester_b"
+    ],
+    "violationDetail": [
+     {
+      "course": "0542-3620",
+      "semester": "year_3_semester_a",
+      "unmet": [
+       [
+        "0542-2500"
+       ]
+      ],
+      "locked": true
+     },
+     {
+      "course": "0542-3792",
+      "semester": "year_3_semester_a",
+      "unmet": [
+       [
+        "0542-2500"
+       ]
+      ],
+      "locked": true
+     },
+     {
+      "course": "0555-4562",
+      "semester": "year_4_semester_a",
+      "unmet": [
+       [
+        "0512-1203"
+       ]
+      ],
+      "locked": false
+     },
+     {
+      "course": "0512-1202",
+      "semester": "year_4_semester_b",
+      "unmet": [
+       [
+        "0512-1201"
+       ]
+      ],
+      "locked": false
+     },
+     {
+      "course": "0555-4555",
+      "semester": "year_4_semester_b",
+      "unmet": [
+       [
+        "0512-1202"
+       ],
+       [
+        "0509-1545"
+       ],
+       [
+        "0555-2106"
+       ]
+      ],
+      "locked": false
+     }
+    ],
+    "warnings": 42,
+    "warningText": [
+     "בyear_3_semester_a יש 26 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_3_semester_b יש 24 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_4_semester_a יש 26 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_4_semester_b יש 24 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש)."
+    ],
+    "advisoryPrereqFindings": 0,
+    "totalHours": 96,
+    "peakHours": 26,
+    "electives": [
+     "0542-4455",
+     "0542-4123",
+     "0542-4527",
+     "0542-4191",
+     "0542-4391",
+     "0542-4220",
+     "0542-4124",
+     "0542-4524",
+     "0555-4562",
+     "0512-1202",
+     "0542-4722",
+     "0542-4135",
+     "0555-4555"
+    ],
+    "focusCourses": [],
+    "focusCorroboratedBySyllabus": [],
+    "focusChainDepth": 0,
+    "wantedPresent": [],
+    "wantedMissing": [],
+    "unwantedPresent": [],
+    "focusCourseHours": 0
+   },
+   "specialization_readiness": {
+    "blocked": false,
+    "errors": 0,
+    "status": 200,
+    "missingMandatory": [],
+    "verifiedPrereqViolations": [
+     "0542-3620@year_3_semester_a",
+     "0542-3792@year_3_semester_a",
+     "0512-1202@year_4_semester_b"
+    ],
+    "violationDetail": [
+     {
+      "course": "0542-3620",
+      "semester": "year_3_semester_a",
+      "unmet": [
+       [
+        "0542-2500"
+       ]
+      ],
+      "locked": true
+     },
+     {
+      "course": "0542-3792",
+      "semester": "year_3_semester_a",
+      "unmet": [
+       [
+        "0542-2500"
+       ]
+      ],
+      "locked": true
+     },
+     {
+      "course": "0512-1202",
+      "semester": "year_4_semester_b",
+      "unmet": [
+       [
+        "0512-1201"
+       ]
+      ],
+      "locked": false
+     }
+    ],
+    "warnings": 33,
+    "warningText": [
+     "בyear_3_semester_a יש 26 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_3_semester_b יש 25 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_4_semester_a יש 25 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_4_semester_b יש 24 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש)."
+    ],
+    "advisoryPrereqFindings": 1,
+    "totalHours": 96,
+    "peakHours": 26,
+    "electives": [
+     "0542-4123",
+     "0542-4224",
+     "0542-4135",
+     "0542-4351",
+     "0542-4391",
+     "0512-4702",
+     "0542-4223",
+     "0542-4322",
+     "0542-4011",
+     "0512-1202",
+     "0542-4722",
+     "0542-4622",
+     "0542-4320"
+    ],
+    "focusCourses": [],
+    "focusCorroboratedBySyllabus": [],
+    "focusChainDepth": 0,
+    "wantedPresent": [],
+    "wantedMissing": [],
+    "unwantedPresent": [],
+    "focusCourseHours": 0
+   }
+  },
+  {
+   "scenario": {
+    "id": "control",
+    "label": "Control systems",
+    "request": "אני רוצה להתמקד בבקרה"
+   },
+   "baseline": {
+    "blocked": false,
+    "errors": 0,
+    "status": 200,
+    "missingMandatory": [],
+    "verifiedPrereqViolations": [
+     "0542-3620@year_3_semester_a",
+     "0542-3792@year_3_semester_a",
+     "0512-4362@year_4_semester_a",
+     "0512-1202@year_4_semester_b",
+     "0555-4555@year_4_semester_b"
+    ],
+    "violationDetail": [
+     {
+      "course": "0542-3620",
+      "semester": "year_3_semester_a",
+      "unmet": [
+       [
+        "0542-2500"
+       ]
+      ],
+      "locked": true
+     },
+     {
+      "course": "0542-3792",
+      "semester": "year_3_semester_a",
+      "unmet": [
+       [
+        "0542-2500"
+       ]
+      ],
+      "locked": true
+     },
+     {
+      "course": "0512-4362",
+      "semester": "year_4_semester_a",
+      "unmet": [
+       [
+        "0512-3543"
+       ]
+      ],
+      "locked": false
+     },
+     {
+      "course": "0512-1202",
+      "semester": "year_4_semester_b",
+      "unmet": [
+       [
+        "0512-1201"
+       ]
+      ],
+      "locked": false
+     },
+     {
+      "course": "0555-4555",
+      "semester": "year_4_semester_b",
+      "unmet": [
+       [
+        "0512-1202"
+       ],
+       [
+        "0509-1545"
+       ],
+       [
+        "0555-2106"
+       ]
+      ],
+      "locked": false
+     }
+    ],
+    "warnings": 41,
+    "warningText": [
+     "בyear_3_semester_a יש 26 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_3_semester_b יש 24 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_4_semester_a יש 26 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_4_semester_b יש 24 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש)."
+    ],
+    "advisoryPrereqFindings": 0,
+    "totalHours": 96,
+    "peakHours": 26,
+    "electives": [
+     "0542-4622",
+     "0542-4123",
+     "0542-4527",
+     "0542-4191",
+     "0542-4391",
+     "0542-4220",
+     "0512-4362",
+     "0542-4124",
+     "0542-4524",
+     "0512-1202",
+     "0542-4722",
+     "0542-4135",
+     "0555-4555"
+    ],
+    "focusCourses": [
+     "0512-4362",
+     "0542-3243",
+     "0542-4622"
+    ],
+    "focusCorroboratedBySyllabus": [
+     "0542-4622"
+    ],
+    "focusChainDepth": 2,
+    "wantedPresent": [],
+    "wantedMissing": [],
+    "unwantedPresent": [],
+    "focusCourseHours": 13.5
+   },
+   "specialization": {
+    "blocked": false,
+    "errors": 0,
+    "status": 200,
+    "missingMandatory": [],
+    "verifiedPrereqViolations": [
+     "0542-3620@year_3_semester_a",
+     "0542-3792@year_3_semester_a",
+     "0555-4555@year_3_semester_b",
+     "0512-4362@year_4_semester_a",
+     "0512-1202@year_4_semester_b"
+    ],
+    "violationDetail": [
+     {
+      "course": "0542-3620",
+      "semester": "year_3_semester_a",
+      "unmet": [
+       [
+        "0542-2500"
+       ]
+      ],
+      "locked": true
+     },
+     {
+      "course": "0542-3792",
+      "semester": "year_3_semester_a",
+      "unmet": [
+       [
+        "0542-2500"
+       ]
+      ],
+      "locked": true
+     },
+     {
+      "course": "0555-4555",
+      "semester": "year_3_semester_b",
+      "unmet": [
+       [
+        "0512-1202"
+       ],
+       [
+        "0509-1545"
+       ],
+       [
+        "0555-2106"
+       ]
+      ],
+      "locked": false
+     },
+     {
+      "course": "0512-4362",
+      "semester": "year_4_semester_a",
+      "unmet": [
+       [
+        "0512-3543"
+       ]
+      ],
+      "locked": false
+     },
+     {
+      "course": "0512-1202",
+      "semester": "year_4_semester_b",
+      "unmet": [
+       [
+        "0512-1201"
+       ]
+      ],
+      "locked": false
+     }
+    ],
+    "warnings": 40,
+    "warningText": [
+     "בyear_3_semester_a יש 26 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_3_semester_b יש 25 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_4_semester_a יש 25 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_4_semester_b יש 24 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש)."
+    ],
+    "advisoryPrereqFindings": 0,
+    "totalHours": 96,
+    "peakHours": 26,
+    "electives": [
+     "0542-4622",
+     "0542-4123",
+     "0542-4135",
+     "0555-4555",
+     "0542-4391",
+     "0512-4362",
+     "0542-4124",
+     "0542-4524",
+     "0542-4621",
+     "0542-4221",
+     "0512-1202",
+     "0542-4722",
+     "0542-4527"
+    ],
+    "focusCourses": [
+     "0512-4362",
+     "0542-3243",
+     "0542-4622"
+    ],
+    "focusCorroboratedBySyllabus": [
+     "0542-4622"
+    ],
+    "focusChainDepth": 2,
+    "wantedPresent": [],
+    "wantedMissing": [],
+    "unwantedPresent": [],
+    "focusCourseHours": 13.5
+   },
+   "specialization_readiness": {
+    "blocked": false,
+    "errors": 0,
+    "status": 200,
+    "missingMandatory": [],
+    "verifiedPrereqViolations": [
+     "0542-3620@year_3_semester_a",
+     "0542-3792@year_3_semester_a",
+     "0512-1202@year_4_semester_b"
+    ],
+    "violationDetail": [
+     {
+      "course": "0542-3620",
+      "semester": "year_3_semester_a",
+      "unmet": [
+       [
+        "0542-2500"
+       ]
+      ],
+      "locked": true
+     },
+     {
+      "course": "0542-3792",
+      "semester": "year_3_semester_a",
+      "unmet": [
+       [
+        "0542-2500"
+       ]
+      ],
+      "locked": true
+     },
+     {
+      "course": "0512-1202",
+      "semester": "year_4_semester_b",
+      "unmet": [
+       [
+        "0512-1201"
+       ]
+      ],
+      "locked": false
+     }
+    ],
+    "warnings": 33,
+    "warningText": [
+     "בyear_3_semester_a יש 26 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_3_semester_b יש 25 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_4_semester_a יש 25 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_4_semester_b יש 24 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש)."
+    ],
+    "advisoryPrereqFindings": 1,
+    "totalHours": 96,
+    "peakHours": 26,
+    "electives": [
+     "0542-4622",
+     "0542-4123",
+     "0542-4320",
+     "0542-4224",
+     "0542-4391",
+     "0542-4223",
+     "0512-4702",
+     "0542-4322",
+     "0542-4011",
+     "0512-1202",
+     "0542-4722",
+     "0542-4135",
+     "0542-4351"
+    ],
+    "focusCourses": [
+     "0542-3243",
+     "0542-4622"
+    ],
+    "focusCorroboratedBySyllabus": [
+     "0542-4622"
+    ],
+    "focusChainDepth": 2,
+    "wantedPresent": [],
+    "wantedMissing": [],
+    "unwantedPresent": [],
+    "focusCourseHours": 9.5
+   }
+  },
+  {
+   "scenario": {
+    "id": "energy",
+    "label": "Energy / thermal",
+    "request": "אני רוצה להתמקד באנרגיה"
+   },
+   "baseline": {
+    "blocked": false,
+    "errors": 0,
+    "status": 200,
+    "missingMandatory": [],
+    "verifiedPrereqViolations": [
+     "0542-3620@year_3_semester_a",
+     "0542-3792@year_3_semester_a",
+     "0512-1202@year_4_semester_b"
+    ],
+    "violationDetail": [
+     {
+      "course": "0542-3620",
+      "semester": "year_3_semester_a",
+      "unmet": [
+       [
+        "0542-2500"
+       ]
+      ],
+      "locked": true
+     },
+     {
+      "course": "0542-3792",
+      "semester": "year_3_semester_a",
+      "unmet": [
+       [
+        "0542-2500"
+       ]
+      ],
+      "locked": true
+     },
+     {
+      "course": "0512-1202",
+      "semester": "year_4_semester_b",
+      "unmet": [
+       [
+        "0512-1201"
+       ]
+      ],
+      "locked": false
+     }
+    ],
+    "warnings": 39,
+    "warningText": [
+     "בyear_3_semester_a יש 26 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_3_semester_b יש 24 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_4_semester_a יש 26 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_4_semester_b יש 24 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש)."
+    ],
+    "advisoryPrereqFindings": 0,
+    "totalHours": 96,
+    "peakHours": 26,
+    "electives": [
+     "0542-4455",
+     "0542-4123",
+     "0542-4135",
+     "0542-4275",
+     "0542-4391",
+     "0542-4220",
+     "0542-4131",
+     "0542-4124",
+     "0542-4524",
+     "0512-1202",
+     "0542-4722",
+     "0542-4132",
+     "0542-4179"
+    ],
+    "focusCourses": [
+     "0512-1204",
+     "0542-4131",
+     "0542-4132",
+     "0542-4179",
+     "0542-4275"
+    ],
+    "focusCorroboratedBySyllabus": [
+     "0542-4131",
+     "0542-4132"
+    ],
+    "focusChainDepth": 1,
+    "wantedPresent": [],
+    "wantedMissing": [],
+    "unwantedPresent": [],
+    "focusCourseHours": 18.5
+   },
+   "specialization": {
+    "blocked": false,
+    "errors": 0,
+    "status": 200,
+    "missingMandatory": [],
+    "verifiedPrereqViolations": [
+     "0542-3620@year_3_semester_a",
+     "0542-3792@year_3_semester_a",
+     "0512-1202@year_4_semester_b"
+    ],
+    "violationDetail": [
+     {
+      "course": "0542-3620",
+      "semester": "year_3_semester_a",
+      "unmet": [
+       [
+        "0542-2500"
+       ]
+      ],
+      "locked": true
+     },
+     {
+      "course": "0542-3792",
+      "semester": "year_3_semester_a",
+      "unmet": [
+       [
+        "0542-2500"
+       ]
+      ],
+      "locked": true
+     },
+     {
+      "course": "0512-1202",
+      "semester": "year_4_semester_b",
+      "unmet": [
+       [
+        "0512-1201"
+       ]
+      ],
+      "locked": false
+     }
+    ],
+    "warnings": 40,
+    "warningText": [
+     "בyear_3_semester_a יש 26 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_3_semester_b יש 24 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_4_semester_a יש 26 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_4_semester_b יש 24 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש)."
+    ],
+    "advisoryPrereqFindings": 0,
+    "totalHours": 96,
+    "peakHours": 26,
+    "electives": [
+     "0542-4455",
+     "0542-4132",
+     "0542-4135",
+     "0542-4275",
+     "0542-4391",
+     "0542-4352",
+     "0542-4220",
+     "0542-4131",
+     "0542-4124",
+     "0512-1202",
+     "0542-4722",
+     "0542-4179",
+     "0542-4527"
+    ],
+    "focusCourses": [
+     "0512-1204",
+     "0542-4131",
+     "0542-4132",
+     "0542-4179",
+     "0542-4275"
+    ],
+    "focusCorroboratedBySyllabus": [
+     "0542-4131",
+     "0542-4132"
+    ],
+    "focusChainDepth": 1,
+    "wantedPresent": [],
+    "wantedMissing": [],
+    "unwantedPresent": [],
+    "focusCourseHours": 18.5
+   },
+   "specialization_readiness": {
+    "blocked": false,
+    "errors": 0,
+    "status": 200,
+    "missingMandatory": [],
+    "verifiedPrereqViolations": [
+     "0542-3620@year_3_semester_a",
+     "0542-3792@year_3_semester_a",
+     "0512-1202@year_4_semester_b"
+    ],
+    "violationDetail": [
+     {
+      "course": "0542-3620",
+      "semester": "year_3_semester_a",
+      "unmet": [
+       [
+        "0542-2500"
+       ]
+      ],
+      "locked": true
+     },
+     {
+      "course": "0542-3792",
+      "semester": "year_3_semester_a",
+      "unmet": [
+       [
+        "0542-2500"
+       ]
+      ],
+      "locked": true
+     },
+     {
+      "course": "0512-1202",
+      "semester": "year_4_semester_b",
+      "unmet": [
+       [
+        "0512-1201"
+       ]
+      ],
+      "locked": false
+     }
+    ],
+    "warnings": 33,
+    "warningText": [
+     "בyear_3_semester_a יש 26 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_3_semester_b יש 26 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_4_semester_a יש 24 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_4_semester_b יש 24 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש)."
+    ],
+    "advisoryPrereqFindings": 1,
+    "totalHours": 96,
+    "peakHours": 26,
+    "electives": [
+     "0542-4722",
+     "0542-4123",
+     "0542-4135",
+     "0542-4224",
+     "0542-4391",
+     "0542-4223",
+     "0512-4702",
+     "0542-4322",
+     "0512-1202",
+     "0542-4622",
+     "0542-4320",
+     "0542-4351",
+     "0542-4275"
+    ],
+    "focusCourses": [
+     "0512-1204",
+     "0542-4275"
+    ],
+    "focusCorroboratedBySyllabus": [],
+    "focusChainDepth": 1,
+    "wantedPresent": [],
+    "wantedMissing": [],
+    "unwantedPresent": [],
+    "focusCourseHours": 6.5
+   }
+  },
+  {
+   "scenario": {
+    "id": "robotics",
+    "label": "Robotics / mechatronics",
+    "request": "אני רוצה להתמקד ברובוטיקה"
+   },
+   "baseline": {
+    "blocked": false,
+    "errors": 0,
+    "status": 200,
+    "missingMandatory": [],
+    "verifiedPrereqViolations": [
+     "0542-3620@year_3_semester_a",
+     "0542-3792@year_3_semester_a",
+     "0555-4562@year_4_semester_a",
+     "0512-1202@year_4_semester_b",
+     "0555-4555@year_4_semester_b"
+    ],
+    "violationDetail": [
+     {
+      "course": "0542-3620",
+      "semester": "year_3_semester_a",
+      "unmet": [
+       [
+        "0542-2500"
+       ]
+      ],
+      "locked": true
+     },
+     {
+      "course": "0542-3792",
+      "semester": "year_3_semester_a",
+      "unmet": [
+       [
+        "0542-2500"
+       ]
+      ],
+      "locked": true
+     },
+     {
+      "course": "0555-4562",
+      "semester": "year_4_semester_a",
+      "unmet": [
+       [
+        "0512-1203"
+       ]
+      ],
+      "locked": false
+     },
+     {
+      "course": "0512-1202",
+      "semester": "year_4_semester_b",
+      "unmet": [
+       [
+        "0512-1201"
+       ]
+      ],
+      "locked": false
+     },
+     {
+      "course": "0555-4555",
+      "semester": "year_4_semester_b",
+      "unmet": [
+       [
+        "0512-1202"
+       ],
+       [
+        "0509-1545"
+       ],
+       [
+        "0555-2106"
+       ]
+      ],
+      "locked": false
+     }
+    ],
+    "warnings": 42,
+    "warningText": [
+     "בyear_3_semester_a יש 26 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_3_semester_b יש 24 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_4_semester_a יש 26 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_4_semester_b יש 24 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש)."
+    ],
+    "advisoryPrereqFindings": 0,
+    "totalHours": 96,
+    "peakHours": 26,
+    "electives": [
+     "0542-4455",
+     "0542-4123",
+     "0542-4527",
+     "0542-4191",
+     "0542-4391",
+     "0542-4220",
+     "0542-4124",
+     "0542-4524",
+     "0555-4562",
+     "0512-1202",
+     "0542-4722",
+     "0542-4135",
+     "0555-4555"
+    ],
+    "focusCourses": [],
+    "focusCorroboratedBySyllabus": [],
+    "focusChainDepth": 0,
+    "wantedPresent": [],
+    "wantedMissing": [],
+    "unwantedPresent": [],
+    "focusCourseHours": 0
+   },
+   "specialization": {
+    "blocked": false,
+    "errors": 0,
+    "status": 200,
+    "missingMandatory": [],
+    "verifiedPrereqViolations": [
+     "0542-3620@year_3_semester_a",
+     "0542-3792@year_3_semester_a",
+     "0555-4555@year_3_semester_b",
+     "0555-4562@year_4_semester_a",
+     "0542-4559@year_4_semester_a",
+     "0512-1202@year_4_semester_b"
+    ],
+    "violationDetail": [
+     {
+      "course": "0542-3620",
+      "semester": "year_3_semester_a",
+      "unmet": [
+       [
+        "0542-2500"
+       ]
+      ],
+      "locked": true
+     },
+     {
+      "course": "0542-3792",
+      "semester": "year_3_semester_a",
+      "unmet": [
+       [
+        "0542-2500"
+       ]
+      ],
+      "locked": true
+     },
+     {
+      "course": "0555-4555",
+      "semester": "year_3_semester_b",
+      "unmet": [
+       [
+        "0512-1202"
+       ],
+       [
+        "0509-1545"
+       ],
+       [
+        "0555-2106"
+       ]
+      ],
+      "locked": false
+     },
+     {
+      "course": "0555-4562",
+      "semester": "year_4_semester_a",
+      "unmet": [
+       [
+        "0512-1203"
+       ]
+      ],
+      "locked": false
+     },
+     {
+      "course": "0542-4559",
+      "semester": "year_4_semester_a",
+      "unmet": [
+       [
+        "0512-1201"
+       ]
+      ],
+      "locked": false
+     },
+     {
+      "course": "0512-1202",
+      "semester": "year_4_semester_b",
+      "unmet": [
+       [
+        "0512-1201"
+       ]
+      ],
+      "locked": false
+     }
+    ],
+    "warnings": 41,
+    "warningText": [
+     "בyear_3_semester_a יש 26 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_3_semester_b יש 25 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_4_semester_a יש 25 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_4_semester_b יש 24 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש)."
+    ],
+    "advisoryPrereqFindings": 0,
+    "totalHours": 96,
+    "peakHours": 26,
+    "electives": [
+     "0542-4455",
+     "0542-4123",
+     "0542-4135",
+     "0555-4555",
+     "0542-4391",
+     "0542-4124",
+     "0542-4524",
+     "0555-4562",
+     "0542-4559",
+     "0542-4221",
+     "0512-1202",
+     "0542-4722",
+     "0542-4527"
+    ],
+    "focusCourses": [
+     "0542-4559"
+    ],
+    "focusCorroboratedBySyllabus": [
+     "0542-4559"
+    ],
+    "focusChainDepth": 1,
+    "wantedPresent": [],
+    "wantedMissing": [],
+    "unwantedPresent": [],
+    "focusCourseHours": 3
+   },
+   "specialization_readiness": {
+    "blocked": false,
+    "errors": 0,
+    "status": 200,
+    "missingMandatory": [],
+    "verifiedPrereqViolations": [
+     "0542-3620@year_3_semester_a",
+     "0542-3792@year_3_semester_a",
+     "0512-1202@year_4_semester_b"
+    ],
+    "violationDetail": [
+     {
+      "course": "0542-3620",
+      "semester": "year_3_semester_a",
+      "unmet": [
+       [
+        "0542-2500"
+       ]
+      ],
+      "locked": true
+     },
+     {
+      "course": "0542-3792",
+      "semester": "year_3_semester_a",
+      "unmet": [
+       [
+        "0542-2500"
+       ]
+      ],
+      "locked": true
+     },
+     {
+      "course": "0512-1202",
+      "semester": "year_4_semester_b",
+      "unmet": [
+       [
+        "0512-1201"
+       ]
+      ],
+      "locked": false
+     }
+    ],
+    "warnings": 33,
+    "warningText": [
+     "בyear_3_semester_a יש 26 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_3_semester_b יש 25 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_4_semester_a יש 25 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_4_semester_b יש 24 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש)."
+    ],
+    "advisoryPrereqFindings": 1,
+    "totalHours": 96,
+    "peakHours": 26,
+    "electives": [
+     "0542-4123",
+     "0542-4224",
+     "0542-4135",
+     "0542-4351",
+     "0542-4391",
+     "0512-4702",
+     "0542-4223",
+     "0542-4322",
+     "0542-4011",
+     "0512-1202",
+     "0542-4722",
+     "0542-4622",
+     "0542-4320"
+    ],
+    "focusCourses": [],
+    "focusCorroboratedBySyllabus": [],
+    "focusChainDepth": 0,
+    "wantedPresent": [],
+    "wantedMissing": [],
+    "unwantedPresent": [],
+    "focusCourseHours": 0
+   }
+  },
+  {
+   "scenario": {
+    "id": "manufacturing",
+    "label": "Manufacturing",
+    "request": "אני רוצה להתמקד בייצור"
+   },
+   "baseline": {
+    "blocked": false,
+    "errors": 0,
+    "status": 200,
+    "missingMandatory": [],
+    "verifiedPrereqViolations": [
+     "0542-3620@year_3_semester_a",
+     "0542-3792@year_3_semester_a",
+     "0555-4562@year_4_semester_a",
+     "0512-1202@year_4_semester_b"
+    ],
+    "violationDetail": [
+     {
+      "course": "0542-3620",
+      "semester": "year_3_semester_a",
+      "unmet": [
+       [
+        "0542-2500"
+       ]
+      ],
+      "locked": true
+     },
+     {
+      "course": "0542-3792",
+      "semester": "year_3_semester_a",
+      "unmet": [
+       [
+        "0542-2500"
+       ]
+      ],
+      "locked": true
+     },
+     {
+      "course": "0555-4562",
+      "semester": "year_4_semester_a",
+      "unmet": [
+       [
+        "0512-1203"
+       ]
+      ],
+      "locked": false
+     },
+     {
+      "course": "0512-1202",
+      "semester": "year_4_semester_b",
+      "unmet": [
+       [
+        "0512-1201"
+       ]
+      ],
+      "locked": false
+     }
+    ],
+    "warnings": 40,
+    "warningText": [
+     "בyear_3_semester_a יש 26 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_3_semester_b יש 24 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_4_semester_a יש 26 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_4_semester_b יש 24 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש)."
+    ],
+    "advisoryPrereqFindings": 0,
+    "totalHours": 96,
+    "peakHours": 26,
+    "electives": [
+     "0542-4455",
+     "0542-4123",
+     "0542-4135",
+     "0542-4191",
+     "0542-4391",
+     "0542-4220",
+     "0542-4124",
+     "0542-4524",
+     "0555-4562",
+     "0512-1202",
+     "0542-4722",
+     "0542-4179",
+     "0542-4527"
+    ],
+    "focusCourses": [
+     "0542-3780",
+     "0542-3791",
+     "0542-4124",
+     "0542-4179",
+     "0542-4191"
+    ],
+    "focusCorroboratedBySyllabus": [
+     "0542-3780",
+     "0542-3791",
+     "0542-4124",
+     "0542-4191"
+    ],
+    "focusChainDepth": 1,
+    "wantedPresent": [],
+    "wantedMissing": [],
+    "unwantedPresent": [],
+    "focusCourseHours": 16
+   },
+   "specialization": {
+    "blocked": false,
+    "errors": 0,
+    "status": 200,
+    "missingMandatory": [],
+    "verifiedPrereqViolations": [
+     "0542-3620@year_3_semester_a",
+     "0542-3792@year_3_semester_a",
+     "0555-4555@year_3_semester_b",
+     "0512-1202@year_4_semester_b"
+    ],
+    "violationDetail": [
+     {
+      "course": "0542-3620",
+      "semester": "year_3_semester_a",
+      "unmet": [
+       [
+        "0542-2500"
+       ]
+      ],
+      "locked": true
+     },
+     {
+      "course": "0542-3792",
+      "semester": "year_3_semester_a",
+      "unmet": [
+       [
+        "0542-2500"
+       ]
+      ],
+      "locked": true
+     },
+     {
+      "course": "0555-4555",
+      "semester": "year_3_semester_b",
+      "unmet": [
+       [
+        "0512-1202"
+       ],
+       [
+        "0509-1545"
+       ],
+       [
+        "0555-2106"
+       ]
+      ],
+      "locked": false
+     },
+     {
+      "course": "0512-1202",
+      "semester": "year_4_semester_b",
+      "unmet": [
+       [
+        "0512-1201"
+       ]
+      ],
+      "locked": false
+     }
+    ],
+    "warnings": 42,
+    "warningText": [
+     "בyear_3_semester_a יש 26 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_3_semester_b יש 26 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_4_semester_a יש 24 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_4_semester_b יש 24 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש)."
+    ],
+    "advisoryPrereqFindings": 0,
+    "totalHours": 96,
+    "peakHours": 26,
+    "electives": [
+     "0542-4722",
+     "0542-4123",
+     "0542-4135",
+     "0555-4555",
+     "0542-4391",
+     "0542-4220",
+     "0542-4124",
+     "0542-4524",
+     "0512-1202",
+     "0542-4455",
+     "0542-4179",
+     "0542-4527",
+     "0542-4425"
+    ],
+    "focusCourses": [
+     "0542-3780",
+     "0542-3791",
+     "0542-4124",
+     "0542-4179",
+     "0542-4425"
+    ],
+    "focusCorroboratedBySyllabus": [
+     "0542-3780",
+     "0542-3791",
+     "0542-4124",
+     "0542-4425"
+    ],
+    "focusChainDepth": 2,
+    "wantedPresent": [],
+    "wantedMissing": [],
+    "unwantedPresent": [],
+    "focusCourseHours": 16
+   },
+   "specialization_readiness": {
+    "blocked": false,
+    "errors": 0,
+    "status": 200,
+    "missingMandatory": [],
+    "verifiedPrereqViolations": [
+     "0542-3620@year_3_semester_a",
+     "0542-3792@year_3_semester_a",
+     "0512-1202@year_4_semester_b"
+    ],
+    "violationDetail": [
+     {
+      "course": "0542-3620",
+      "semester": "year_3_semester_a",
+      "unmet": [
+       [
+        "0542-2500"
+       ]
+      ],
+      "locked": true
+     },
+     {
+      "course": "0542-3792",
+      "semester": "year_3_semester_a",
+      "unmet": [
+       [
+        "0542-2500"
+       ]
+      ],
+      "locked": true
+     },
+     {
+      "course": "0512-1202",
+      "semester": "year_4_semester_b",
+      "unmet": [
+       [
+        "0512-1201"
+       ]
+      ],
+      "locked": false
+     }
+    ],
+    "warnings": 33,
+    "warningText": [
+     "בyear_3_semester_a יש 26 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_3_semester_b יש 25 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_4_semester_a יש 25 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_4_semester_b יש 24 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש)."
+    ],
+    "advisoryPrereqFindings": 1,
+    "totalHours": 96,
+    "peakHours": 26,
+    "electives": [
+     "0542-4123",
+     "0542-4224",
+     "0542-4135",
+     "0542-4351",
+     "0542-4391",
+     "0512-4702",
+     "0542-4223",
+     "0542-4322",
+     "0542-4011",
+     "0512-1202",
+     "0542-4722",
+     "0542-4622",
+     "0542-4320"
+    ],
+    "focusCourses": [
+     "0542-3780",
+     "0542-3791"
+    ],
+    "focusCorroboratedBySyllabus": [
+     "0542-3780",
+     "0542-3791"
+    ],
+    "focusChainDepth": 1,
+    "wantedPresent": [],
+    "wantedMissing": [],
+    "unwantedPresent": [],
+    "focusCourseHours": 5
+   }
+  },
+  {
+   "scenario": {
+    "id": "materials",
+    "label": "Materials",
+    "request": "אני רוצה להתמקד בחומרים"
+   },
+   "baseline": {
+    "blocked": false,
+    "errors": 0,
+    "status": 200,
+    "missingMandatory": [],
+    "verifiedPrereqViolations": [
+     "0542-3620@year_3_semester_a",
+     "0542-3792@year_3_semester_a",
+     "0555-4630@year_3_semester_b",
+     "0555-4562@year_4_semester_a",
+     "0512-1202@year_4_semester_b",
+     "0555-4555@year_4_semester_b"
+    ],
+    "violationDetail": [
+     {
+      "course": "0542-3620",
+      "semester": "year_3_semester_a",
+      "unmet": [
+       [
+        "0542-2500"
+       ]
+      ],
+      "locked": true
+     },
+     {
+      "course": "0542-3792",
+      "semester": "year_3_semester_a",
+      "unmet": [
+       [
+        "0542-2500"
+       ]
+      ],
+      "locked": true
+     },
+     {
+      "course": "0555-4630",
+      "semester": "year_3_semester_b",
+      "unmet": [
+       [
+        "0555-3150"
+       ],
+       [
+        "0555-3160"
+       ]
+      ],
+      "locked": false
+     },
+     {
+      "course": "0555-4562",
+      "semester": "year_4_semester_a",
+      "unmet": [
+       [
+        "0512-1203"
+       ]
+      ],
+      "locked": false
+     },
+     {
+      "course": "0512-1202",
+      "semester": "year_4_semester_b",
+      "unmet": [
+       [
+        "0512-1201"
+       ]
+      ],
+      "locked": false
+     },
+     {
+      "course": "0555-4555",
+      "semester": "year_4_semester_b",
+      "unmet": [
+       [
+        "0512-1202"
+       ],
+       [
+        "0509-1545"
+       ],
+       [
+        "0555-2106"
+       ]
+      ],
+      "locked": false
+     }
+    ],
+    "warnings": 44,
+    "warningText": [
+     "בyear_3_semester_a יש 26 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_3_semester_b יש 24 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_4_semester_a יש 26 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_4_semester_b יש 24 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש)."
+    ],
+    "advisoryPrereqFindings": 0,
+    "totalHours": 96,
+    "peakHours": 26,
+    "electives": [
+     "0542-4455",
+     "0542-4123",
+     "0555-4630",
+     "0542-4191",
+     "0542-4391",
+     "0542-4220",
+     "0542-4124",
+     "0542-4524",
+     "0555-4562",
+     "0512-1202",
+     "0542-4722",
+     "0555-4555",
+     "0542-4135"
+    ],
+    "focusCourses": [
+     "0542-4191",
+     "0555-4555",
+     "0555-4630"
+    ],
+    "focusCorroboratedBySyllabus": [
+     "0542-4191",
+     "0555-4555",
+     "0555-4630"
+    ],
+    "focusChainDepth": 1,
+    "wantedPresent": [],
+    "wantedMissing": [],
+    "unwantedPresent": [],
+    "focusCourseHours": 11
+   },
+   "specialization": {
+    "blocked": false,
+    "errors": 0,
+    "status": 200,
+    "missingMandatory": [],
+    "verifiedPrereqViolations": [
+     "0542-3620@year_3_semester_a",
+     "0542-3792@year_3_semester_a",
+     "0555-4630@year_3_semester_b",
+     "0542-4425@year_3_semester_b",
+     "0555-3160@year_4_semester_a",
+     "0512-1202@year_4_semester_b",
+     "0555-4555@year_4_semester_b"
+    ],
+    "violationDetail": [
+     {
+      "course": "0542-3620",
+      "semester": "year_3_semester_a",
+      "unmet": [
+       [
+        "0542-2500"
+       ]
+      ],
+      "locked": true
+     },
+     {
+      "course": "0542-3792",
+      "semester": "year_3_semester_a",
+      "unmet": [
+       [
+        "0542-2500"
+       ]
+      ],
+      "locked": true
+     },
+     {
+      "course": "0555-4630",
+      "semester": "year_3_semester_b",
+      "unmet": [
+       [
+        "0555-3150"
+       ],
+       [
+        "0555-3160"
+       ]
+      ],
+      "locked": false
+     },
+     {
+      "course": "0542-4425",
+      "semester": "year_3_semester_b",
+      "unmet": [
+       [
+        "0542-3780"
+       ],
+       [
+        "0542-3791"
+       ]
+      ],
+      "locked": false
+     },
+     {
+      "course": "0555-3160",
+      "semester": "year_4_semester_a",
+      "unmet": [
+       [
+        "0555-2106"
+       ],
+       [
+        "0555-1121"
+       ],
+       [
+        "0555-1101"
+       ]
+      ],
+      "locked": false
+     },
+     {
+      "course": "0512-1202",
+      "semester": "year_4_semester_b",
+      "unmet": [
+       [
+        "0512-1201"
+       ]
+      ],
+      "locked": false
+     },
+     {
+      "course": "0555-4555",
+      "semester": "year_4_semester_b",
+      "unmet": [
+       [
+        "0512-1202"
+       ],
+       [
+        "0509-1545"
+       ],
+       [
+        "0555-2106"
+       ]
+      ],
+      "locked": false
+     }
+    ],
+    "warnings": 49,
+    "warningText": [
+     "בyear_3_semester_a יש 26 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_3_semester_b יש 24 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_4_semester_a יש 26 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_4_semester_b יש 24 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש)."
+    ],
+    "advisoryPrereqFindings": 0,
+    "totalHours": 96,
+    "peakHours": 26,
+    "electives": [
+     "0542-4455",
+     "0555-4630",
+     "0542-4135",
+     "0542-4425",
+     "0542-4391",
+     "0542-4352",
+     "0542-4220",
+     "0555-3160",
+     "0542-4124",
+     "0512-1202",
+     "0542-4722",
+     "0555-4555",
+     "0542-4527"
+    ],
+    "focusCourses": [
+     "0542-4425",
+     "0555-4555",
+     "0555-4630"
+    ],
+    "focusCorroboratedBySyllabus": [
+     "0542-4425",
+     "0555-4555",
+     "0555-4630"
+    ],
+    "focusChainDepth": 1,
+    "wantedPresent": [],
+    "wantedMissing": [],
+    "unwantedPresent": [],
+    "focusCourseHours": 11
+   },
+   "specialization_readiness": {
+    "blocked": false,
+    "errors": 0,
+    "status": 200,
+    "missingMandatory": [],
+    "verifiedPrereqViolations": [
+     "0542-3620@year_3_semester_a",
+     "0542-3792@year_3_semester_a",
+     "0512-1202@year_4_semester_b"
+    ],
+    "violationDetail": [
+     {
+      "course": "0542-3620",
+      "semester": "year_3_semester_a",
+      "unmet": [
+       [
+        "0542-2500"
+       ]
+      ],
+      "locked": true
+     },
+     {
+      "course": "0542-3792",
+      "semester": "year_3_semester_a",
+      "unmet": [
+       [
+        "0542-2500"
+       ]
+      ],
+      "locked": true
+     },
+     {
+      "course": "0512-1202",
+      "semester": "year_4_semester_b",
+      "unmet": [
+       [
+        "0512-1201"
+       ]
+      ],
+      "locked": false
+     }
+    ],
+    "warnings": 33,
+    "warningText": [
+     "בyear_3_semester_a יש 26 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_3_semester_b יש 26 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_4_semester_a יש 24 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_4_semester_b יש 24 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש)."
+    ],
+    "advisoryPrereqFindings": 1,
+    "totalHours": 96,
+    "peakHours": 26,
+    "electives": [
+     "0542-4722",
+     "0542-4123",
+     "0542-4135",
+     "0542-4224",
+     "0542-4391",
+     "0542-4223",
+     "0512-4702",
+     "0542-4322",
+     "0512-1202",
+     "0542-4622",
+     "0542-4320",
+     "0542-4351",
+     "0542-4275"
+    ],
+    "focusCourses": [],
+    "focusCorroboratedBySyllabus": [],
+    "focusChainDepth": 0,
+    "wantedPresent": [],
+    "wantedMissing": [],
+    "unwantedPresent": [],
+    "focusCourseHours": 0
+   }
+  },
+  {
+   "scenario": {
+    "id": "biomech",
+    "label": "Biomechanics / medical",
+    "request": "אני רוצה להתמקד בביו"
+   },
+   "baseline": {
+    "blocked": false,
+    "errors": 0,
+    "status": 200,
+    "missingMandatory": [],
+    "verifiedPrereqViolations": [
+     "0542-3620@year_3_semester_a",
+     "0542-3792@year_3_semester_a",
+     "0555-4562@year_4_semester_a",
+     "0512-1202@year_4_semester_b",
+     "0555-4555@year_4_semester_b"
+    ],
+    "violationDetail": [
+     {
+      "course": "0542-3620",
+      "semester": "year_3_semester_a",
+      "unmet": [
+       [
+        "0542-2500"
+       ]
+      ],
+      "locked": true
+     },
+     {
+      "course": "0542-3792",
+      "semester": "year_3_semester_a",
+      "unmet": [
+       [
+        "0542-2500"
+       ]
+      ],
+      "locked": true
+     },
+     {
+      "course": "0555-4562",
+      "semester": "year_4_semester_a",
+      "unmet": [
+       [
+        "0512-1203"
+       ]
+      ],
+      "locked": false
+     },
+     {
+      "course": "0512-1202",
+      "semester": "year_4_semester_b",
+      "unmet": [
+       [
+        "0512-1201"
+       ]
+      ],
+      "locked": false
+     },
+     {
+      "course": "0555-4555",
+      "semester": "year_4_semester_b",
+      "unmet": [
+       [
+        "0512-1202"
+       ],
+       [
+        "0509-1545"
+       ],
+       [
+        "0555-2106"
+       ]
+      ],
+      "locked": false
+     }
+    ],
+    "warnings": 42,
+    "warningText": [
+     "בyear_3_semester_a יש 26 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_3_semester_b יש 24 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_4_semester_a יש 26 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_4_semester_b יש 24 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש)."
+    ],
+    "advisoryPrereqFindings": 0,
+    "totalHours": 96,
+    "peakHours": 26,
+    "electives": [
+     "0542-4455",
+     "0542-4123",
+     "0542-4527",
+     "0542-4191",
+     "0542-4391",
+     "0542-4220",
+     "0542-4124",
+     "0542-4524",
+     "0555-4562",
+     "0512-1202",
+     "0542-4722",
+     "0542-4135",
+     "0555-4555"
+    ],
+    "focusCourses": [
+     "0542-4124",
+     "0555-4555",
+     "0555-4562"
+    ],
+    "focusCorroboratedBySyllabus": [
+     "0542-4124",
+     "0555-4555",
+     "0555-4562"
+    ],
+    "focusChainDepth": 1,
+    "wantedPresent": [],
+    "wantedMissing": [],
+    "unwantedPresent": [],
+    "focusCourseHours": 12
+   },
+   "specialization": {
+    "blocked": false,
+    "errors": 0,
+    "status": 200,
+    "missingMandatory": [],
+    "verifiedPrereqViolations": [
+     "0542-3620@year_3_semester_a",
+     "0542-3792@year_3_semester_a",
+     "0555-4562@year_4_semester_a",
+     "0512-1202@year_4_semester_b",
+     "0555-4555@year_4_semester_b"
+    ],
+    "violationDetail": [
+     {
+      "course": "0542-3620",
+      "semester": "year_3_semester_a",
+      "unmet": [
+       [
+        "0542-2500"
+       ]
+      ],
+      "locked": true
+     },
+     {
+      "course": "0542-3792",
+      "semester": "year_3_semester_a",
+      "unmet": [
+       [
+        "0542-2500"
+       ]
+      ],
+      "locked": true
+     },
+     {
+      "course": "0555-4562",
+      "semester": "year_4_semester_a",
+      "unmet": [
+       [
+        "0512-1203"
+       ]
+      ],
+      "locked": false
+     },
+     {
+      "course": "0512-1202",
+      "semester": "year_4_semester_b",
+      "unmet": [
+       [
+        "0512-1201"
+       ]
+      ],
+      "locked": false
+     },
+     {
+      "course": "0555-4555",
+      "semester": "year_4_semester_b",
+      "unmet": [
+       [
+        "0512-1202"
+       ],
+       [
+        "0509-1545"
+       ],
+       [
+        "0555-2106"
+       ]
+      ],
+      "locked": false
+     }
+    ],
+    "warnings": 42,
+    "warningText": [
+     "בyear_3_semester_a יש 26 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_3_semester_b יש 24 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_4_semester_a יש 26 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_4_semester_b יש 24 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש)."
+    ],
+    "advisoryPrereqFindings": 0,
+    "totalHours": 96,
+    "peakHours": 26,
+    "electives": [
+     "0542-4455",
+     "0542-4123",
+     "0542-4527",
+     "0542-4191",
+     "0542-4391",
+     "0542-4220",
+     "0542-4124",
+     "0542-4524",
+     "0555-4562",
+     "0512-1202",
+     "0542-4722",
+     "0542-4135",
+     "0555-4555"
+    ],
+    "focusCourses": [
+     "0542-4124",
+     "0555-4555",
+     "0555-4562"
+    ],
+    "focusCorroboratedBySyllabus": [
+     "0542-4124",
+     "0555-4555",
+     "0555-4562"
+    ],
+    "focusChainDepth": 1,
+    "wantedPresent": [],
+    "wantedMissing": [],
+    "unwantedPresent": [],
+    "focusCourseHours": 12
+   },
+   "specialization_readiness": {
+    "blocked": false,
+    "errors": 0,
+    "status": 200,
+    "missingMandatory": [],
+    "verifiedPrereqViolations": [
+     "0542-3620@year_3_semester_a",
+     "0542-3792@year_3_semester_a",
+     "0512-1202@year_4_semester_b"
+    ],
+    "violationDetail": [
+     {
+      "course": "0542-3620",
+      "semester": "year_3_semester_a",
+      "unmet": [
+       [
+        "0542-2500"
+       ]
+      ],
+      "locked": true
+     },
+     {
+      "course": "0542-3792",
+      "semester": "year_3_semester_a",
+      "unmet": [
+       [
+        "0542-2500"
+       ]
+      ],
+      "locked": true
+     },
+     {
+      "course": "0512-1202",
+      "semester": "year_4_semester_b",
+      "unmet": [
+       [
+        "0512-1201"
+       ]
+      ],
+      "locked": false
+     }
+    ],
+    "warnings": 33,
+    "warningText": [
+     "בyear_3_semester_a יש 26 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_3_semester_b יש 25 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_4_semester_a יש 25 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_4_semester_b יש 24 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש)."
+    ],
+    "advisoryPrereqFindings": 1,
+    "totalHours": 96,
+    "peakHours": 26,
+    "electives": [
+     "0542-4123",
+     "0542-4224",
+     "0542-4135",
+     "0542-4351",
+     "0542-4391",
+     "0512-4702",
+     "0542-4223",
+     "0542-4322",
+     "0542-4011",
+     "0512-1202",
+     "0542-4722",
+     "0542-4622",
+     "0542-4320"
+    ],
+    "focusCourses": [],
+    "focusCorroboratedBySyllabus": [],
+    "focusChainDepth": 0,
+    "wantedPresent": [],
+    "wantedMissing": [],
+    "unwantedPresent": [],
+    "focusCourseHours": 0
+   }
+  },
+  {
+   "scenario": {
+    "id": "design",
+    "label": "Mechanical design",
+    "request": "אני רוצה להתמקד בתכן"
+   },
+   "baseline": {
+    "blocked": false,
+    "errors": 0,
+    "status": 200,
+    "missingMandatory": [],
+    "verifiedPrereqViolations": [
+     "0542-3620@year_3_semester_a",
+     "0542-3792@year_3_semester_a",
+     "0542-4425@year_3_semester_b",
+     "0555-4562@year_4_semester_a",
+     "0512-1202@year_4_semester_b",
+     "0555-4555@year_4_semester_b"
+    ],
+    "violationDetail": [
+     {
+      "course": "0542-3620",
+      "semester": "year_3_semester_a",
+      "unmet": [
+       [
+        "0542-2500"
+       ]
+      ],
+      "locked": true
+     },
+     {
+      "course": "0542-3792",
+      "semester": "year_3_semester_a",
+      "unmet": [
+       [
+        "0542-2500"
+       ]
+      ],
+      "locked": true
+     },
+     {
+      "course": "0542-4425",
+      "semester": "year_3_semester_b",
+      "unmet": [
+       [
+        "0542-3780"
+       ],
+       [
+        "0542-3791"
+       ]
+      ],
+      "locked": false
+     },
+     {
+      "course": "0555-4562",
+      "semester": "year_4_semester_a",
+      "unmet": [
+       [
+        "0512-1203"
+       ]
+      ],
+      "locked": false
+     },
+     {
+      "course": "0512-1202",
+      "semester": "year_4_semester_b",
+      "unmet": [
+       [
+        "0512-1201"
+       ]
+      ],
+      "locked": false
+     },
+     {
+      "course": "0555-4555",
+      "semester": "year_4_semester_b",
+      "unmet": [
+       [
+        "0512-1202"
+       ],
+       [
+        "0509-1545"
+       ],
+       [
+        "0555-2106"
+       ]
+      ],
+      "locked": false
+     }
+    ],
+    "warnings": 43,
+    "warningText": [
+     "בyear_3_semester_a יש 26 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_3_semester_b יש 24 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_4_semester_a יש 26 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_4_semester_b יש 24 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש)."
+    ],
+    "advisoryPrereqFindings": 0,
+    "totalHours": 96,
+    "peakHours": 26,
+    "electives": [
+     "0542-4123",
+     "0542-4221",
+     "0542-4527",
+     "0542-4425",
+     "0542-4391",
+     "0542-4422",
+     "0542-4124",
+     "0542-4524",
+     "0555-4562",
+     "0512-1202",
+     "0542-4722",
+     "0542-4135",
+     "0555-4555"
+    ],
+    "focusCourses": [
+     "0542-2400",
+     "0542-4010",
+     "0542-4020",
+     "0542-4135",
+     "0542-4422",
+     "0542-4425"
+    ],
+    "focusCorroboratedBySyllabus": [
+     "0542-2400",
+     "0542-4425"
+    ],
+    "focusChainDepth": 2,
+    "wantedPresent": [],
+    "wantedMissing": [],
+    "unwantedPresent": [],
+    "focusCourseHours": 21
+   },
+   "specialization": {
+    "blocked": false,
+    "errors": 0,
+    "status": 200,
+    "missingMandatory": [],
+    "verifiedPrereqViolations": [
+     "0542-3620@year_3_semester_a",
+     "0542-3792@year_3_semester_a",
+     "0542-4425@year_3_semester_b",
+     "0512-1202@year_4_semester_b"
+    ],
+    "violationDetail": [
+     {
+      "course": "0542-3620",
+      "semester": "year_3_semester_a",
+      "unmet": [
+       [
+        "0542-2500"
+       ]
+      ],
+      "locked": true
+     },
+     {
+      "course": "0542-3792",
+      "semester": "year_3_semester_a",
+      "unmet": [
+       [
+        "0542-2500"
+       ]
+      ],
+      "locked": true
+     },
+     {
+      "course": "0542-4425",
+      "semester": "year_3_semester_b",
+      "unmet": [
+       [
+        "0542-3780"
+       ],
+       [
+        "0542-3791"
+       ]
+      ],
+      "locked": false
+     },
+     {
+      "course": "0512-1202",
+      "semester": "year_4_semester_b",
+      "unmet": [
+       [
+        "0512-1201"
+       ]
+      ],
+      "locked": false
+     }
+    ],
+    "warnings": 40,
+    "warningText": [
+     "בyear_3_semester_a יש 26 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_3_semester_b יש 24 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_4_semester_a יש 26 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_4_semester_b יש 24 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש)."
+    ],
+    "advisoryPrereqFindings": 0,
+    "totalHours": 96,
+    "peakHours": 26,
+    "electives": [
+     "0542-4455",
+     "0542-4123",
+     "0542-4224",
+     "0542-4425",
+     "0542-4391",
+     "0542-4223",
+     "0542-4422",
+     "0542-4124",
+     "0542-4524",
+     "0512-1202",
+     "0542-4722",
+     "0542-4135",
+     "0542-4527"
+    ],
+    "focusCourses": [
+     "0542-2400",
+     "0542-4010",
+     "0542-4020",
+     "0542-4135",
+     "0542-4422",
+     "0542-4425"
+    ],
+    "focusCorroboratedBySyllabus": [
+     "0542-2400",
+     "0542-4425"
+    ],
+    "focusChainDepth": 2,
+    "wantedPresent": [],
+    "wantedMissing": [],
+    "unwantedPresent": [],
+    "focusCourseHours": 21
+   },
+   "specialization_readiness": {
+    "blocked": false,
+    "errors": 0,
+    "status": 200,
+    "missingMandatory": [],
+    "verifiedPrereqViolations": [
+     "0542-3620@year_3_semester_a",
+     "0542-3792@year_3_semester_a",
+     "0512-1202@year_4_semester_b"
+    ],
+    "violationDetail": [
+     {
+      "course": "0542-3620",
+      "semester": "year_3_semester_a",
+      "unmet": [
+       [
+        "0542-2500"
+       ]
+      ],
+      "locked": true
+     },
+     {
+      "course": "0542-3792",
+      "semester": "year_3_semester_a",
+      "unmet": [
+       [
+        "0542-2500"
+       ]
+      ],
+      "locked": true
+     },
+     {
+      "course": "0512-1202",
+      "semester": "year_4_semester_b",
+      "unmet": [
+       [
+        "0512-1201"
+       ]
+      ],
+      "locked": false
+     }
+    ],
+    "warnings": 33,
+    "warningText": [
+     "בyear_3_semester_a יש 26 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_3_semester_b יש 25 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_4_semester_a יש 24 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_4_semester_b יש 24 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש)."
+    ],
+    "advisoryPrereqFindings": 1,
+    "totalHours": 95,
+    "peakHours": 26,
+    "electives": [
+     "0542-4123",
+     "0542-4135",
+     "0542-4224",
+     "0542-4351",
+     "0542-4391",
+     "0542-4223",
+     "0512-4702",
+     "0542-4322",
+     "0571-4174",
+     "0512-1202",
+     "0542-4722",
+     "0542-4622",
+     "0542-4320"
+    ],
+    "focusCourses": [
+     "0542-2400",
+     "0542-4010",
+     "0542-4020",
+     "0542-4135",
+     "0571-4174"
+    ],
+    "focusCorroboratedBySyllabus": [
+     "0542-2400"
+    ],
+    "focusChainDepth": 2,
+    "wantedPresent": [],
+    "wantedMissing": [],
+    "unwantedPresent": [],
+    "focusCourseHours": 16
+   }
+  },
+  {
+   "scenario": {
+    "id": "fem",
+    "label": "Finite elements",
+    "request": "אני רוצה להתמקד באלמנטים סופיים"
+   },
+   "baseline": {
+    "blocked": false,
+    "errors": 0,
+    "status": 200,
+    "missingMandatory": [],
+    "verifiedPrereqViolations": [
+     "0542-3620@year_3_semester_a",
+     "0542-3792@year_3_semester_a",
+     "0555-4562@year_4_semester_a",
+     "0512-1202@year_4_semester_b",
+     "0555-4555@year_4_semester_b"
+    ],
+    "violationDetail": [
+     {
+      "course": "0542-3620",
+      "semester": "year_3_semester_a",
+      "unmet": [
+       [
+        "0542-2500"
+       ]
+      ],
+      "locked": true
+     },
+     {
+      "course": "0542-3792",
+      "semester": "year_3_semester_a",
+      "unmet": [
+       [
+        "0542-2500"
+       ]
+      ],
+      "locked": true
+     },
+     {
+      "course": "0555-4562",
+      "semester": "year_4_semester_a",
+      "unmet": [
+       [
+        "0512-1203"
+       ]
+      ],
+      "locked": false
+     },
+     {
+      "course": "0512-1202",
+      "semester": "year_4_semester_b",
+      "unmet": [
+       [
+        "0512-1201"
+       ]
+      ],
+      "locked": false
+     },
+     {
+      "course": "0555-4555",
+      "semester": "year_4_semester_b",
+      "unmet": [
+       [
+        "0512-1202"
+       ],
+       [
+        "0509-1545"
+       ],
+       [
+        "0555-2106"
+       ]
+      ],
+      "locked": false
+     }
+    ],
+    "warnings": 41,
+    "warningText": [
+     "בyear_3_semester_a יש 26 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_3_semester_b יש 24 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_4_semester_a יש 26 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_4_semester_b יש 24 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש)."
+    ],
+    "advisoryPrereqFindings": 0,
+    "totalHours": 96,
+    "peakHours": 26,
+    "electives": [
+     "0542-4455",
+     "0542-4123",
+     "0542-4527",
+     "0542-4191",
+     "0542-4391",
+     "0542-4223",
+     "0542-4124",
+     "0542-4524",
+     "0555-4562",
+     "0512-1202",
+     "0542-4722",
+     "0542-4135",
+     "0555-4555"
+    ],
+    "focusCourses": [
+     "0542-4223"
+    ],
+    "focusCorroboratedBySyllabus": [],
+    "focusChainDepth": 1,
+    "wantedPresent": [],
+    "wantedMissing": [],
+    "unwantedPresent": [],
+    "focusCourseHours": 4
+   },
+   "specialization": {
+    "blocked": false,
+    "errors": 0,
+    "status": 200,
+    "missingMandatory": [],
+    "verifiedPrereqViolations": [
+     "0542-3620@year_3_semester_a",
+     "0542-3792@year_3_semester_a",
+     "0555-4555@year_3_semester_b",
+     "0512-1202@year_4_semester_b"
+    ],
+    "violationDetail": [
+     {
+      "course": "0542-3620",
+      "semester": "year_3_semester_a",
+      "unmet": [
+       [
+        "0542-2500"
+       ]
+      ],
+      "locked": true
+     },
+     {
+      "course": "0542-3792",
+      "semester": "year_3_semester_a",
+      "unmet": [
+       [
+        "0542-2500"
+       ]
+      ],
+      "locked": true
+     },
+     {
+      "course": "0555-4555",
+      "semester": "year_3_semester_b",
+      "unmet": [
+       [
+        "0512-1202"
+       ],
+       [
+        "0509-1545"
+       ],
+       [
+        "0555-2106"
+       ]
+      ],
+      "locked": false
+     },
+     {
+      "course": "0512-1202",
+      "semester": "year_4_semester_b",
+      "unmet": [
+       [
+        "0512-1201"
+       ]
+      ],
+      "locked": false
+     }
+    ],
+    "warnings": 41,
+    "warningText": [
+     "בyear_3_semester_a יש 26 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_3_semester_b יש 26 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_4_semester_a יש 24 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_4_semester_b יש 24 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש)."
+    ],
+    "advisoryPrereqFindings": 0,
+    "totalHours": 96,
+    "peakHours": 26,
+    "electives": [
+     "0542-4722",
+     "0542-4123",
+     "0542-4135",
+     "0555-4555",
+     "0542-4391",
+     "0542-4223",
+     "0542-4124",
+     "0542-4524",
+     "0512-1202",
+     "0542-4455",
+     "0542-4224",
+     "0542-4527",
+     "0542-4191"
+    ],
+    "focusCourses": [
+     "0542-4223"
+    ],
+    "focusCorroboratedBySyllabus": [],
+    "focusChainDepth": 1,
+    "wantedPresent": [],
+    "wantedMissing": [],
+    "unwantedPresent": [],
+    "focusCourseHours": 4
+   },
+   "specialization_readiness": {
+    "blocked": false,
+    "errors": 0,
+    "status": 200,
+    "missingMandatory": [],
+    "verifiedPrereqViolations": [
+     "0542-3620@year_3_semester_a",
+     "0542-3792@year_3_semester_a",
+     "0512-1202@year_4_semester_b"
+    ],
+    "violationDetail": [
+     {
+      "course": "0542-3620",
+      "semester": "year_3_semester_a",
+      "unmet": [
+       [
+        "0542-2500"
+       ]
+      ],
+      "locked": true
+     },
+     {
+      "course": "0542-3792",
+      "semester": "year_3_semester_a",
+      "unmet": [
+       [
+        "0542-2500"
+       ]
+      ],
+      "locked": true
+     },
+     {
+      "course": "0512-1202",
+      "semester": "year_4_semester_b",
+      "unmet": [
+       [
+        "0512-1201"
+       ]
+      ],
+      "locked": false
+     }
+    ],
+    "warnings": 33,
+    "warningText": [
+     "בyear_3_semester_a יש 26 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_3_semester_b יש 26 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_4_semester_a יש 24 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_4_semester_b יש 24 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש)."
+    ],
+    "advisoryPrereqFindings": 1,
+    "totalHours": 96,
+    "peakHours": 26,
+    "electives": [
+     "0542-4722",
+     "0542-4123",
+     "0542-4224",
+     "0542-4351",
+     "0542-4391",
+     "0542-4223",
+     "0512-4702",
+     "0542-4322",
+     "0512-1202",
+     "0542-4622",
+     "0542-4135",
+     "0542-4320",
+     "0542-4275"
+    ],
+    "focusCourses": [
+     "0542-4223"
+    ],
+    "focusCorroboratedBySyllabus": [],
+    "focusChainDepth": 1,
+    "wantedPresent": [],
+    "wantedMissing": [],
+    "unwantedPresent": [],
+    "focusCourseHours": 4
+   }
+  },
+  {
+   "scenario": {
+    "id": "control_light",
+    "label": "Control + lighter workload (16h cap)",
+    "request": "אני רוצה להתמקד בבקרה",
+    "maxWeeklyHours": 16
+   },
+   "baseline": {
+    "blocked": false,
+    "errors": 0,
+    "status": 200,
+    "missingMandatory": [],
+    "verifiedPrereqViolations": [
+     "0542-3620@year_3_semester_a",
+     "0542-3792@year_3_semester_a",
+     "0512-4362@year_4_semester_a",
+     "0512-1202@year_4_semester_b",
+     "0555-4555@year_4_semester_b"
+    ],
+    "violationDetail": [
+     {
+      "course": "0542-3620",
+      "semester": "year_3_semester_a",
+      "unmet": [
+       [
+        "0542-2500"
+       ]
+      ],
+      "locked": true
+     },
+     {
+      "course": "0542-3792",
+      "semester": "year_3_semester_a",
+      "unmet": [
+       [
+        "0542-2500"
+       ]
+      ],
+      "locked": true
+     },
+     {
+      "course": "0512-4362",
+      "semester": "year_4_semester_a",
+      "unmet": [
+       [
+        "0512-3543"
+       ]
+      ],
+      "locked": false
+     },
+     {
+      "course": "0512-1202",
+      "semester": "year_4_semester_b",
+      "unmet": [
+       [
+        "0512-1201"
+       ]
+      ],
+      "locked": false
+     },
+     {
+      "course": "0555-4555",
+      "semester": "year_4_semester_b",
+      "unmet": [
+       [
+        "0512-1202"
+       ],
+       [
+        "0509-1545"
+       ],
+       [
+        "0555-2106"
+       ]
+      ],
+      "locked": false
+     }
+    ],
+    "warnings": 45,
+    "warningText": [
+     "בyear_3_semester_a יש 26 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_3_semester_b יש 24 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_4_semester_a יש 26 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_4_semester_b יש 24 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש)."
+    ],
+    "advisoryPrereqFindings": 0,
+    "totalHours": 96,
+    "peakHours": 26,
+    "electives": [
+     "0542-4622",
+     "0542-4123",
+     "0542-4527",
+     "0542-4191",
+     "0542-4391",
+     "0542-4220",
+     "0512-4362",
+     "0542-4124",
+     "0542-4524",
+     "0512-1202",
+     "0542-4722",
+     "0542-4135",
+     "0555-4555"
+    ],
+    "focusCourses": [
+     "0512-4362",
+     "0542-3243",
+     "0542-4622"
+    ],
+    "focusCorroboratedBySyllabus": [
+     "0542-4622"
+    ],
+    "focusChainDepth": 2,
+    "wantedPresent": [],
+    "wantedMissing": [],
+    "unwantedPresent": [],
+    "focusCourseHours": 13.5
+   },
+   "specialization": {
+    "blocked": false,
+    "errors": 0,
+    "status": 200,
+    "missingMandatory": [],
+    "verifiedPrereqViolations": [
+     "0542-3620@year_3_semester_a",
+     "0542-3792@year_3_semester_a",
+     "0512-4362@year_4_semester_a",
+     "0512-1202@year_4_semester_b",
+     "0555-4555@year_4_semester_b"
+    ],
+    "violationDetail": [
+     {
+      "course": "0542-3620",
+      "semester": "year_3_semester_a",
+      "unmet": [
+       [
+        "0542-2500"
+       ]
+      ],
+      "locked": true
+     },
+     {
+      "course": "0542-3792",
+      "semester": "year_3_semester_a",
+      "unmet": [
+       [
+        "0542-2500"
+       ]
+      ],
+      "locked": true
+     },
+     {
+      "course": "0512-4362",
+      "semester": "year_4_semester_a",
+      "unmet": [
+       [
+        "0512-3543"
+       ]
+      ],
+      "locked": false
+     },
+     {
+      "course": "0512-1202",
+      "semester": "year_4_semester_b",
+      "unmet": [
+       [
+        "0512-1201"
+       ]
+      ],
+      "locked": false
+     },
+     {
+      "course": "0555-4555",
+      "semester": "year_4_semester_b",
+      "unmet": [
+       [
+        "0512-1202"
+       ],
+       [
+        "0509-1545"
+       ],
+       [
+        "0555-2106"
+       ]
+      ],
+      "locked": false
+     }
+    ],
+    "warnings": 45,
+    "warningText": [
+     "בyear_3_semester_a יש 26 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_3_semester_b יש 25 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_4_semester_a יש 25 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_4_semester_b יש 24 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש)."
+    ],
+    "advisoryPrereqFindings": 0,
+    "totalHours": 96,
+    "peakHours": 26,
+    "electives": [
+     "0542-4622",
+     "0542-4135",
+     "0542-4527",
+     "0542-4455",
+     "0542-4391",
+     "0542-4220",
+     "0512-4362",
+     "0542-4124",
+     "0542-4621",
+     "0512-1202",
+     "0542-4722",
+     "0542-4123",
+     "0555-4555"
+    ],
+    "focusCourses": [
+     "0512-4362",
+     "0542-3243",
+     "0542-4622"
+    ],
+    "focusCorroboratedBySyllabus": [
+     "0542-4622"
+    ],
+    "focusChainDepth": 2,
+    "wantedPresent": [],
+    "wantedMissing": [],
+    "unwantedPresent": [],
+    "focusCourseHours": 13.5
+   },
+   "specialization_readiness": {
+    "blocked": false,
+    "errors": 0,
+    "status": 200,
+    "missingMandatory": [],
+    "verifiedPrereqViolations": [
+     "0542-3620@year_3_semester_a",
+     "0542-3792@year_3_semester_a",
+     "0512-1202@year_4_semester_b"
+    ],
+    "violationDetail": [
+     {
+      "course": "0542-3620",
+      "semester": "year_3_semester_a",
+      "unmet": [
+       [
+        "0542-2500"
+       ]
+      ],
+      "locked": true
+     },
+     {
+      "course": "0542-3792",
+      "semester": "year_3_semester_a",
+      "unmet": [
+       [
+        "0542-2500"
+       ]
+      ],
+      "locked": true
+     },
+     {
+      "course": "0512-1202",
+      "semester": "year_4_semester_b",
+      "unmet": [
+       [
+        "0512-1201"
+       ]
+      ],
+      "locked": false
+     }
+    ],
+    "warnings": 37,
+    "warningText": [
+     "בyear_3_semester_a יש 26 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_3_semester_b יש 25 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_4_semester_a יש 25 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_4_semester_b יש 24 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש)."
+    ],
+    "advisoryPrereqFindings": 1,
+    "totalHours": 96,
+    "peakHours": 26,
+    "electives": [
+     "0542-4622",
+     "0542-4123",
+     "0542-4224",
+     "0542-4320",
+     "0542-4391",
+     "0512-4702",
+     "0542-4223",
+     "0542-4322",
+     "0542-4011",
+     "0512-1202",
+     "0542-4722",
+     "0542-4351",
+     "0542-4135"
+    ],
+    "focusCourses": [
+     "0542-3243",
+     "0542-4622"
+    ],
+    "focusCorroboratedBySyllabus": [
+     "0542-4622"
+    ],
+    "focusChainDepth": 2,
+    "wantedPresent": [],
+    "wantedMissing": [],
+    "unwantedPresent": [],
+    "focusCourseHours": 9.5
+   }
+  },
+  {
+   "scenario": {
+    "id": "control_wanted",
+    "label": "Control + must-have design course",
+    "request": "אני רוצה להתמקד בבקרה",
+    "wanted": [
+     "0542-4425"
+    ]
+   },
+   "baseline": {
+    "blocked": false,
+    "errors": 0,
+    "status": 200,
+    "missingMandatory": [],
+    "verifiedPrereqViolations": [
+     "0542-3620@year_3_semester_a",
+     "0542-3792@year_3_semester_a",
+     "0542-4425@year_3_semester_b",
+     "0512-4362@year_4_semester_a",
+     "0512-1202@year_4_semester_b",
+     "0555-4555@year_4_semester_b"
+    ],
+    "violationDetail": [
+     {
+      "course": "0542-3620",
+      "semester": "year_3_semester_a",
+      "unmet": [
+       [
+        "0542-2500"
+       ]
+      ],
+      "locked": true
+     },
+     {
+      "course": "0542-3792",
+      "semester": "year_3_semester_a",
+      "unmet": [
+       [
+        "0542-2500"
+       ]
+      ],
+      "locked": true
+     },
+     {
+      "course": "0542-4425",
+      "semester": "year_3_semester_b",
+      "unmet": [
+       [
+        "0542-3780"
+       ],
+       [
+        "0542-3791"
+       ]
+      ],
+      "locked": false
+     },
+     {
+      "course": "0512-4362",
+      "semester": "year_4_semester_a",
+      "unmet": [
+       [
+        "0512-3543"
+       ]
+      ],
+      "locked": false
+     },
+     {
+      "course": "0512-1202",
+      "semester": "year_4_semester_b",
+      "unmet": [
+       [
+        "0512-1201"
+       ]
+      ],
+      "locked": false
+     },
+     {
+      "course": "0555-4555",
+      "semester": "year_4_semester_b",
+      "unmet": [
+       [
+        "0512-1202"
+       ],
+       [
+        "0509-1545"
+       ],
+       [
+        "0555-2106"
+       ]
+      ],
+      "locked": false
+     }
+    ],
+    "warnings": 43,
+    "warningText": [
+     "בyear_3_semester_a יש 26 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_3_semester_b יש 24 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_4_semester_a יש 26 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_4_semester_b יש 24 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש)."
+    ],
+    "advisoryPrereqFindings": 0,
+    "totalHours": 96,
+    "peakHours": 26,
+    "electives": [
+     "0542-4622",
+     "0542-4123",
+     "0542-4527",
+     "0542-4425",
+     "0542-4391",
+     "0542-4220",
+     "0512-4362",
+     "0542-4124",
+     "0542-4524",
+     "0512-1202",
+     "0542-4722",
+     "0542-4135",
+     "0555-4555"
+    ],
+    "focusCourses": [
+     "0512-4362",
+     "0542-3243",
+     "0542-4622"
+    ],
+    "focusCorroboratedBySyllabus": [
+     "0542-4622"
+    ],
+    "focusChainDepth": 2,
+    "wantedPresent": [
+     "0542-4425"
+    ],
+    "wantedMissing": [],
+    "unwantedPresent": [],
+    "focusCourseHours": 13.5
+   },
+   "specialization": {
+    "blocked": false,
+    "errors": 0,
+    "status": 200,
+    "missingMandatory": [],
+    "verifiedPrereqViolations": [
+     "0542-3620@year_3_semester_a",
+     "0542-3792@year_3_semester_a",
+     "0542-4425@year_3_semester_b",
+     "0512-4362@year_4_semester_a",
+     "0512-1202@year_4_semester_b",
+     "0555-4555@year_4_semester_b"
+    ],
+    "violationDetail": [
+     {
+      "course": "0542-3620",
+      "semester": "year_3_semester_a",
+      "unmet": [
+       [
+        "0542-2500"
+       ]
+      ],
+      "locked": true
+     },
+     {
+      "course": "0542-3792",
+      "semester": "year_3_semester_a",
+      "unmet": [
+       [
+        "0542-2500"
+       ]
+      ],
+      "locked": true
+     },
+     {
+      "course": "0542-4425",
+      "semester": "year_3_semester_b",
+      "unmet": [
+       [
+        "0542-3780"
+       ],
+       [
+        "0542-3791"
+       ]
+      ],
+      "locked": false
+     },
+     {
+      "course": "0512-4362",
+      "semester": "year_4_semester_a",
+      "unmet": [
+       [
+        "0512-3543"
+       ]
+      ],
+      "locked": false
+     },
+     {
+      "course": "0512-1202",
+      "semester": "year_4_semester_b",
+      "unmet": [
+       [
+        "0512-1201"
+       ]
+      ],
+      "locked": false
+     },
+     {
+      "course": "0555-4555",
+      "semester": "year_4_semester_b",
+      "unmet": [
+       [
+        "0512-1202"
+       ],
+       [
+        "0509-1545"
+       ],
+       [
+        "0555-2106"
+       ]
+      ],
+      "locked": false
+     }
+    ],
+    "warnings": 43,
+    "warningText": [
+     "בyear_3_semester_a יש 26 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_3_semester_b יש 24 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_4_semester_a יש 26 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_4_semester_b יש 24 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש)."
+    ],
+    "advisoryPrereqFindings": 0,
+    "totalHours": 96,
+    "peakHours": 26,
+    "electives": [
+     "0542-4622",
+     "0542-4123",
+     "0542-4527",
+     "0542-4425",
+     "0542-4391",
+     "0542-4220",
+     "0512-4362",
+     "0542-4124",
+     "0542-4524",
+     "0512-1202",
+     "0542-4722",
+     "0542-4135",
+     "0555-4555"
+    ],
+    "focusCourses": [
+     "0512-4362",
+     "0542-3243",
+     "0542-4622"
+    ],
+    "focusCorroboratedBySyllabus": [
+     "0542-4622"
+    ],
+    "focusChainDepth": 2,
+    "wantedPresent": [
+     "0542-4425"
+    ],
+    "wantedMissing": [],
+    "unwantedPresent": [],
+    "focusCourseHours": 13.5
+   },
+   "specialization_readiness": {
+    "blocked": false,
+    "errors": 0,
+    "status": 200,
+    "missingMandatory": [],
+    "verifiedPrereqViolations": [
+     "0542-3620@year_3_semester_a",
+     "0542-3792@year_3_semester_a",
+     "0542-4425@year_3_semester_b",
+     "0512-1202@year_4_semester_b"
+    ],
+    "violationDetail": [
+     {
+      "course": "0542-3620",
+      "semester": "year_3_semester_a",
+      "unmet": [
+       [
+        "0542-2500"
+       ]
+      ],
+      "locked": true
+     },
+     {
+      "course": "0542-3792",
+      "semester": "year_3_semester_a",
+      "unmet": [
+       [
+        "0542-2500"
+       ]
+      ],
+      "locked": true
+     },
+     {
+      "course": "0542-4425",
+      "semester": "year_3_semester_b",
+      "unmet": [
+       [
+        "0542-3780"
+       ],
+       [
+        "0542-3791"
+       ]
+      ],
+      "locked": false
+     },
+     {
+      "course": "0512-1202",
+      "semester": "year_4_semester_b",
+      "unmet": [
+       [
+        "0512-1201"
+       ]
+      ],
+      "locked": false
+     }
+    ],
+    "warnings": 37,
+    "warningText": [
+     "בyear_3_semester_a יש 26 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_3_semester_b יש 24 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_4_semester_a יש 25 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_4_semester_b יש 24 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש)."
+    ],
+    "advisoryPrereqFindings": 1,
+    "totalHours": 95,
+    "peakHours": 26,
+    "electives": [
+     "0542-4622",
+     "0542-4123",
+     "0542-4320",
+     "0542-4425",
+     "0542-4391",
+     "0542-4220",
+     "0512-4702",
+     "0542-4322",
+     "0542-4011",
+     "0512-1202",
+     "0542-4722",
+     "0542-4135",
+     "0542-4351"
+    ],
+    "focusCourses": [
+     "0542-3243",
+     "0542-4622"
+    ],
+    "focusCorroboratedBySyllabus": [
+     "0542-4622"
+    ],
+    "focusChainDepth": 2,
+    "wantedPresent": [
+     "0542-4425"
+    ],
+    "wantedMissing": [],
+    "unwantedPresent": [],
+    "focusCourseHours": 9.5
+   }
+  },
+  {
+   "scenario": {
+    "id": "control_avoid",
+    "label": "Control + avoid the top control elective",
+    "request": "אני רוצה להתמקד בבקרה",
+    "unwanted": [
+     "0542-4621"
+    ]
+   },
+   "baseline": {
+    "blocked": false,
+    "errors": 0,
+    "status": 200,
+    "missingMandatory": [],
+    "verifiedPrereqViolations": [
+     "0542-3620@year_3_semester_a",
+     "0542-3792@year_3_semester_a",
+     "0512-4362@year_4_semester_a",
+     "0512-1202@year_4_semester_b",
+     "0555-4555@year_4_semester_b"
+    ],
+    "violationDetail": [
+     {
+      "course": "0542-3620",
+      "semester": "year_3_semester_a",
+      "unmet": [
+       [
+        "0542-2500"
+       ]
+      ],
+      "locked": true
+     },
+     {
+      "course": "0542-3792",
+      "semester": "year_3_semester_a",
+      "unmet": [
+       [
+        "0542-2500"
+       ]
+      ],
+      "locked": true
+     },
+     {
+      "course": "0512-4362",
+      "semester": "year_4_semester_a",
+      "unmet": [
+       [
+        "0512-3543"
+       ]
+      ],
+      "locked": false
+     },
+     {
+      "course": "0512-1202",
+      "semester": "year_4_semester_b",
+      "unmet": [
+       [
+        "0512-1201"
+       ]
+      ],
+      "locked": false
+     },
+     {
+      "course": "0555-4555",
+      "semester": "year_4_semester_b",
+      "unmet": [
+       [
+        "0512-1202"
+       ],
+       [
+        "0509-1545"
+       ],
+       [
+        "0555-2106"
+       ]
+      ],
+      "locked": false
+     }
+    ],
+    "warnings": 41,
+    "warningText": [
+     "בyear_3_semester_a יש 26 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_3_semester_b יש 24 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_4_semester_a יש 26 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_4_semester_b יש 24 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש)."
+    ],
+    "advisoryPrereqFindings": 0,
+    "totalHours": 96,
+    "peakHours": 26,
+    "electives": [
+     "0542-4622",
+     "0542-4123",
+     "0542-4527",
+     "0542-4191",
+     "0542-4391",
+     "0542-4220",
+     "0512-4362",
+     "0542-4124",
+     "0542-4524",
+     "0512-1202",
+     "0542-4722",
+     "0542-4135",
+     "0555-4555"
+    ],
+    "focusCourses": [
+     "0512-4362",
+     "0542-3243",
+     "0542-4622"
+    ],
+    "focusCorroboratedBySyllabus": [
+     "0542-4622"
+    ],
+    "focusChainDepth": 2,
+    "wantedPresent": [],
+    "wantedMissing": [],
+    "unwantedPresent": [],
+    "focusCourseHours": 13.5
+   },
+   "specialization": {
+    "blocked": false,
+    "errors": 0,
+    "status": 200,
+    "missingMandatory": [],
+    "verifiedPrereqViolations": [
+     "0542-3620@year_3_semester_a",
+     "0542-3792@year_3_semester_a",
+     "0512-4362@year_4_semester_a",
+     "0512-1202@year_4_semester_b",
+     "0555-4555@year_4_semester_b"
+    ],
+    "violationDetail": [
+     {
+      "course": "0542-3620",
+      "semester": "year_3_semester_a",
+      "unmet": [
+       [
+        "0542-2500"
+       ]
+      ],
+      "locked": true
+     },
+     {
+      "course": "0542-3792",
+      "semester": "year_3_semester_a",
+      "unmet": [
+       [
+        "0542-2500"
+       ]
+      ],
+      "locked": true
+     },
+     {
+      "course": "0512-4362",
+      "semester": "year_4_semester_a",
+      "unmet": [
+       [
+        "0512-3543"
+       ]
+      ],
+      "locked": false
+     },
+     {
+      "course": "0512-1202",
+      "semester": "year_4_semester_b",
+      "unmet": [
+       [
+        "0512-1201"
+       ]
+      ],
+      "locked": false
+     },
+     {
+      "course": "0555-4555",
+      "semester": "year_4_semester_b",
+      "unmet": [
+       [
+        "0512-1202"
+       ],
+       [
+        "0509-1545"
+       ],
+       [
+        "0555-2106"
+       ]
+      ],
+      "locked": false
+     }
+    ],
+    "warnings": 41,
+    "warningText": [
+     "בyear_3_semester_a יש 26 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_3_semester_b יש 24 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_4_semester_a יש 26 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_4_semester_b יש 24 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש)."
+    ],
+    "advisoryPrereqFindings": 0,
+    "totalHours": 96,
+    "peakHours": 26,
+    "electives": [
+     "0542-4622",
+     "0542-4123",
+     "0542-4527",
+     "0542-4191",
+     "0542-4391",
+     "0542-4220",
+     "0512-4362",
+     "0542-4124",
+     "0542-4524",
+     "0512-1202",
+     "0542-4722",
+     "0542-4135",
+     "0555-4555"
+    ],
+    "focusCourses": [
+     "0512-4362",
+     "0542-3243",
+     "0542-4622"
+    ],
+    "focusCorroboratedBySyllabus": [
+     "0542-4622"
+    ],
+    "focusChainDepth": 2,
+    "wantedPresent": [],
+    "wantedMissing": [],
+    "unwantedPresent": [],
+    "focusCourseHours": 13.5
+   },
+   "specialization_readiness": {
+    "blocked": false,
+    "errors": 0,
+    "status": 200,
+    "missingMandatory": [],
+    "verifiedPrereqViolations": [
+     "0542-3620@year_3_semester_a",
+     "0542-3792@year_3_semester_a",
+     "0512-1202@year_4_semester_b"
+    ],
+    "violationDetail": [
+     {
+      "course": "0542-3620",
+      "semester": "year_3_semester_a",
+      "unmet": [
+       [
+        "0542-2500"
+       ]
+      ],
+      "locked": true
+     },
+     {
+      "course": "0542-3792",
+      "semester": "year_3_semester_a",
+      "unmet": [
+       [
+        "0542-2500"
+       ]
+      ],
+      "locked": true
+     },
+     {
+      "course": "0512-1202",
+      "semester": "year_4_semester_b",
+      "unmet": [
+       [
+        "0512-1201"
+       ]
+      ],
+      "locked": false
+     }
+    ],
+    "warnings": 33,
+    "warningText": [
+     "בyear_3_semester_a יש 26 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_3_semester_b יש 25 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_4_semester_a יש 25 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש).",
+     "בyear_4_semester_b יש 24 שעות שבועיות — מעל הטווח המומלץ (22 ש\"ש)."
+    ],
+    "advisoryPrereqFindings": 1,
+    "totalHours": 96,
+    "peakHours": 26,
+    "electives": [
+     "0542-4622",
+     "0542-4123",
+     "0542-4320",
+     "0542-4224",
+     "0542-4391",
+     "0542-4223",
+     "0512-4702",
+     "0542-4322",
+     "0542-4011",
+     "0512-1202",
+     "0542-4722",
+     "0542-4135",
+     "0542-4351"
+    ],
+    "focusCourses": [
+     "0542-3243",
+     "0542-4622"
+    ],
+    "focusCorroboratedBySyllabus": [
+     "0542-4622"
+    ],
+    "focusChainDepth": 2,
+    "wantedPresent": [],
+    "wantedMissing": [],
+    "unwantedPresent": [],
+    "focusCourseHours": 9.5
+   }
+  }
+ ]
+}
