@@ -78,9 +78,11 @@ const TOPIC_NAME_RULES: ReadonlyArray<KeywordRule<AcademicFocusArea>> = [
   // display-side topic hints and for LOCATING candidate courses, never as proof.
   { keywords: ['תכן', 'תיכון', 'design', 'cad'], value: 'mechanical_design', weight: STRONG },
   // ── EE rules ──────────────────────────────────────────────────────────────────
-  // 'תקשורת' (communications) is used here as a strong EE signal; it does not
-  // appear in the ME keyword set so there is no cross-program false-positive risk.
-  { keywords: ['תקשורת', 'תורת האינפורמציה', 'communication', 'information theory'], value: 'communications', weight: STRONG },
+  // The bare 'תקשורת' is deliberately excluded: it also appears in Hebrew humanities
+  // media/communication courses. Use engineering-specific compound phrases only.
+  // The category rule (communications → 'communications') handles most EE courses;
+  // name rules cover the remainder.
+  { keywords: ['מערכות תקשורת', 'תקשורת ספרתית', 'תורת האינפורמציה', 'ערוץ תקשורת', 'פרוטוקולי', 'communication systems', 'information theory'], value: 'communications', weight: STRONG },
   // 'עיבוד אותות' distinguishes signal processing from manufacturing ('עיבוד שבבי').
   // The existing programming_electronics rule also lists 'עיבוד אותות' — a course
   // may legitimately carry both areas; the two rules are independent.
