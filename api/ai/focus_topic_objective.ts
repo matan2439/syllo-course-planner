@@ -52,6 +52,9 @@ function finalize(
     } = base;
     return { ...rest, objectives: [] };
   }
+  // prefer_topic_alignment may not be first alphabetically (avoid_topic_exposure sorts before it),
+  // so look it up explicitly for the legacy topicIds field.
+  const preferTopics = sorted.find((o) => o.id === 'prefer_topic_alignment')?.topicIds;
   return {
     ...(base ?? { objectives: [] }),
     objectives: sorted,
@@ -62,7 +65,7 @@ function finalize(
       source: first.source,
       profileVersion: first.profileVersion,
     },
-    ...(first.kind === 'topic' && first.topicIds?.length ? { topicIds: first.topicIds } : { topicIds: undefined }),
+    ...(preferTopics?.length ? { topicIds: preferTopics } : { topicIds: undefined }),
   };
 }
 
