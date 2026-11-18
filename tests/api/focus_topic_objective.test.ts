@@ -141,6 +141,29 @@ describe('explicit academic focus → evidence-backed topic objective', () => {
     expect(result.objectives).toEqual(base.objectives);
   });
 
+  test('avoid-only: finalize() leaves legacy topicIds undefined', () => {
+    // Root-cause guard: avoid_topic_exposure sorts before prefer_topic_alignment,
+    // so finalize() must not use first.kind === 'topic' to set legacy topicIds.
+    const avoidOnly = mergeStructuredAvoidObjective(
+      undefined, [{ area: 'finite_elements', weight: 1 }], 1,
+    )!;
+    expect(avoidOnly).toBeDefined();
+    expect(avoidOnly.objectives[0].id).toBe('avoid_topic_exposure');
+    expect(avoidOnly.topicIds).toBeUndefined();
+  });
+
+  test('focus+avoid: finalize() sets legacy topicIds only from prefer_topic_alignment', () => {
+    const withFocus = mergeExplicitFocusObjective(
+      undefined, [{ area: 'robotics', weight: 1 }], 1,
+    )!;
+    const both = mergeStructuredAvoidObjective(
+      withFocus, [{ area: 'finite_elements', weight: 1 }], 1,
+    )!;
+    // Legacy topicIds must carry the preferred topic, not the avoided one.
+    expect(both.topicIds).toContain('robotics');
+    expect(both.topicIds).not.toContain('finite_element_analysis');
+  });
+
   test('merges with a typed topic objective without replacing its provenance', () => {
     const base = {
       objectives: [{
