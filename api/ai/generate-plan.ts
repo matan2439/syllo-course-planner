@@ -129,6 +129,7 @@ import { GATEWAY_ASSESSMENT_TYPES, gatewayAssessmentMismatchIds } from './gatewa
 import { databaseUrl } from '../db_env';
 import { loadBoardWithAddedSemesters } from './student_semesters';
 import { shadowPrerequisiteAudit } from './prerequisites';
+import { resolveCompletedCourseKnowledge, isCompletedCoursesKnown } from './academic_status_knowledge';
 
 export const preferencesSchema = z.object({
   max_weekly_hours:        z.number().nullish(),
@@ -337,6 +338,7 @@ export function buildModel(board: any, ctx: any, prefs: Preferences, program_id?
   model.inProgressHours = inProgress.totalHours;
   model.unearnedInProgressHours = inProgress.currentlyTakingHours;
   model.impliedInProgressHours = inProgress.impliedHours;
+  model.completedCoursesKnown = isCompletedCoursesKnown(resolveCompletedCourseKnowledge(ctx?.personal_status));
   return model;
 }
 
@@ -745,15 +747,17 @@ export function prerequisiteVerifiedGate(
   semesters: Array<{ semester_id: string; course_ids: string[] }>,
   model: ConstraintModel,
 ): string[] {
-  // Guarded behind AI_PREREQ_ENFORCEMENT_STAGE2 for staged rollout: real
-  // boards can carry tau.json verified prerequisites for courses whose
-  // prerequisites were completed in prior academic years not captured in the
-  // current plan_context's personal_status.completed list. Until the board
-  // data pipeline is extended to include the full course history (not just
-  // the current planning window), enforcing globally here produces false
-  // positives for real students. The gate itself is correct; it is only
-  // disabled by default pending that data-completeness fix.
+  // Guarded behind AI_PREREQ_ENFORCEMENT_STAGE2 for staged rollout.
   if (process.env.AI_PREREQ_ENFORCEMENT_STAGE2 !== 'true') return [];
+  // Guard 2: only enforce when the student's completion history is known.
+  // A missing or unrecognized `completed_knowledge` marker means the history
+  // was never explicitly provided — an empty `completedCourseIds` in that
+  // state means "never asked", not "nothing completed". Enforcing on unknown
+  // history produces false positives for real students (e.g. a year-3 student
+  // whose year-1/2 completions have not yet been recorded in this planning
+  // context). `buildModel` sets `completedCoursesKnown` from the wire marker;
+  // unit-test fixtures that supply explicit completion data set it to `true`.
+  if (!model.completedCoursesKnown) return [];
   const audit = shadowPrerequisiteAudit({
     semesters: semesters.map(s => ({ semesterId: s.semester_id, courseIds: s.course_ids })),
     completedCourseIds: model.completedCourseIds,
