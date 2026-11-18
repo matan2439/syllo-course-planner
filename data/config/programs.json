@@ -21,7 +21,18 @@
       "status": "live",
       "isFamilyDefault": true,
       "capabilities": [
-        "mechanical_design"
+        "mechanical_design",
+        "strength_analysis",
+        "finite_elements",
+        "heat_transfer",
+        "thermal_systems",
+        "fluids",
+        "control_systems",
+        "manufacturing",
+        "materials",
+        "biomechanics",
+        "energy",
+        "robotics"
       ]
     },
     {
@@ -44,7 +55,18 @@
       "status": "live",
       "isFamilyDefault": false,
       "capabilities": [
-        "mechanical_design"
+        "mechanical_design",
+        "strength_analysis",
+        "finite_elements",
+        "heat_transfer",
+        "thermal_systems",
+        "fluids",
+        "control_systems",
+        "manufacturing",
+        "materials",
+        "biomechanics",
+        "energy",
+        "robotics"
       ]
     },
     {
@@ -67,7 +89,18 @@
       "status": "live",
       "isFamilyDefault": true,
       "capabilities": [
-        "mechanical_design"
+        "mechanical_design",
+        "strength_analysis",
+        "finite_elements",
+        "heat_transfer",
+        "thermal_systems",
+        "fluids",
+        "control_systems",
+        "manufacturing",
+        "materials",
+        "biomechanics",
+        "energy",
+        "robotics"
       ]
     },
     {
@@ -91,9 +124,17 @@
       "publicPlanner": true,
       "isFamilyDefault": true,
       "capabilities": [
-        "signal_processing", "vlsi", "electromagnetics", "communications",
-        "ml_ai", "circuits_electronics", "optics_photonics", "bioelectronics",
-        "quantum_engineering", "energy_power", "computer_systems"
+        "signal_processing",
+        "vlsi",
+        "electromagnetics",
+        "communications",
+        "ml_ai",
+        "circuits_electronics",
+        "optics_photonics",
+        "bioelectronics",
+        "quantum_engineering",
+        "energy_power",
+        "computer_systems"
       ]
     }
   ]
