@@ -55,7 +55,17 @@ type ClaimVerdict =
   | { ok: true; evidence?: CourseCapabilityEvidence }
   | { ok: false; reason: string };
 
-function validateClaim(claim: CandidateClaim, snapshot: SyllabusSnapshot, courseTitle: string | undefined): ClaimVerdict {
+/**
+ * Validates a single candidate claim against the authoritative content string.
+ * `contentToCheck` is either `snapshot.normalizedContent` (for contentHash-based
+ * extractions) or `snapshot.extractionContent` (for extractionHash-based LLM extractions).
+ */
+function validateClaim(
+  claim: CandidateClaim,
+  snapshot: SyllabusSnapshot,
+  courseTitle: string | undefined,
+  contentToCheck: string,
+): ClaimVerdict {
   if (!(CAPABILITY_ONTOLOGY as readonly string[]).includes(claim.capability)) {
     return { ok: false, reason: `capability "${claim.capability}" is not in the supported ontology` };
   }
@@ -80,11 +90,11 @@ function validateClaim(claim: CandidateClaim, snapshot: SyllabusSnapshot, course
     const excerpt = typeof span?.excerpt === 'string' ? span.excerpt : '';
     if (!excerpt.trim()) return { ok: false, reason: 'empty evidence excerpt' };
     if (title && norm(excerpt) === title) return { ok: false, reason: 'evidence cites the course title, not syllabus content' };
-    if (!snapshot.normalizedContent.includes(excerpt)) {
+    if (!contentToCheck.includes(excerpt)) {
       return { ok: false, reason: 'evidence excerpt is not grounded verbatim in the authoritative source' };
     }
     if (typeof span.startOffset === 'number' && typeof span.endOffset === 'number') {
-      if (snapshot.normalizedContent.slice(span.startOffset, span.endOffset) !== excerpt) {
+      if (contentToCheck.slice(span.startOffset, span.endOffset) !== excerpt) {
         return { ok: false, reason: 'evidence offset does not correspond to the excerpt' };
       }
     }
@@ -113,14 +123,22 @@ export function validateExtraction(
   opts: { courseTitle?: string } = {},
 ): ValidationResult {
   const rejected: ValidationRejection[] = [];
-  // The extraction must be for THIS exact snapshot version.
-  if (extraction.snapshotHash !== snapshot.contentHash) {
+
+  // Accept extractions identified by either contentHash (classic, 2-field normalizedContent)
+  // or extractionHash (LLM-generated, all-7-field extractionContent). An extraction that
+  // matches extractionHash is grounded against the wider extractionContent so that
+  // evidence from prerequisites, assessment and structure fields is not incorrectly rejected.
+  const isExtractionHashMatch = !!(snapshot.extractionHash && extraction.snapshotHash === snapshot.extractionHash);
+  const isContentHashMatch = extraction.snapshotHash === snapshot.contentHash;
+  if (!isExtractionHashMatch && !isContentHashMatch) {
     return { accepted: [], rejected: [{ capability: '*', reason: 'extraction snapshot hash does not match the authoritative snapshot' }] };
   }
+  const contentToCheck = isExtractionHashMatch ? snapshot.extractionContent : snapshot.normalizedContent;
+
   // Reconcile contradictory/duplicate claims per capability: strongest grounded wins.
   const byCapability = new Map<string, { level: ExtractionInferenceLevel; evidence: CourseCapabilityEvidence }>();
   for (const claim of extraction.claims ?? []) {
-    const v = validateClaim(claim, snapshot, opts.courseTitle);
+    const v = validateClaim(claim, snapshot, opts.courseTitle, contentToCheck);
     if (!v.ok) {
       rejected.push({ capability: String(claim?.capability ?? '?'), reason: v.reason });
       continue;

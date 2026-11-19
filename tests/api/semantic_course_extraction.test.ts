@@ -18,7 +18,7 @@ import type { SyllabusSnapshot } from '../../api/ai/syllabus_snapshot';
 const snap = (courseId: string, content: string, hash: string): SyllabusSnapshot => ({
   courseId, institution: 'TAU', programOrCatalog: 'mech', sourceType: 'official_syllabus',
   sourceUrl: 'https://ims.tau.ac.il/x', sourceAuthority: 'tau_official_syllabus', sourceYear: 2025,
-  language: 'he', retrievedAt: 't', contentHash: hash, normalizedContent: content,
+  language: 'he', retrievedAt: 't', contentHash: hash, normalizedContent: content, extractionContent: content, extractionHash: hash,
 });
 
 test('ontology + versions are exported and mechanical_design is supported', () => {

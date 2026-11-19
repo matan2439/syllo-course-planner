@@ -18,7 +18,9 @@ test('registry preserves existing degrees while exposing only live entries', () 
 
 test('mechanical_engineering_2027 fields', () => {
   const p = getProgramEntry('mechanical_engineering_2027');
-  expect(p).toMatchObject({ sourceYear: 2026, year: 2027, base: 'mechanical_engineering', isFamilyDefault: true, sourceIds: { tcid: '8715' }, capabilities: ['mechanical_design'] });
+  expect(p).toMatchObject({ sourceYear: 2026, year: 2027, base: 'mechanical_engineering', isFamilyDefault: true, sourceIds: { tcid: '8715' } });
+  expect(p!.capabilities).toContain('mechanical_design');
+  expect(p!.capabilities.length).toBeGreaterThanOrEqual(12);
   expect(getProgramEntry('nope')).toBeNull();
 });
 

@@ -11,7 +11,7 @@ const CONTENT = 'הקורס עוסק בפתרונות יצירתיים וישי�
 const snap = (over: Partial<SyllabusSnapshot> = {}): SyllabusSnapshot => ({
   courseId: '0571-4174', institution: 'TAU', programOrCatalog: 'mech', sourceType: 'official_syllabus',
   sourceUrl: 'https://ims.tau.ac.il/x', sourceAuthority: 'tau_official_syllabus', sourceYear: 2025,
-  language: 'he', retrievedAt: '2026-06-10T00:00:00Z', contentHash: 'h'.repeat(64), normalizedContent: CONTENT, ...over,
+  language: 'he', retrievedAt: '2026-06-10T00:00:00Z', contentHash: 'h'.repeat(64), normalizedContent: CONTENT, extractionContent: CONTENT, extractionHash: 'e'.repeat(64), ...over,
 });
 const claim = (over: Partial<CandidateClaim> = {}): CandidateClaim => ({
   courseId: '0571-4174', capability: 'mechanical_design', relationship: 'teaches', strength: 0.7,

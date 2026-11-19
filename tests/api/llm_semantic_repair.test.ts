@@ -20,7 +20,7 @@ const CONTENT = 'הקורס עוסק בשיטות תכן ובבניית אב ט�
 const snap: SyllabusSnapshot = {
   courseId: '9999-0002', institution: 'TAU', programOrCatalog: 'mech', sourceType: 'official_syllabus',
   sourceUrl: 'https://ims.tau.ac.il/x', sourceAuthority: 'tau_official_syllabus', sourceYear: 2025,
-  language: 'he', retrievedAt: 't', contentHash: 'h'.repeat(64), normalizedContent: CONTENT,
+  language: 'he', retrievedAt: 't', contentHash: 'h'.repeat(64), normalizedContent: CONTENT, extractionContent: CONTENT, extractionHash: 'e'.repeat(64),
 };
 
 const schemaThrow = () => { const e: any = new Error('response did not match schema'); e.name = 'NoObjectGeneratedError'; throw e; };

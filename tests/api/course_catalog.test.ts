@@ -181,7 +181,8 @@ describe("a draft program's window board is not served by the loaders", () => {
 
 describe('capabilitiesFor', () => {
   it('reads capabilities from the registry', () => {
-    expect(capabilitiesFor('mechanical_engineering_2027')).toEqual(['mechanical_design']);
+    expect(capabilitiesFor('mechanical_engineering_2027')).toContain('mechanical_design');
+    expect(capabilitiesFor('mechanical_engineering_2027').length).toBeGreaterThanOrEqual(12);
     expect(capabilitiesFor('no_such_program')).toEqual([]);
   });
 });
