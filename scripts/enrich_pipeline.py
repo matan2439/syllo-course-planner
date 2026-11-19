@@ -3,6 +3,8 @@
 Full EE + ME academic enrichment pipeline.
 
 Phase 1: Process all courses with existing board content (deterministic, no network).
+         Course universe = program_repository_courses UNION semester-placed courses
+         (identical to buildCourseProfiles / extractCatalogCourses in course_catalog.ts).
 Phase 2: Merge new profiles with existing — never overwrites 'captured-review-v1'.
 Phase 3: Print four-tier coverage report.
 
@@ -10,6 +12,23 @@ Quality rules:
 - Single keyword match in a course -> 'estimated' (strength 0.3)
 - Two or more keyword matches -> 'derived' (strength 0.6)
 - Hand-reviewed ('captured-review-v1') -> keep as-is ('explicit' at 0.9)
+
+Intentional limitations (documented gaps — NOT silent omissions):
+- SYLLABI FETCHING GAP: This pipeline processes ONLY pre-existing syllabus content
+  already stored on each board entry (syllabus_summary_he, syllabus_ai_topics,
+  syllabus_topics_he). It does NOT make network requests to fetch missing syllabi
+  from the university website or any external source. Courses with no stored content
+  land in the T1-miss bucket and produce empty evidence. Stage 2 (semantic enrichment)
+  should address both fetching and richer extraction.
+
+Four-tier definitions (all denominators over T0 = all board courses, both sources):
+  T0 — All board courses  (program_repository_courses ∪ semester-placed)
+  T1 — Courses with any substantive syllabus content (passes boilerplate filter)
+  T2 — deterministic-v1 profiles with ≥1 keyword-evidence item (strength > 0)
+  T3 — hand-reviewed captured-review-v1 profiles (any evidence quality)
+  T4 — planner-consumed: profiles that produce a 'hit' in lookupProfile
+         = profiles where ≥1 evidence item has strength > 0 AND the capability
+           is in evaluatedCapabilities (matches lookupProfile semantics)
 """
 
 import hashlib
@@ -345,8 +364,22 @@ def run_program(prog):
     with open(board_path) as f:
         board = json.load(f)
 
-    courses = board.get('metadata', {}).get('program_repository_courses', [])
-    print(f'  Board courses: {len(courses)}')
+    # Build course universe = repository courses ∪ semester-placed courses
+    # (matches extractCatalogCourses / buildCourseProfiles in course_catalog.ts)
+    course_map: dict = {}
+    for c in board.get('metadata', {}).get('program_repository_courses', []):
+        if c and isinstance(c.get('course_id'), str):
+            course_map[c['course_id']] = c
+    for s in board.get('semesters', []):
+        for c in s.get('courses', []):
+            if c and isinstance(c.get('course_id'), str) and c['course_id'] not in course_map:
+                course_map[c['course_id']] = c
+    courses = list(course_map.values())
+    repo_only = sum(1 for cid in course_map
+                    if any(rc.get('course_id') == cid
+                           for rc in board.get('metadata', {}).get('program_repository_courses', [])))
+    sem_only = len(courses) - repo_only
+    print(f'  Board courses: {len(courses)} ({repo_only} repository + {sem_only} semester-placed only)')
 
     existing_cache = json.load(open(profile_path)) if profile_path.exists() else {'profiles': {}}
     existing_profiles = existing_cache.get('profiles', {})
@@ -356,7 +389,8 @@ def run_program(prog):
 
     new_profiles = {}
     stats = {'total': len(courses), 'no_content': 0, 'processed': 0,
-             'with_evidence': 0, 'protected_kept': 0}
+             'with_evidence': 0, 'protected_kept': 0,
+             'repo_count': repo_only, 'sem_only': sem_only}
 
     for course in courses:
         cid = course.get('course_id', '')
@@ -418,23 +452,45 @@ def main():
         all_stats[prog['id']] = run_program(prog)
 
     print('\n\n========== FOUR-TIER COVERAGE REPORT ==========')
-    print('  T1 — Raw syllabus:     courses with any substantive syllabus_summary_he')
-    print('  T2 — Keyword-derived:  deterministic-v1 profiles with >= 1 evidence item')
-    print('  T3 — Hand-reviewed:    profiles from captured-review-v1')
-    print('  T4 — Planner-consumed: T2 + T3 (profiles with evidence.strength > 0)')
+    print('  All denominators are over T0 = all board courses (repository ∪ semester-placed).')
+    print('  T0 — All board courses')
+    print('  T1 — Courses with substantive syllabus content (passes boilerplate filter)')
+    print('  T2 — deterministic-v1 profiles with ≥1 keyword-evidence item (strength>0)')
+    print('  T3 — hand-reviewed captured-review-v1 profiles')
+    print('  T4 — Planner-consumed: profiles with ≥1 evidence.strength>0 for an evaluated capability')
+    print('       (reflects actual lookupProfile "hit" semantics)')
+    print()
+    print('  FETCH GAP: T1 counts only courses with pre-existing board content.')
+    print('  Courses outside T1 lack stored syllabi; this pipeline does NOT fetch')
+    print('  missing syllabi from external sources. Stage 2 must address this gap.')
 
     for program_id, stats in all_stats.items():
+        # Load the written profile file to compute accurate T4
+        profile_path = ROOT / f'data/enriched_profiles/{program_id}.json'
+        with open(profile_path) as pf:
+            pcache = json.load(pf)
+        pprofiles = pcache.get('profiles', {})
+
+        t4_exact = sum(
+            1 for p in pprofiles.values()
+            if any(e.get('capability') in set(p.get('evaluatedCapabilities', []))
+                   and e.get('strength', 0) > 0
+                   for e in p.get('evidence', []))
+        )
+
         t1 = stats['processed']
         t2 = stats['with_evidence']
         t3 = stats['protected_kept']
-        t4 = t2 + t3
         total = stats['total']
+        no_syl = stats['no_content']
+        sem_only_count = stats.get('sem_only', 0)
         print(f'\n  {program_id}:')
-        print(f'    T1 raw syllabus:      {t1:3d}/{total}  ({t1/total*100:.0f}%)')
+        print(f'    T0 all board courses: {total:3d}  ({stats.get("repo_count",0)} repository + {sem_only_count} semester-placed)')
+        print(f'    T1 has syllabus:      {t1:3d}/{total}  ({t1/total*100:.0f}%)')
         print(f'    T2 keyword-derived:   {t2:3d}/{total}  ({t2/total*100:.0f}%)')
         print(f'    T3 hand-reviewed:     {t3:3d}/{total}  ({t3/total*100:.0f}%)')
-        print(f'    T4 planner-consumed:  {t4:3d}/{total}  ({t4/total*100:.0f}%)')
-        print(f'    No syllabus content:  {stats["no_content"]:3d}/{total}  ({stats["no_content"]/total*100:.0f}%)')
+        print(f'    T4 planner-consumed:  {t4_exact:3d}/{total}  ({t4_exact/total*100:.0f}%)')
+        print(f'    No syllabus (fetch gap): {no_syl:3d}/{total}  ({no_syl/total*100:.0f}%)')
 
 
 if __name__ == '__main__':

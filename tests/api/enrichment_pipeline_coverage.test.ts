@@ -138,12 +138,24 @@ test('buildCourseFitById scores ml_ai courses differently from circuits courses'
 
 // ── 5. Negative-control assertions ───────────────────────────────────────────
 
+test('NC-0: board presence assertions — test courses must exist (prevents silent pass)', () => {
+  // If a negative-control course is removed from the board, the test must FAIL loudly,
+  // not silently pass. These assertions guard all NC tests that follow.
+  const eeCourses = boardCourses(EE_BOARD);
+  const meCourses = boardCourses(ME_BOARD);
+  expect(eeCourses['0512-3514']).toBeDefined(); // מעגלים אלקטרוניים ספרתיים (NC-1)
+  expect(eeCourses['0618-1042']).toBeDefined(); // humanities course (NC-2)
+  expect(eeCourses['0512-4706']).toBeDefined(); // circuits course used in NC-4 false-positive
+  expect(meCourses['0542-4221']).toBeDefined(); // ME elasticity course (NC-5 false-positive)
+});
+
 test('NC-1: digital-circuits course (0512-3514) has zero ml_ai score', () => {
   const result = buildCourseFitById(
     EE_BOARD, [{ area: 'ml_ai' as const, weight: 1 }], 'electrical_engineering_2027',
   );
+  expect(result).toBeDefined(); // ml_ai has enriched courses — result must be defined
   // Digital circuits course should not appear as an ml_ai recommendation
-  const score = result?.fitById.get('0512-3514') ?? 0;
+  const score = result!.fitById.get('0512-3514') ?? 0;
   expect(score).toBe(0);
 });
 
@@ -151,7 +163,8 @@ test('NC-2: humanities course (0618-1042) has at most estimated-level signal_pro
   const cache = loadEnrichedProfileCache('electrical_engineering_2027')!;
   const courses = boardCourses(EE_BOARD);
   const course = courses['0618-1042'];
-  if (!course) return; // Skip if not in board
+  // Course must be present (guarded by NC-0 above); a missing course would be a data error
+  expect(course).toBeDefined();
   const snap = buildSyllabusSnapshot(course, 'electrical_engineering_2027');
   const r = lookupProfile(cache, snap, 'signal_processing');
   if (r.status === 'hit') {
@@ -159,7 +172,8 @@ test('NC-2: humanities course (0618-1042) has at most estimated-level signal_pro
     expect(r.evidence!.inferenceLevel).toBe('estimated');
     expect(r.evidence!.strength).toBeLessThanOrEqual(0.3);
   }
-  // Otherwise it's a miss, which is also acceptable
+  // A 'miss' (no_content, insufficient_evidence, etc.) is the expected result
+  expect(['insufficient_evidence', 'refresh_required', 'stale', 'hit']).toContain(r.status);
 });
 
 test('NC-3: ME program has no planner hits for signal_processing (capability not in ME)', () => {
@@ -169,6 +183,33 @@ test('NC-3: ME program has no planner hits for signal_processing (capability not
   );
   // ME evaluatedCapabilities do not include signal_processing → no lookupProfile hits
   expect(result).toBeUndefined();
+});
+
+test('NC-4 (false-positive): high-strength circuits course 0512-4706 scores zero for ml_ai', () => {
+  // This course (Analog Integrated Circuits) has captured-review-v1 for circuits_electronics
+  // at strength=0.9. It must NOT produce an ml_ai hit — a false positive from incidental
+  // transistor/amplifier keyword overlap with an ML keyword dictionary is the target failure mode.
+  const cache = loadEnrichedProfileCache('electrical_engineering_2027')!;
+  const courses = boardCourses(EE_BOARD);
+  const course = courses['0512-4706'];
+  expect(course).toBeDefined();
+  const snap = buildSyllabusSnapshot(course, 'electrical_engineering_2027');
+  const r = lookupProfile(cache, snap, 'ml_ai');
+  // Must NOT be a hit — a circuits course must not pollute the ml_ai specialisation
+  expect(r.status).not.toBe('hit');
+});
+
+test('NC-5 (false-positive): ME elasticity course 0542-4221 has no fluids score', () => {
+  // מבוא לתורת האלסטיות: strength_analysis course. Must not produce a fluids hit
+  // even if the word "flow" appears incidentally in the Hebrew text.
+  const cache = loadEnrichedProfileCache('mechanical_engineering_2027')!;
+  const courses = boardCourses(ME_BOARD);
+  const course = courses['0542-4221'];
+  expect(course).toBeDefined();
+  const snap = buildSyllabusSnapshot(course, 'mechanical_engineering_2027');
+  const r = lookupProfile(cache, snap, 'fluids');
+  // Must not be a fluids hit — strength_analysis and fluids are distinct ME capabilities
+  expect(r.status).not.toBe('hit');
 });
 
 // ── 6. Deterministic profiles have termCount metadata ────────────────────────
