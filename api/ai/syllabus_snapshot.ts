@@ -23,6 +23,17 @@ export interface SyllabusSnapshot {
   contentHash: string;
   /** Whitespace-normalized official syllabus text; the course TITLE is never included. */
   normalizedContent: string;
+  /**
+   * All syllabus fields concatenated and whitespace-normalized — a superset of
+   * normalizedContent that includes prerequisites, assessment, structure and raw
+   * assessment text. Used as the LLM extraction input and the span-grounding
+   * target for LLM-generated extractions (those identified by extractionHash).
+   * Captured/reviewed extractions continue to reference normalizedContent via
+   * contentHash.
+   */
+  extractionContent: string;
+  /** sha256 of extractionContent — the cache key for LLM-based extractions. */
+  extractionHash: string;
 }
 
 export function sha256(s: string): string {
@@ -57,10 +68,19 @@ export function buildSyllabusSnapshot(course: any, programOrCatalog: string): Sy
     ? [summary, topics].filter(Boolean).join(' \n ').replace(/[ \t]+/g, ' ').replace(/ *\n */g, ' \n ').trim()
     : '';
 
+  // extractionContent is a superset: all 7 syllabus fields used as LLM input.
+  const prerequisites = typeof course?.syllabus_prerequisites_he === 'string' ? course.syllabus_prerequisites_he : '';
+  const assessment = typeof course?.syllabus_assessment_he === 'string' ? course.syllabus_assessment_he : '';
+  const assessmentRaw = typeof course?.assessment_text_raw === 'string' ? course.assessment_text_raw : '';
+  const extractionParts = [summary, topics, prerequisites, assessment, structure, assessmentRaw].filter(Boolean);
+  const extractionContent = extractionParts.length > 0
+    ? extractionParts.join(' \n ').replace(/[ \t]+/g, ' ').replace(/ *\n */g, ' \n ').trim()
+    : '';
+
   const sourceUrl = course?.syllabus_source_url ?? course?.syllabus_url ?? null;
   const yearMatch = typeof sourceUrl === 'string' ? sourceUrl.match(/year=(\d{4})/) : null;
   const hasContent = normalizedContent.length > 0;
-  void structure; // structure is provenance-only (hours header); intentionally excluded from content
+  void structure; // structure is included in extractionContent but excluded from normalizedContent
 
   return {
     courseId: typeof course?.course_id === 'string' ? course.course_id : '',
@@ -74,5 +94,7 @@ export function buildSyllabusSnapshot(course: any, programOrCatalog: string): Sy
     retrievedAt: hasContent ? (course?.syllabus_last_fetched_at ?? null) : null,
     contentHash: sha256(normalizedContent),
     normalizedContent,
+    extractionContent,
+    extractionHash: sha256(extractionContent),
   };
 }

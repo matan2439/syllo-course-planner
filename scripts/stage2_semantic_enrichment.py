@@ -80,6 +80,11 @@ MAX_RETRIES = 2          # per-course
 REVIEW_CONFIDENCE_THRESHOLD = 0.60
 MIN_EVIDENCE_CHARS = 20  # shorter spans cannot be reliably verified
 
+# Hard spend limit — the script refuses to start a new API call once cumulative
+# cost (input + output tokens at list price) exceeds this. Set via --max-spend.
+# Default matches the documented two-pass maximum budget of $0.15 for 251 courses.
+DEFAULT_MAX_SPEND_USD = 0.15
+
 CAPABILITY_DESCRIPTIONS: dict[str, str] = {
     # EE
     "signal_processing": "Signal and system analysis, DSP, filters, transforms (FFT, DTFT), spectrum, sampling",
@@ -149,24 +154,50 @@ def build_normalized_content(course: dict[str, Any]) -> str:
     return combined.strip()
 
 
-def build_extended_content(course: dict[str, Any]) -> str:
-    """Richer content for LLM — adds fields beyond the snapshot for better extraction."""
-    parts: list[str] = []
-    for field_name in [
-        "syllabus_summary_he",
-        "syllabus_topics_he",
-        "syllabus_prerequisites_he",
-        "syllabus_assessment_he",
-        "syllabus_structure_he",
-        "syllabus_ai_topics",
-        "assessment_text_raw",
-    ]:
-        v = course.get(field_name, "")
-        if isinstance(v, list):
-            v = " ".join(str(x) for x in v if x)
-        if isinstance(v, str) and v.strip():
-            parts.append(v.strip())
-    return " | ".join(parts)
+def build_extraction_content(course: dict[str, Any]) -> str:
+    """Mirrors TypeScript buildSyllabusSnapshot.extractionContent exactly.
+
+    All 7 syllabus fields concatenated with the same whitespace normalization as
+    normalizedContent.  This is what the LLM receives AND what evidence spans are
+    checked against, so excerpts from prerequisites / assessment / structure are
+    accepted rather than rejected as 'not in normalizedContent'.
+    """
+    summary = course.get("syllabus_summary_he") or ""
+    if not isinstance(summary, str):
+        summary = ""
+
+    ai_topics = course.get("syllabus_ai_topics") or []
+    topics_he = course.get("syllabus_topics_he") or []
+    if isinstance(ai_topics, list):
+        topics = " ".join(str(x) for x in ai_topics if x)
+    elif isinstance(topics_he, list):
+        topics = " ".join(str(x) for x in topics_he if x)
+    else:
+        topics = ""
+
+    prereqs = course.get("syllabus_prerequisites_he") or ""
+    if not isinstance(prereqs, str):
+        prereqs = ""
+
+    assessment = course.get("syllabus_assessment_he") or ""
+    if not isinstance(assessment, str):
+        assessment = ""
+
+    structure = course.get("syllabus_structure_he") or ""
+    if not isinstance(structure, str):
+        structure = ""
+
+    assessment_raw = course.get("assessment_text_raw") or ""
+    if not isinstance(assessment_raw, str):
+        assessment_raw = ""
+
+    all_parts = [p for p in [summary, topics, prereqs, assessment, structure, assessment_raw] if p]
+    if not all_parts:
+        return ""
+    combined = " \n ".join(all_parts)
+    combined = re.sub(r"[ \t]+", " ", combined)
+    combined = re.sub(r" *\n *", " \n ", combined)
+    return combined.strip()
 
 
 def sha256_hex(s: str) -> str:
@@ -274,16 +305,23 @@ def build_system_prompt(program_id: str) -> str:
     )
 
 
-def build_user_message(course: dict[str, Any], snapshot_hash: str) -> str:
+def build_user_message(course: dict[str, Any]) -> tuple[str, str]:
+    """Return (user_message_text, extraction_hash).
+
+    Uses build_extraction_content so the LLM receives all 7 syllabus fields and
+    the returned extraction_hash matches snapshot.extractionHash on the TS side.
+    """
     course_id = course.get("course_id", "")
     name_he = course.get("name_he") or course.get("name", "") or ""
-    content = build_extended_content(course)
-    return (
+    extraction_content = build_extraction_content(course)
+    extraction_hash = sha256_hex(extraction_content)
+    msg = (
         f"Course ID: {course_id}\n"
         f"Course name: {name_he}\n"
-        f"Snapshot hash: {snapshot_hash}\n\n"
-        f"Syllabus text:\n{content}"
+        f"Snapshot hash: {extraction_hash}\n\n"
+        f"Syllabus text:\n{extraction_content}"
     )
+    return msg, extraction_hash
 
 
 # ---------------------------------------------------------------------------
@@ -296,8 +334,13 @@ HEDGE_PATTERNS = re.compile(
 )
 
 
-def _flag_claim(claim: dict[str, Any], normalized_content: str) -> tuple[bool, str | None]:
-    """Return (needs_review, reason) for a single claim."""
+def _flag_claim(claim: dict[str, Any], extraction_content: str) -> tuple[bool, str | None]:
+    """Return (needs_review, reason) for a single claim.
+
+    Checks excerpts against extraction_content (all 7 fields) rather than the
+    narrower normalized_content, so evidence from prerequisites, assessment and
+    structure fields is not incorrectly flagged as ungrounded.
+    """
     if claim.get("confidence", 1.0) < REVIEW_CONFIDENCE_THRESHOLD:
         return True, f"confidence {claim.get('confidence'):.2f} < {REVIEW_CONFIDENCE_THRESHOLD}"
 
@@ -309,7 +352,7 @@ def _flag_claim(claim: dict[str, Any], normalized_content: str) -> tuple[bool, s
         excerpt = span.get("excerpt", "")
         if len(excerpt) < MIN_EVIDENCE_CHARS:
             return True, f"evidence excerpt too short ({len(excerpt)} chars)"
-        if normalized_content and excerpt not in normalized_content:
+        if extraction_content and excerpt not in extraction_content:
             return True, "evidence excerpt is not a verbatim substring of snapshot"
 
     rationale = claim.get("rationale", "")
@@ -360,7 +403,7 @@ OUTPUT_TOKENS_PER_COURSE = 400
 def estimate_cost(courses: list[dict[str, Any]]) -> None:
     n = len(courses)
     total_syllabus_chars = sum(
-        len(build_extended_content(c)) for c in courses
+        len(build_extraction_content(c)) for c in courses
     )
     mean_chars = total_syllabus_chars // max(n, 1)
     mean_toks = mean_chars // 2  # Hebrew: ~2 chars/token
@@ -392,11 +435,14 @@ def extract_one_course(
     client: Any,
     course: dict[str, Any],
     system_prompt: str,
-    normalized_content: str,
-    snapshot_hash: str,
     is_first_call: bool,
-) -> dict[str, Any]:
-    """Call the API for one course. Returns the parsed JSON dict."""
+) -> tuple[dict[str, Any], str, int, int]:
+    """Call the API for one course.
+
+    Returns (parsed_json, extraction_hash, input_tokens, output_tokens).
+    Uses build_extraction_content / build_user_message so the LLM receives all
+    7 fields and the snapshotHash in the response equals snapshot.extractionHash.
+    """
     import anthropic
 
     system: list[dict[str, Any]] = [
@@ -407,7 +453,7 @@ def extract_one_course(
         }
     ]
 
-    user_message = build_user_message(course, snapshot_hash)
+    user_message, extraction_hash = build_user_message(course)
 
     for attempt in range(MAX_RETRIES + 1):
         try:
@@ -423,7 +469,9 @@ def extract_one_course(
                 raw = re.sub(r"^```[a-z]*\n?", "", raw)
                 raw = re.sub(r"\n?```$", "", raw)
             parsed = json.loads(raw)
-            return parsed
+            input_toks = getattr(response.usage, "input_tokens", 0)
+            output_toks = getattr(response.usage, "output_tokens", 0)
+            return parsed, extraction_hash, input_toks, output_toks
         except json.JSONDecodeError as e:
             if attempt < MAX_RETRIES:
                 time.sleep(1)
@@ -445,13 +493,13 @@ def extract_one_course(
 def post_process_extraction(
     raw: dict[str, Any],
     course_id: str,
-    normalized_content: str,
+    extraction_content: str,
     program_caps: list[str],
 ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     """
     Returns (cleaned_extraction, review_items).
     Removes claims outside the program capability set.
-    Flags claims requiring human review.
+    Flags claims requiring human review against extraction_content (all 7 fields).
     """
     review_items: list[dict[str, Any]] = []
     cleaned_claims: list[dict[str, Any]] = []
@@ -465,8 +513,8 @@ def post_process_extraction(
         if cap not in program_caps and cap != "general":
             continue
 
-        # Validate and flag
-        needs_review, reason = _flag_claim(claim, normalized_content)
+        # Validate and flag against extraction_content
+        needs_review, reason = _flag_claim(claim, extraction_content)
         claim["needsHumanReview"] = needs_review
         claim["reviewReason"] = reason
 
@@ -492,7 +540,7 @@ def post_process_extraction(
 # ---------------------------------------------------------------------------
 
 
-def run(program_id: str, pilot: int | None, dry_run: bool) -> None:
+def run(program_id: str, pilot: int | None, dry_run: bool, max_spend_usd: float) -> None:
     repo_root = Path(__file__).parent.parent
     board_path = repo_root / BOARD_FILE[program_id]
 
@@ -504,11 +552,11 @@ def run(program_id: str, pilot: int | None, dry_run: bool) -> None:
     # Filter to courses with any content
     courses_with_content = [
         c for c in all_courses
-        if build_extended_content(c).strip()
+        if build_extraction_content(c).strip()
     ]
     # Sort by content length descending (process richest first)
     courses_with_content.sort(
-        key=lambda c: len(build_extended_content(c)), reverse=True
+        key=lambda c: len(build_extraction_content(c)), reverse=True
     )
 
     if pilot:
@@ -516,6 +564,7 @@ def run(program_id: str, pilot: int | None, dry_run: bool) -> None:
 
     print(f"Program:  {program_id}")
     print(f"Courses with content: {len(courses_with_content)}")
+    print(f"Hard spend limit:     ${max_spend_usd:.4f}")
 
     estimate_cost(courses_with_content)
 
@@ -556,6 +605,7 @@ def run(program_id: str, pilot: int | None, dry_run: bool) -> None:
     processed = 0
     skipped = 0
     failed = 0
+    cumulative_spend = 0.0
 
     for i, course in enumerate(courses_with_content):
         course_id = course["course_id"]
@@ -564,23 +614,35 @@ def run(program_id: str, pilot: int | None, dry_run: bool) -> None:
             skipped += 1
             continue
 
-        normalized_content = build_normalized_content(course)
-        snapshot_hash = sha256_hex(normalized_content) if normalized_content else sha256_hex("")
+        extraction_content = build_extraction_content(course)
 
-        print(f"[{i+1}/{len(courses_with_content)}] {course_id} ({len(build_extended_content(course))} chars) …", end=" ", flush=True)
+        # Hard spend limit check before each API call
+        if cumulative_spend >= max_spend_usd:
+            print(
+                f"\nSPEND LIMIT REACHED (${cumulative_spend:.4f} >= ${max_spend_usd:.4f}).\n"
+                f"Processed {processed} courses. Resume with: "
+                f"python3 scripts/stage2_semantic_enrichment.py --program {program_id} "
+                f"[--max-spend N]\n"
+                f"Checkpoint saved to: {checkpoint_path}"
+            )
+            break
+
+        print(f"[{i+1}/{len(courses_with_content)}] {course_id} ({len(extraction_content)} chars, "
+              f"spent ${cumulative_spend:.4f}) …", end=" ", flush=True)
 
         try:
-            raw = extract_one_course(
+            raw, extraction_hash, input_toks, output_toks = extract_one_course(
                 client=client,
                 course=course,
                 system_prompt=system_prompt,
-                normalized_content=normalized_content,
-                snapshot_hash=snapshot_hash,
                 is_first_call=(processed == 0 and skipped == 0),
             )
 
+            call_cost = input_toks * INPUT_PRICE + output_toks * OUTPUT_PRICE
+            cumulative_spend += call_cost
+
             cleaned, review_items = post_process_extraction(
-                raw, course_id, normalized_content, program_caps
+                raw, course_id, extraction_content, program_caps
             )
 
             review_queue.extend(review_items)
@@ -588,13 +650,15 @@ def run(program_id: str, pilot: int | None, dry_run: bool) -> None:
             checkpoint[course_id] = {
                 "status": "done",
                 "extraction": cleaned,
-                "snapshot_hash": snapshot_hash,
+                "snapshot_hash": extraction_hash,  # extractionHash — matches TS side
                 "review_items_count": len(review_items),
+                "tokens": {"input": input_toks, "output": output_toks},
+                "cost_usd": round(call_cost, 6),
             }
 
             flag_str = f" [{len(review_items)} for review]" if review_items else ""
             claims_str = f"{len(cleaned.get('claims', []))} claims"
-            print(f"OK — {claims_str}{flag_str}")
+            print(f"OK — {claims_str}{flag_str} (${call_cost:.5f})")
             processed += 1
 
         except Exception as e:
@@ -608,6 +672,7 @@ def run(program_id: str, pilot: int | None, dry_run: bool) -> None:
 
     print(f"\n=== DONE ===")
     print(f"Processed: {processed}, Skipped (already done): {skipped}, Failed: {failed}")
+    print(f"Total spend: ${cumulative_spend:.4f}")
     print(f"Checkpoint: {checkpoint_path}")
     print(f"Review queue: {review_queue_path} ({len(review_queue)} items)")
     print(f"\nNext step: human review of flagged items, then merge PR after approval.")
@@ -637,5 +702,15 @@ if __name__ == "__main__":
         action="store_true",
         help="Print cost estimate only, do not call the API",
     )
+    parser.add_argument(
+        "--max-spend",
+        type=float,
+        default=DEFAULT_MAX_SPEND_USD,
+        metavar="USD",
+        help=(
+            f"Hard spending limit in USD (default: ${DEFAULT_MAX_SPEND_USD:.2f}). "
+            "The script stops before the next API call once this is exceeded."
+        ),
+    )
     args = parser.parse_args()
-    run(args.program, args.pilot, args.dry_run)
+    run(args.program, args.pilot, args.dry_run, args.max_spend)

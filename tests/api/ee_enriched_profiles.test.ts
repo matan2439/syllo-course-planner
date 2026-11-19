@@ -89,6 +89,8 @@ function makeSnap(courseId: string, content: string): SyllabusSnapshot {
     retrievedAt: '2026-11-18T00:00:00Z',
     contentHash: hash,
     normalizedContent: content,
+    extractionContent: content,
+    extractionHash: hash,
   };
 }
 

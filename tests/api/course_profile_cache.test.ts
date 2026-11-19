@@ -17,7 +17,7 @@ import type { SyllabusSnapshot } from '../../api/ai/syllabus_snapshot';
 const snap = (hash: string): SyllabusSnapshot => ({
   courseId: '0542-4425', institution: 'TAU', programOrCatalog: 'mech', sourceType: 'official_syllabus',
   sourceUrl: 'https://ims.tau.ac.il/x', sourceAuthority: 'tau_official_syllabus', sourceYear: 2025,
-  language: 'he', retrievedAt: '2026-06-10T00:00:00Z', contentHash: hash, normalizedContent: 'שיטות התכן',
+  language: 'he', retrievedAt: '2026-06-10T00:00:00Z', contentHash: hash, normalizedContent: 'שיטות התכן', extractionContent: 'שיטות התכן', extractionHash: hash,
 });
 
 const profile = (over: Partial<ValidatedProfile> = {}): ValidatedProfile => ({
